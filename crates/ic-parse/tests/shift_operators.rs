@@ -92,8 +92,8 @@ fn test_shift_in_template_bounds() {
     let mut vfs = SourceMap::default();
     let file = vfs.embed(
         r"
-        typedef sequence<long, 1 << 10> KB_Array;
-        typedef sequence<octet, 256 >> 2> SixtyFour_Array;
+        typedef sequence<long, (1 << 10)> KB_Array;
+        typedef sequence<octet, (256 >> 2)> SixtyFour_Array;
     ",
     );
 
@@ -111,12 +111,12 @@ fn test_ambiguous_cases() {
         r"
         // In expression context, >> is shift
         const long SHIFT = 1024 >> 2;
-        
+
         // In template context, >> is two separate >
         typedef sequence<sequence<long>> Matrix;
-        
-        // Mixed: shift in template parameter
-        typedef sequence<octet, 1024 >> 2> Array;
+
+        // Shift in template bound requires parentheses
+        typedef sequence<octet, (1024 >> 2)> Array;
     ",
     );
 

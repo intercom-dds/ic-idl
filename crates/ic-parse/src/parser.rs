@@ -141,7 +141,71 @@ fn primitive_type(name: &str, span: Span) -> Type {
 
 // Handles bounds for collections types
 fn bound() -> impl IdlParser<Option<Expr>> {
-    just(Kind::Comma).ignore_then(positive_int_const()).or_not()
+    just(Kind::Comma).ignore_then(bound_expr()).or_not()
+}
+
+// Expression parser for bounds that allows shifts inside parentheses but not at top level
+fn bound_expr() -> impl IdlParser<Expr> {
+    expr_with_ops(false)
+}
+
+// Due to the recursive nature of expressions, these are implemented in a
+// single function to avoid propagating the state everywhere.
+fn expr_with_ops(include_shift: bool) -> impl IdlParser<Expr> {
+    recursive(move |primary| {
+        // Rule 16: Parenthesized expressions always allow full syntax including shifts
+        let nested = if include_shift {
+            primary
+                .parenthesized()
+                .map_with_span(|expr, span| Expr::Group(Box::new(Group { expr, span })))
+                .boxed()
+        } else {
+            const_expr()
+                .parenthesized()
+                .map_with_span(|expr, span| Expr::Group(Box::new(Group { expr, span })))
+                .boxed()
+        };
+
+        let lit = literal().map(Expr::Literal);
+        let scoped = scoped_name().map(Expr::Path);
+        let expr = choice((scoped, lit, nested));
+
+        // Rule 14: Unary expressions
+        let expr = unary_operator().or_not().then(expr).map(to_unary);
+
+        // Rule 13: Multiplication, division and modulus all have the same precedence
+        let expr = binary_op(
+            expr,
+            choice((
+                operator(Kind::Star, OpKind::Multiply),
+                operator(Kind::Slash, OpKind::Divide),
+                operator(Kind::Modulo, OpKind::Modulo),
+            )),
+        );
+
+        // Rule 12: Addition and subtraction have equal precedence
+        let expr = binary_op(
+            expr,
+            choice((
+                operator(Kind::Plus, OpKind::Add),
+                operator(Kind::Minus, OpKind::Sub),
+            )),
+        );
+
+        // Rule 11: Bitwise shift operations have equal precedence
+        let expr = if include_shift {
+            binary_op(expr, choice((lshift(), rshift()))).boxed()
+        } else {
+            expr.boxed()
+        };
+
+        // Rule 10: Bitwise AND
+        let expr = binary_op(expr, operator(Kind::BitAnd, OpKind::And));
+        // Rule 9: Bitwise XOR
+        let expr = binary_op(expr, operator(Kind::BitXor, OpKind::Xor));
+        // Rule 8: Bitwise OR
+        binary_op(expr, operator(Kind::BitOr, OpKind::Or))
+    })
 }
 
 // Rule 1
@@ -281,54 +345,8 @@ fn const_type() -> impl IdlParser<Type> {
 }
 
 // Rule 7-14, 16
-//
-// Due to the recursive nature of expressions, these are implemented in a
-// single function to avoid propagating the state everywhere.
 fn const_expr() -> impl IdlParser<Expr> {
-    recursive(|primary| {
-        // Rule 16
-        let nested = primary
-            .parenthesized()
-            .map_with_span(|expr, span| Expr::Group(Box::new(Group { expr, span })));
-
-        let lit = literal().map(Expr::Literal);
-        let scoped = scoped_name().map(Expr::Path);
-        let expr = choice((scoped, lit, nested));
-
-        // Rule 14: Unary expressions
-        let expr = unary_operator().or_not().then(expr).map(to_unary);
-
-        // Rule 13: Multiplication, division and modulus all have the same precedence
-        let expr = binary_op(
-            expr,
-            choice((
-                operator(Kind::Star, OpKind::Multiply),
-                operator(Kind::Slash, OpKind::Divide),
-                operator(Kind::Modulo, OpKind::Modulo),
-            )),
-        );
-
-        // Rule 12: Addition and subtraction have equal precedence
-        let expr = binary_op(
-            expr,
-            choice((
-                operator(Kind::Plus, OpKind::Add),
-                operator(Kind::Minus, OpKind::Sub),
-            )),
-        );
-
-        // Rule 11: Bitwise shift operations have equal precedence
-        let expr = binary_op(expr, choice((lshift(), rshift())));
-
-        // Rule 10: Bitwise AND
-        let expr = binary_op(expr, operator(Kind::BitAnd, OpKind::And));
-
-        // Rule 9: Bitwise XOR
-        let expr = binary_op(expr, operator(Kind::BitXor, OpKind::Xor));
-
-        // Rule 8: Bitwise OR
-        binary_op(expr, operator(Kind::BitOr, OpKind::Or))
-    })
+    expr_with_ops(true)
 }
 
 fn to_unary((op, expr): (Option<Op>, Expr)) -> Expr {

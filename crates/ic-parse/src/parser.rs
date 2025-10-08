@@ -524,15 +524,17 @@ fn sequence_element_type(state: Recursive<'_, Kind, Type, Error>) -> impl IdlPar
 // Rule 39
 fn sequence_type(state: Recursive<'_, Kind, Type, Error>) -> impl IdlParser<Type> + '_ {
     let inner = sequence_element_type(state)
+        .annotated()
         .then(bound())
         .delimited_by(just(Kind::Less), just(Kind::Greater));
 
     let seq = keyword(Kw::Sequence).ignore_then(inner);
-    seq.map_with_span(|(elem, bound), span| {
+    seq.map_with_span(|((annotations, elem), bound), span| {
         Type::Sequence(SequenceType {
             ty: Box::new(elem),
             bound,
             span,
+            annotations,
         })
     })
 }

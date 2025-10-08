@@ -237,6 +237,7 @@ struct SequenceType {
     @external Type ty;
     @optional Expr bound;
     Span span;
+    sequence<AnnotationAppl> annotations;
 };
 
 @nested

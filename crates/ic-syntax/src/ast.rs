@@ -1478,6 +1478,7 @@ pub struct SequenceType {
     pub ty: Box<crate::ast::Type>,
     pub bound: Option<crate::ast::Expr>,
     pub span: crate::ast::Span,
+    pub annotations: Vec<crate::ast::AnnotationAppl>,
 }
 
 impl SequenceType {
@@ -1487,6 +1488,7 @@ impl SequenceType {
             ty: Box::new(<crate::ast::Type>::default()),
             bound: None,
             span: <crate::ast::Span>::default(),
+            annotations: Vec::new(),
         }
     }
 }
@@ -1522,6 +1524,11 @@ const _: () = {
             member_id: 2,
             flags: ::intercom_cts::MemberFlag::nil(),
         },
+        ::intercom_cts::MemberInfo {
+            name: "annotations",
+            member_id: 3,
+            flags: ::intercom_cts::MemberFlag::nil(),
+        },
     ];
 
     impl ::intercom_cts::Marshal for SequenceType {
@@ -1535,6 +1542,7 @@ const _: () = {
             state.encode_field(&MEMBER_INFO[0], &self.ty)?;
             state.encode_optional(&MEMBER_INFO[1], &self.bound)?;
             state.encode_field(&MEMBER_INFO[2], &self.span)?;
+            state.encode_field(&MEMBER_INFO[3], &self.annotations)?;
             state.end()
         }
     }
@@ -1550,6 +1558,7 @@ const _: () = {
             state.decode_field(&MEMBER_INFO[0], &mut self.ty)?;
             state.decode_field(&MEMBER_INFO[1], &mut self.bound)?;
             state.decode_field(&MEMBER_INFO[2], &mut self.span)?;
+            state.decode_field(&MEMBER_INFO[3], &mut self.annotations)?;
             state.end()?;
             Ok(())
         }

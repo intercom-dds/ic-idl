@@ -500,16 +500,6 @@ fn collect_arrays(
                 collect_arrays(hir, child_id, arrays, encounter_order);
             }
         }
-        DefKind::Alias(alias_ty) => {
-            if let TyKind::Array { ty, len, .. } = &alias_ty.ty.kind {
-                arrays.push(ArrayReplacement {
-                    elem_ty: ty.clone(),
-                    len: *len,
-                    span: alias_ty.ty.span,
-                    parent,
-                });
-            }
-        }
         _ => {}
     }
 }

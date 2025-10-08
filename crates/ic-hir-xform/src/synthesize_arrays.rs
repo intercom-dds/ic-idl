@@ -143,6 +143,12 @@ struct ArrayReplacement {
 
     /// Parent definition containing this array (None for top-level)
     parent: Option<DefId>,
+
+    /// The definition that uses this array type
+    used_by: DefId,
+
+    /// Order in which this array was encountered (for stable ordering)
+    encounter_order: usize,
 }
 
 /// Transform array types into explicit type alias definitions.
@@ -158,15 +164,21 @@ struct ArrayReplacement {
 pub fn transform(mut hir: ResolvedGraph) -> ResolvedGraph {
     // First pass: collect all array types that need to be synthesized
     let mut arrays_to_synthesize: Vec<ArrayReplacement> = Vec::new();
-    let def_ids: Vec<DefId> = hir.order.clone();
+    let mut encounter_order = 0;
 
+    let def_ids: Vec<DefId> = hir.order.clone();
     for &def_id in &def_ids {
-        collect_arrays(&hir, def_id, &mut arrays_to_synthesize);
+        collect_arrays(
+            &hir,
+            def_id,
+            &mut arrays_to_synthesize,
+            &mut encounter_order,
+        );
     }
 
-    // Second pass: create synthetic type aliases
+    // Second pass: create synthetic type aliases and track where to insert them
     let mut array_types: HashMap<ArrayKey, DefId> = HashMap::new();
-    let mut new_array_defs: Vec<(DefId, Option<DefId>)> = Vec::new();
+    let mut arrays_to_insert: Vec<(DefId, Option<DefId>, DefId, usize)> = Vec::new();
 
     for replacement in arrays_to_synthesize {
         let elem_name = type_name(&hir, &replacement.elem_ty);
@@ -197,44 +209,69 @@ pub fn transform(mut hir: ResolvedGraph) -> ResolvedGraph {
                 flags: hir::DefFlags::nil(),
             });
 
-            new_array_defs.push((array_def_id, replacement.parent));
+            arrays_to_insert.push((
+                array_def_id,
+                replacement.parent,
+                replacement.used_by,
+                replacement.encounter_order,
+            ));
             e.insert(array_def_id);
         }
     }
 
-    for (array_def_id, parent_id) in new_array_defs.into_iter().rev() {
+    // Sort arrays by encounter order (stable insertion order)
+    arrays_to_insert.sort_by_key(|(_, _, _, enc)| *enc);
+
+    // Insert arrays in encounter order, each right before its used_by definition
+    for (array_def_id, parent_id, used_by_id, _) in arrays_to_insert {
         match parent_id {
             None => {
-                hir.order.insert(0, array_def_id);
+                // Top-level: find position of used_by in hir.order and insert before it
+                if let Some(pos) = hir.order.iter().position(|&id| id == used_by_id) {
+                    hir.order.insert(pos, array_def_id);
+                } else {
+                    hir.order.insert(0, array_def_id);
+                }
             }
             Some(parent_id) => {
+                // Nested: insert into parent's definitions list
                 let parent_def = hir.context.definitions.get(parent_id);
-                let parent_has_definitions = matches!(
+                if matches!(
                     parent_def.kind,
                     DefKind::Module(_) | DefKind::Interface(_) | DefKind::Valuetype(_)
-                );
-
-                if parent_has_definitions {
+                ) {
                     hir.context.definitions.fold(parent_id, |mut parent_def| {
-                        match &mut parent_def.kind {
-                            DefKind::Module(module_ty) => {
-                                module_ty.definitions.insert(0, array_def_id);
-                            }
-                            DefKind::Interface(interface_ty) => {
-                                interface_ty.definitions.insert(0, array_def_id);
-                            }
+                        let insert_pos = match &parent_def.kind {
+                            DefKind::Module(module_ty) => module_ty
+                                .definitions
+                                .iter()
+                                .position(|&id| id == used_by_id),
+                            DefKind::Interface(interface_ty) => interface_ty
+                                .definitions
+                                .iter()
+                                .position(|&id| id == used_by_id),
                             DefKind::Valuetype(value_ty) => {
-                                value_ty.definitions.insert(0, array_def_id);
+                                value_ty.definitions.iter().position(|&id| id == used_by_id)
                             }
-                            _ => {}
+                            _ => None,
+                        };
+
+                        if let Some(pos) = insert_pos {
+                            match &mut parent_def.kind {
+                                DefKind::Module(module_ty) => {
+                                    module_ty.definitions.insert(pos, array_def_id);
+                                }
+                                DefKind::Interface(interface_ty) => {
+                                    interface_ty.definitions.insert(pos, array_def_id);
+                                }
+                                DefKind::Valuetype(value_ty) => {
+                                    value_ty.definitions.insert(pos, array_def_id);
+                                }
+                                _ => {}
+                            }
                         }
                         parent_def
                     });
-                } else {
-                    match hir.order.iter().position(|&id| id == parent_id) {
-                        Some(pos) => hir.order.insert(pos, array_def_id),
-                        None => hir.order.push(array_def_id),
-                    }
                 }
             }
         }
@@ -332,14 +369,19 @@ fn replace_arrays_recursive(
 /// - Interface attributes
 /// - Type aliases
 #[allow(clippy::too_many_lines)]
-fn collect_arrays(hir: &ResolvedGraph, def_id: DefId, arrays: &mut Vec<ArrayReplacement>) {
+fn collect_arrays(
+    hir: &ResolvedGraph,
+    def_id: DefId,
+    arrays: &mut Vec<ArrayReplacement>,
+    encounter_order: &mut usize,
+) {
     let def = hir.context.definitions.get(def_id);
     let parent = def.parent;
 
     match &def.kind {
         DefKind::Module(module_ty) => {
             for &child_id in &module_ty.definitions {
-                collect_arrays(hir, child_id, arrays);
+                collect_arrays(hir, child_id, arrays, encounter_order);
             }
         }
         DefKind::Struct(struct_ty) => {
@@ -350,7 +392,10 @@ fn collect_arrays(hir: &ResolvedGraph, def_id: DefId, arrays: &mut Vec<ArrayRepl
                         len: *len,
                         span: member.ty.span,
                         parent,
+                        used_by: def_id,
+                        encounter_order: *encounter_order,
                     });
+                    *encounter_order += 1;
                 }
             }
         }
@@ -362,7 +407,10 @@ fn collect_arrays(hir: &ResolvedGraph, def_id: DefId, arrays: &mut Vec<ArrayRepl
                         len: *len,
                         span: variant.ty.span,
                         parent,
+                        used_by: def_id,
+                        encounter_order: *encounter_order,
                     });
+                    *encounter_order += 1;
                 }
             }
         }
@@ -374,7 +422,10 @@ fn collect_arrays(hir: &ResolvedGraph, def_id: DefId, arrays: &mut Vec<ArrayRepl
                         len: *len,
                         span: member.ty.span,
                         parent,
+                        used_by: def_id,
+                        encounter_order: *encounter_order,
                     });
+                    *encounter_order += 1;
                 }
             }
         }
@@ -386,7 +437,10 @@ fn collect_arrays(hir: &ResolvedGraph, def_id: DefId, arrays: &mut Vec<ArrayRepl
                         len: *len,
                         span: proto.ty.span,
                         parent,
+                        used_by: def_id,
+                        encounter_order: *encounter_order,
                     });
+                    *encounter_order += 1;
                 }
                 for param in &proto.params {
                     if let TyKind::Array { ty, len, .. } = &param.ty.kind {
@@ -395,7 +449,10 @@ fn collect_arrays(hir: &ResolvedGraph, def_id: DefId, arrays: &mut Vec<ArrayRepl
                             len: *len,
                             span: param.ty.span,
                             parent,
+                            used_by: def_id,
+                            encounter_order: *encounter_order,
                         });
+                        *encounter_order += 1;
                     }
                 }
             }
@@ -406,11 +463,14 @@ fn collect_arrays(hir: &ResolvedGraph, def_id: DefId, arrays: &mut Vec<ArrayRepl
                         len: *len,
                         span: attr.ty.span,
                         parent,
+                        used_by: def_id,
+                        encounter_order: *encounter_order,
                     });
+                    *encounter_order += 1;
                 }
             }
             for &child_id in &interface_ty.definitions {
-                collect_arrays(hir, child_id, arrays);
+                collect_arrays(hir, child_id, arrays, encounter_order);
             }
         }
         DefKind::Valuetype(value_ty) => {
@@ -421,11 +481,14 @@ fn collect_arrays(hir: &ResolvedGraph, def_id: DefId, arrays: &mut Vec<ArrayRepl
                         len: *len,
                         span: member.ty.span,
                         parent,
+                        used_by: def_id,
+                        encounter_order: *encounter_order,
                     });
+                    *encounter_order += 1;
                 }
             }
             for &child_id in &value_ty.definitions {
-                collect_arrays(hir, child_id, arrays);
+                collect_arrays(hir, child_id, arrays, encounter_order);
             }
         }
         DefKind::Alias(alias_ty) => {

@@ -43,6 +43,7 @@ pub mod position_annotation;
 pub mod rename;
 pub mod rename_xtypes;
 pub mod squash_modules;
+pub mod synthesize_arrays;
 pub mod type_flags;
 pub mod value_annotation;
 

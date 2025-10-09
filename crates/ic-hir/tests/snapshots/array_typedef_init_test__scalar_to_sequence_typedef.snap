@@ -1,0 +1,11 @@
+---
+source: crates/ic-hir/tests/array_typedef_init_test.rs
+expression: output
+---
+error: integer value cannot be assigned to type MySeq
+   ┌ test.idl:3:28
+   │
+ 2 │         typedef sequence<octet> MySeq;
+ 3 │         const MySeq DATA = 123;
+   ·                            ^^^ incompatible types
+   └──

@@ -168,7 +168,26 @@ pub fn cast_value_to_type(
             // 'any' type accepts any value
             Ok(v)
         }
-        // For non-primitive types (enums/bitmasks/etc), we rely on callers to interpret
+        TyKind::Array { .. } | TyKind::Sequence { .. } | TyKind::Map { .. } => {
+            // Arrays, sequences, and maps can only be initialized with initializer lists,
+            // not scalar values
+            Err(EvalError::TypeMismatch)
+        }
+        TyKind::Adt(def_id) => {
+            // Resolve the ADT to its base type and check if it's a collection type
+            let base_ty = ctx.base_type_of(*def_id);
+            if matches!(
+                base_ty.kind,
+                TyKind::Array { .. } | TyKind::Sequence { .. } | TyKind::Map { .. }
+            ) {
+                // This is a typedef to a collection type - can't cast scalar to it
+                Err(EvalError::TypeMismatch)
+            } else {
+                // For enums/bitmasks/structs/etc, we rely on callers to interpret
+                Ok(v)
+            }
+        }
+        // For other non-primitive types, we rely on callers to interpret
         _ => Ok(v),
     }
 }

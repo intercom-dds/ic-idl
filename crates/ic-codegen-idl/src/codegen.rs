@@ -575,13 +575,12 @@ impl<'a> IdlGen<'a> {
             let flag_name = &flag_def.ident.name;
 
             w!(w, "\n");
-            if flag_def.flags.contains(DefFlags::IS_ENUMERATED) {
-                if let DefKind::Const(const_ty) = &flag_def.kind
-                    && let Some(val) = self.hir.context.unsigned_value(&const_ty.value)
-                {
-                    let position = val.trailing_zeros();
-                    w!(w, "@position(", position, ") ");
-                }
+            if flag_def.flags.contains(DefFlags::IS_ENUMERATED)
+                && let DefKind::Const(const_ty) = &flag_def.kind
+                && let Some(val) = self.hir.context.unsigned_value(&const_ty.value)
+            {
+                let position = val.trailing_zeros();
+                w!(w, "@position(", position, ") ");
             }
 
             w!(w, flag_name);

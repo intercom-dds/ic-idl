@@ -168,26 +168,9 @@ impl<'a> ProtoGen<'a> {
         def_id
     }
 
-    fn proto_primitive(&self, prim: PrimitiveTy) -> String {
-        match prim {
-            PrimitiveTy::Bool => "bool".to_string(),
-            PrimitiveTy::Int8 | PrimitiveTy::Int16 | PrimitiveTy::Int32 => "int32".to_string(),
-            PrimitiveTy::Char
-            | PrimitiveTy::WChar
-            | PrimitiveTy::UInt8
-            | PrimitiveTy::UInt16
-            | PrimitiveTy::UInt32 => "uint32".to_string(),
-            PrimitiveTy::Int64 => "int64".to_string(),
-            PrimitiveTy::UInt64 => "uint64".to_string(),
-            PrimitiveTy::Float32 => "float".to_string(),
-            PrimitiveTy::Float64 | PrimitiveTy::Float128 => "double".to_string(),
-            PrimitiveTy::Void => "google.protobuf.Empty".to_string(),
-        }
-    }
-
     fn proto_type(&self, ty: &Ty, current_package: &Path) -> String {
         match &ty.kind {
-            TyKind::Primitive(prim) => self.proto_primitive(*prim),
+            TyKind::Primitive(prim) => proto_primitive(*prim),
             TyKind::String { .. } => "string".to_string(),
             TyKind::Array { ty: elem_ty, .. } | TyKind::Sequence { ty: elem_ty, .. } => {
                 if matches!(
@@ -210,7 +193,7 @@ impl<'a> ProtoGen<'a> {
 
                 match &resolved_def.kind {
                     DefKind::Alias(alias_ty) => self.proto_type(&alias_ty.ty, current_package),
-                    DefKind::Bitmask(bitmask_ty) => self.proto_primitive(bitmask_ty.ty),
+                    DefKind::Bitmask(bitmask_ty) => proto_primitive(bitmask_ty.ty),
                     _ => self.scoped_name(resolved_id, current_package),
                 }
             }
@@ -447,6 +430,23 @@ impl<'a> ProtoGen<'a> {
         }
 
         files
+    }
+}
+
+fn proto_primitive(prim: PrimitiveTy) -> String {
+    match prim {
+        PrimitiveTy::Bool => "bool".to_string(),
+        PrimitiveTy::Int8 | PrimitiveTy::Int16 | PrimitiveTy::Int32 => "int32".to_string(),
+        PrimitiveTy::Char
+        | PrimitiveTy::WChar
+        | PrimitiveTy::UInt8
+        | PrimitiveTy::UInt16
+        | PrimitiveTy::UInt32 => "uint32".to_string(),
+        PrimitiveTy::Int64 => "int64".to_string(),
+        PrimitiveTy::UInt64 => "uint64".to_string(),
+        PrimitiveTy::Float32 => "float".to_string(),
+        PrimitiveTy::Float64 | PrimitiveTy::Float128 => "double".to_string(),
+        PrimitiveTy::Void => "google.protobuf.Empty".to_string(),
     }
 }
 

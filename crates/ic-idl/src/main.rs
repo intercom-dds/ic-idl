@@ -220,6 +220,15 @@ fn generate_code(
         generated.extend(files);
     }
 
+    if let Some(output_dir) = &options.codegen.java_out {
+        let files = invoke_backend(
+            output_dir,
+            || ic_codegen_java::codegen_java(hir, options.java.clone()),
+            options.purge_dirs,
+        )?;
+        generated.extend(files);
+    }
+
     if let Some(output_dir) = &options.codegen.json_out {
         let files = invoke_backend(
             output_dir,

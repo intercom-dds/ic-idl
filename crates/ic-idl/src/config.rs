@@ -197,6 +197,9 @@ pub struct Options {
     #[option(section = "python options")]
     pub python: ic_codegen_python::PythonOptions,
 
+    #[option(section = "java options")]
+    pub java: ic_codegen_java::JavaOptions,
+
     #[option(section = "idl options")]
     pub idl: ic_codegen_idl::IdlOptions,
 
@@ -229,6 +232,10 @@ pub struct CodegenOptions {
     /// Generate Protobuf files in <dir>
     #[option(long, arg = "dir")]
     pub proto_out: Option<PathBuf>,
+
+    /// Generate Java files in <dir>
+    #[option(long, arg = "dir")]
+    pub java_out: Option<PathBuf>,
 
     /// Generate JSON files in <dir>
     #[option(long, arg = "dir")]

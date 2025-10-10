@@ -129,6 +129,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "ic-codegen-java"
+version = "0.1.0"
+dependencies = [
+ "ic-cli",
+ "ic-emit",
+ "ic-hir",
+ "ic-hir-xform",
+ "ic-vfs",
+]
+
+[[package]]
 name = "ic-codegen-json"
 version = "0.1.0"
 dependencies = [
@@ -262,6 +273,7 @@ dependencies = [
  "ic-cli",
  "ic-codegen-cxx",
  "ic-codegen-idl",
+ "ic-codegen-java",
  "ic-codegen-json",
  "ic-codegen-json-schema",
  "ic-codegen-protobuf",

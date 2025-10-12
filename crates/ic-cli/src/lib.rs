@@ -45,7 +45,25 @@ use index::IndexMap;
 mod parse;
 pub use parse::{ParseError, ParseResult};
 
-const PAD: usize = 3;
+const LEFT_MARGIN: usize = 3;
+const DESC_SPACING: usize = 4;
+
+fn display_width(s: &str) -> usize {
+    let mut width = 0;
+    let mut in_escape = false;
+
+    for ch in s.chars() {
+        if ch == '\x1b' {
+            in_escape = true;
+        } else if in_escape && ch == 'm' {
+            in_escape = false;
+        } else if !in_escape {
+            width += 1;
+        }
+    }
+
+    width
+}
 
 #[must_use]
 #[derive(Default)]
@@ -260,7 +278,8 @@ impl CommandLine {
         }
 
         lines.push("\nusage:".yellow().bold());
-        let mut usage = format!("{:PAD$}{}", " ", self.qualified_name(' ', true));
+
+        let mut usage = format!("{:LEFT_MARGIN$}{}", " ", self.qualified_name(' ', true));
         if !self.subcommands.is_empty() {
             usage = format!("{usage} [command]");
         }
@@ -384,50 +403,77 @@ impl CommandLine {
         let mut lines = vec![];
         let matches: Vec<_> = self.options.values().iter().filter(filter).collect();
 
-        // Find the highest number of short options
-        let n_short: usize = matches
+        // Check if this specific section has any short options
+        let section_has_short_opts = matches
+            .iter()
+            .any(|v| v.tokens.iter().any(|t| t.len() == 1));
+
+        // Find the maximum number of short options in this section
+        let n_short_section: usize = matches
             .iter()
             .map(|v| v.tokens.iter().filter(|v| v.len() == 1).count())
             .max()
             .unwrap_or(0);
 
-        // Calculate the width based on whether we're using custom prefix or default formatting
-        let width = if self.align_sections {
+        // Calculate the maximum width including indentation for alignment
+        let max_width_with_indent = if self.align_sections {
             self.options
                 .values()
                 .iter()
                 .map(|v| match prefix {
-                    Some(p) => v.with_prefix(p).len(),
-                    None => v.formatted().len(),
+                    Some(p) => display_width(&v.with_prefix(p)),
+                    None => display_width(&v.formatted()),
                 })
                 .max()
                 .unwrap_or(0)
         } else {
             matches
                 .iter()
-                .map(|v| match prefix {
-                    Some(p) => v.with_prefix(p).len(),
-                    None => v.formatted().len(),
+                .map(|v| {
+                    let current_n_short = v.tokens.iter().filter(|t| t.len() == 1).count();
+                    let indent = if section_has_short_opts {
+                        4 * (n_short_section.saturating_sub(current_n_short))
+                    } else {
+                        0
+                    };
+                    let token_width = match prefix {
+                        Some(p) => display_width(&v.with_prefix(p)),
+                        None => display_width(&v.formatted()),
+                    };
+                    indent + token_width
                 })
                 .max()
                 .unwrap_or(0)
         };
 
+        // Calculate the column where descriptions should start
+        let desc_column = LEFT_MARGIN + max_width_with_indent + DESC_SPACING;
+
         for opt in matches {
             let current_n_short = opt.tokens.iter().filter(|v| v.len() == 1).count();
 
             // 4 is the number of characters that separate short options
-            let current_width = 4 * (n_short - current_n_short);
-            let indent_by = PAD + current_width;
+            let current_width = if section_has_short_opts {
+                4 * (n_short_section.saturating_sub(current_n_short))
+            } else {
+                0
+            };
+            let indent_by = LEFT_MARGIN + current_width;
 
             let tokens = match prefix {
                 Some(p) => opt.with_prefix(p),
                 None => opt.formatted(),
             };
 
-            let width = 2 + PAD + width - tokens.len() - current_width;
+            let tokens_display_width = display_width(&tokens);
+            let current_position = indent_by + tokens_display_width;
+            let padding_width = desc_column.saturating_sub(current_position);
             let desc = opt.desc.clone().unwrap_or_default();
-            let line = format!("{:indent_by$}{tokens}{}{desc}", " ", " ".repeat(width));
+            let line = format!(
+                "{:indent_by$}{tokens}{}{desc}",
+                " ",
+                " ".repeat(padding_width)
+            );
             lines.push(line);
         }
         lines
@@ -435,20 +481,31 @@ impl CommandLine {
 
     fn format_commands(&self) -> Vec<String> {
         let mut lines = vec![];
-        let width = self
+        let max_name_width = self
             .subcommands
             .values()
             .flatten()
-            .map(|v| v.name.bold().len())
+            .map(|v| display_width(&v.name))
             .max()
             .unwrap_or(0);
+
+        let desc_column = LEFT_MARGIN + max_name_width + DESC_SPACING;
 
         for (section, cmds) in &self.subcommands {
             lines.push(format!("\n{section}:").yellow().bold());
 
-            let width = width + PAD;
             for cmd in cmds {
-                let line = format!("{:PAD$}{:width$} {}", " ", cmd.name.bold(), cmd.desc);
+                let name_bold = cmd.name.bold();
+                let name_display_width = display_width(&cmd.name);
+                let current_position = LEFT_MARGIN + name_display_width;
+                let padding_width = desc_column.saturating_sub(current_position);
+                let line = format!(
+                    "{:LEFT_MARGIN$}{}{}{}",
+                    " ",
+                    name_bold,
+                    " ".repeat(padding_width),
+                    cmd.desc
+                );
                 lines.push(line);
             }
         }

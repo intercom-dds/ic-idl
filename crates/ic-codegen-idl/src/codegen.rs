@@ -411,24 +411,26 @@ impl<'a> IdlGen<'a> {
     }
 
     fn emit_enum(&self, w: &mut Twine, def: &Def, enum_ty: &EnumTy) {
-        w!(w, "enum ", def.ident.name, " {");
+        w!(w, "enum ", def.ident.name, " {\n");
+
         for (i, &field_id) in enum_ty.fields.iter().enumerate() {
             let field_def = self.hir.context.definitions.get(field_id);
             let field_name = &field_def.ident.name;
+            self.emit_annotations(w, &field_def.annotations, field_id);
 
             if field_def.flags.contains(DefFlags::IS_ENUMERATED) {
                 if let DefKind::Const(const_ty) = &field_def.kind {
                     let value_str = self.format_numeric(&const_ty.value, def.id);
-                    w!(w, "\n@value(", value_str, ") ", field_name);
+                    w!(w, "@value(", value_str, ") ", field_name);
                 } else {
-                    w!(w, "\n", field_name);
+                    w!(w, field_name);
                 }
             } else {
-                w!(w, "\n", field_name);
+                w!(w, field_name);
             }
 
             if i < enum_ty.fields.len() - 1 {
-                w!(w, ",");
+                w!(w, ",\n");
             }
         }
         w!(w, "\n};\n");

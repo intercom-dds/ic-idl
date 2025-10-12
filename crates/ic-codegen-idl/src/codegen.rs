@@ -708,9 +708,12 @@ impl<'a> IdlGen<'a> {
                 let dep_file = self
                     .source_map
                     .name(dep_file_id)
+                    .with_extension("idl")
                     .file_name()
                     .and_then(|s| s.to_str())
-                    .unwrap();
+                    .unwrap()
+                    .to_string();
+
                 w!(w, "\n#include \"", dep_file, "\"");
             }
 

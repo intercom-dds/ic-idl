@@ -30,12 +30,12 @@
 use std::collections::HashSet;
 use std::path::PathBuf;
 
-use ic_emit::printer::{Twine, w};
+use ic_emit::printer::{IterExt, Twine, w};
 use ic_emit::{File, case};
 use ic_hir::ResolvedGraph;
 use ic_hir::hir::{
-    BitmaskTy, ConstTy, Def, DefId, DefKind, EnumTy, Ident, Member, Numeric, PrimitiveTy, StructTy,
-    Ty, TyKind, UnionTy, Variant,
+    BitmaskTy, ConstTy, Def, DefId, DefKind, EnumTy, Ident, InterfaceTy, Member, Numeric,
+    ParamKind, PrimitiveTy, ProtoTy, StructTy, Ty, TyKind, UnionTy, ValueTy, Variant,
 };
 
 use crate::JavaOptions;
@@ -102,7 +102,6 @@ impl<'a> JavaGen<'a> {
     }
 
     fn file_path(&self, def: &Def, suffix: impl Into<Option<&'a str>>) -> PathBuf {
-        let type_name = &def.ident.name;
         let mut path = if let Some(package) = self.package(def.id) {
             let pkg_path = package.replace('.', "/");
             PathBuf::from(pkg_path)
@@ -111,9 +110,9 @@ impl<'a> JavaGen<'a> {
         };
 
         if let Some(suffix) = suffix.into() {
-            path.push(format!("{type_name}{suffix}.java"));
+            path.push(format!("{def}{suffix}.java"));
         } else {
-            path.push(format!("{type_name}.java"));
+            path.push(format!("{def}.java"));
         }
         path
     }
@@ -143,8 +142,7 @@ impl<'a> JavaGen<'a> {
                 let elem_ty = self.boxed_java_type(elem, relative_def);
                 format!("java.util.Map<{key_ty}, {elem_ty}>")
             }
-            TyKind::Any => "java.lang.Object".to_string(),
-            TyKind::Fixed => "java.math.BigDecimal".to_string(),
+            TyKind::Any | TyKind::Fixed => "java.lang.Object".to_string(),
             TyKind::Null => "void".to_string(),
         }
     }
@@ -333,14 +331,12 @@ impl<'a> JavaGen<'a> {
                 }
             }
             DefKind::Interface(interface_ty) => {
-                for &nested_id in &interface_ty.definitions {
-                    self.emit_def(nested_id, files);
-                }
+                let f = self.emit_interface(def, interface_ty);
+                files.push(f);
             }
-            DefKind::Valuetype(valuetype_ty) => {
-                for &nested_id in &valuetype_ty.definitions {
-                    self.emit_def(nested_id, files);
-                }
+            DefKind::Valuetype(value_ty) => {
+                files.push(self.emit_valuetype(def, value_ty));
+                files.push(self.emit_abstract_valuetype(def, value_ty));
             }
             _ => {}
         }
@@ -721,6 +717,129 @@ impl<'a> JavaGen<'a> {
 
         w!(w, "public enum ", def, " {\n");
         self.emit_enumerators(&mut w, &bitmask_ty.flags);
+        w!(w, "}\n");
+
+        let path = self.file_path(def, None);
+        File::Generated {
+            path,
+            source: w.finish(),
+        }
+    }
+
+    fn emit_proto(&self, w: &mut Twine, def: &Def, proto: &ProtoTy, is_abstract: bool) {
+        let proto_ty = self.java_type(&proto.ty, def.id);
+        w!(w, "public ");
+
+        if is_abstract {
+            w!(w, "abstract ");
+        }
+        w!(w, proto_ty, " ", proto.ident.name, "(");
+
+        for (i, param) in proto.params.iter().enumerate() {
+            let param_ty = if param.kind == ParamKind::In {
+                self.java_type(&param.ty, def.id)
+            } else {
+                format!("Holder<{}>", self.boxed_java_type(&param.ty, def.id))
+            };
+            w!(w, "\n", param_ty, " ", param.ident.name);
+
+            if i < proto.params.len() - 1 {
+                w!(w, ",");
+            }
+        }
+
+        w!(w, ")");
+
+        if !proto.raises.is_empty() {
+            let exceptions = proto
+                .raises
+                .iter()
+                .map(|e| self.scoped_name(*e, def.id))
+                .join(", ");
+
+            w!(w, " throws ", exceptions);
+        }
+    }
+
+    fn emit_interface(&self, def: &Def, interface_ty: &InterfaceTy) -> File {
+        let mut w = self.create_file(def.id);
+
+        // TODO: inheritance + raises exceptions
+        w!(w, "public interface ", def, " {\n");
+        w!(w, "public ", def, "() {}\n\n");
+
+        for proto in &interface_ty.prototypes {
+            self.emit_proto(&mut w, def, proto, true);
+            w!(w, ";\n\n");
+        }
+
+        w!(w, "}\n");
+
+        let path = self.file_path(def, None);
+        File::Generated {
+            path,
+            source: w.finish(),
+        }
+    }
+
+    fn emit_abstract_valuetype(&self, def: &Def, value_ty: &ValueTy) -> File {
+        let mut w = self.create_file(def.id);
+        let name = format!("{def}Abstract");
+
+        w!(w, "public abstract class ", name);
+
+        if let Some(extends) = value_ty.parent {
+            let name = self.java_name(extends);
+            w!(w, " extends ", name);
+        }
+
+        if let Some(supports) = value_ty.supports {
+            let name = self.java_name(supports);
+            w!(w, " implements ", name);
+        }
+        w!(w, " {\n");
+
+        for proto in &value_ty.prototypes {
+            self.emit_proto(&mut w, def, proto, true);
+            w!(w, ";\n\n");
+        }
+
+        for attr in &value_ty.attributes {
+            let attr_ty = self.java_type(&attr.ty, def.id);
+            w!(w, "public ", attr_ty, " ", attr.ident.name, ";\n");
+        }
+
+        for mem in &value_ty.members {
+            let attr_ty = self.java_type(&mem.ty, def.id);
+            w!(w, "public ", attr_ty, " ", mem.ident.name, ";\n");
+        }
+
+        w!(w, "}\n");
+
+        let path = self.file_path(def, "Abstract");
+        File::Generated {
+            path,
+            source: w.finish(),
+        }
+    }
+
+    fn emit_valuetype(&self, def: &Def, value_ty: &ValueTy) -> File {
+        let mut w = self.create_file(def.id);
+
+        // TODO: inheritance + raises exceptions
+        w!(w, "public class ", def, " extends ", def, "Abstract {\n");
+
+        // TODO: should probably iniitalize members
+        w!(w, "public ", def, "() {}\n\n");
+
+        for proto in &value_ty.prototypes {
+            w!(w, "@Override\n");
+            self.emit_proto(&mut w, def, proto, false);
+            w!(w, "\n{\n");
+            w!(w, "throw new java.lang.UnsupportedOperationException(\"not implemented\");\n");
+            w!(w, "}\n\n");
+        }
+
         w!(w, "}\n");
 
         let path = self.file_path(def, None);

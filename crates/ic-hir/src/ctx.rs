@@ -65,6 +65,37 @@ impl Context {
         }
     }
 
+    /// Returns the underlying type definition of the given definition.
+    ///
+    /// This will resolve any intermediate typedefs.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the given type ID does not exist, or if the ID came from a
+    /// different arena. This can only ever happen if there are multiple
+    /// `Context`s whose arenas have been mixed up.
+    pub fn base_def_of(&self, mut id: DefId) -> &Def {
+        loop {
+            let ty = self.type_of(id);
+            match &ty.kind {
+                DefKind::Alias(v) => match v.ty.kind {
+                    TyKind::Adt(next_id) => {
+                        id = next_id;
+                    }
+                    _ => break,
+                },
+                DefKind::Const(v) => match v.ty.kind {
+                    TyKind::Adt(next_id) => {
+                        id = next_id;
+                    }
+                    _ => break,
+                },
+                _ => break,
+            }
+        }
+        self.type_of(id)
+    }
+
     /// Returns the type definition of the specified type.
     ///
     /// # Panics

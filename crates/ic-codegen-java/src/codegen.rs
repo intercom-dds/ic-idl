@@ -30,12 +30,12 @@
 use std::collections::HashSet;
 use std::path::PathBuf;
 
-use ic_emit::File;
 use ic_emit::printer::{Twine, w};
+use ic_emit::{File, case};
 use ic_hir::ResolvedGraph;
 use ic_hir::hir::{
-    BitmaskTy, ConstTy, Def, DefId, DefKind, EnumTy, Numeric, PrimitiveTy, Ty, TyKind, UnionTy,
-    Variant,
+    BitmaskTy, ConstTy, Def, DefId, DefKind, EnumTy, Ident, Member, Numeric, PrimitiveTy, StructTy,
+    Ty, TyKind, UnionTy, Variant,
 };
 
 use crate::JavaOptions;
@@ -54,16 +54,18 @@ fn primitive_type(prim: PrimitiveTy) -> &'static str {
     }
 }
 
-fn array_dimensions(ty: &Ty) -> Vec<usize> {
-    let mut dims = Vec::new();
-    let mut current_ty = ty;
-
-    while let TyKind::Array { ty: inner, len, .. } = &current_ty.kind {
-        dims.push(*len);
-        current_ty = inner;
+fn boxed_primitive(prim: PrimitiveTy) -> &'static str {
+    match prim {
+        PrimitiveTy::Void => "void",
+        PrimitiveTy::Bool => "java.lang.Boolean",
+        PrimitiveTy::Char | PrimitiveTy::WChar => "java.lang.Character",
+        PrimitiveTy::Int8 | PrimitiveTy::UInt8 => "java.lang.Byte",
+        PrimitiveTy::Int16 | PrimitiveTy::UInt16 => "java.lang.Short",
+        PrimitiveTy::Int32 | PrimitiveTy::UInt32 => "java.lang.Integer",
+        PrimitiveTy::Int64 | PrimitiveTy::UInt64 => "java.lang.Long",
+        PrimitiveTy::Float32 => "java.lang.Float",
+        PrimitiveTy::Float64 | PrimitiveTy::Float128 => "java.lang.Double",
     }
-
-    dims
 }
 
 fn format_primitive_value(value: i64, ty: &Ty) -> String {
@@ -128,18 +130,31 @@ impl<'a> JavaGen<'a> {
                     self.scoped_name(*def_id, relative_def)
                 }
             }
-            TyKind::Sequence { ty, .. } | TyKind::Array { ty, .. } => {
+            TyKind::Array { ty, .. } => {
                 let inner = self.java_type(ty, relative_def);
                 format!("{inner}[]")
             }
+            TyKind::Sequence { ty, .. } => {
+                let inner = self.boxed_java_type(ty, relative_def);
+                format!("java.util.List<{inner}>")
+            }
             TyKind::Map { key, elem, .. } => {
-                let key_ty = self.java_type(key, relative_def);
-                let elem_ty = self.java_type(elem, relative_def);
+                let key_ty = self.boxed_java_type(key, relative_def);
+                let elem_ty = self.boxed_java_type(elem, relative_def);
                 format!("java.util.Map<{key_ty}, {elem_ty}>")
             }
             TyKind::Any => "java.lang.Object".to_string(),
             TyKind::Fixed => "java.math.BigDecimal".to_string(),
             TyKind::Null => "void".to_string(),
+        }
+    }
+
+    fn boxed_java_type(&self, ty: &Ty, relative_def: DefId) -> String {
+        let resolved_ty = self.hir.context.resolve_ty(ty);
+        if let TyKind::Primitive(prim) = &resolved_ty.kind {
+            boxed_primitive(*prim).to_string()
+        } else {
+            self.java_type(ty, relative_def)
         }
     }
 
@@ -181,15 +196,13 @@ impl<'a> JavaGen<'a> {
                     _ => format!("new {type_name}()"),
                 }
             }
-            TyKind::Sequence { ty, .. } => {
-                let inner = self.java_type(ty, relative_def);
-                format!("new {inner}[0]")
-            }
             TyKind::Array { ty, len, .. } => {
                 let inner = self.java_type(ty, relative_def);
                 format!("new {inner}[{len}]")
             }
-            TyKind::Map { .. } | TyKind::Any | TyKind::Null | TyKind::Fixed => "null".to_string(),
+            TyKind::Sequence { .. } => "new java.util.ArrayList<>()".to_string(),
+            TyKind::Map { .. } => "new java.util.HashMap<>()".to_string(),
+            TyKind::Any | TyKind::Null | TyKind::Fixed => "null".to_string(),
         }
     }
 
@@ -207,7 +220,7 @@ impl<'a> JavaGen<'a> {
     }
 
     fn build_path_from(&self, from_scope: DefId, to_scope: Option<DefId>) -> Vec<String> {
-        let mut path = Vec::new();
+        let mut path = vec![];
         let mut current = from_scope;
 
         loop {
@@ -242,19 +255,10 @@ impl<'a> JavaGen<'a> {
 
         match (target_scope, current_scope) {
             (None, _) => type_name.to_string(),
-            (Some(target_scope), None) => {
-                let full_path = self.build_path_from(target_scope, None);
-                let pkg_name = full_path.join(".");
-                if pkg_name.is_empty() {
-                    type_name.to_string()
-                } else {
-                    format!("{pkg_name}.{type_name}")
-                }
+            (Some(target_scope), Some(current_scope)) if target_scope == current_scope => {
+                type_name.to_string()
             }
-            (Some(target_scope), Some(current_scope)) => {
-                if target_scope == current_scope {
-                    return type_name.to_string();
-                }
+            (Some(target_scope), _) => {
                 let full_path = self.build_path_from(target_scope, None);
                 let pkg_name = full_path.join(".");
                 if pkg_name.is_empty() {
@@ -276,6 +280,13 @@ impl<'a> JavaGen<'a> {
         }
     }
 
+    fn create_file(&self, def_id: DefId) -> Twine {
+        let mut w = Twine::new();
+        self.emit_header(&mut w);
+        self.emit_package(&mut w, def_id);
+        w
+    }
+
     fn emit_header(&self, w: &mut Twine) {
         const IC_VERSION: &str = env!("CARGO_PKG_VERSION");
         w!(w, "// @generated by ic-idl ", IC_VERSION, "\n\n");
@@ -295,24 +306,26 @@ impl<'a> JavaGen<'a> {
     fn emit_def(&self, def_id: DefId, files: &mut Vec<File>) {
         let def = self.hir.context.definitions.get(def_id);
         match &def.kind {
-            DefKind::Struct(_) | DefKind::Except(_) => {
-                files.push(self.emit_struct(def));
-                files.push(self.emit_holder(def));
-                files.push(self.emit_seq_holder(def));
+            // TODO: except
+            DefKind::Struct(struct_ty) => {
+                let f = self.emit_struct(def, struct_ty);
+                files.push(f);
             }
             DefKind::Union(union_ty) => {
-                files.push(self.emit_union(def, union_ty));
-                files.push(self.emit_holder(def));
-                files.push(self.emit_seq_holder(def));
+                let f = self.emit_union(def, union_ty);
+                files.push(f);
             }
             DefKind::Enum(enum_ty) => {
-                files.push(self.emit_enum(def, enum_ty));
+                let f = self.emit_enum(def, enum_ty);
+                files.push(f);
             }
             DefKind::Bitmask(bitmask_ty) => {
-                files.push(self.emit_bitmask(def, bitmask_ty));
+                let f = self.emit_bitmask(def, bitmask_ty);
+                files.push(f);
             }
             DefKind::Const(const_ty) => {
-                files.push(self.emit_const(def, const_ty));
+                let f = self.emit_const(def, const_ty);
+                files.push(f);
             }
             DefKind::Module(module_ty) => {
                 for &nested_id in &module_ty.definitions {
@@ -333,38 +346,65 @@ impl<'a> JavaGen<'a> {
         }
     }
 
-    fn emit_struct(&self, def: &Def) -> File {
-        let DefKind::Struct(struct_ty) = &def.kind else {
-            unreachable!()
-        };
+    fn get_set(&self, ident: &Ident) -> (String, String) {
+        let getter = format!("get_{}", ident.name);
+        let setter = format!("set_{}", ident.name);
+        if self.options.no_rename {
+            (getter, setter)
+        } else {
+            (case::camel(getter), case::camel(setter))
+        }
+    }
 
-        let mut w = Twine::new();
+    fn disc_get_set(&self) -> (&str, &str) {
+        if self.options.no_rename {
+            ("get_discriminator", "set_discriminator")
+        } else {
+            ("getDiscriminator", "setDiscriminator")
+        }
+    }
 
-        self.emit_header(&mut w);
-        self.emit_package(&mut w, def.id);
-        w!(w, "public class ", def.ident.name, " {\n");
+    fn emit_struct(&self, def: &Def, struct_ty: &StructTy) -> File {
+        let mut w = self.create_file(def.id);
 
-        self.emit_default_constructor(&mut w, def.id, &struct_ty.members);
-        self.emit_copy_constructor(&mut w, def.id, &struct_ty.members);
-        self.emit_all_args_constructor(&mut w, def.id, &struct_ty.members);
+        w!(w, "public class ", def);
+        if let Some(parent) = struct_ty.parent {
+            let parent = self.java_name(parent);
+            w!(w, " extends ", parent);
+        }
+        w!(w, " implements java.io.Serializable {\n");
+
+        self.emit_default_ctor(&mut w, def.id, &struct_ty.members);
+        self.emit_copy_ctor(&mut w, def, struct_ty);
+        if !struct_ty.members.is_empty() {
+            self.emit_arg_ctor(&mut w, def.id, &struct_ty.members);
+        }
 
         w!(w, "@Override\n");
-        w!(w, "public ", def.ident.name, " clone() {\n");
-        w!(w, "return new ", def.ident.name, "(this);\n");
+        w!(w, "public ", def, " clone() {\n");
+        w!(w, "return new ", def, "(this);\n");
         w!(w, "}\n\n");
 
         for member in &struct_ty.members {
             let java_type = self.java_type(&member.ty, def.id);
-            let array_dims = array_dimensions(&member.ty);
+            let (getter, setter) = self.get_set(&member.ident);
 
-            w!(w, "public ", java_type);
-            for &dim in &array_dims {
-                w!(w, "[", dim, "]");
-            }
-            w!(w, " ", member.ident.name, ";\n");
+            // Getter
+            w!(w, "public ", java_type, " ", getter, "() {\n");
+            w!(w, "return this.", member.ident.name, ";\n");
+            w!(w, "}\n\n");
+
+            // Setter
+            w!(w, "public void ", setter, "(",  java_type, " ", member.ident.name, ") {\n");
+            w!(w, "this.", member.ident.name, " = ", member.ident.name, ";\n");
+            w!(w, "}\n\n");
         }
 
-        w!(w, "};\n");
+        for member in &struct_ty.members {
+            let java_type = self.java_type(&member.ty, def.id);
+            w!(w, "protected ", java_type, " ", member.ident.name, ";\n");
+        }
+        w!(w, "}\n");
 
         let path = self.file_path(def, None);
         File::Generated {
@@ -373,12 +413,7 @@ impl<'a> JavaGen<'a> {
         }
     }
 
-    fn emit_default_constructor(
-        &self,
-        w: &mut Twine,
-        def_id: DefId,
-        members: &[ic_hir::hir::Member],
-    ) {
+    fn emit_default_ctor(&self, w: &mut Twine, def_id: DefId, members: &[Member]) {
         let def = self.hir.context.definitions.get(def_id);
         w!(w, "public ", def.ident.name, " () {\n");
 
@@ -386,59 +421,35 @@ impl<'a> JavaGen<'a> {
             let default_val = self.default_value(&member.ty, def_id);
             if !default_val.is_empty() {
                 w!(w, "this.", member.ident.name, " = ", default_val, ";\n");
-
-                let resolved_ty = self.hir.context.resolve_ty(&member.ty);
-                if let TyKind::Array { .. } = &resolved_ty.kind {
-                    self.emit_array_initialization(w, &member.ident.name, &resolved_ty, def_id);
-                }
             }
         }
 
         w!(w, "}\n\n");
     }
 
-    fn emit_array_initialization(&self, w: &mut Twine, field_name: &str, ty: &Ty, def_id: DefId) {
-        if let TyKind::Array { ty: inner, len, .. } = &ty.kind {
-            let inner_default = self.default_value(inner, def_id);
-            if !inner_default.is_empty() {
-                w!(w, "for (int _i_ind = 0; _i_ind < ", len, "; _i_ind++) {\n");
-                w!(w, "this.", field_name, "[_i_ind] = ", inner_default, ";\n");
-                w!(w, "}\n");
-            }
+    fn emit_copy_ctor(&self, w: &mut Twine, def: &Def, struct_ty: &StructTy) {
+        w!(w, "public ", def.ident.name, "(", def, " other) {\n");
+        if struct_ty.parent.is_some() {
+            w!(w, "super(other);\n");
         }
-    }
 
-    fn emit_copy_constructor(&self, w: &mut Twine, def_id: DefId, members: &[ic_hir::hir::Member]) {
-        let def = self.hir.context.definitions.get(def_id);
-        w!(w, "public ", def.ident.name, "(", def.ident.name, " other) {\n");
-
-        for member in members {
+        for member in &struct_ty.members {
+            let mem = &member.ident.name;
             let resolved_ty = self.hir.context.resolve_ty(&member.ty);
+            w!(w, "this.", mem, " = ");
+
             match &resolved_ty.kind {
-                TyKind::Sequence { ty, .. } => {
-                    w!(w, "{\n");
-                    w!(w, "int _i_len = other.", member.ident.name, ".length;\n");
-                    let inner_type = self.java_type(ty, def_id);
-                    w!(w, "if (this.", member.ident.name, " == null || this.", member.ident.name, ".length != _i_len) {\n");
-                    w!(w, "this.", member.ident.name, " = new ", inner_type, "[_i_len];\n");
-                    w!(w, "}\n");
-                    w!(w, "for (int _i_ind = 0; _i_ind < _i_len; _i_ind++) {\n");
-                    w!(w, "this.", member.ident.name, "[_i_ind] = other.", member.ident.name, "[_i_ind];\n");
-                    w!(w, "}\n");
-                    w!(w, "}\n");
+                TyKind::Sequence { .. } => {
+                    w!(w, "new java.util.ArrayList<>(other.", mem, ");\n");
                 }
                 TyKind::Array { len, .. } => {
-                    w!(w, "for (int _i_ind = 0; _i_ind < ", len, "; _i_ind++) {\n");
-                    w!(w, "this.", member.ident.name, "[_i_ind] = other.", member.ident.name, "[_i_ind];\n");
-                    w!(w, "}\n");
+                    w!(w, "java.util.Arrays.copyOf(other.", mem, ", ", len, ");\n");
                 }
-                TyKind::Map { key, elem, .. } => {
-                    let key_ty = self.java_type(key, def_id);
-                    let elem_ty = self.java_type(elem, def_id);
-                    w!(w, "this.", member.ident.name, " = new java.util.HashMap< ", key_ty, ", ", elem_ty, " >( other.", member.ident.name, " );\n");
+                TyKind::Map { .. } => {
+                    w!(w, "new java.util.HashMap<>(other.", mem, ");\n");
                 }
                 _ => {
-                    w!(w, "this.", member.ident.name, " = other.", member.ident.name, ";\n");
+                    w!(w,  "other.", mem, ";\n");
                 }
             }
         }
@@ -446,24 +457,22 @@ impl<'a> JavaGen<'a> {
         w!(w, "}\n\n");
     }
 
-    fn emit_all_args_constructor(
-        &self,
-        w: &mut Twine,
-        def_id: DefId,
-        members: &[ic_hir::hir::Member],
-    ) {
+    fn emit_arg_ctor(&self, w: &mut Twine, def_id: DefId, members: &[Member]) {
         let def = self.hir.context.definitions.get(def_id);
         w!(w, "public ", def.ident.name, "(");
 
         for (i, member) in members.iter().enumerate() {
             if i > 0 {
-                w!(w, ", ");
+                w!(w, ",\n");
+            } else if members.len() > 1 {
+                w!(w, "\n");
             }
+
             let java_type = self.java_type(&member.ty, def_id);
             w!(w, java_type, " ", member.ident.name);
         }
 
-        w!(w, ") {\n");
+        w!(w, "\n) {\n");
 
         for member in members {
             w!(w, "this.", member.ident.name, " = ", member.ident.name, ";\n");
@@ -473,21 +482,17 @@ impl<'a> JavaGen<'a> {
     }
 
     fn emit_enum(&self, def: &Def, enum_ty: &EnumTy) -> File {
-        let mut w = Twine::new();
-        self.emit_header(&mut w);
-        self.emit_package(&mut w, def.id);
-
+        let mut w = self.create_file(def.id);
         w!(w, "public enum ", def, " {\n");
         self.emit_enumerators(&mut w, &enum_ty.fields);
+        w!(w, "\n");
 
-        w!(w, "private int _the_ordinal;\n\n");
-
-        w!(w, "private ", def, "(int a_ordinal) {\n");
-        w!(w, "_the_ordinal = a_ordinal;\n");
+        w!(w, "private ", def, "(int value) {\n");
+        w!(w, "_value = value;\n");
         w!(w, "}\n\n");
 
         w!(w, "public final int getValue() {\n");
-        w!(w, "return _the_ordinal;\n");
+        w!(w, "return _value;\n");
         w!(w, "}\n\n");
 
         w!(w, "public static final ", def, " valueOf(int val) {\n");
@@ -508,13 +513,10 @@ impl<'a> JavaGen<'a> {
         }
 
         w!(w, "}\n");
+        w!(w, "throw new java.lang.RuntimeException(\"invalid enum value\");\n");
+        w!(w, "}\n\n");
 
-        if let Some(&first_field_id) = enum_ty.fields.first() {
-            let first_field_name = self.java_name(first_field_id);
-            w!(w, "return ", first_field_name, ";\n");
-        }
-
-        w!(w, "}\n");
+        w!(w, "private final int _value;\n");
         w!(w, "}\n");
 
         let path = self.file_path(def, None);
@@ -525,11 +527,11 @@ impl<'a> JavaGen<'a> {
     }
 
     fn emit_union(&self, def: &Def, union_ty: &UnionTy) -> File {
-        let mut w = Twine::new();
-        self.emit_header(&mut w);
-        self.emit_package(&mut w, def.id);
+        let mut w = self.create_file(def.id);
+        let disc_type = self.java_type(&union_ty.disc.ty, def.id);
+        let (disc_get, disc_set) = self.disc_get_set();
 
-        w!(w, "public class ", def, " {\n");
+        w!(w, "public final class ", def, " implements java.io.Serializable {\n");
         self.emit_union_constructors(&mut w, def, union_ty);
 
         w!(w, "@Override\n");
@@ -539,39 +541,48 @@ impl<'a> JavaGen<'a> {
 
         for variant in &union_ty.variants {
             let java_type = self.java_type(&variant.ty, def.id);
-            w!(w, "public ", java_type, " ", variant.ident.name, "() {\n");
-            w!(w, "return _", variant.ident.name, ";\n");
+            let (getter, setter) = self.get_set(&variant.ident);
+
+            w!(w, "public ", java_type, " ", getter, "() {\n");
+            w!(w, "return ", variant.ident.name, ";\n");
             w!(w, "}\n\n");
 
-            w!(w, "public void ", variant.ident.name, "(", java_type, " ", variant.ident.name, ") {\n");
-
+            w!(w, "public void ", setter, "(", java_type, " ", variant.ident.name, ") {\n");
             if let Some(first_label) = variant.labels.first() {
                 let disc_value = self.format_numeric(&first_label.value, &union_ty.disc.ty, def.id);
-                w!(w, "_discriminator = ", disc_value, ";\n");
+                w!(w, "this.discriminator = ", disc_value, ";\n");
             } else if variant.is_default {
                 let default_value =
                     self.find_default_discriminator_value(union_ty, &union_ty.disc.ty, def.id);
-                w!(w, "_discriminator = ", default_value, ";\n");
+                w!(w, "this.discriminator = ", default_value, ";\n");
             }
-
-            w!(w, "this._", variant.ident.name, " = ", variant.ident.name, ";\n");
+            w!(w, "this.", variant.ident.name, " = ", variant.ident.name, ";\n");
             w!(w, "}\n\n");
+
+            if variant.labels.len() > 1 {
+                // TODO: should this also apply to default case?
+                // TODO: compare against C++, should we throw?
+                w!(w, "public void ", setter, "(", java_type, " ", variant.ident.name, ", ", disc_type, " discriminator) {\n");
+                w!(w, disc_set, "(discriminator);\n");
+                w!(w, "this.", variant.ident.name, " = ", variant.ident.name, ";\n");
+                w!(w, "}\n\n");
+            }
         }
 
-        let disc_type = self.java_type(&union_ty.disc.ty, def.id);
-        w!(w, "public ", disc_type, " discriminator() {\n");
-        w!(w, "return _discriminator;\n");
+        // TODO: IDL naming scheme
+        w!(w, "public ", disc_type, " ", disc_get, "() {\n");
+        w!(w, "return discriminator;\n");
         w!(w, "}\n\n");
 
-        w!(w, "public void discriminator(", disc_type, " discriminator) {\n");
-        w!(w, "if (_discriminator != discriminator) {\n");
-        w!(w, "_discriminator = discriminator;\n");
+        w!(w, "public void ", disc_set, "(", disc_type, " discriminator) {\n");
+        w!(w, "if (this.discriminator != discriminator) {\n");
+        w!(w, "this.discriminator = discriminator;\n");
         w!(w, "switch (discriminator) {\n");
 
         for variant in &union_ty.variants {
             self.emit_variant_cases(&mut w, &union_ty.disc.ty, variant, def.id);
             let default_val = self.default_value(&variant.ty, def.id);
-            w!(w, "this._", variant.ident.name, " = ", default_val, ";\n");
+            w!(w, "this.", variant.ident.name, " = ", default_val, ";\n");
             w!(w, "break;\n");
         }
 
@@ -579,13 +590,13 @@ impl<'a> JavaGen<'a> {
         w!(w, "}\n");
         w!(w, "}\n\n");
 
-        w!(w, "private ", disc_type, " _discriminator;\n");
+        w!(w, "private ", disc_type, " discriminator;\n");
         for variant in &union_ty.variants {
             let java_type = self.java_type(&variant.ty, def.id);
-            w!(w, "protected ", java_type, " _", variant.ident.name, ";\n");
+            w!(w, "protected ", java_type, " ", variant.ident.name, ";\n");
         }
 
-        w!(w, "\n}\n");
+        w!(w, "}\n");
 
         let path = self.file_path(def, None);
         File::Generated {
@@ -595,22 +606,24 @@ impl<'a> JavaGen<'a> {
     }
 
     fn emit_union_constructors(&self, w: &mut Twine, def: &Def, union_ty: &UnionTy) {
+        let (disc_get, disc_set) = self.disc_get_set();
+
         w!(w, "public ", def, "() {\n");
         if let Some(first_variant) = union_ty.variants.first() {
             if let Some(first_label) = first_variant.labels.first() {
                 let disc_value = self.format_numeric(&first_label.value, &union_ty.disc.ty, def.id);
-                w!(w, "discriminator(", disc_value, ");\n");
+                w!(w, disc_set, "(", disc_value, ");\n");
             }
         }
         w!(w, "}\n\n");
 
         w!(w, "public ", def, "(", def, " other) {\n");
-        w!(w, "discriminator(other.discriminator());\n");
-        w!(w, "switch (discriminator()) {\n");
+        w!(w, disc_set, "(other.", disc_get, "());\n");
+        w!(w, "switch (", disc_get, "()) {\n");
 
         for variant in &union_ty.variants {
             self.emit_variant_cases(w, &union_ty.disc.ty, variant, def.id);
-            w!(w, "this._", variant.ident.name, " = other._", variant.ident.name, ";\n");
+            w!(w, "this.", variant.ident.name, " = other.", variant.ident.name, ";\n");
             w!(w, "break;\n");
         }
 
@@ -704,9 +717,7 @@ impl<'a> JavaGen<'a> {
     }
 
     fn emit_bitmask(&self, def: &Def, bitmask_ty: &BitmaskTy) -> File {
-        let mut w = Twine::new();
-        self.emit_header(&mut w);
-        self.emit_package(&mut w, def.id);
+        let mut w = self.create_file(def.id);
 
         w!(w, "public enum ", def, " {\n");
         self.emit_enumerators(&mut w, &bitmask_ty.flags);
@@ -719,10 +730,9 @@ impl<'a> JavaGen<'a> {
         }
     }
 
+    // TODO: use the alternative mapping here with a `Constants` module
     fn emit_const(&self, def: &Def, const_ty: &ConstTy) -> File {
-        let mut w = Twine::new();
-        self.emit_header(&mut w);
-        self.emit_package(&mut w, def.id);
+        let mut w = self.create_file(def.id);
 
         w!(w, "public interface ", def, "{ \n");
         let java_type = self.java_type(&const_ty.ty, def.id);
@@ -772,48 +782,8 @@ impl<'a> JavaGen<'a> {
         }
     }
 
-    fn emit_holder(&self, def: &Def) -> File {
-        let mut w = Twine::new();
-        self.emit_header(&mut w);
-        self.emit_package(&mut w, def.id);
-
-        w!(w, "final public class ", def, "Holder {\n");
-        w!(w, "public ", def, " value;\n\n");
-        w!(w, "public ", def, "Holder() {}\n\n");
-        w!(w, "public ", def, "Holder(", def, " initial) {\n");
-        w!(w, "value = initial;\n");
-        w!(w, "}\n");
-        w!(w, "}\n");
-
-        let path = self.file_path(def, "Holder");
-        File::Generated {
-            path,
-            source: w.finish(),
-        }
-    }
-
-    fn emit_seq_holder(&self, def: &Def) -> File {
-        let mut w = Twine::new();
-        self.emit_header(&mut w);
-        self.emit_package(&mut w, def.id);
-
-        w!(w, "final public class ", def, "SeqHolder {\n");
-        w!(w, "public ", def, "[] value;\n\n");
-        w!(w, "public ", def, "SeqHolder() {}\n\n");
-        w!(w, "public ", def, "SeqHolder(", def, "[] initial) {\n");
-        w!(w, "value = initial;\n");
-        w!(w, "}\n");
-        w!(w, "}\n");
-
-        let path = self.file_path(def, "SeqHolder");
-        File::Generated {
-            path,
-            source: w.finish(),
-        }
-    }
-
     pub fn generate(&self) -> Vec<File> {
-        let mut result = Vec::new();
+        let mut result = vec![];
         for &def_id in &self.hir.order {
             self.emit_def(def_id, &mut result);
         }

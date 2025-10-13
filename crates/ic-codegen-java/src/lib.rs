@@ -27,23 +27,30 @@
 
 mod codegen;
 
+use std::collections::HashSet;
+
 use ic_cli::Command;
 use ic_emit::File;
-use ic_hir_xform::Target;
+use ic_emit::case::Case;
+use ic_hir_xform::{Target, rename};
 
 #[rustfmt::skip]
 const KEYWORDS: &[&str] = &[
-    "abstract", "assert", "default", "enum", "if", "private", "throw", "boolean", "do",
-    "implements", "protected", "throws", "break", "double", "import", "public", "transient",
-    "byte", "else", "instanceof", "return", "try", "case", "extends", "int", "short", "void",
-    "catch", "final", "interface", "static", "volatile", "char", "finally", "long", "super",
-    "while", "class", "float", "native", "switch", "const", "for", "new", "synchronized",
-    "continue", "goto", "package", "this", "true", "false", "null", "clone", "equals", "finalize",
-    "getClass", "hashCode", "notify", "notifyAll", "toString", "wait",
+    "_", "abstract", "assert", "boolean", "break", "byte", "case", "catch", "char", "class",
+    "clone", "const", "continue", "default", "do", "double", "else", "enum", "equals", "extends",
+    "false", "final", "finalize", "finally", "float", "for", "getClass", "goto", "hashCode", "if",
+    "implements", "import", "instanceof", "int", "interface", "long", "native", "new", "notify",
+    "notifyAll", "null", "package", "private", "protected", "public", "return", "short", "static",
+    "strictfp", "super", "switch", "synchronized", "this", "throw", "throws", "toString",
+    "transient", "true", "try", "void", "volatile", "wait", "while",
 ];
 
 #[derive(Command, Clone, Debug, Default)]
 pub struct JavaOptions {
+    /// Do not rename types for Java conventions
+    #[option(long)]
+    pub no_rename: bool,
+
     /// Use Java package prefix
     #[option(long)]
     pub package_prefix: Option<String>,
@@ -51,12 +58,42 @@ pub struct JavaOptions {
 
 #[must_use]
 pub fn codegen_java(hir: &ic_hir::ResolvedGraph, options: JavaOptions) -> Vec<File> {
-    let target = Target {
-        keywords: KEYWORDS.iter().copied().collect(),
-        keyword_escape_fn: |name| format!("{name}_"),
-        ..Target::default()
+    let target = if options.no_rename {
+        Target {
+            keywords: KEYWORDS.iter().copied().collect(),
+            keyword_escape_fn: |name| format!("{name}_"),
+            ..Target::default()
+        }
+    } else {
+        Target {
+            keywords: KEYWORDS.iter().copied().collect(),
+            keyword_escape_fn: |name| format!("{name}_"),
+            struct_type: Some(Case::Pascal),
+            union_type: Some(Case::Pascal),
+            enum_type: Some(Case::Pascal),
+            interface: Some(Case::Pascal),
+            valuetype: Some(Case::Pascal),
+            alias: Some(Case::Pascal),
+            bitmask: Some(Case::Pascal),
+            bitset: Some(Case::Pascal),
+            exception: Some(Case::Pascal),
+            annotation: Some(Case::Pascal),
+            member: Some(Case::Camel),
+            variant: Some(Case::Camel),
+            enumerator: Some(Case::UpperSnake),
+            bit_flag: Some(Case::UpperSnake),
+            bitset_field: Some(Case::Camel),
+            constant: Some(Case::UpperSnake),
+            module: Some(Case::Pascal),
+            operation: Some(Case::Camel),
+            attribute: Some(Case::Camel),
+            parameter: Some(Case::Camel),
+            name_preprocessor: Some(rename::strip_common_suffixes),
+            moved_defs: HashSet::default(),
+        }
     };
-    let hir = ic_hir_xform::rename::transform(hir.clone(), &target);
+
+    let hir = rename::transform(hir.clone(), &target);
     let generator = codegen::JavaGen::new(&hir, options);
     generator.generate()
 }

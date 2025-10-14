@@ -67,6 +67,17 @@ where
         }
     }
 
+    pub fn insert_multi<I>(&mut self, keys: I, value: V)
+    where
+        I: IntoIterator<Item = K>,
+    {
+        self.data.push(value);
+        let idx = self.data.len() - 1;
+        for k in keys {
+            self.keys.insert(k, idx);
+        }
+    }
+
     #[must_use]
     pub fn get<Q>(&self, key: &Q) -> Option<&V>
     where

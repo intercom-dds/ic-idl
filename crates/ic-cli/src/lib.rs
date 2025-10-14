@@ -35,12 +35,10 @@ use std::collections::HashMap;
 use std::env;
 
 use color::Colorize;
+use ic_alloc::index::IndexMap;
 pub use ic_cli_derive::Command;
 pub mod color;
 pub mod convert;
-
-mod index;
-use index::IndexMap;
 
 mod parse;
 pub use parse::{ParseError, ParseResult};
@@ -124,13 +122,7 @@ impl CommandLine {
     }
 
     pub fn opt(mut self, option: Opt) -> Self {
-        for token in &option.tokens {
-            debug_assert!(
-                !self.options.contains_key(token),
-                "duplicate registration of option {token}"
-            );
-        }
-        self.options.insert(option.tokens.clone(), option);
+        self.options.insert_multi(option.tokens.clone(), option);
         self
     }
 
@@ -327,12 +319,12 @@ impl CommandLine {
                     if let Some(v) = sections.get_mut(v) {
                         v.push(opt);
                     } else {
-                        sections.insert(vec![v.clone()], vec![opt]);
+                        sections.insert(v.clone(), vec![opt]);
                     }
                 }
             }
 
-            for section in sections.iter() {
+            for section in &sections {
                 let flags = self.format_args(|v| {
                     if let Some(name) = &v.section {
                         name == section.0

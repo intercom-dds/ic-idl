@@ -75,6 +75,23 @@ Development documentation can be generated with:
 cargo doc --document-private-items --no-deps --workspace
 ```
 
+## Supported languages
+
+Feature support by language:
+
+| Feature / Language | C++  | Rust | Python | Java | IDL | Protobuf | JSON | XML |
+|--------------------|:----:|:----:|:------:|:----:|:---:|:--------:|:----:|:---:|
+| Struct             |  ✔   |   ✔  |   ✔    |  ✔   |  ✔  |    ✔     |  ✔   | ✔   |
+| Union              |  ✔   |   ✔  |   ✔    |  ✔   |  ✔  |    ✔     |  ✔   | ✔   |
+| Enum               |  ✔   |   ✔  |   ✔    |  ✔   |  ✔  |    ✔     |  ✔   | ✔   |
+| Exception          |  ✔   |   ✔  |   ✔    |  ✔   |  ✔  |    ✔     |  ✔   | ✔   |
+| Valuetype          |  ✔   |   ✔  |   ✔    |  ✔   |  ✔  |    ✖     |  ✔   | ✔   |
+| Interface          |  ✔   |   ✔  |   ✔    |  ✔   |  ✔  |    ✖     |  ✔   | ✔   |
+| Typedef            |  ✔   |   ✔  |   ✔    |  ✔   |  ✔  |    ✔     |  ✔   | ✔   |
+| Constants          |  ✔   |   ✔  |   ✔    |  ✔   |  ✔  |    ✖     |  ✔   | ✔   |
+| Bitmask            |  ✔   |   ✔  |   ✔    |  ✔   |  ✔  |    ✖     |  ✔   | ✔   |
+| Bitset             |  ✖   |   ✖  |   ✖    |  ✖   |  ✔  |    ✖     |  ✖   | ✖   |
+
 ## MSRV
 
 - MSRV for the compiler is 1.87.

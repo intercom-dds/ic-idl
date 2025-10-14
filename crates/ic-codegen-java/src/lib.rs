@@ -47,7 +47,7 @@ const KEYWORDS: &[&str] = &[
 
 #[derive(Command, Clone, Debug, Default)]
 pub struct JavaOptions {
-    /// Do not rename types for Java conventions
+    /// Do not rename types to Java conventions
     #[option(long)]
     pub no_rename: bool,
 

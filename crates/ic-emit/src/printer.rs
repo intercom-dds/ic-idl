@@ -229,6 +229,19 @@ impl Twine {
     }
 }
 
+pub trait IterExt: Iterator + Sized {
+    /// Joins all elements of an interator into a string with the specified
+    /// separator.
+    fn join(self, sep: &str) -> String
+    where
+        Self::Item: std::fmt::Display,
+    {
+        self.map(|v| v.to_string()).collect::<Vec<_>>().join(sep)
+    }
+}
+
+impl<T: Iterator> IterExt for T {}
+
 #[macro_export]
 macro_rules! w {
     ($twine:expr, $($arg:expr),+ $(,)?) => {

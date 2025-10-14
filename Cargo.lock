@@ -90,6 +90,7 @@ dependencies = [
 name = "ic-cli"
 version = "0.1.0"
 dependencies = [
+ "ic-alloc",
  "ic-cli-derive",
 ]
 

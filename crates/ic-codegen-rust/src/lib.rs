@@ -117,7 +117,6 @@ pub fn codegen_rust(
             operation: Some(Case::Snake),
             attribute: Some(Case::Snake),
             parameter: Some(Case::Snake),
-            annotation_param: Some(Case::Snake),
             name_preprocessor: Some(ic_hir_xform::rename::strip_common_suffixes),
             moved_defs,
         },

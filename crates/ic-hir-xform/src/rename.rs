@@ -117,9 +117,6 @@ pub struct Target {
     /// Parameters for operations
     pub parameter: Option<Case>,
 
-    /// Annotation parameters
-    pub annotation_param: Option<Case>,
-
     /// Optional preprocessor function to apply to names before case conversion
     /// If None, names are used as-is
     pub name_preprocessor: Option<NamePreprocessor>,
@@ -164,7 +161,6 @@ impl Default for Target {
             operation: None,
             attribute: None,
             parameter: None,
-            annotation_param: None,
             name_preprocessor: None,
             keywords: HashSet::new(),
             keyword_escape_fn: default_keyword_escape,
@@ -306,11 +302,6 @@ pub fn transform(mut hir: ResolvedGraph, target: &Target) -> ResolvedGraph {
             DefKind::Bitset(b) => {
                 for field in &mut b.fields {
                     renamer.rename_ident(&mut field.ident, target.bitset_field);
-                }
-            }
-            DefKind::Annotation(a) => {
-                for param in &mut a.params {
-                    renamer.rename_ident(&mut param.ident, target.annotation_param);
                 }
             }
             _ => {}
@@ -613,18 +604,7 @@ fn rename_members(target: &Target, mut def: hir::Def) -> hir::Def {
         DefKind::Bitset(b) => {
             rename_items(&mut b.fields, target.bitset_field, |f| &mut f.ident, target);
         }
-        DefKind::Annotation(a) => {
-            rename_items(
-                &mut a.params,
-                target.annotation_param,
-                |p| &mut p.ident,
-                target,
-            );
-        }
-        _ => {
-            // Bitmask flags are DefIds - handled separately
-            // Other def kinds don't have renameable members
-        }
+        _ => {}
     }
 
     def

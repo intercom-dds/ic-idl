@@ -25,17 +25,19 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-//! High-level Intermediate Representation (HIR) for IDL compilation.
+#![allow(
+    clippy::cast_possible_truncation,
+    clippy::cast_possible_wrap,
+    clippy::cast_sign_loss,
+    clippy::cast_precision_loss,
+    clippy::cast_lossless
+)]
 
-#![allow(clippy::cast_possible_truncation)] // We handle overflow appropriately
-#![allow(clippy::cast_possible_wrap)] // We handle overflow appropriately
-#![allow(clippy::cast_sign_loss)] // We handle sign conversion appropriately
-#![allow(clippy::cast_precision_loss)] // Expected for float conversions
-#![allow(clippy::cast_lossless)] // Explicit casts are clearer in this context
+//! High-level Intermediate Representation (HIR) for IDL compilation.
 //!
-//! This crate transforms the parse tree (AST) into a typed, resolved representation
-//! suitable for semantic analysis and code generation. The HIR resolves names,
-//! performs type checking, evaluates constant expressions, and validates IDL semantics.
+//! This crate transforms the parse tree (AST) into a typed, resolved
+//! representation suitable for semantic analysis and code generation. The HIR
+//! resolves names, performs type checking, and evaluates constant expressions.
 //!
 //! # Architecture
 //!

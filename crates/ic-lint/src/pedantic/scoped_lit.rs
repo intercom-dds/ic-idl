@@ -27,7 +27,7 @@
 
 use std::collections::HashMap;
 
-use ic_cli::color::Colorize;
+use ic_cli::color::Colorize as _;
 use ic_diagnostic::{Label, warn_span};
 use ic_syntax::visit::{Visitor, walk_expr, walk_tree};
 use ic_syntax::{BitmaskDef, EnumDef, Expr, Item};

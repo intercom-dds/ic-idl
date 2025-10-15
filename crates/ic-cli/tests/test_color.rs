@@ -25,26 +25,22 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use ic_cli::color::{ColorMode, Colorize, ColorizeExt};
+use ic_cli::color::{ColorMode, Colorize as _};
 
 #[test]
 fn test_colorize_with_mode() {
-    // Test colorizing with explicit mode
-    let colored = "test".colorize(ColorMode::Always);
-    let _ = colored.to_string(); // ColorMode controls whether colors are applied
+    let colored = "test".red().mode(ColorMode::Always);
+    let _ = colored.to_string();
 }
 
 #[test]
 fn test_direct_colorize() {
-    // The simple Colorize trait is applied directly to strings
-    let red_text = "test".red();
-    // Whether it contains escape codes depends on terminal detection
+    let red_text = "test".red().to_string();
     assert!(red_text.contains("test"));
 }
 
 #[test]
 fn test_all_foreground_colors() {
-    // Direct colorize methods depend on terminal detection
     let _ = "test".red();
     let _ = "test".green();
     let _ = "test".yellow();
@@ -57,23 +53,20 @@ fn test_all_foreground_colors() {
 }
 
 #[test]
-fn test_bold_and_clear() {
+fn test_bold() {
     let _ = "test".bold();
-    let _ = "test".clear();
 }
 
 #[test]
 fn test_string_extension() {
-    // Test that the extension trait works on String
     let text = String::from("test");
-    let colored = text.red();
+    let colored = text.red().to_string();
     assert!(colored.contains("test"));
 }
 
 #[test]
 fn test_str_extension() {
-    // Test that the extension trait works on &str
-    let colored = "test".blue();
+    let colored = "test".blue().to_string();
     assert!(colored.contains("test"));
 }
 
@@ -86,7 +79,6 @@ fn test_nested_formatting() {
 
 #[test]
 fn test_default_color_mode() {
-    // Test that Auto is the default
     assert_eq!(ColorMode::default(), ColorMode::Auto);
 }
 
@@ -100,20 +92,18 @@ fn test_color_mode_equality() {
 
 #[test]
 fn test_colored_display() {
-    // Test that Colored implements Display
-    let colored = "test".colorize(ColorMode::Never);
+    let colored = "test".red().mode(ColorMode::Never);
     let _output = format!("{colored}");
 }
 
 #[test]
 fn test_colorize_mode_behavior() {
-    // With Never mode, output should be plain text
-    let never = "test".colorize(ColorMode::Never).red();
+    ic_cli::color::set_color_override(ColorMode::Auto);
+    let never = "test".red().mode(ColorMode::Never);
     let output = format!("{never}");
     assert_eq!(output, "test");
 
-    // With Always mode, should add color codes
-    let always = "test".colorize(ColorMode::Always).red();
+    let always = "test".red().mode(ColorMode::Always);
     let output = format!("{always}");
-    assert!(output.len() > 4); // More than just "test" due to ANSI codes
+    assert!(output.len() > 4);
 }

@@ -269,7 +269,7 @@ impl CommandLine {
             lines.push(format!("\n{}", self.desc));
         }
 
-        lines.push("\nusage:".yellow().bold());
+        lines.push("\nusage:".yellow().bold().to_string());
 
         let mut usage = format!("{:LEFT_MARGIN$}{}", " ", self.qualified_name(' ', true));
         if !self.subcommands.is_empty() {
@@ -287,14 +287,14 @@ impl CommandLine {
             if !self.hide_flags {
                 let flags = self.format_args(|v| v.kind == Value::Flag && v.section.is_none());
                 if !flags.is_empty() {
-                    lines.push("\nflags:".yellow().bold());
+                    lines.push("\nflags:".yellow().bold().to_string());
                     lines.extend(flags);
                 }
             }
             if !self.hide_options {
                 let options = self.format_args(|v| v.kind != Value::Flag && v.section.is_none());
                 if !options.is_empty() {
-                    lines.push("\noptions:".yellow().bold());
+                    lines.push("\noptions:".yellow().bold().to_string());
                     lines.extend(options);
                 }
             }
@@ -305,7 +305,7 @@ impl CommandLine {
                     && v.section.is_none()
             });
             if !options.is_empty() {
-                lines.push("\noptions:".yellow().bold());
+                lines.push("\noptions:".yellow().bold().to_string());
                 lines.extend(options);
             }
         }
@@ -333,7 +333,7 @@ impl CommandLine {
                     }
                 });
 
-                lines.push(format!("\n{}:", section.0).yellow().bold());
+                lines.push(format!("\n{}:", section.0).yellow().bold().to_string());
                 lines.extend(flags);
             }
         }
@@ -484,10 +484,10 @@ impl CommandLine {
         let desc_column = LEFT_MARGIN + max_name_width + DESC_SPACING;
 
         for (section, cmds) in &self.subcommands {
-            lines.push(format!("\n{section}:").yellow().bold());
+            lines.push(format!("\n{section}:").yellow().bold().to_string());
 
             for cmd in cmds {
-                let name_bold = cmd.name.bold();
+                let name_bold = cmd.name.bold().to_string();
                 let name_display_width = display_width(&cmd.name);
                 let current_position = LEFT_MARGIN + name_display_width;
                 let padding_width = desc_column.saturating_sub(current_position);
@@ -585,7 +585,7 @@ impl Opt {
             let name = self.value_name.clone().unwrap_or_else(|| "arg".into());
             line = format!("{line} <{name}>");
         }
-        line.bold()
+        line.bold().to_string()
     }
 
     fn with_prefix(&self, prefix: &str) -> String {
@@ -599,7 +599,7 @@ impl Opt {
             let name = self.value_name.clone().unwrap_or_else(|| "arg".into());
             line = format!("{line} <{name}>");
         }
-        line.bold()
+        line.bold().to_string()
     }
 
     pub(crate) fn insert_value(&mut self, value: String) {

@@ -25,12 +25,14 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+use ic_cli::color::ColorMode;
 use ic_diagnostic::Level;
 use ic_lint::{Category, LintConfig, Report};
 use ic_vfs::SourceMap;
 
 #[allow(dead_code)]
 pub fn test_lint(source: &str) -> String {
+    ic_cli::color::set_color_override(ColorMode::Never);
     let mut vfs = SourceMap::default();
     let file_id = vfs.embed(source);
 
@@ -78,6 +80,7 @@ pub fn test_lint(source: &str) -> String {
 
 #[allow(dead_code)]
 pub fn lint_hir(source: &str) -> Report {
+    ic_cli::color::set_color_override(ColorMode::Never);
     let mut vfs = SourceMap::default();
     let file_id = vfs.embed(source);
 
@@ -115,6 +118,7 @@ pub fn lint_hir(source: &str) -> Report {
 
 #[allow(dead_code)]
 pub fn test_lint_hir(source: &str) -> String {
+    ic_cli::color::set_color_override(ColorMode::Never);
     let mut vfs = SourceMap::default();
     let file_id = vfs.embed(source);
 

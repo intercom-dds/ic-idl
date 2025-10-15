@@ -27,7 +27,7 @@
 
 use std::fmt::Display;
 
-use ic_cli::color::Colorize;
+use ic_cli::color::Colorize as _;
 
 const COMMIT_HASH: &str = concat!("#", env!("COMMIT_HASH"));
 

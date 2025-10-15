@@ -49,7 +49,7 @@ pub enum Style {
     Pretty,
 }
 
-pub type Color = ic_cli::color::Color;
+pub use ic_cli::color::Color;
 
 /// Represents the severity level of a diagnostic.
 #[must_use]

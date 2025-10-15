@@ -26,7 +26,7 @@
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use std::fmt::Display;
-use std::sync::OnceLock;
+use std::sync::{OnceLock, RwLock};
 
 /// Controls when colors should be used
 #[derive(Copy, Clone, Debug, Default, PartialEq, Eq)]
@@ -72,7 +72,8 @@ struct Style {
 
 impl<T: Display> Display for Colored<T> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let use_color = match self.mode {
+        let effective_mode = effective_color_mode(self.mode);
+        let use_color = match effective_mode {
             ColorMode::Always => true,
             ColorMode::Never => false,
             ColorMode::Auto => has_colors(),
@@ -126,20 +127,117 @@ impl<T: Display> Display for Colored<T> {
     }
 }
 
-/// Extension trait for colorizing values with explicit color mode
-pub trait ColorizeExt: Display + Sized {
-    fn colorize(self, mode: ColorMode) -> Colored<Self> {
+/// Extension trait for adding color methods to any Display type
+pub trait Colorize: Display + Clone {
+    #[must_use]
+    fn fg(&self, color: Color) -> Colored<Self> {
         Colored {
-            value: self,
-            style: Style::default(),
-            mode,
+            value: self.clone(),
+            style: Style {
+                fg: Some(color),
+                ..Default::default()
+            },
+            mode: ColorMode::Auto,
         }
+    }
+
+    #[must_use]
+    fn bg(&self, color: Color) -> Colored<Self> {
+        Colored {
+            value: self.clone(),
+            style: Style {
+                bg: Some(color),
+                ..Default::default()
+            },
+            mode: ColorMode::Auto,
+        }
+    }
+
+    #[must_use]
+    fn bold(&self) -> Colored<Self> {
+        Colored {
+            value: self.clone(),
+            style: Style {
+                bold: true,
+                ..Default::default()
+            },
+            mode: ColorMode::Auto,
+        }
+    }
+
+    #[must_use]
+    fn red(&self) -> Colored<Self> {
+        self.fg(Color::Red)
+    }
+
+    #[must_use]
+    fn green(&self) -> Colored<Self> {
+        self.fg(Color::Green)
+    }
+
+    #[must_use]
+    fn yellow(&self) -> Colored<Self> {
+        self.fg(Color::Yellow)
+    }
+
+    #[must_use]
+    fn blue(&self) -> Colored<Self> {
+        self.fg(Color::Blue)
+    }
+
+    #[must_use]
+    fn purple(&self) -> Colored<Self> {
+        self.fg(Color::Purple)
+    }
+
+    #[must_use]
+    fn cyan(&self) -> Colored<Self> {
+        self.fg(Color::Cyan)
+    }
+
+    #[must_use]
+    fn white(&self) -> Colored<Self> {
+        self.fg(Color::White)
+    }
+
+    #[must_use]
+    fn gray(&self) -> Colored<Self> {
+        self.fg(Color::Gray)
+    }
+
+    #[must_use]
+    fn black(&self) -> Colored<Self> {
+        self.fg(Color::Black)
     }
 }
 
-impl<T: Display> ColorizeExt for T {}
+impl<T: Display + Clone> Colorize for T {}
+
+static COLOR_OVERRIDE: RwLock<ColorMode> = RwLock::new(ColorMode::Auto);
+
+pub fn set_color_override(mode: ColorMode) {
+    if let Ok(mut override_mode) = COLOR_OVERRIDE.write() {
+        *override_mode = mode;
+    }
+}
+
+fn effective_color_mode(mode: ColorMode) -> ColorMode {
+    if let Ok(override_mode) = COLOR_OVERRIDE.read()
+        && matches!(*override_mode, ColorMode::Never | ColorMode::Always)
+    {
+        *override_mode
+    } else {
+        mode
+    }
+}
 
 impl<T> Colored<T> {
+    #[must_use]
+    pub fn mode(mut self, mode: ColorMode) -> Self {
+        self.mode = mode;
+        self
+    }
+
     #[must_use]
     pub fn fg(mut self, color: Color) -> Self {
         self.style.fg = Some(color);
@@ -201,106 +299,6 @@ impl<T> Colored<T> {
     #[must_use]
     pub fn black(self) -> Self {
         self.fg(Color::Black)
-    }
-}
-
-pub trait Colorize: Display {
-    fn fg(&self, color: Color) -> String {
-        let c = match color {
-            Color::Black => "\x1b[30m",
-            Color::Red => "\x1b[31m",
-            Color::Green => "\x1b[32m",
-            Color::Yellow => "\x1b[33m",
-            Color::Blue => "\x1b[34m",
-            Color::Purple => "\x1b[35m",
-            Color::Cyan => "\x1b[36m",
-            Color::White => "\x1b[37m",
-            Color::Gray => "\x1b[90m",
-            Color::Clear => "\x1b[0m",
-        };
-        fmt_ansi(c, self)
-    }
-
-    fn bg(&self, color: Color) -> String {
-        let c = match color {
-            Color::Black => "\x1b[40m",
-            Color::Red => "\x1b[41m",
-            Color::Green => "\x1b[42m",
-            Color::Yellow => "\x1b[43m",
-            Color::Blue => "\x1b[44m",
-            Color::Purple => "\x1b[45m",
-            Color::Cyan => "\x1b[46m",
-            Color::White => "\x1b[47m",
-            Color::Gray => "\x1b[100m",
-            Color::Clear => "\x1b[49m",
-        };
-        fmt_ansi(c, self)
-    }
-
-    fn black(&self) -> String {
-        self.fg(Color::Black)
-    }
-
-    fn red(&self) -> String {
-        self.fg(Color::Red)
-    }
-
-    fn green(&self) -> String {
-        self.fg(Color::Green)
-    }
-
-    fn yellow(&self) -> String {
-        self.fg(Color::Yellow)
-    }
-
-    fn blue(&self) -> String {
-        self.fg(Color::Blue)
-    }
-
-    fn purple(&self) -> String {
-        self.fg(Color::Purple)
-    }
-
-    fn cyan(&self) -> String {
-        self.fg(Color::Cyan)
-    }
-
-    fn white(&self) -> String {
-        self.fg(Color::White)
-    }
-
-    fn gray(&self) -> String {
-        self.fg(Color::Gray)
-    }
-
-    fn bold(&self) -> String {
-        fmt_ansi("\x1b[1m", self)
-    }
-
-    fn clear(&self) -> String {
-        self.fg(Color::Clear)
-    }
-}
-
-impl<T: Display> Colorize for T {}
-
-fn fmt_ansi<T: Display>(code: &str, input: T) -> String {
-    const CLEAR: &str = "\x1b[0m";
-
-    if has_colors() {
-        let mut input = input.to_string();
-        let matches: Vec<_> = input.match_indices(CLEAR).map(|(i, _)| i).collect();
-
-        for (i, offset) in matches.into_iter().enumerate() {
-            let mut offset = offset + CLEAR.len() + i * code.len();
-            for c in code.chars() {
-                input.insert(offset, c);
-                offset += 1;
-            }
-        }
-        format!("{code}{input}{CLEAR}")
-    } else {
-        input.to_string()
     }
 }
 
@@ -399,18 +397,15 @@ mod tests {
 
     #[test]
     fn test_color_modes() {
-        // Test that we can create colored strings with different modes
         let text = "Hello";
 
-        // Never mode should not add escape codes
-        let never = text.colorize(ColorMode::Never).red().bold().to_string();
+        let never = text.red().bold().mode(ColorMode::Never).to_string();
         assert_eq!(never, "Hello");
 
-        // Always mode should add escape codes
-        let always = text.colorize(ColorMode::Always).red().bold().to_string();
+        let always = text.red().bold().mode(ColorMode::Always).to_string();
         assert!(always.contains("\x1b["));
-        assert!(always.contains("31")); // red
-        assert!(always.contains('1')); // bold
+        assert!(always.contains("31"));
+        assert!(always.contains('1'));
     }
 
     #[test]

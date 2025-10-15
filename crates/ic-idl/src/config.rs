@@ -31,7 +31,7 @@ use std::collections::HashMap;
 use std::path::PathBuf;
 
 use ic_cli::Command;
-use ic_cli::color::Colorize;
+use ic_cli::color::Colorize as _;
 use ic_cli::convert::{self, ConvertError};
 use ic_lint::{Category, Level, LintConfig};
 

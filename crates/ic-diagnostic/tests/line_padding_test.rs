@@ -27,6 +27,7 @@
 
 #![allow(clippy::cast_possible_truncation)]
 
+use ic_cli::color::ColorMode;
 use ic_diagnostic::{Diag, Label, emit_with_source};
 use ic_vfs::{FileId, Location, Span};
 
@@ -39,6 +40,7 @@ fn make_span(file_id: FileId, start: u32, end: u32) -> Span {
 
 #[test]
 fn test_line_padding_two_digits() {
+    ic_cli::color::set_color_override(ColorMode::Never);
     let source = "line 1\nline 2\nline 3\nline 4\nline 5\nline 6\nline 7\nline 8\nline 9\nline 10";
     let file_id = FileId::_do_not_use();
 
@@ -55,6 +57,7 @@ fn test_line_padding_two_digits() {
 
 #[test]
 fn test_line_padding_three_digits() {
+    ic_cli::color::set_color_override(ColorMode::Never);
     // Create a source with 100+ lines
     let mut lines = Vec::new();
     let mut offsets = Vec::new();
@@ -90,6 +93,7 @@ fn test_line_padding_three_digits() {
 
 #[test]
 fn test_line_padding_with_multiline_spans() {
+    ic_cli::color::set_color_override(ColorMode::Never);
     // Test that padding works correctly with multi-line spans
     let mut lines = Vec::new();
     let mut offsets = Vec::new();
@@ -126,6 +130,7 @@ fn test_line_padding_with_multiline_spans() {
 
 #[test]
 fn test_line_padding_with_ellipsis() {
+    ic_cli::color::set_color_override(ColorMode::Never);
     // Test padding with large spans that trigger ellipsis
     let mut lines = Vec::new();
     let mut offsets = Vec::new();
@@ -157,6 +162,7 @@ fn test_line_padding_with_ellipsis() {
 
 #[test]
 fn test_line_padding_four_digits() {
+    ic_cli::color::set_color_override(ColorMode::Never);
     // Create a source with 10000+ lines
     let mut lines = Vec::new();
     let mut offsets = Vec::new();
@@ -197,6 +203,7 @@ fn test_line_padding_four_digits() {
 
 #[test]
 fn test_line_padding_mixed_extreme() {
+    ic_cli::color::set_color_override(ColorMode::Never);
     // Test with a mix of single digit and 5-digit line numbers to ensure padding works
     let mut lines = Vec::new();
     let mut offsets = Vec::new();

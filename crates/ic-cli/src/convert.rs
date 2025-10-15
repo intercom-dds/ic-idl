@@ -31,7 +31,7 @@ use std::fmt::Display;
 use std::hash::{BuildHasher, Hash};
 use std::path::PathBuf;
 
-use crate::color::Colorize;
+use crate::color::Colorize as _;
 
 #[derive(Clone, Debug)]
 pub enum ConvertError {

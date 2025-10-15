@@ -315,7 +315,7 @@ fn closest_match<'a>(input: &str, options: &'a [Opt]) -> Option<&'a str> {
 
 fn prefixed(name: &str) -> String {
     let prefix = if name.len() > 1 { "--" } else { "-" };
-    format!("{prefix}{name}").yellow()
+    format!("{prefix}{name}").yellow().to_string()
 }
 
 fn did_you_mean(input: &str, options: &[Opt]) -> ParseError {

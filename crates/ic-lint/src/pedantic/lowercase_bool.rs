@@ -25,7 +25,7 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use ic_cli::color::Colorize;
+use ic_cli::color::Colorize as _;
 use ic_diagnostic::Label;
 use ic_syntax::visit::{Visitor, walk_tree};
 use ic_syntax::{Item, Literal, LiteralValue};

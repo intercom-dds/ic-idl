@@ -25,6 +25,7 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+use ic_cli::color::ColorMode;
 use ic_diagnostic::{Color, Diag, Label};
 use ic_vfs::{FileId, Location, Span};
 
@@ -38,6 +39,7 @@ fn make_span(start: u32, end: u32) -> Span {
 
 #[test]
 fn test_overlapping_spans() {
+    ic_cli::color::set_color_override(ColorMode::Never);
     let source = "struct Data {\n    int field1;\n    int field2;\n    int field3;\n}";
 
     // Test overlapping spans
@@ -60,6 +62,7 @@ fn test_overlapping_spans() {
 
 #[test]
 fn test_single_char_span() {
+    ic_cli::color::set_color_override(ColorMode::Never);
     let source = "int x = 5;";
 
     // Test single character span
@@ -76,6 +79,7 @@ fn test_single_char_span() {
 
 #[test]
 fn test_adjacent_spans() {
+    ic_cli::color::set_color_override(ColorMode::Never);
     let source = "int add(int a, int b) { return a + b; }";
 
     // Test adjacent spans with no gap
@@ -98,6 +102,7 @@ fn test_adjacent_spans() {
 
 #[test]
 fn test_nested_spans() {
+    ic_cli::color::set_color_override(ColorMode::Never);
     let source = "void process(struct Data { int x; int y; } data);";
 
     // Test nested spans - one span inside another
@@ -125,6 +130,7 @@ fn test_nested_spans() {
 
 #[test]
 fn test_empty_lines() {
+    ic_cli::color::set_color_override(ColorMode::Never);
     let source = "interface Test {\n\n    void method();\n\n}";
 
     // Test span across empty lines
@@ -141,6 +147,7 @@ fn test_empty_lines() {
 
 #[test]
 fn test_many_labels_single_line() {
+    ic_cli::color::set_color_override(ColorMode::Never);
     let source = "calculate(a, b, c, d, e, f, g);";
 
     // Test many labels on single line

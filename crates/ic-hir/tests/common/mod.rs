@@ -27,12 +27,15 @@
 
 //! Common test utilities for HIR tests
 
+use ic_cli::color::ColorMode;
 use ic_hir::{AstInput, ResolvedGraph};
 use ic_vfs::SourceMap;
 
 /// Parse IDL input and return the HIR along with rendered diagnostics
 #[track_caller]
 pub fn parse_and_resolve(input: &str) -> (ResolvedGraph, SourceMap, String) {
+    ic_cli::color::set_color_override(ColorMode::Never);
+
     let mut source_map = SourceMap::default();
     let file = source_map.embed_with_name("test.idl", input);
     let parsed = ic_parse::from_file(file, ic_preproc::ProcArgs::default(), &mut source_map);
@@ -148,6 +151,7 @@ pub fn parse_with_custom_builtins(
     user: &str,
     include_builtins_in_output: bool,
 ) -> (ResolvedGraph, SourceMap, String) {
+    ic_cli::color::set_color_override(ColorMode::Never);
     let mut source_map = SourceMap::default();
 
     let builtin_file = source_map.embed_with_name("<builtin>", builtins);

@@ -30,7 +30,7 @@
 use std::fmt;
 use std::ops::Range;
 
-use ic_cli::color::Colorize;
+use ic_cli::color::Colorize as _;
 use ic_vfs::SourceMap;
 
 use crate::{Color, Diag, Label};
@@ -241,7 +241,7 @@ struct Formatter<'a> {
     chars: Charset,
 }
 
-impl Formatter<'_> {
+impl<'a> Formatter<'a> {
     fn line_start_offset(&self, line_num: usize) -> usize {
         let mut line_start = 0;
         let mut current_line = 1;
@@ -640,7 +640,7 @@ impl Formatter<'_> {
         Ok(())
     }
 
-    fn build_column_label_map<'a>(
+    fn build_column_label_map(
         &self,
         labels_on_line: &[&'a Label],
         line_start_offset: u32,
@@ -737,11 +737,11 @@ impl Formatter<'_> {
         Ok(())
     }
 
-    fn labels_starting_on_line<'a>(
+    fn labels_starting_on_line<'b>(
         &self,
-        labels_on_line: &[&'a Label],
+        labels_on_line: &[&'b Label],
         line_num: usize,
-    ) -> Vec<&'a Label> {
+    ) -> Vec<&'b Label> {
         labels_on_line
             .iter()
             .filter(|l| line_number(self.source, l.span.start.offset as usize) == line_num)
@@ -791,12 +791,12 @@ impl Formatter<'_> {
         Ok(())
     }
 
-    fn sort_labels_for_display<'a>(
+    fn sort_labels_for_display<'b>(
         &self,
-        labels: &[&'a Label],
+        labels: &[&'b Label],
         line_start_offset: u32,
         line_range: &Range<usize>,
-    ) -> Vec<&'a Label> {
+    ) -> Vec<&'b Label> {
         let mut sorted = labels.to_vec();
         sorted.sort_by(|a, b| {
             let a_end_col = self.label_end_col(a, line_start_offset, line_range);
@@ -831,7 +831,7 @@ impl Formatter<'_> {
         )
     }
 
-    fn sort_labels_left_to_right<'a>(labels: &[&'a Label]) -> Vec<&'a Label> {
+    fn sort_labels_left_to_right<'b>(labels: &[&'b Label]) -> Vec<&'b Label> {
         let mut sorted = labels.to_vec();
         sorted.sort_by_key(|v| v.span.start.offset);
         sorted

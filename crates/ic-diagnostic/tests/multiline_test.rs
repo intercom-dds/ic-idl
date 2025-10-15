@@ -25,6 +25,7 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+use ic_cli::color::ColorMode;
 use ic_diagnostic::{Color, Diag, Label};
 use ic_vfs::{FileId, Location, Span};
 
@@ -38,6 +39,7 @@ fn make_span(start: u32, end: u32) -> Span {
 
 #[test]
 fn test_multiline_span() {
+    ic_cli::color::set_color_override(ColorMode::Never);
     // Test with a multi-line span
     let source = r"
 interface MyInterface {

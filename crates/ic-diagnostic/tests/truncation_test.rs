@@ -27,6 +27,7 @@
 
 #![allow(clippy::cast_possible_truncation)]
 
+use ic_cli::color::ColorMode;
 use ic_diagnostic::{Color, Diag, Label, emit_with_source};
 use ic_vfs::{FileId, Location, Span};
 
@@ -39,6 +40,7 @@ fn make_span(file_id: FileId, start: u32, end: u32) -> Span {
 
 #[test]
 fn test_large_span_truncation() {
+    ic_cli::color::set_color_override(ColorMode::Never);
     // Create a source with many empty lines between two labels
     let mut lines = vec!["struct Foo {".to_string()];
     lines.push("    @optional".to_string());
@@ -93,6 +95,7 @@ fn test_large_span_truncation() {
 
 #[test]
 fn test_multiple_truncated_spans() {
+    ic_cli::color::set_color_override(ColorMode::Never);
     // Test with multiple spans that each need truncation
     let mut lines = vec!["interface Test {".to_string()];
 
@@ -161,6 +164,7 @@ fn test_multiple_truncated_spans() {
 
 #[test]
 fn test_no_truncation_needed() {
+    ic_cli::color::set_color_override(ColorMode::Never);
     // Test case where spans are close enough that no truncation is needed
     let source = r"struct Point {
     @optional

@@ -25,6 +25,7 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+use ic_cli::color::ColorMode;
 use ic_diagnostic::{Color, Diag, Label, emit_with_source};
 use ic_vfs::{FileId, Location, Span};
 
@@ -38,6 +39,7 @@ fn make_span(start: u32, end: u32) -> Span {
 
 #[test]
 fn single_tab() {
+    ic_cli::color::set_color_override(ColorMode::Never);
     let source = "\tint x = 42;";
     let diag = Diag::error("test error").label(
         Label::new(make_span(5, 6))
@@ -52,6 +54,7 @@ fn single_tab() {
 
 #[test]
 fn multiple_tabs() {
+    ic_cli::color::set_color_override(ColorMode::Never);
     let source = "\t\tint x = 42;";
     let diag = Diag::error("test error").label(
         Label::new(make_span(6, 7))
@@ -66,6 +69,7 @@ fn multiple_tabs() {
 
 #[test]
 fn mixed_spaces_and_tabs() {
+    ic_cli::color::set_color_override(ColorMode::Never);
     let source = " \tint x = 42;";
     let diag = Diag::error("test error").label(
         Label::new(make_span(6, 7))
@@ -80,6 +84,7 @@ fn mixed_spaces_and_tabs() {
 
 #[test]
 fn tabs_between_tokens() {
+    ic_cli::color::set_color_override(ColorMode::Never);
     // Test that column numbers are calculated correctly with tabs
     let source = "\tint\tx = 42;";
     let diag = Diag::error("test error").label(
@@ -95,6 +100,7 @@ fn tabs_between_tokens() {
 
 #[test]
 fn tab_at_end_of_line() {
+    ic_cli::color::set_color_override(ColorMode::Never);
     let source = "int x = 42;\t";
     let diag = Diag::error("trailing tab").label(
         Label::new(make_span(11, 12))
@@ -109,6 +115,7 @@ fn tab_at_end_of_line() {
 
 #[test]
 fn multiple_errors_with_tabs() {
+    ic_cli::color::set_color_override(ColorMode::Never);
     let source = "\tint\tx\t=\t42;";
     let diag = Diag::error("multiple tabs")
         .label(
@@ -134,6 +141,7 @@ fn multiple_errors_with_tabs() {
 
 #[test]
 fn tab_in_multiline_error() {
+    ic_cli::color::set_color_override(ColorMode::Never);
     let source = "struct Foo {\n\tint x;\n\tfloat y;\n}";
     let diag = Diag::error("struct fields")
         .label(

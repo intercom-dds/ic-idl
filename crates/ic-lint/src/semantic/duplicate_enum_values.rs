@@ -28,7 +28,7 @@
 use std::collections::HashMap;
 
 use ic_alloc::insensitive::CaseSet;
-use ic_cli::color::Colorize;
+use ic_cli::color::Colorize as _;
 use ic_diagnostic::Label;
 use ic_hir::ResolvedGraph;
 use ic_hir::hir::{Def, DefKind, EnumTy, Numeric};

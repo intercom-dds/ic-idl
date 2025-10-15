@@ -27,7 +27,7 @@
 
 use std::fmt::{self, Display};
 
-use ic_cli::color::Colorize;
+use ic_cli::color::Colorize as _;
 
 #[macro_export]
 macro_rules! leaf {

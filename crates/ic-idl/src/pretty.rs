@@ -32,7 +32,7 @@ use std::fmt;
 use std::fmt::Write;
 use std::path::{Path, PathBuf};
 
-use ic_cli::color::Colorize;
+use ic_cli::color::Colorize as _;
 use ic_diagnostic::{Diag, Label, error_span, warn_span};
 use ic_parse::Reason;
 use ic_parse::lexer::Kind;
@@ -51,13 +51,13 @@ fn format_slice<T: std::fmt::Display>(kind: &[T]) -> String {
         Some((last, rest)) if !rest.is_empty() => {
             let body = rest
                 .iter()
-                .map(Colorize::yellow)
+                .map(|v| v.to_string().yellow().to_string())
                 .collect::<Vec<_>>()
                 .join(", ");
 
             format!("{body} or {}", last.yellow())
         }
-        Some((last, _)) => last.yellow(),
+        Some((last, _)) => last.yellow().to_string(),
         _ => String::new(),
     }
 }
@@ -128,15 +128,15 @@ fn to_diag_with_expansion(
             };
 
             let expected = if let Some(e) = error.label {
-                e.yellow()
+                e.yellow().to_string()
             } else if let Some(e) = &error.expected {
                 if e.contains(&Kind::Eoi) {
-                    "top-level definition".yellow()
+                    "top-level definition".yellow().to_string()
                 } else {
                     format_slice(e)
                 }
             } else {
-                "definition".yellow()
+                "definition".yellow().to_string()
             };
 
             let found = error

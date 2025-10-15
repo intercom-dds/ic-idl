@@ -26,7 +26,7 @@
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use ic_cli::Command;
-use ic_cli::color::Colorize;
+use ic_cli::color::Colorize as _;
 use ic_idl::{Unstable, Warnings};
 
 pub fn unstable_help() {

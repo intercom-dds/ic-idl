@@ -29,7 +29,7 @@ mod tree;
 
 use std::fmt::Write;
 
-use ic_cli::color::Colorize;
+use ic_cli::color::Colorize as _;
 use ic_hir::hir::{
     BitsetTy, Decl, DefFlags, DefId, DefKind, InterfaceTy, Label, Member, Numeric, ParamKind,
     PrimitiveTy, Span, Ty, TyKind, Variant,
@@ -45,6 +45,7 @@ fn emit_span(span: &Span) -> String {
         span.start.file_id, span.start.offset, span.end.file_id, span.end.offset,
     )
     .yellow()
+    .to_string()
 }
 
 fn emit_ann_arg(arg: &ic_hir::hir::AnnArg) -> String {
@@ -118,7 +119,7 @@ fn emit_flags(flags: DefFlags) -> String {
 }
 
 fn prim_ty(ty: PrimitiveTy) -> String {
-    ty.to_string().to_ascii_lowercase().cyan()
+    ty.to_string().to_ascii_lowercase().cyan().to_string()
 }
 
 fn emit_ty(context: &Context, ty: &Ty) -> String {
@@ -136,16 +137,16 @@ fn emit_ty(context: &Context, ty: &Ty) -> String {
             } else {
                 String::new()
             };
-            return format!("{prefix}string{bound}").cyan();
+            return format!("{prefix}string{bound}").cyan().to_string();
         }
         TyKind::Array { ty, len, .. } => {
             let ty = emit_ty(context, ty);
-            return format!("array<{ty}, {len}>").cyan();
+            return format!("array<{ty}, {len}>").cyan().to_string();
         }
         TyKind::Sequence { ty, bound, .. } => {
             let ty = emit_ty(context, ty);
             let bound = bound.map(|v| format!(", {v}")).unwrap_or_default();
-            return format!("sequence<{ty}{bound}>").cyan();
+            return format!("sequence<{ty}{bound}>").cyan().to_string();
         }
         TyKind::Map {
             key, elem, bound, ..
@@ -156,20 +157,21 @@ fn emit_ty(context: &Context, ty: &Ty) -> String {
                 emit_ty(context, key),
                 emit_ty(context, elem)
             )
-            .cyan();
+            .cyan()
+            .to_string();
         }
         TyKind::Adt(id) => {
-            let name = context.type_of(*id).ident.name.cyan();
+            let name = context.type_of(*id).ident.name.cyan().to_string();
             return format!(
                 "{}({}{}, {name})",
                 "adt".cyan(),
-                "def=".clear(),
+                "def=",
                 format!("{id:#02X?}").blue(),
             );
         }
     };
 
-    kind.cyan()
+    kind.cyan().to_string()
 }
 
 fn emit_numeric(val: &Numeric) -> String {
@@ -241,13 +243,17 @@ fn emit_label(context: &Context, label: &Label) -> Leaf<String> {
         let def = context.type_of(*def_id);
         let qualified_name = context.qualified_name(*def_id);
         let value = if let DefKind::Const(const_ty) = &def.kind {
-            format!(" '= {}'", emit_numeric(&const_ty.value)).purple()
+            format!(" '= {}'", emit_numeric(&const_ty.value))
+                .purple()
+                .to_string()
         } else {
             emit_numeric(&label.value)
         };
         format!("{}{}", qualified_name.cyan(), value)
     } else {
-        format!("' = {}'", emit_numeric(&label.value)).purple()
+        format!("' = {}'", emit_numeric(&label.value))
+            .purple()
+            .to_string()
     };
 
     leaf!("{} {span} {}", "label".green().bold(), value_str)

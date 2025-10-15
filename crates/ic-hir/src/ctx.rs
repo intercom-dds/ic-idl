@@ -505,4 +505,35 @@ impl Context {
             _ => None,
         }
     }
+
+    /// Resolves a numeric value to a string, recursively following `Const`
+    /// references. Returns `None` if the value cannot be represented as a
+    /// string.
+    #[must_use]
+    pub fn string_value(&self, numeric: &Numeric) -> Option<String> {
+        match numeric {
+            Numeric::Bool(v) => Some(v.to_string()),
+            Numeric::Char(v) => Some(v.to_string()),
+            Numeric::UInt8(v) => Some(v.to_string()),
+            Numeric::UInt16(v) => Some(v.to_string()),
+            Numeric::UInt32(v) => Some(v.to_string()),
+            Numeric::UInt64(v) => Some(v.to_string()),
+            Numeric::Int8(v) => Some(v.to_string()),
+            Numeric::Int16(v) => Some(v.to_string()),
+            Numeric::Int32(v) => Some(v.to_string()),
+            Numeric::Int64(v) => Some(v.to_string()),
+            Numeric::Const(def_id) => {
+                let def = self.type_of(*def_id);
+                if let DefKind::Const(const_def) = &def.kind {
+                    self.string_value(&const_def.value)
+                } else {
+                    None
+                }
+            }
+            Numeric::Float(v) => Some(v.to_string()),
+            Numeric::Double(v) => Some(v.to_string()),
+            Numeric::String(v) => Some(v.clone()),
+            _ => None,
+        }
+    }
 }

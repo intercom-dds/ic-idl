@@ -30,12 +30,12 @@ use std::path::PathBuf;
 
 use ic_emit::File;
 use ic_emit::printer::{Twine, w};
-use ic_hir::ResolvedGraph;
 use ic_hir::hir::{
     AliasTy, Ann, AnnArg, AnnotationTy, Attribute, BitmaskTy, BitsetTy, ConstTy, Decl, Def,
     DefFlags, DefId, DefKind, EnumTy, ExceptTy, InterfaceTy, ModuleTy, Numeric, ParamKind, ProtoTy,
     StructTy, Ty, TyKind, UnionTy, ValueTy,
 };
+use ic_hir::{Context, ResolvedGraph};
 use ic_vfs::{FileId, SourceMap};
 
 use crate::IdlOptions;
@@ -321,7 +321,28 @@ impl<'a> IdlGen<'a> {
     }
 
     fn emit_annotations(&self, w: &mut Twine, annotations: &[Ann], relative_to_def_id: DefId) {
+        // Emit doc annotations first
         for ann in annotations {
+            if !is_doc(&self.hir.context, ann) {
+                continue;
+            }
+
+            for doc in &ann.args {
+                if let Some(ty) = &doc.ty
+                    && let TyKind::String { .. } = ty.kind
+                    && let Some(str) = self.hir.context.string_value(&doc.value)
+                {
+                    let text = str.trim_end();
+                    w!(w, "/// ", text, "\n");
+                }
+            }
+        }
+
+        // And then non-doc annotations
+        for ann in annotations {
+            if is_doc(&self.hir.context, ann) {
+                continue;
+            }
             let non_default_args = filter_non_default_args(ann, self.hir);
 
             w!(w, "@", ann.ident.name);
@@ -752,4 +773,14 @@ fn format_member_name(ty: &Ty) -> String {
         current_ty = inner_ty;
     }
     result
+}
+
+fn is_doc(ctx: &Context, ann: &Ann) -> bool {
+    if let Some(def_id) = ann.def_id {
+        let def = ctx.type_of(def_id);
+        if def.flags.contains(DefFlags::IS_BUILTIN) && def.ident.name == "doc" {
+            return true;
+        }
+    }
+    false
 }

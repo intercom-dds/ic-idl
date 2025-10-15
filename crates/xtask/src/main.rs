@@ -33,12 +33,10 @@ mod bootstrap;
 mod deny;
 mod ipr;
 mod release;
-mod setup;
 
 /// Polyfill for building and releasing ic-idl
 #[derive(Command)]
 enum Commands {
-    Setup(setup::Options),
     Ipr(ipr::Options),
     Deny(deny::Options),
     Bootstrap(bootstrap::Options),
@@ -50,7 +48,6 @@ fn main() {
     let cmd = Commands::from_result(&result);
 
     match cmd {
-        Commands::Setup(_) => setup::install(),
         Commands::Bootstrap(_) => bootstrap::build(),
         Commands::Ipr(v) => ipr::check(v),
         Commands::Release(v) => release::build(v),

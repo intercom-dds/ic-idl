@@ -287,6 +287,9 @@ where
             .integer()
             .ok_or_else(|| error!(self, "invalid number"))?;
 
+        let mut float_value: Option<f64> = None;
+
+        // Parse fractional part if present
         if self.get() == Some('.') {
             self.advance();
 
@@ -302,9 +305,43 @@ where
                     _ => break,
                 }
             }
-            return Ok(Number::Float(value as f64 + frac));
+            float_value = Some(value as f64 + frac);
         }
 
+        // Parse exponent part if present (e.g., e-10, E+5)
+        if matches!(self.get(), Some('e') | Some('E')) {
+            self.advance();
+
+            let exp_neg = match self.get() {
+                Some('+') => {
+                    self.advance();
+                    false
+                }
+                Some('-') => {
+                    self.advance();
+                    true
+                }
+                _ => false,
+            };
+
+            let exp = self
+                .integer()
+                .ok_or_else(|| error!(self, "invalid exponent"))?;
+
+            // Apply exponent: base * 10^exp
+            let base = float_value.unwrap_or(value as f64);
+            let exponent = if exp_neg { -(exp as f64) } else { exp as f64 };
+
+            let result = base * 10_f64.powf(exponent);
+            return Ok(Number::Float(if neg { -result } else { result }));
+        }
+
+        // If we have a float value (from decimal), return it with sign
+        if let Some(f) = float_value {
+            return Ok(Number::Float(if neg { -f } else { f }));
+        }
+
+        // Otherwise return integer with sign
         if neg {
             if value > i64::MAX as u64 + 1 {
                 Err(error!(self, "invalid number"))

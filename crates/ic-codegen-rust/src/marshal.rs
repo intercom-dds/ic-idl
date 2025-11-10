@@ -96,14 +96,7 @@ impl RustGen<'_> {
         w!(w, "];\n\n");
     }
 
-    pub(crate) fn emit_member_info<'c, I>(
-        &self,
-        def_id: ic_hir::hir::DefId,
-        members: I,
-        w: &mut Twine,
-    ) where
-        I: IntoIterator<Item = &'c ic_hir::hir::Member>,
-    {
+    pub(crate) fn emit_member_info(&self, def_id: ic_hir::hir::DefId, w: &mut Twine) {
         let original_def = self.original_hir.context.definitions.get(def_id);
         let original_members = match &original_def.kind {
             DefKind::Struct(s) => self.original_struct_members(s),
@@ -112,15 +105,10 @@ impl RustGen<'_> {
             _ => vec![],
         };
 
-        let member_info: Vec<_> = members
-            .into_iter()
+        let member_info: Vec<_> = original_members
+            .iter()
             .enumerate()
-            .map(|(i, m)| {
-                let name = original_members
-                    .get(i)
-                    .map_or(m.ident.name.as_str(), |orig_m| orig_m.ident.name.as_str());
-                (name, i)
-            })
+            .map(|(i, m)| (m.ident.name.as_str(), i))
             .collect();
         Self::emit_member_info_array(&member_info, w);
     }

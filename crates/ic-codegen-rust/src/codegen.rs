@@ -647,7 +647,7 @@ impl<'a> RustGen<'a> {
                 self.emit_struct_impl(def, &members, w);
                 Self::emit_default_impl(def, w);
                 self.emit_type_info(def, w);
-                self.emit_member_info(def.id, &members, w);
+                self.emit_member_info(def.id, w);
                 Self::emit_marshal_impl(def, &members, w);
                 Self::emit_unmarshal_impl(def, &members, w);
                 Self::emit_type_info_close(w);
@@ -657,7 +657,7 @@ impl<'a> RustGen<'a> {
                 self.emit_struct_impl(def, &except_ty.members, w);
                 Self::emit_default_impl(def, w);
                 self.emit_type_info(def, w);
-                self.emit_member_info(def.id, &except_ty.members, w);
+                self.emit_member_info(def.id, w);
                 Self::emit_marshal_impl(def, &except_ty.members, w);
                 Self::emit_unmarshal_impl(def, &except_ty.members, w);
                 Self::emit_type_info_close(w);
@@ -668,7 +668,7 @@ impl<'a> RustGen<'a> {
                 self.emit_struct_impl(def, &members, w);
                 Self::emit_default_impl(def, w);
                 self.emit_type_info(def, w);
-                self.emit_member_info(def.id, &members, w);
+                self.emit_member_info(def.id, w);
                 Self::emit_marshal_impl(def, &members, w);
                 Self::emit_unmarshal_impl(def, &members, w);
                 Self::emit_type_info_close(w);

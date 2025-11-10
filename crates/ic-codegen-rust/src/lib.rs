@@ -103,6 +103,9 @@ pub fn codegen_rust(hir: &ic_hir::ResolvedGraph, options: RustOptions) -> Vec<Fi
     // Rename `DDS::XTypes` to `DDS::xtypes`
     let hir = ic_hir_xform::rename_xtypes::transform(hir);
 
+    // Keep a copy of the HIR before renaming to preserve original names
+    let original_hir = hir.clone();
+
     // Rename all nodes to conform to Rust's naming convention
     let hir = ic_hir_xform::rename::transform(
         hir,
@@ -115,5 +118,5 @@ pub fn codegen_rust(hir: &ic_hir::ResolvedGraph, options: RustOptions) -> Vec<Fi
     let hir = ic_hir_xform::rename::transform(hir, &target);
 
     // Generate using native Rust backend
-    codegen::RustGen::new(&hir, options).generate()
+    codegen::RustGen::new(&hir, &original_hir, options).generate()
 }

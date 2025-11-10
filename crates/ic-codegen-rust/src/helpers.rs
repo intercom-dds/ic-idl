@@ -32,6 +32,14 @@ use ic_hir::hir::{Def, DefFlags, DefId, DefKind, Numeric, PrimitiveTy, Ty, TyKin
 use crate::codegen::RustGen;
 
 impl RustGen<'_> {
+    pub fn original_name(&self, def_id: DefId) -> &str {
+        &self.original_hir.context.definitions.get(def_id).ident.name
+    }
+
+    pub fn original_qualified_name(&self, def_id: DefId) -> String {
+        self.original_hir.context.qualified_name(def_id)
+    }
+
     pub fn scoped_name(&self, target_def_id: DefId, _relative_to_def_id: DefId) -> String {
         let def = self.hir.context.definitions.get(target_def_id);
 
@@ -75,6 +83,21 @@ impl RustGen<'_> {
         members
     }
 
+    pub(crate) fn original_struct_members(
+        &self,
+        struct_ty: &ic_hir::hir::StructTy,
+    ) -> Vec<ic_hir::hir::Member> {
+        let mut members = Vec::new();
+        if let Some(parent_id) = struct_ty.parent {
+            let parent_def = self.original_hir.context.definitions.get(parent_id);
+            if let DefKind::Struct(parent_struct) = &parent_def.kind {
+                members.extend(self.original_struct_members(parent_struct));
+            }
+        }
+        members.extend(struct_ty.members.clone());
+        members
+    }
+
     pub fn member_type(&self, ty: &Ty) -> String {
         self.rust_type(ty, self.hir.order[0])
     }
@@ -88,6 +111,21 @@ impl RustGen<'_> {
             let parent_def = self.hir.context.definitions.get(parent_id);
             if let DefKind::Valuetype(parent_value) = &parent_def.kind {
                 members.extend(self.valuetype_members(parent_value));
+            }
+        }
+        members.extend(value_ty.members.clone());
+        members
+    }
+
+    pub(crate) fn original_valuetype_members(
+        &self,
+        value_ty: &ic_hir::hir::ValueTy,
+    ) -> Vec<ic_hir::hir::Member> {
+        let mut members = Vec::new();
+        if let Some(parent_id) = value_ty.parent {
+            let parent_def = self.original_hir.context.definitions.get(parent_id);
+            if let DefKind::Valuetype(parent_value) = &parent_def.kind {
+                members.extend(self.original_valuetype_members(parent_value));
             }
         }
         members.extend(value_ty.members.clone());

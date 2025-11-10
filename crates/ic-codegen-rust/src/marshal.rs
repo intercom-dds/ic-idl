@@ -46,7 +46,7 @@ fn primitive_type_kind(prim: PrimitiveTy) -> &'static str {
 
 impl RustGen<'_> {
     pub(crate) fn emit_type_info(&self, def: &Def, w: &mut Twine) {
-        let full_name = self.scoped_name(def.id, def.id).replace("crate::", "");
+        let full_name = self.original_qualified_name(def.id);
         let (kind, element_kind) = match &def.kind {
             DefKind::Union(_) => ("Union", "None"),
             DefKind::Enum(enum_ty) => {
@@ -96,14 +96,31 @@ impl RustGen<'_> {
         w!(w, "];\n\n");
     }
 
-    pub(crate) fn emit_member_info<'c, I>(members: I, w: &mut Twine)
-    where
+    pub(crate) fn emit_member_info<'c, I>(
+        &self,
+        def_id: ic_hir::hir::DefId,
+        members: I,
+        w: &mut Twine,
+    ) where
         I: IntoIterator<Item = &'c ic_hir::hir::Member>,
     {
+        let original_def = self.original_hir.context.definitions.get(def_id);
+        let original_members = match &original_def.kind {
+            DefKind::Struct(s) => self.original_struct_members(s),
+            DefKind::Except(e) => e.members.clone(),
+            DefKind::Valuetype(v) => self.original_valuetype_members(v),
+            _ => vec![],
+        };
+
         let member_info: Vec<_> = members
             .into_iter()
             .enumerate()
-            .map(|(i, m)| (m.ident.name.as_str(), i))
+            .map(|(i, m)| {
+                let name = original_members
+                    .get(i)
+                    .map_or(m.ident.name.as_str(), |orig_m| orig_m.ident.name.as_str());
+                (name, i)
+            })
             .collect();
         Self::emit_member_info_array(&member_info, w);
     }
@@ -177,7 +194,7 @@ impl RustGen<'_> {
         enum_ty: &ic_hir::hir::EnumTy,
         w: &mut Twine,
     ) {
-        let full_name = self.scoped_name(def.id, def.id).replace("crate::", "");
+        let full_name = self.original_qualified_name(def.id);
         let element_ty = primitive_type_kind(enum_ty.ty);
 
         w!(w, "const _: () = {\n");
@@ -210,7 +227,9 @@ impl RustGen<'_> {
             let field_def = self.hir.context.definitions.get(field_id);
             if let DefKind::Const(const_ty) = &field_def.kind {
                 let value = Self::format_numeric(&const_ty.value);
-                w!(w, "Self::", field_def, " => state.encode_variant::<", rust_ty, ">(\"", field_def, "\", ", value, "),\n");
+                let original_field_def = self.original_hir.context.definitions.get(field_id);
+                let original_name = &original_field_def.ident.name;
+                w!(w, "Self::", field_def, " => state.encode_variant::<", rust_ty, ">(\"", original_name, "\", ", value, "),\n");
             }
         }
         w!(w, "}\n");
@@ -266,7 +285,9 @@ impl RustGen<'_> {
         w!(w, "let value = match name {\n");
         for &field_id in &enum_ty.fields {
             let field_def = self.hir.context.definitions.get(field_id);
-            w!(w, "\"", field_def, "\" => Self::", field_def, ",\n");
+            let original_field_def = self.original_hir.context.definitions.get(field_id);
+            let original_name = &original_field_def.ident.name;
+            w!(w, "\"", original_name, "\" => Self::", field_def, ",\n");
         }
 
         w!(w, "_ => return Err(D::Error::custom(\"invalid enum value for type ", qual, "\")),\n");
@@ -277,20 +298,28 @@ impl RustGen<'_> {
     }
 
     pub(crate) fn emit_union_member_info(
-        _def: &Def,
+        &self,
+        def: &Def,
         union_ty: &ic_hir::hir::UnionTy,
         w: &mut Twine,
     ) {
+        let original_def = self.original_hir.context.definitions.get(def.id);
+        let original_union = match &original_def.kind {
+            DefKind::Union(u) => u,
+            _ => union_ty,
+        };
+
         // Discriminator has member_id 0, so start at 1 for members
         let mut member_id = 1;
         let member_info: Vec<_> = union_ty
             .variants
             .iter()
-            .filter(|v| !matches!(v.ty.kind, TyKind::Null))
-            .map(|v| {
+            .zip(&original_union.variants)
+            .filter(|(v, _)| !matches!(v.ty.kind, TyKind::Null))
+            .map(|(_, orig_v)| {
                 let id = member_id;
                 member_id += 1;
-                (v.ident.name.as_str(), id)
+                (orig_v.ident.name.as_str(), id)
             })
             .collect();
 

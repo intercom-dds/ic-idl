@@ -70,12 +70,21 @@ impl Module {
 
 pub(crate) struct RustGen<'a> {
     pub(crate) hir: &'a ResolvedGraph,
+    pub(crate) original_hir: &'a ResolvedGraph,
     pub(crate) options: RustOptions,
 }
 
 impl<'a> RustGen<'a> {
-    pub fn new(hir: &'a ResolvedGraph, options: RustOptions) -> Self {
-        Self { hir, options }
+    pub fn new(
+        hir: &'a ResolvedGraph,
+        original_hir: &'a ResolvedGraph,
+        options: RustOptions,
+    ) -> Self {
+        Self {
+            hir,
+            original_hir,
+            options,
+        }
     }
 
     pub fn generate(&self) -> Vec<File> {
@@ -478,7 +487,8 @@ impl<'a> RustGen<'a> {
         w!(w, "match s {\n");
         for &field_id in &enum_ty.fields {
             let field_def = self.hir.context.definitions.get(field_id);
-            w!(w, "\"", field_def, "\" => Ok(Self::", field_def, "),\n");
+            let original_name = self.original_name(field_id);
+            w!(w, "\"", original_name, "\" => Ok(Self::", field_def, "),\n");
         }
         w!(w, "_ => Err(::intercom_cts::error::UnknownVariant),\n");
         w!(w, "}\n");
@@ -637,7 +647,7 @@ impl<'a> RustGen<'a> {
                 self.emit_struct_impl(def, &members, w);
                 Self::emit_default_impl(def, w);
                 self.emit_type_info(def, w);
-                Self::emit_member_info(&members, w);
+                self.emit_member_info(def.id, &members, w);
                 Self::emit_marshal_impl(def, &members, w);
                 Self::emit_unmarshal_impl(def, &members, w);
                 Self::emit_type_info_close(w);
@@ -647,7 +657,7 @@ impl<'a> RustGen<'a> {
                 self.emit_struct_impl(def, &except_ty.members, w);
                 Self::emit_default_impl(def, w);
                 self.emit_type_info(def, w);
-                Self::emit_member_info(&except_ty.members, w);
+                self.emit_member_info(def.id, &except_ty.members, w);
                 Self::emit_marshal_impl(def, &except_ty.members, w);
                 Self::emit_unmarshal_impl(def, &except_ty.members, w);
                 Self::emit_type_info_close(w);
@@ -658,7 +668,7 @@ impl<'a> RustGen<'a> {
                 self.emit_struct_impl(def, &members, w);
                 Self::emit_default_impl(def, w);
                 self.emit_type_info(def, w);
-                Self::emit_member_info(&members, w);
+                self.emit_member_info(def.id, &members, w);
                 Self::emit_marshal_impl(def, &members, w);
                 Self::emit_unmarshal_impl(def, &members, w);
                 Self::emit_type_info_close(w);
@@ -668,7 +678,7 @@ impl<'a> RustGen<'a> {
                 self.emit_union_impl(def, union_ty, w);
                 Self::emit_default_impl(def, w);
                 self.emit_type_info(def, w);
-                Self::emit_union_member_info(def, union_ty, w);
+                self.emit_union_member_info(def, union_ty, w);
                 self.emit_union_marshal_impl(def, union_ty, w);
                 self.emit_union_unmarshal_impl(def, union_ty, w);
                 Self::emit_type_info_close(w);

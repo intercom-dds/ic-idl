@@ -100,11 +100,14 @@ pub fn codegen_rust(hir: &ic_hir::ResolvedGraph, options: RustOptions) -> Vec<Fi
     // Squash reopened modules into single definitions
     let hir = ic_hir_xform::squash_modules::transform(hir);
 
-    // Rename `DDS::XTypes` to `DDS::xtypes`
-    let hir = ic_hir_xform::rename_xtypes::transform(hir);
-
     // Keep a copy of the HIR before renaming to preserve original names
     let original_hir = hir.clone();
+
+    // Strip prefixes from enumerators
+    let hir = ic_hir_xform::enum_prefix::transform(hir);
+
+    // Rename `DDS::XTypes` to `DDS::xtypes`
+    let hir = ic_hir_xform::rename_xtypes::transform(hir);
 
     // Rename all nodes to conform to Rust's naming convention
     let hir = ic_hir_xform::rename::transform(

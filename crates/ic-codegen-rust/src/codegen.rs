@@ -30,7 +30,10 @@ use std::collections::BTreeMap;
 use ic_emit::printer::Twine;
 use ic_emit::{File, w};
 use ic_hir::ResolvedGraph;
-use ic_hir::hir::{Def, DefFlags, DefId, DefKind, Numeric, ParamKind, PrimitiveTy, Ty, TyKind};
+use ic_hir::annotation::{Optional, find_annotation};
+use ic_hir::hir::{
+    Def, DefFlags, DefId, DefKind, Member, Numeric, ParamKind, PrimitiveTy, Ty, TyKind,
+};
 
 use crate::RustOptions;
 use crate::helpers::{is_copy, is_debug, is_eq, is_hash, is_ord, is_trivial, log2, rust_primitive};
@@ -85,6 +88,14 @@ impl<'a> RustGen<'a> {
             original_hir,
             options,
         }
+    }
+
+    /// Check if a member has the @optional annotation
+    pub(crate) fn is_optional(&self, member: &Member) -> bool {
+        find_annotation::<Optional>(&member.annotations, "optional")
+            .and_then(|result| result.ok())
+            .map(|opt| opt.value)
+            .unwrap_or(false)
     }
 
     pub fn generate(&self) -> Vec<File> {
@@ -163,7 +174,12 @@ impl<'a> RustGen<'a> {
         let members = self.struct_members(struct_ty);
         for member in &members {
             let member_ty = self.member_type(&member.ty);
-            w!(w, "pub ", member.ident.name, ": ", member_ty, ",\n");
+            let field_ty = if self.is_optional(member) {
+                format!("::std::option::Option<{}>", member_ty)
+            } else {
+                member_ty
+            };
+            w!(w, "pub ", member.ident.name, ": ", field_ty, ",\n");
         }
         w!(w, "}\n\n");
     }
@@ -174,7 +190,12 @@ impl<'a> RustGen<'a> {
 
         for member in &except_ty.members {
             let member_ty = self.member_type(&member.ty);
-            w!(w, "pub ", member.ident.name, ": ", member_ty, ",\n");
+            let field_ty = if self.is_optional(member) {
+                format!("::std::option::Option<{}>", member_ty)
+            } else {
+                member_ty
+            };
+            w!(w, "pub ", member.ident.name, ": ", field_ty, ",\n");
         }
         w!(w, "}\n\n");
 
@@ -196,7 +217,12 @@ impl<'a> RustGen<'a> {
         let members = self.valuetype_members(value_ty);
         for member in &members {
             let member_ty = self.member_type(&member.ty);
-            w!(w, "pub ", member.ident.name, ": ", member_ty, ",\n");
+            let field_ty = if self.is_optional(member) {
+                format!("::std::option::Option<{}>", member_ty)
+            } else {
+                member_ty
+            };
+            w!(w, "pub ", member.ident.name, ": ", field_ty, ",\n");
         }
         w!(w, "}\n\n");
     }
@@ -616,7 +642,11 @@ impl<'a> RustGen<'a> {
         w!(w, "Self {\n");
         for member in members {
             w!(w, member.ident.name, ": ");
-            self.emit_const_value(&Numeric::Null, &member.ty, def.id, w);
+            if self.is_optional(member) {
+                w!(w, "::std::option::Option::None");
+            } else {
+                self.emit_const_value(&Numeric::Null, &member.ty, def.id, w);
+            }
             w!(w, ",\n");
         }
         w!(w, "}\n");
@@ -648,8 +678,8 @@ impl<'a> RustGen<'a> {
                 Self::emit_default_impl(def, w);
                 self.emit_type_info(def, w);
                 self.emit_member_info(def.id, w);
-                Self::emit_marshal_impl(def, &members, w);
-                Self::emit_unmarshal_impl(def, &members, w);
+                self.emit_marshal_impl(def, &members, w);
+                self.emit_unmarshal_impl(def, &members, w);
                 Self::emit_type_info_close(w);
             }
             DefKind::Except(except_ty) => {
@@ -658,8 +688,8 @@ impl<'a> RustGen<'a> {
                 Self::emit_default_impl(def, w);
                 self.emit_type_info(def, w);
                 self.emit_member_info(def.id, w);
-                Self::emit_marshal_impl(def, &except_ty.members, w);
-                Self::emit_unmarshal_impl(def, &except_ty.members, w);
+                self.emit_marshal_impl(def, &except_ty.members, w);
+                self.emit_unmarshal_impl(def, &except_ty.members, w);
                 Self::emit_type_info_close(w);
             }
             DefKind::Valuetype(value_ty) => {
@@ -669,8 +699,8 @@ impl<'a> RustGen<'a> {
                 Self::emit_default_impl(def, w);
                 self.emit_type_info(def, w);
                 self.emit_member_info(def.id, w);
-                Self::emit_marshal_impl(def, &members, w);
-                Self::emit_unmarshal_impl(def, &members, w);
+                self.emit_marshal_impl(def, &members, w);
+                self.emit_unmarshal_impl(def, &members, w);
                 Self::emit_type_info_close(w);
             }
             DefKind::Union(union_ty) => {

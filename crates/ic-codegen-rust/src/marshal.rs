@@ -80,17 +80,21 @@ impl RustGen<'_> {
         w!(w, "};\n\n");
     }
 
-    fn emit_member_info_array(members: &[(&str, usize)], w: &mut Twine) {
+    fn emit_member_info_array(members: &[(&str, usize, bool)], w: &mut Twine) {
         if members.is_empty() {
             return;
         }
 
         w!(w, "const MEMBER_INFO: &[::intercom_cts::MemberInfo<'static>] = &[\n");
-        for (name, id) in members {
+        for (name, id, is_optional) in members {
             w!(w, "::intercom_cts::MemberInfo {\n");
             w!(w, "name: \"", name, "\",\n");
             w!(w, "member_id: ", id.to_string(), ",\n");
-            w!(w, "flags: ::intercom_cts::MemberFlag::nil(),\n");
+            if *is_optional {
+                w!(w, "flags: ::intercom_cts::MemberFlag::IS_OPTIONAL,\n");
+            } else {
+                w!(w, "flags: ::intercom_cts::MemberFlag::nil(),\n");
+            }
             w!(w, "},\n");
         }
         w!(w, "];\n\n");
@@ -105,22 +109,37 @@ impl RustGen<'_> {
             _ => vec![],
         };
 
+        // Get the regular (renamed) members to check for optional annotations
+        let def = self.hir.context.definitions.get(def_id);
+        let members = match &def.kind {
+            DefKind::Struct(s) => self.struct_members(s),
+            DefKind::Except(e) => e.members.clone(),
+            DefKind::Valuetype(v) => self.valuetype_members(v),
+            _ => vec![],
+        };
+
         let member_info: Vec<_> = original_members
             .iter()
             .enumerate()
-            .map(|(i, m)| (m.ident.name.as_str(), i))
+            .map(|(i, m)| {
+                let is_optional = members
+                    .get(i)
+                    .map(|mem| self.is_optional(mem))
+                    .unwrap_or(false);
+                (m.ident.name.as_str(), i, is_optional)
+            })
             .collect();
         Self::emit_member_info_array(&member_info, w);
     }
 
-    pub(crate) fn emit_marshal_impl<'c, I>(def: &Def, members: I, w: &mut Twine)
+    pub(crate) fn emit_marshal_impl<'c, I>(&self, def: &Def, members: I, w: &mut Twine)
     where
         I: IntoIterator<Item = &'c ic_hir::hir::Member>,
     {
         let member_data: Vec<_> = members
             .into_iter()
             .enumerate()
-            .map(|(i, m)| (m.ident.name.clone(), i))
+            .map(|(i, m)| (m.ident.name.clone(), i, self.is_optional(m)))
             .collect();
 
         w!(w, "impl ::intercom_cts::Marshal for ", def, " {\n");
@@ -136,15 +155,19 @@ impl RustGen<'_> {
         }
         w!(w, "state = ar.encode_struct(&TYPE_INFO)?;\n");
 
-        for (name, idx) in &member_data {
-            w!(w, "state.encode_field(&MEMBER_INFO[", idx.to_string(), "], &self.", name, ")?;\n");
+        for (name, idx, is_optional) in &member_data {
+            if *is_optional {
+                w!(w, "state.encode_optional(&MEMBER_INFO[", idx.to_string(), "], &self.", name, ")?;\n");
+            } else {
+                w!(w, "state.encode_field(&MEMBER_INFO[", idx.to_string(), "], &self.", name, ")?;\n");
+            }
         }
         w!(w, "state.end()\n");
         w!(w, "}\n");
         w!(w, "}\n\n");
     }
 
-    pub(crate) fn emit_unmarshal_impl<'c, I>(def: &Def, members: I, w: &mut Twine)
+    pub(crate) fn emit_unmarshal_impl<'c, I>(&self, def: &Def, members: I, w: &mut Twine)
     where
         I: IntoIterator<Item = &'c ic_hir::hir::Member>,
     {
@@ -307,7 +330,7 @@ impl RustGen<'_> {
             .map(|(_, orig_v)| {
                 let id = member_id;
                 member_id += 1;
-                (orig_v.ident.name.as_str(), id)
+                (orig_v.ident.name.as_str(), id, false) // Union variants are never optional
             })
             .collect();
 

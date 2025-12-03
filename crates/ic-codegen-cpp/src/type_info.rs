@@ -647,7 +647,10 @@ impl CppGen<'_> {
     // Main entry point for emitting member info
     pub(crate) fn emit_member_info(&self, w: &mut Twine, def: &Def) {
         match &def.kind {
-            DefKind::Struct(s) => self.emit_struct_members(w, def, &s.members),
+            DefKind::Struct(_) => {
+                let members = self.collect_all_members(def.id);
+                self.emit_struct_members(w, def, &members);
+            }
             DefKind::Union(u) => self.emit_union_members(w, def, u),
             DefKind::Enum(e) => self.emit_enum_members(w, def, &e.fields, e.ty),
             DefKind::Bitmask(b) => self.emit_bitmask_members(w, def, &b.flags, b.ty),
@@ -685,7 +688,7 @@ impl CppGen<'_> {
         };
 
         let member_count = match def_kind {
-            DefKind::Struct(s) => s.members.len(),
+            DefKind::Struct(_) => self.collect_all_members(def.id).len(),
             DefKind::Union(u) => u.variants.len() + 1,
             DefKind::Enum(e) => e.fields.len(),
             DefKind::Bitmask(b) => b.flags.len(),

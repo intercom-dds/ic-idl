@@ -318,9 +318,10 @@ impl CppGen<'_> {
         &self,
         w: &mut Twine,
         def: &Def,
-        members: &[ic_hir::hir::Member],
+        _members: &[ic_hir::hir::Member],
     ) {
         let qualified_name = self.scoped_name(def.id, None);
+        let all_members = self.collect_all_members(def.id);
 
         w!(w, "template <class Archive>\n");
         w!(w, "struct ic_cts::Serializer<Archive, ", qualified_name, "> {\n");
@@ -328,7 +329,7 @@ impl CppGen<'_> {
         w!(w, "auto a_info = &::ic_cts::TypeTraits<", qualified_name, ">::type_info;\n");
         w!(w, "typename Archive::StructValue serializer(a_archive, a_info);\n");
 
-        for (i, member) in members.iter().enumerate() {
+        for (i, member) in all_members.iter().enumerate() {
             let member_name = &member.ident.name;
             w!(w, "serializer.io(a_info->members[", i.to_string(), "], a_value.", member_name, ");\n");
         }

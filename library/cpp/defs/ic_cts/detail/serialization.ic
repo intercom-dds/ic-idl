@@ -83,52 +83,52 @@ inline bool enum_to_string(std::string& res, T value, const TypeInfo* type) {
     return false;
 }
 
-// TODO(idarcar):
-// template <typename T>
-// inline bool stringToEnum(T& value, const char* string, const TypeInfo* type) {
-//     if (type) {
-//         if (type->kind == dcps::xtypes::TK_ENUM) {
-//             for (uint32_t i = 0; i < type->member_count; ++i) {
-//                 if (strcmp(string, type->members[i].name) == 0) {
-//                     value = static_cast<T>(type->members[i].id);
-//                     return true;
-//                 }
-//             }
-//         } else if (type->kind == dcps::xtypes::TK_BITMASK) {
-//             bool res = true;
-//             uint64_t uvalue = 0;
-//             corba::String_var copy = string;
-//             char* ptr = copy.inout();
-//             while (ptr) {
-//                 char* end = ptr;
-//                 while (*end && *end != '|' && *end != ' ') {
-//                     ++end;
-//                 }
-//                 char* next = *end ? end + 1 : nullptr;
-//                 *end = '\0';
-//                 if (ptr != end) {
-//                     bool found = false;
-//                     for (uint32_t i = 0; i < type->member_count; ++i) {
-//                         if (strcmp(ptr, type->members[i].name) == 0) {
-//                             uvalue |= (1ULL << type->members[i].id);
-//                             found = true;
-//                             break;
-//                         }
-//                     }
-//                     if (!found) {
-//                         res = false;
-//                     }
-//                 }
-//                 ptr = next;
-//             }
-//             if (res) {
-//                 value = static_cast<T>(uvalue);
-//             }
-//             return res;
-//         }
-//     }
-//     return false;
-// }
+template <typename T>
+inline bool string_to_enum(T& value, const char* string, const TypeInfo* type) {
+    if (type) {
+        if (type->kind == dcps::xtypes::TK_ENUM) {
+            for (uint32_t i = 0; i < type->member_count; ++i) {
+                if (std::strcmp(string, type->members[i].name) == 0) {
+                    value = static_cast<T>(type->members[i].id);
+                    return true;
+                }
+            }
+        } else if (type->kind == dcps::xtypes::TK_BITMASK) {
+            //  TODO
+            //  bool res = true;
+            //  uint64_t uvalue = 0;
+            //  corba::String_var copy = string;
+            //  char* ptr = copy.inout();
+            //  while (ptr) {
+            //      char* end = ptr;
+            //      while (*end && *end != '|' && *end != ' ') {
+            //          ++end;
+            //      }
+            //      char* next = *end ? end + 1 : nullptr;
+            //      *end = '\0';
+            //      if (ptr != end) {
+            //          bool found = false;
+            //          for (uint32_t i = 0; i < type->member_count; ++i) {
+            //              if (strcmp(ptr, type->members[i].name) == 0) {
+            //                  uvalue |= (1ULL << type->members[i].id);
+            //                  found = true;
+            //                  break;
+            //              }
+            //          }
+            //          if (!found) {
+            //              res = false;
+            //          }
+            //      }
+            //      ptr = next;
+            //  }
+            //  if (res) {
+            //      value = static_cast<T>(uvalue);
+            //  }
+            //  return res;
+        }
+    }
+    return false;
+}
 
 #define CTS_DEFINE_PRIMITIVE_TYPE(type)                                                          \
     template <class Archive>                                                                     \

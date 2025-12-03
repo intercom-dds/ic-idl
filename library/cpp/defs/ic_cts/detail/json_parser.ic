@@ -1580,16 +1580,12 @@ inline void JsonReader::read_integer(T& a_value, const TypeInfo& a_info) {
     if (current_node.get_integer(a_value)) {
         return;
     }
-    // if (a_info.kind == intercom::dcps::xtypes::TK_ENUM ||
-    //     a_info.kind == intercom::dcps::xtypes::TK_BITMASK) {
-    //     corba::String_var str;
-    //     Uint64_t uval;
-    //     if (current_node.get_string(str) && stringToEnum(uval, str.c_str(), &a_info)) {
-    //         a_value = static_cast<T>(uval);
-    //         return;
-    //     }
-    //     throw std::runtime_error("Unknown enumeration value in json unmarshal");
-    // }
+    if (a_info.kind == dcps::xtypes::TK_ENUM || a_info.kind == dcps::xtypes::TK_BITMASK) {
+        std::string str;
+        if (current_node.get_string(str) && string_to_enum(a_value, str.c_str(), &a_info)) {
+            return;
+        }
+    }
     if (read_from_string(a_value, a_info)) {
         return;
     }

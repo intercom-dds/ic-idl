@@ -328,3 +328,64 @@ const long abstract = SIZE + 5;      // 'any' is a keyword
 
     assert_snapshot!(test_lint(source));
 }
+
+#[test]
+fn keyword_uppercase() {
+    let source = r"
+struct INT32 {
+    long value;
+};
+";
+
+    assert_snapshot!(test_lint(source));
+}
+
+#[test]
+fn keyword_mixed_case() {
+    let source = r"
+struct Int32 {
+    long value;
+};
+";
+
+    assert_snapshot!(test_lint(source));
+}
+
+#[test]
+fn keyword_case_insensitive_field_names() {
+    let source = r"
+struct Data {
+    long OCTET;
+    long Octet;
+    long oCTET;
+};
+";
+
+    assert_snapshot!(test_lint(source));
+}
+
+#[test]
+fn keyword_case_insensitive_module_name() {
+    let source = r"
+module ABSTRACT {
+    struct Point {
+        long x;
+    };
+};
+";
+
+    assert_snapshot!(test_lint(source));
+}
+
+#[test]
+fn keyword_case_insensitive_enum_values() {
+    let source = r"
+enum Type {
+    INT32,
+    UInt64,
+    OCTET
+};
+";
+
+    assert_snapshot!(test_lint(source));
+}

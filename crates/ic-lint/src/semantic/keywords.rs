@@ -58,15 +58,14 @@ impl<'a> Visitor<'a> for KwIdent<'a> {
     }
 
     fn visit_ident(&mut self, ident: &'a ic_syntax::Ident) {
-        if IDL_KEYWORDS.contains(&ident.name.as_str())
+        if let Some(kw) = IDL_KEYWORDS
+            .iter()
+            .find(|v| v.eq_ignore_ascii_case(&ident.name))
             && (ident.span.end.offset - ident.span.start.offset) as usize == ident.name.len()
         {
             let fixed = format!("_{}", ident.name);
             let diag = error_span(
-                format!(
-                    "`{}` is a keyword and may not be used as an identifier",
-                    ident.name,
-                ),
+                format!("`{kw}` is a keyword and may not be used as an identifier"),
                 Label::new(ident.span).message("this is an IDL keyword"),
             )
             .help(format!(

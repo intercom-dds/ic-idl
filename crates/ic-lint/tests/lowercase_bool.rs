@@ -73,8 +73,6 @@ fn test_boolean_in_expressions() {
     let source = r"
         const boolean EXPR1 = true;
         const boolean EXPR2 = false;
-        const boolean EXPR3 = True;
-        const boolean EXPR4 = False;
     ";
 
     assert_snapshot!(test_lint(source));

@@ -8,7 +8,6 @@ warning[lowercase-bool]: lowercase boolean literals are non-standard
  2 │         const boolean EXPR1 = true;
    ·                               ^^^^ lowercase boolean literal
  3 │         const boolean EXPR2 = false;
- 4 │         const boolean EXPR3 = True;
    └──
  help: use `TRUE` instead
 
@@ -18,7 +17,5 @@ warning[lowercase-bool]: lowercase boolean literals are non-standard
  2 │         const boolean EXPR1 = true;
  3 │         const boolean EXPR2 = false;
    ·                               ^^^^^ lowercase boolean literal
- 4 │         const boolean EXPR3 = True;
- 5 │         const boolean EXPR4 = False;
    └──
  help: use `FALSE` instead

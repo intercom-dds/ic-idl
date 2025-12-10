@@ -1,0 +1,14 @@
+---
+source: crates/ic-lint/tests/keywords.rs
+assertion_line: 377
+expression: test_lint(source)
+---
+error[keywords]: `abstract` is a keyword and may not be used as an identifier
+   ┌ test.idl:2:8
+   │
+ 2 │ module ABSTRACT {
+   ·        ^^^^^^^^ this is an IDL keyword
+ 3 │     struct Point {
+ 4 │         long x;
+   └──
+ help: the keyword can be escaped by changing to `_ABSTRACT`

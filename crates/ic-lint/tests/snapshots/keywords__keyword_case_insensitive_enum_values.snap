@@ -1,0 +1,38 @@
+---
+source: crates/ic-lint/tests/keywords.rs
+assertion_line: 390
+expression: test_lint(source)
+---
+error[keywords]: `int32` is a keyword and may not be used as an identifier
+   ┌ test.idl:3:5
+   │
+ 2 │ enum Type {
+ 3 │     INT32,
+   ·     ^^^^^ this is an IDL keyword
+ 4 │     UInt64,
+ 5 │     OCTET
+   └──
+ help: the keyword can be escaped by changing to `_INT32`
+
+error[keywords]: `uint64` is a keyword and may not be used as an identifier
+   ┌ test.idl:4:5
+   │
+ 2 │ enum Type {
+ 3 │     INT32,
+ 4 │     UInt64,
+   ·     ^^^^^^ this is an IDL keyword
+ 5 │     OCTET
+ 6 │ };
+   └──
+ help: the keyword can be escaped by changing to `_UInt64`
+
+error[keywords]: `octet` is a keyword and may not be used as an identifier
+   ┌ test.idl:5:5
+   │
+ 3 │     INT32,
+ 4 │     UInt64,
+ 5 │     OCTET
+   ·     ^^^^^ this is an IDL keyword
+ 6 │ };
+   └──
+ help: the keyword can be escaped by changing to `_OCTET`

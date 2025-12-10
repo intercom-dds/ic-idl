@@ -177,6 +177,7 @@ impl Value {
 }
 
 impl Default for Value {
+    #[allow(clippy::derivable_impls)]
     fn default() -> Self {
         Self::Null
     }

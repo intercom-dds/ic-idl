@@ -1,0 +1,17 @@
+---
+source: crates/ic-lint/tests/duplicate_bounds.rs
+assertion_line: 54
+expression: test_lint_hir(source)
+---
+error[duplicate-bounds]: @min is already defined on typedef `MyInt`
+   ┌ test.idl:5:6
+   │
+ 2 │ @min(0) typedef int32 MyInt;
+   ·  ^^^ @min already defined on `MyInt`
+ 3 │ 
+ 4 │ struct Foo {
+ 5 │     @min(5) MyInt value;
+   ·      ^^^ @min on member
+ 6 │ };
+   └──
+ help: remove @min from either the member or the typedef

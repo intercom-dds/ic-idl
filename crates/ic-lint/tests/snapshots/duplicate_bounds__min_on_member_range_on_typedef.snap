@@ -1,0 +1,17 @@
+---
+source: crates/ic-lint/tests/duplicate_bounds.rs
+assertion_line: 102
+expression: test_lint_hir(source)
+---
+error[duplicate-bounds]: @min conflicts with @range on typedef `MyInt`
+   ┌ test.idl:5:6
+   │
+ 2 │ @range(min = 0, max = 100) typedef int32 MyInt;
+   ·  ^^^^^ conflicting annotation on `MyInt`
+ 3 │ 
+ 4 │ struct Foo {
+ 5 │     @min(10) MyInt value;
+   ·      ^^^ @min on member
+ 6 │ };
+   └──
+ help: use either @range or @min/@max, not both

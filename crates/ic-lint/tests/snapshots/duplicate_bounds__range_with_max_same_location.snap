@@ -1,0 +1,17 @@
+---
+source: crates/ic-lint/tests/duplicate_bounds.rs
+assertion_line: 90
+expression: test_lint_hir(source)
+---
+error[duplicate-bounds]: @range cannot be used together with @max
+   ┌ test.idl:3:6
+   │
+ 2 │ struct Foo {
+ 3 │     @range(min = 0, max = 100)
+   ·      ^^^^^ @range annotation here
+ 4 │     @max(50)
+   ·      ^^^ @max annotation here
+ 5 │     int32 value;
+ 6 │ };
+   └──
+ help: use either @range or @min/@max, not both

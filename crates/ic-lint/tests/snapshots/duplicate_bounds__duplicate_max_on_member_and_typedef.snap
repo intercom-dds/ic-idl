@@ -1,0 +1,17 @@
+---
+source: crates/ic-lint/tests/duplicate_bounds.rs
+assertion_line: 42
+expression: test_lint_hir(source)
+---
+error[duplicate-bounds]: @max is already defined on typedef `MyInt`
+   ┌ test.idl:5:6
+   │
+ 2 │ @max(5) typedef int32 MyInt;
+   ·  ^^^ @max already defined on `MyInt`
+ 3 │ 
+ 4 │ struct Foo {
+ 5 │     @max(10) MyInt value;
+   ·      ^^^ @max on member
+ 6 │ };
+   └──
+ help: remove @max from either the member or the typedef

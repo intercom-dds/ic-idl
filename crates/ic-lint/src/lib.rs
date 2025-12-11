@@ -459,6 +459,7 @@ define_lints! {
         pedantic::null::NullVariant,
         pedantic::omitted_in::OmittedIn,
         pedantic::scoped_lit::ScopedLit,
+        semantic::ann_template::AnnTemplate,
         semantic::keywords::KwIdent,
         semantic::oneway::NonVoidOneway,
         semantic::redundant_inheritance::RedundantInheritance,

@@ -1,4 +1,4 @@
-// Copyright 2024 KONGSBERG
+// Copyright 2025 KONGSBERG
 //
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions are met:
@@ -25,28 +25,92 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-pub mod ann_template;
-pub mod bit_bound;
-pub mod conflicting_annotations;
-pub mod derived_struct_key;
-pub mod duplicate_annotations_hir;
-pub mod duplicate_case_labels;
-pub mod duplicate_enum_values;
-pub mod duplicate_name;
-pub mod exhaustive_union_default;
-pub mod initializer_list_size;
-pub mod invalid_annotation_target;
-pub mod invalid_enum_literal;
-pub mod invalid_enum_value;
-pub mod invalid_inheritance;
-pub mod keywords;
-pub mod multiple_default_cases;
-pub mod oneway;
-pub mod recursive_type;
-pub mod redundant_inheritance;
-pub mod union_case_label_range;
-pub mod union_case_type_mismatch;
-pub mod union_key;
-pub mod unreachable_union_cases;
-pub mod void_ty;
-pub mod zero_bound;
+use insta::assert_snapshot;
+
+mod common;
+use common::test_lint;
+
+#[test]
+fn sequence_with_annotation() {
+    let source = r"
+struct Foo {
+    sequence<@key long> field;
+};
+";
+
+    assert_snapshot!(test_lint(source));
+}
+
+#[test]
+fn map_with_key_annotation() {
+    let source = r"
+struct Foo {
+    map<@key string, long> field;
+};
+";
+
+    assert_snapshot!(test_lint(source));
+}
+
+#[test]
+fn map_with_value_annotation() {
+    let source = r"
+struct Foo {
+    map<string, @key long> field;
+};
+";
+
+    assert_snapshot!(test_lint(source));
+}
+
+#[test]
+fn map_with_both_annotations() {
+    let source = r"
+struct Foo {
+    map<@key string, @key long> field;
+};
+";
+
+    assert_snapshot!(test_lint(source));
+}
+
+#[test]
+fn nested_sequence_with_annotation() {
+    let source = r"
+struct Foo {
+    sequence<sequence<@key long>> field;
+};
+";
+
+    assert_snapshot!(test_lint(source));
+}
+
+#[test]
+fn valid_sequence_no_annotation() {
+    let source = r"
+struct Foo {
+    sequence<long> field;
+};
+";
+
+    let output = test_lint(source);
+    assert!(
+        output.is_empty(),
+        "Expected no warnings for valid sequence, but got: {output}"
+    );
+}
+
+#[test]
+fn valid_map_no_annotation() {
+    let source = r"
+struct Foo {
+    map<string, long> field;
+};
+";
+
+    let output = test_lint(source);
+    assert!(
+        output.is_empty(),
+        "Expected no warnings for valid map, but got: {output}"
+    );
+}

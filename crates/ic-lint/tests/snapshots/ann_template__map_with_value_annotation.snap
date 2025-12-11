@@ -1,0 +1,14 @@
+---
+source: crates/ic-lint/tests/ann_template.rs
+assertion_line: 63
+expression: test_lint(source)
+---
+error[ann-template]: element types cannot be annotated
+   ┌ test.idl:3:18
+   │
+ 2 │ struct Foo {
+ 3 │     map<string, @key long> field;
+   ·                  ^^^ invalid use of annotation
+ 4 │ };
+   └──
+ help: create a typedef for the element type and apply the annotation there

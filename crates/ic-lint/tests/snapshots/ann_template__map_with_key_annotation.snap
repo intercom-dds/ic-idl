@@ -1,0 +1,14 @@
+---
+source: crates/ic-lint/tests/ann_template.rs
+assertion_line: 52
+expression: test_lint(source)
+---
+error[ann-template]: key types cannot be annotated
+   ┌ test.idl:3:10
+   │
+ 2 │ struct Foo {
+ 3 │     map<@key string, long> field;
+   ·          ^^^ invalid use of annotation
+ 4 │ };
+   └──
+ help: create a typedef for the key type and apply the annotation there

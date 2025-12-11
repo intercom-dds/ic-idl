@@ -180,3 +180,42 @@ fn test_unknown_annotation_on_exception() {
     let output = common::test_lint_hir(input);
     insta::assert_snapshot!(output);
 }
+
+#[test]
+fn test_typo_suggestion_key() {
+    let input = r"
+        struct TestStruct {
+            @ky
+            long field;
+        };
+    ";
+
+    let output = common::test_lint_hir(input);
+    insta::assert_snapshot!(output);
+}
+
+#[test]
+fn test_typo_suggestion_optional() {
+    let input = r"
+        struct TestStruct {
+            @optoinal
+            long field;
+        };
+    ";
+
+    let output = common::test_lint_hir(input);
+    insta::assert_snapshot!(output);
+}
+
+#[test]
+fn test_no_suggestion_for_unrelated() {
+    let input = r"
+        struct TestStruct {
+            @completely_unrelated_name
+            long field;
+        };
+    ";
+
+    let output = common::test_lint_hir(input);
+    insta::assert_snapshot!(output);
+}

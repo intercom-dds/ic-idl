@@ -1,5 +1,6 @@
 ---
 source: crates/ic-lint/tests/unknown_annotation.rs
+assertion_line: 77
 expression: output
 ---
 warning[unknown-annotation]: unknown annotation `UnknownAnnotation`
@@ -13,6 +14,7 @@ warning[unknown-annotation]: unknown annotation `UnknownAnnotation`
  8 │         struct TestStruct {
  9 │             @id(1)
    └──
+ help: did you mean `@KnownAnnotation`?
 
 warning[unknown-annotation]: unknown annotation `UnknownField`
     ┌ test.idl:10:14

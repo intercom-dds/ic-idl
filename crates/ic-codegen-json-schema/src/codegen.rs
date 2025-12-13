@@ -275,19 +275,62 @@ impl<'a> JsonSchemaGen<'a> {
 
     fn generate_type_schema(&self, ty: &Ty, current_file_id: FileId) -> Value {
         match &ty.kind {
-            TyKind::Sequence { ty: elem_ty, .. } | TyKind::Array { ty: elem_ty, .. } => {
+            TyKind::Primitive(_) => {
+                let ty_name = self.json_type(ty);
+                value!({ "type": ty_name })
+            }
+            TyKind::String { bound, .. } => {
+                let mut obj = value!({ "type": "string" });
+                if let Some(b) = bound {
+                    if let Value::Object(ref mut map) = obj {
+                        map.insert("maxLength".to_string(), Value::Number((*b).into()));
+                    }
+                }
+                obj
+            }
+            TyKind::Array {
+                ty: elem_ty, len, ..
+            } => {
                 let items_schema = self.generate_type_schema(elem_ty, current_file_id);
-                value!({
+                let mut map = BTreeMap::new();
+                map.insert("type".to_string(), Value::String("array".to_string()));
+                map.insert("items".to_string(), items_schema);
+                map.insert("minItems".to_string(), Value::Number((*len).into()));
+                map.insert("maxItems".to_string(), Value::Number((*len).into()));
+                Value::Object(map)
+            }
+            TyKind::Sequence {
+                ty: elem_ty, bound, ..
+            } => {
+                let items_schema = self.generate_type_schema(elem_ty, current_file_id);
+                let mut obj = value!({
                     "type": "array",
                     "items": items_schema
-                })
+                });
+                if let Some(b) = bound {
+                    if let Value::Object(ref mut map) = obj {
+                        map.insert("maxItems".to_string(), Value::Number((*b).into()));
+                    }
+                }
+                obj
             }
-            TyKind::Map { elem: elem_ty, .. } => {
-                let additional_properties = self.generate_type_schema(elem_ty, current_file_id);
-                value!({
-                    "type": "object",
-                    "additionalProperties": additional_properties
-                })
+            TyKind::Map {
+                elem: elem_ty,
+                bound,
+                ..
+            } => {
+                let elem_schema = self.generate_type_schema(elem_ty, current_file_id);
+                let mut patterns = BTreeMap::new();
+                patterns.insert(".*".to_string(), elem_schema);
+
+                let mut map = BTreeMap::new();
+                map.insert("type".to_string(), Value::String("object".to_string()));
+                map.insert("patternProperties".to_string(), Value::Object(patterns));
+
+                if let Some(b) = bound {
+                    map.insert("maxProperties".to_string(), Value::Number((*b).into()));
+                }
+                Value::Object(map)
             }
             TyKind::Adt(def_id) => {
                 let ref_url = self.make_reference(*def_id, current_file_id);

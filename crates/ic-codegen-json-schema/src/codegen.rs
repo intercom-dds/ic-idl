@@ -123,13 +123,12 @@ impl<'a> JsonSchemaGen<'a> {
         format!("{base}{path_clean}")
     }
 
-    fn output_filename(&self, file_id: FileId) -> PathBuf {
-        let path = self.source_map.included_as(file_id);
-        PathBuf::from(path.file_name().unwrap_or(path.as_os_str())).with_extension("json")
+    fn output_path(&self, file_id: FileId) -> PathBuf {
+        self.source_map.included_as(file_id).with_extension("json")
     }
 
     fn schema_uri(&self, file_id: FileId) -> String {
-        let filename = self.output_filename(file_id);
+        let filename = self.output_path(file_id);
         let filename_str = filename.to_string_lossy();
         let default_uri = "file:///".to_string();
         let base = self
@@ -526,7 +525,7 @@ impl<'a> JsonSchemaGen<'a> {
         let source = json::to_string(&root, true).ok()?;
 
         Some(File::Generated {
-            path: self.output_filename(file_id),
+            path: self.output_path(file_id),
             source,
         })
     }

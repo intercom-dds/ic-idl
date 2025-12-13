@@ -457,12 +457,84 @@ impl<'a> JavaGen<'a> {
         w!(w, "}\n\n");
 
         self.emit_accessors(w, def.id, &struct_ty.members);
+        self.emit_struct_equals(w, def, &struct_ty.members);
+        self.emit_struct_hashcode(w, &struct_ty.members);
 
         for member in &struct_ty.members {
             let java_type = self.java_type(&member.ty, def.id);
             w!(w, "protected ", java_type, " ", member.ident.name, ";\n");
         }
         w!(w, "}\n");
+    }
+
+    fn emit_struct_equals(&self, w: &mut Twine, def: &Def, members: &[Member]) {
+        w!(w, "@Override\n");
+        w!(w, "public boolean equals(Object obj) {\n");
+        w!(w, "if (this == obj) {\n");
+        w!(w, "return true;\n");
+        w!(w, "}\n");
+        w!(w, "if (obj == null || getClass() != obj.getClass()) {\n");
+        w!(w, "return false;\n");
+        w!(w, "}\n");
+        w!(w, def, " other = (", def, ") obj;\n");
+
+        if members.is_empty() {
+            w!(w, "return true;\n");
+        } else {
+            w!(w, "return ");
+            for (i, member) in members.iter().enumerate() {
+                if i > 0 {
+                    w!(w, "\n&& ");
+                }
+                let resolved = self.hir.context.resolve_ty(&member.ty);
+                let name = &member.ident.name;
+                match &resolved.kind {
+                    TyKind::Primitive(prim) => match prim {
+                        PrimitiveTy::Float32 => {
+                            w!(w, "Float.compare(", name, ", other.", name, ") == 0");
+                        }
+                        PrimitiveTy::Float64 | PrimitiveTy::Float128 => {
+                            w!(w, "Double.compare(", name, ", other.", name, ") == 0");
+                        }
+                        _ => {
+                            w!(w, name, " == other.", name);
+                        }
+                    },
+                    TyKind::Array { .. } => {
+                        w!(w, "java.util.Arrays.deepEquals(", name, ", other.", name, ")");
+                    }
+                    _ => {
+                        w!(w, "java.util.Objects.equals(", name, ", other.", name, ")");
+                    }
+                }
+            }
+            w!(w, ";\n");
+        }
+        w!(w, "}\n\n");
+    }
+
+    fn emit_struct_hashcode(&self, w: &mut Twine, members: &[Member]) {
+        w!(w, "@Override\n");
+        w!(w, "public int hashCode() {\n");
+        if members.is_empty() {
+            w!(w, "return 0;\n");
+        } else {
+            w!(w, "return java.util.Objects.hash(");
+            for (i, member) in members.iter().enumerate() {
+                if i > 0 {
+                    w!(w, ", ");
+                }
+                let resolved = self.hir.context.resolve_ty(&member.ty);
+                let name = &member.ident.name;
+                if matches!(resolved.kind, TyKind::Array { .. }) {
+                    w!(w, "java.util.Arrays.deepHashCode(", name, ")");
+                } else {
+                    w!(w, name);
+                }
+            }
+            w!(w, ");\n");
+        }
+        w!(w, "}\n\n");
     }
 
     fn emit_default_ctor(&self, w: &mut Twine, def_id: DefId, members: &[Member]) {
@@ -784,6 +856,9 @@ impl<'a> JavaGen<'a> {
         w!(w, "}\n");
         w!(w, "}\n\n");
 
+        self.emit_union_equals(w, def, union_ty);
+        self.emit_union_hashcode(w, union_ty);
+
         w!(w, "private ", disc_type, " discriminator;\n");
         for variant in &union_ty.variants {
             let java_type = self.java_type(&variant.ty, def.id);
@@ -791,6 +866,90 @@ impl<'a> JavaGen<'a> {
         }
 
         w!(w, "}\n");
+    }
+
+    fn emit_union_equals(&self, w: &mut Twine, def: &Def, union_ty: &UnionTy) {
+        w!(w, "@Override\n");
+        w!(w, "public boolean equals(Object obj) {\n");
+        w!(w, "if (this == obj) {\n");
+        w!(w, "return true;\n");
+        w!(w, "}\n");
+        w!(w, "if (obj == null || getClass() != obj.getClass()) {\n");
+        w!(w, "return false;\n");
+        w!(w, "}\n");
+        w!(w, def, " other = (", def, ") obj;\n");
+
+        let disc_resolved = self.hir.context.resolve_ty(&union_ty.disc.ty);
+        if let TyKind::Adt(_) = &disc_resolved.kind {
+            w!(w, "if (!java.util.Objects.equals(discriminator, other.discriminator)) {\n");
+        } else {
+            w!(w, "if (discriminator != other.discriminator) {\n");
+        }
+        w!(w, "return false;\n");
+        w!(w, "}\n");
+
+        w!(w, "switch (discriminator) {\n");
+        for variant in &union_ty.variants {
+            self.emit_variant_cases(w, &union_ty.disc.ty, variant, def.id);
+            let resolved = self.hir.context.resolve_ty(&variant.ty);
+            let name = &variant.ident.name;
+            match &resolved.kind {
+                TyKind::Primitive(prim) => match prim {
+                    PrimitiveTy::Float32 => {
+                        w!(w, "return Float.compare(", name, ", other.", name, ") == 0;\n");
+                    }
+                    PrimitiveTy::Float64 | PrimitiveTy::Float128 => {
+                        w!(w, "return Double.compare(", name, ", other.", name, ") == 0;\n");
+                    }
+                    _ => {
+                        w!(w, "return ", name, " == other.", name, ";\n");
+                    }
+                },
+                TyKind::Array { .. } => {
+                    w!(w, "return java.util.Arrays.deepEquals(", name, ", other.", name, ");\n");
+                }
+                _ => {
+                    w!(w, "return java.util.Objects.equals(", name, ", other.", name, ");\n");
+                }
+            }
+        }
+        w!(w, "}\n");
+        w!(w, "return true;\n");
+        w!(w, "}\n\n");
+    }
+
+    fn emit_union_hashcode(&self, w: &mut Twine, union_ty: &UnionTy) {
+        w!(w, "@Override\n");
+        w!(w, "public int hashCode() {\n");
+        w!(w, "int result = java.util.Objects.hashCode(discriminator);\n");
+        w!(w, "switch (discriminator) {\n");
+        for variant in &union_ty.variants {
+            self.emit_variant_cases_no_def(w, variant);
+            let resolved = self.hir.context.resolve_ty(&variant.ty);
+            let name = &variant.ident.name;
+            if matches!(resolved.kind, TyKind::Array { .. }) {
+                w!(w, "result = 31 * result + java.util.Arrays.deepHashCode(", name, ");\n");
+            } else {
+                w!(w, "result = 31 * result + java.util.Objects.hashCode(", name, ");\n");
+            }
+            w!(w, "break;\n");
+        }
+        w!(w, "}\n");
+        w!(w, "return result;\n");
+        w!(w, "}\n\n");
+    }
+
+    fn emit_variant_cases_no_def(&self, w: &mut Twine, variant: &Variant) {
+        w.dedent();
+        for label in &variant.labels {
+            if let Some(val) = self.hir.context.integer_value(&label.value) {
+                w!(w, "case ", val, ":\n");
+            }
+        }
+        if variant.is_default {
+            w!(w, "default:\n");
+        }
+        w.indent();
     }
 
     fn emit_union_clear(&self, w: &mut Twine, union_ty: &UnionTy) {

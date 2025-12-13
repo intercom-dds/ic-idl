@@ -202,6 +202,33 @@ impl<'a> JsonSchemaGen<'a> {
         }
     }
 
+    fn apply_bounds(&self, annotations: &[ic_hir::hir::Ann], obj: &mut BTreeMap<String, Value>) {
+        for ann in annotations {
+            match ann.ident.name.as_str() {
+                "min" => {
+                    if let Some(arg) = ann.args.first() {
+                        obj.insert("minimum".to_string(), self.format_numeric(&arg.value));
+                    }
+                }
+                "max" => {
+                    if let Some(arg) = ann.args.first() {
+                        obj.insert("maximum".to_string(), self.format_numeric(&arg.value));
+                    }
+                }
+                "range" => {
+                    for arg in &ann.args {
+                        if arg.ident.name == "min" {
+                            obj.insert("minimum".to_string(), self.format_numeric(&arg.value));
+                        } else if arg.ident.name == "max" {
+                            obj.insert("maximum".to_string(), self.format_numeric(&arg.value));
+                        }
+                    }
+                }
+                _ => {}
+            }
+        }
+    }
+
     fn generate_preamble(&self, def: &Def) -> BTreeMap<String, Value> {
         let mut obj = BTreeMap::new();
 
@@ -235,7 +262,7 @@ impl<'a> JsonSchemaGen<'a> {
         let is_final_struct = def.annotations.iter().any(|a| a.ident.name == "final");
 
         for member in &struct_ty.members {
-            let member_obj = match &member.ty.kind {
+            let mut member_obj = match &member.ty.kind {
                 TyKind::Primitive(_) | TyKind::String { .. } => {
                     let ty_name = self.json_type(&member.ty);
                     value!({ "type": ty_name })
@@ -288,6 +315,11 @@ impl<'a> JsonSchemaGen<'a> {
             if is_final_struct && !is_optional {
                 required.push(Value::String(member.ident.name.clone()));
             }
+
+            if let Value::Object(ref mut map) = member_obj {
+                self.apply_bounds(&member.annotations, map);
+            }
+
             properties.insert(member.ident.name.clone(), member_obj);
         }
 
@@ -311,7 +343,11 @@ impl<'a> JsonSchemaGen<'a> {
         let one_of: Vec<Value> = union_ty
             .variants
             .iter()
-            .map(|variant| {
+            .filter_map(|variant| {
+                if matches!(variant.ty.kind, TyKind::Null) {
+                    return None;
+                }
+
                 let discriminator = if let Some(label) = variant.labels.first() {
                     let const_val = self.format_numeric(&label.value);
                     let ty_name = self.json_type(&union_ty.disc.ty);
@@ -327,7 +363,7 @@ impl<'a> JsonSchemaGen<'a> {
                     })
                 };
 
-                let value_obj = match &variant.ty.kind {
+                let mut value_obj = match &variant.ty.kind {
                     TyKind::Primitive(_) | TyKind::String { .. } => {
                         let ty_name = self.json_type(&variant.ty);
                         value!({ "type": ty_name })
@@ -340,6 +376,10 @@ impl<'a> JsonSchemaGen<'a> {
                         value!({ "type": "object" })
                     }
                 };
+
+                if let Value::Object(ref mut map) = value_obj {
+                    self.apply_bounds(&variant.annotations, map);
+                }
 
                 let variant_name = &variant.ident.name;
                 let mut variant_schema = BTreeMap::new();
@@ -354,7 +394,7 @@ impl<'a> JsonSchemaGen<'a> {
                     "required".to_string(),
                     value!(["$discriminator", variant_name]),
                 );
-                Value::Object(variant_schema)
+                Some(Value::Object(variant_schema))
             })
             .collect();
 
@@ -386,6 +426,9 @@ impl<'a> JsonSchemaGen<'a> {
             "type".to_string(),
             Value::String(self.json_type(&typedef.ty).to_string()),
         );
+
+        self.apply_bounds(&def.annotations, &mut obj);
+
         Value::Object(obj)
     }
 

@@ -26,9 +26,9 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 default:
-  image: "alpine:3.19"
+  image: "alpine:3.22"
   before_script:
-    - apk add --no-cache rustup cmake mold git gcc g++ samurai musl-dev clang-extra-tools
+    - apk add --no-cache rustup cmake mold git gcc g++ samurai musl-dev clang-extra-tools cargo-deny
     - rustup-init --profile minimal --default-toolchain 1.88.0 -y
     - source $HOME/.cargo/env
 

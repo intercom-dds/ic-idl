@@ -29,6 +29,7 @@
 
 use std::collections::HashSet;
 use std::fmt::Write;
+use std::hash::{Hash, Hasher};
 use std::path::PathBuf;
 
 use ic_emit::printer::{IterExt, Twine, w};
@@ -142,6 +143,47 @@ impl<'a> JavaGen<'a> {
             TyKind::Sequence { .. } | TyKind::Map { .. } => true,
             TyKind::Array { ty, .. } => self.needs_deep_copy(ty),
             _ => self.is_cloneable_adt(ty),
+        }
+    }
+
+    fn serial_version_uid(&self, def: &Def, members: &[Member]) -> i64 {
+        let mut hasher = std::collections::hash_map::DefaultHasher::new();
+        def.ident.name.hash(&mut hasher);
+        for member in members {
+            member.ident.name.hash(&mut hasher);
+            self.hash_type(&member.ty, &mut hasher);
+        }
+        hasher.finish() as i64
+    }
+
+    fn serial_version_uid_union(&self, def: &Def, union_ty: &UnionTy) -> i64 {
+        let mut hasher = std::collections::hash_map::DefaultHasher::new();
+        def.ident.name.hash(&mut hasher);
+        self.hash_type(&union_ty.disc.ty, &mut hasher);
+        for variant in &union_ty.variants {
+            variant.ident.name.hash(&mut hasher);
+            self.hash_type(&variant.ty, &mut hasher);
+        }
+        hasher.finish() as i64
+    }
+
+    fn hash_type(&self, ty: &Ty, hasher: &mut impl Hasher) {
+        let resolved = self.hir.context.resolve_ty(ty);
+        std::mem::discriminant(&resolved.kind).hash(hasher);
+        match &resolved.kind {
+            TyKind::Primitive(prim) => std::mem::discriminant(prim).hash(hasher),
+            TyKind::Adt(def_id) => self.java_name(*def_id).hash(hasher),
+            TyKind::Array { ty, len, .. } => {
+                len.hash(hasher);
+                self.hash_type(ty, hasher);
+            }
+            TyKind::Sequence { ty, .. } => self.hash_type(ty, hasher),
+            TyKind::Map { key, elem, .. } => {
+                self.hash_type(key, hasher);
+                self.hash_type(elem, hasher);
+            }
+            TyKind::String { .. } => "String".hash(hasher),
+            _ => {}
         }
     }
 
@@ -444,6 +486,8 @@ impl<'a> JavaGen<'a> {
             w!(w, " extends ", parent);
         }
         w!(w, " implements java.io.Serializable {\n");
+        let uid = self.serial_version_uid(def, &struct_ty.members);
+        w!(w, "private static final long serialVersionUID = ", uid, "L;\n\n");
 
         self.emit_default_ctor(w, def.id, &struct_ty.members);
         self.emit_copy_ctor(w, def, def.parent, &struct_ty.members);
@@ -766,6 +810,8 @@ impl<'a> JavaGen<'a> {
 
     fn emit_except(&self, w: &mut Twine, def: &Def, except_ty: &ExceptTy) {
         w!(w, "public class ", def, " extends java.lang.RuntimeException {\n");
+        let uid = self.serial_version_uid(def, &except_ty.members);
+        w!(w, "private static final long serialVersionUID = ", uid, "L;\n\n");
 
         self.emit_default_ctor(w, def.id, &except_ty.members);
         self.emit_copy_ctor(w, def, None, &except_ty.members);
@@ -825,6 +871,9 @@ impl<'a> JavaGen<'a> {
         let (disc_get, disc_set) = self.disc_get_set();
 
         w!(w, "public final class ", def, " implements java.io.Serializable {\n");
+        let uid = self.serial_version_uid_union(def, union_ty);
+        w!(w, "private static final long serialVersionUID = ", uid, "L;\n\n");
+
         self.emit_union_constructors(w, def, union_ty);
 
         w!(w, "@Override\n");

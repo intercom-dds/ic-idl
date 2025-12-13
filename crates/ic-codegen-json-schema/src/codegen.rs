@@ -343,6 +343,7 @@ impl<'a> JsonSchemaGen<'a> {
         current_file_id: FileId,
     ) -> Value {
         let mut obj = Self::generate_preamble(def);
+        obj.insert("type".to_string(), Value::String("object".to_string()));
 
         if let Some(parent_id) = struct_ty.parent {
             let ref_url = self.make_reference(parent_id, current_file_id);

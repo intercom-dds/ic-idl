@@ -319,13 +319,10 @@ impl<'a> JsonSchemaGen<'a> {
                 bound,
                 ..
             } => {
-                let elem_schema = self.generate_type_schema(elem_ty, current_file_id);
-                let mut patterns = BTreeMap::new();
-                patterns.insert(".*".to_string(), elem_schema);
-
+                let additional_properties = self.generate_type_schema(elem_ty, current_file_id);
                 let mut map = BTreeMap::new();
                 map.insert("type".to_string(), Value::String("object".to_string()));
-                map.insert("patternProperties".to_string(), Value::Object(patterns));
+                map.insert("additionalProperties".to_string(), additional_properties);
 
                 if let Some(b) = bound {
                     map.insert("maxProperties".to_string(), Value::Number((*b).into()));
@@ -380,7 +377,9 @@ impl<'a> JsonSchemaGen<'a> {
         }
 
         obj.insert("properties".to_string(), Value::Object(properties));
-        obj.insert("required".to_string(), Value::Array(required));
+        if !required.is_empty() {
+            obj.insert("required".to_string(), Value::Array(required));
+        }
 
         if is_final_struct {
             obj.insert("additionalProperties".to_string(), Value::Bool(false));
@@ -481,14 +480,9 @@ impl<'a> JsonSchemaGen<'a> {
     ) -> Value {
         let mut obj = Self::generate_preamble(def);
 
-        if let TyKind::Adt(def_id) = &typedef.ty.kind {
-            let ref_url = self.make_reference(*def_id, current_file_id);
-            obj.insert("$ref".to_string(), Value::String(ref_url));
-        } else {
-            obj.insert(
-                "type".to_string(),
-                Value::String(self.json_type(&typedef.ty).to_string()),
-            );
+        let type_schema = self.generate_type_schema(&typedef.ty, current_file_id);
+        if let Value::Object(map) = type_schema {
+            obj.extend(map);
         }
 
         self.apply_bounds(&def.annotations, &mut obj);
@@ -532,5 +526,74 @@ impl<'a> JsonSchemaGen<'a> {
             path: self.output_filename(file_id),
             source,
         })
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn join_uri_basic() {
+        assert_eq!(
+            JsonSchemaGen::join_uri("https://example.com", "schema.json"),
+            "https://example.com/schema.json"
+        );
+    }
+
+    #[test]
+    fn join_uri_trailing_slash() {
+        assert_eq!(
+            JsonSchemaGen::join_uri("https://example.com/", "schema.json"),
+            "https://example.com/schema.json"
+        );
+    }
+
+    #[test]
+    fn join_uri_leading_slash_in_path() {
+        assert_eq!(
+            JsonSchemaGen::join_uri("https://example.com", "/schema.json"),
+            "https://example.com/schema.json"
+        );
+    }
+
+    #[test]
+    fn join_uri_both_slashes() {
+        assert_eq!(
+            JsonSchemaGen::join_uri("https://example.com/", "/schema.json"),
+            "https://example.com/schema.json"
+        );
+    }
+
+    #[test]
+    fn join_uri_empty_base() {
+        assert_eq!(
+            JsonSchemaGen::join_uri("", "schema.json"),
+            "schema.json"
+        );
+    }
+
+    #[test]
+    fn join_uri_empty_base_leading_slash() {
+        assert_eq!(
+            JsonSchemaGen::join_uri("", "/schema.json"),
+            "schema.json"
+        );
+    }
+
+    #[test]
+    fn join_uri_backslashes() {
+        assert_eq!(
+            JsonSchemaGen::join_uri("file:///", "path\\to\\schema.json"),
+            "file:///path/to/schema.json"
+        );
+    }
+
+    #[test]
+    fn join_uri_file_scheme() {
+        assert_eq!(
+            JsonSchemaGen::join_uri("file:///", "schema.json"),
+            "file:///schema.json"
+        );
     }
 }

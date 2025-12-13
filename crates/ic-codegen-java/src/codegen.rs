@@ -119,6 +119,31 @@ impl<'a> JavaGen<'a> {
         )
     }
 
+    fn is_cloneable(&self, ty: &Ty) -> bool {
+        let resolved = self.hir.context.resolve_ty(ty);
+        match &resolved.kind {
+            TyKind::Adt(def_id) => {
+                let def = self.hir.context.base_def_of(*def_id);
+                matches!(
+                    def.kind,
+                    DefKind::Struct(_)
+                        | DefKind::Union(_)
+                        | DefKind::Valuetype(_)
+                        | DefKind::Except(_)
+                )
+            }
+            _ => false,
+        }
+    }
+
+    fn needs_deep_copy(&self, ty: &Ty) -> bool {
+        let resolved = self.hir.context.resolve_ty(ty);
+        matches!(
+            resolved.kind,
+            TyKind::Sequence { .. } | TyKind::Map { .. } | TyKind::Array { .. }
+        ) || self.is_cloneable(ty)
+    }
+
     fn java_name(&self, def_id: DefId) -> &str {
         &self.hir.context.definitions.get(def_id).ident.name
     }
@@ -464,22 +489,17 @@ impl<'a> JavaGen<'a> {
             let resolved_ty = self.hir.context.resolve_ty(&member.ty);
 
             match &resolved_ty.kind {
-                TyKind::Sequence { .. } => {
-                    w!(w, "this.", mem, " = new java.util.ArrayList<>(other.", mem, ");\n");
+                TyKind::Sequence { ty, .. } => {
+                    self.emit_sequence_deep_copy(w, mem, ty, def.id);
                 }
                 TyKind::Array { .. } => {
-                    let (dimensions, base_type) = self.array_dimensions(&member.ty, def.id);
-                    if dimensions.len() > 1 {
-                        w!(w, "this.", mem, " = new ", &base_type);
-                        for dim in &dimensions {
-                            w!(w, "[", dim, "]");
-                        }
-                        w!(w, ";\n");
-                    }
-                    self.emit_array_clone(w, mem, &dimensions);
+                    self.emit_array_deep_copy(w, def.id, mem, &member.ty);
                 }
-                TyKind::Map { .. } => {
-                    w!(w, "this.", mem, " = new java.util.HashMap<>(other.", mem, ");\n");
+                TyKind::Map { key, elem, .. } => {
+                    self.emit_map_deep_copy(w, mem, key, elem, def.id);
+                }
+                TyKind::Adt(_) if self.is_cloneable(&member.ty) => {
+                    w!(w, "this.", mem, " = other.", mem, " != null ? other.", mem, ".clone() : null;\n");
                 }
                 _ => {
                     w!(w, "this.", mem, " = other.", mem, ";\n");
@@ -490,20 +510,123 @@ impl<'a> JavaGen<'a> {
         w!(w, "}\n\n");
     }
 
-    fn emit_array_clone(&self, w: &mut Twine, name: &str, dimensions: &[usize]) {
-        for (idx, depth) in dimensions.iter().enumerate().take(dimensions.len() - 1) {
-            let idx = format!("_i{idx}");
-            w!(w, "for (int ", idx, " = 0; ", idx, " < ", depth, "; ", idx, "++) {\n");
+    fn emit_sequence_deep_copy(&self, w: &mut Twine, name: &str, elem_ty: &Ty, def_id: DefId) {
+        w!(w, "this.", name, " = new java.util.ArrayList<>(other.", name, ".size());\n");
+        w!(w, "for (var _elem : other.", name, ") {\n");
+        if self.is_cloneable(elem_ty) {
+            w!(w, "this.", name, ".add(_elem != null ? _elem.clone() : null);\n");
+        } else if self.needs_deep_copy(elem_ty) {
+            let resolved = self.hir.context.resolve_ty(elem_ty);
+            match &resolved.kind {
+                TyKind::Sequence { ty, .. } => {
+                    let inner_type = self.boxed_java_type(ty, def_id);
+                    w!(w, "var _copy = new java.util.ArrayList<", inner_type, ">(_elem.size());\n");
+                    w!(w, "for (var _inner : _elem) {\n");
+                    if self.is_cloneable(ty) {
+                        w!(w, "_copy.add(_inner != null ? _inner.clone() : null);\n");
+                    } else {
+                        w!(w, "_copy.add(_inner);\n");
+                    }
+                    w!(w, "}\n");
+                    w!(w, "this.", name, ".add(_copy);\n");
+                }
+                _ => {
+                    w!(w, "this.", name, ".add(_elem);\n");
+                }
+            }
+        } else {
+            w!(w, "this.", name, ".add(_elem);\n");
+        }
+        w!(w, "}\n");
+    }
+
+    fn emit_map_deep_copy(
+        &self,
+        w: &mut Twine,
+        name: &str,
+        key_ty: &Ty,
+        elem_ty: &Ty,
+        def_id: DefId,
+    ) {
+        let key_type = self.boxed_java_type(key_ty, def_id);
+        let elem_type = self.boxed_java_type(elem_ty, def_id);
+        w!(w, "this.", name, " = new java.util.HashMap<", key_type, ", ", elem_type, ">();\n");
+        w!(w, "for (var _entry : other.", name, ".entrySet()) {\n");
+        if self.is_cloneable(elem_ty) {
+            w!(w, "this.", name, ".put(_entry.getKey(), _entry.getValue() != null ? _entry.getValue().clone() : null);\n");
+        } else {
+            w!(w, "this.", name, ".put(_entry.getKey(), _entry.getValue());\n");
+        }
+        w!(w, "}\n");
+    }
+
+    fn emit_array_deep_copy(&self, w: &mut Twine, def_id: DefId, name: &str, ty: &Ty) {
+        let (dimensions, base_type) = self.array_dimensions(ty, def_id);
+        let innermost_ty = self.get_innermost_array_type(ty);
+        let needs_elem_clone = self.is_cloneable(&innermost_ty);
+
+        w!(w, "this.", name, " = new ", &base_type);
+        for dim in &dimensions {
+            w!(w, "[", dim, "]");
+        }
+        w!(w, ";\n");
+
+        if needs_elem_clone {
+            self.emit_array_deep_clone_loop(w, name, &dimensions);
+        } else {
+            self.emit_array_shallow_clone(w, name, &dimensions);
+        }
+    }
+
+    fn get_innermost_array_type(&self, ty: &Ty) -> Ty {
+        let mut current = ty.clone();
+        loop {
+            let resolved = self.hir.context.resolve_ty(&current);
+            if let TyKind::Array { ty: inner, .. } = resolved.kind {
+                current = *inner;
+            } else {
+                return resolved;
+            }
+        }
+    }
+
+    fn emit_array_deep_clone_loop(&self, w: &mut Twine, name: &str, dimensions: &[usize]) {
+        for (idx, dim) in dimensions.iter().enumerate() {
+            let var = format!("_i{idx}");
+            w!(w, "for (int ", var, " = 0; ", var, " < ", dim, "; ", var, "++) {\n");
         }
 
         let mut indices = String::new();
-        for d in 0..dimensions.len() - 1 {
-            _ = write!(indices, "[_i{d}]");
+        for idx in 0..dimensions.len() {
+            _ = write!(indices, "[_i{idx}]");
+        }
+
+        w!(w, "if (other.", name, indices, " != null) {\n");
+        w!(w, "this.", name, indices, " = other.", name, indices, ".clone();\n");
+        w!(w, "}\n");
+
+        for _ in 0..dimensions.len() {
+            w!(w, "}\n");
+        }
+    }
+
+    fn emit_array_shallow_clone(&self, w: &mut Twine, name: &str, dimensions: &[usize]) {
+        for (idx, dim) in dimensions.iter().enumerate().take(dimensions.len() - 1) {
+            let var = format!("_i{idx}");
+            w!(w, "for (int ", var, " = 0; ", var, " < ", dim, "; ", var, "++) {\n");
+        }
+
+        let mut indices = String::new();
+        for idx in 0..dimensions.len() - 1 {
+            _ = write!(indices, "[_i{idx}]");
         }
 
         let last_dim = dimensions[dimensions.len() - 1];
-        w!(w, "this.", name, indices, " = java.util.Arrays.copyOf(");
-        w!(w, "other.", name, indices, ", ", last_dim, ");\n");
+        if indices.is_empty() {
+            w!(w, "this.", name, " = java.util.Arrays.copyOf(other.", name, ", ", last_dim, ");\n");
+        } else {
+            w!(w, "this.", name, indices, " = java.util.Arrays.copyOf(other.", name, indices, ", ", last_dim, ");\n");
+        }
 
         for _ in 0..dimensions.len() - 1 {
             w!(w, "}\n");

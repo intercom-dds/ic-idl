@@ -275,10 +275,6 @@ impl<'a> JsonSchemaGen<'a> {
 
     fn generate_type_schema(&self, ty: &Ty, current_file_id: FileId) -> Value {
         match &ty.kind {
-            TyKind::Primitive(_) => {
-                let ty_name = self.json_type(ty);
-                value!({ "type": ty_name })
-            }
             TyKind::String { bound, .. } => {
                 let mut obj = value!({ "type": "string" });
                 if let Some(b) = bound {
@@ -407,11 +403,7 @@ impl<'a> JsonSchemaGen<'a> {
         let one_of: Vec<Value> = union_ty
             .variants
             .iter()
-            .filter_map(|variant| {
-                if matches!(variant.ty.kind, TyKind::Null) {
-                    return None;
-                }
-
+            .map(|variant| {
                 let discriminator = if let Some(label) = variant.labels.first() {
                     let const_val = self.format_numeric(&label.value);
                     let ty_name = self.json_type(&union_ty.disc.ty);
@@ -427,26 +419,36 @@ impl<'a> JsonSchemaGen<'a> {
                     })
                 };
 
-                let mut value_obj = self.generate_type_schema(&variant.ty, current_file_id);
+                let mut variant_schema = BTreeMap::new();
 
-                if let Value::Object(ref mut map) = value_obj {
-                    self.apply_bounds(&variant.annotations, map);
+                if matches!(variant.ty.kind, TyKind::Null) {
+                    variant_schema.insert(
+                        "properties".to_string(),
+                        value!({ "$discriminator": discriminator }),
+                    );
+                    variant_schema.insert("required".to_string(), value!(["$discriminator"]));
+                } else {
+                    let mut value_obj = self.generate_type_schema(&variant.ty, current_file_id);
+
+                    if let Value::Object(ref mut map) = value_obj {
+                        self.apply_bounds(&variant.annotations, map);
+                    }
+
+                    let variant_name = &variant.ident.name;
+                    variant_schema.insert(
+                        "properties".to_string(),
+                        value!({
+                            "$discriminator": discriminator,
+                            variant_name: value_obj
+                        }),
+                    );
+                    variant_schema.insert(
+                        "required".to_string(),
+                        value!(["$discriminator", variant_name]),
+                    );
                 }
 
-                let variant_name = &variant.ident.name;
-                let mut variant_schema = BTreeMap::new();
-                variant_schema.insert(
-                    "properties".to_string(),
-                    value!({
-                        "$discriminator": discriminator,
-                        variant_name: value_obj
-                    }),
-                );
-                variant_schema.insert(
-                    "required".to_string(),
-                    value!(["$discriminator", variant_name]),
-                );
-                Some(Value::Object(variant_schema))
+                Value::Object(variant_schema)
             })
             .collect();
 
@@ -567,18 +569,12 @@ mod tests {
 
     #[test]
     fn join_uri_empty_base() {
-        assert_eq!(
-            JsonSchemaGen::join_uri("", "schema.json"),
-            "schema.json"
-        );
+        assert_eq!(JsonSchemaGen::join_uri("", "schema.json"), "schema.json");
     }
 
     #[test]
     fn join_uri_empty_base_leading_slash() {
-        assert_eq!(
-            JsonSchemaGen::join_uri("", "/schema.json"),
-            "schema.json"
-        );
+        assert_eq!(JsonSchemaGen::join_uri("", "/schema.json"), "schema.json");
     }
 
     #[test]

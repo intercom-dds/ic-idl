@@ -196,7 +196,12 @@ impl<'a> JsonSchemaGen<'a> {
                 let def = self.hir.context.definitions.get(*def_id);
                 Value::String(def.ident.name.clone())
             }
-            _ => Value::Null,
+            Numeric::Null
+            | Numeric::Array { .. }
+            | Numeric::Sequence { .. }
+            | Numeric::Map { .. }
+            | Numeric::Struct { .. }
+            | Numeric::Union { .. } => Value::Null,
         }
     }
 
@@ -446,13 +451,19 @@ impl<'a> JsonSchemaGen<'a> {
         &self,
         def: &Def,
         typedef: &ic_hir::hir::AliasTy,
-        _current_file_id: FileId,
+        current_file_id: FileId,
     ) -> Value {
         let mut obj = Self::generate_preamble(def);
-        obj.insert(
-            "type".to_string(),
-            Value::String(self.json_type(&typedef.ty).to_string()),
-        );
+
+        if let TyKind::Adt(def_id) = &typedef.ty.kind {
+            let ref_url = self.make_reference(*def_id, current_file_id);
+            obj.insert("$ref".to_string(), Value::String(ref_url));
+        } else {
+            obj.insert(
+                "type".to_string(),
+                Value::String(self.json_type(&typedef.ty).to_string()),
+            );
+        }
 
         self.apply_bounds(&def.annotations, &mut obj);
 

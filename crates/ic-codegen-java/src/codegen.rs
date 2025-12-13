@@ -216,13 +216,8 @@ impl<'a> JavaGen<'a> {
                 let type_name = self.scoped_name(*def_id, relative_def);
                 let def = self.hir.context.definitions.get(*def_id);
                 match &def.kind {
-                    DefKind::Enum(_) => {
-                        let first_field = if let DefKind::Enum(enum_ty) = &def.kind {
-                            enum_ty.fields.first().copied()
-                        } else {
-                            None
-                        };
-                        if let Some(field_id) = first_field {
+                    DefKind::Enum(enum_ty) => {
+                        if let Some(&field_id) = enum_ty.fields.first() {
                             let field_name = self.java_name(field_id);
                             format!("{type_name}.{field_name}")
                         } else {
@@ -481,7 +476,7 @@ impl<'a> JavaGen<'a> {
                         }
                         w!(w, ";\n");
                     }
-                    self.emit_array_clone(w, mem, &dimensions, 0);
+                    self.emit_array_clone(w, mem, &dimensions);
                 }
                 TyKind::Map { .. } => {
                     w!(w, "this.", mem, " = new java.util.HashMap<>(other.", mem, ");\n");
@@ -495,7 +490,7 @@ impl<'a> JavaGen<'a> {
         w!(w, "}\n\n");
     }
 
-    fn emit_array_clone(&self, w: &mut Twine, name: &str, dimensions: &[usize], _depth: usize) {
+    fn emit_array_clone(&self, w: &mut Twine, name: &str, dimensions: &[usize]) {
         for (idx, depth) in dimensions.iter().enumerate().take(dimensions.len() - 1) {
             let idx = format!("_i{idx}");
             w!(w, "for (int ", idx, " = 0; ", idx, " < ", depth, "; ", idx, "++) {\n");
@@ -828,9 +823,8 @@ impl<'a> JavaGen<'a> {
     fn emit_interface(&self, w: &mut Twine, def: &Def, interface_ty: &InterfaceTy) {
         w!(w, "public interface ", def, " {\n");
 
-        // TODO: setter/getter for attributes?
         for proto in &interface_ty.prototypes {
-            self.emit_proto(w, def, proto, true);
+            self.emit_proto(w, def, proto, false);
             w!(w, ";\n");
         }
 
@@ -885,7 +879,7 @@ impl<'a> JavaGen<'a> {
     }
 
     fn emit_const(&self, w: &mut Twine, def: &Def, const_ty: &ConstTy) {
-        w!(w, "public interface ", def, "{ \n");
+        w!(w, "public interface ", def, " {\n");
         let java_type = self.java_type(&const_ty.ty, def.id);
         let value = self.format_numeric(&const_ty.value, &const_ty.ty, def.id);
 

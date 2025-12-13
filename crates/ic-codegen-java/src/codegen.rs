@@ -119,7 +119,7 @@ impl<'a> JavaGen<'a> {
         )
     }
 
-    fn is_cloneable(&self, ty: &Ty) -> bool {
+    fn is_cloneable_adt(&self, ty: &Ty) -> bool {
         let resolved = self.hir.context.resolve_ty(ty);
         match &resolved.kind {
             TyKind::Adt(def_id) => {
@@ -138,10 +138,11 @@ impl<'a> JavaGen<'a> {
 
     fn needs_deep_copy(&self, ty: &Ty) -> bool {
         let resolved = self.hir.context.resolve_ty(ty);
-        matches!(
-            resolved.kind,
-            TyKind::Sequence { .. } | TyKind::Map { .. } | TyKind::Array { .. }
-        ) || self.is_cloneable(ty)
+        match &resolved.kind {
+            TyKind::Sequence { .. } | TyKind::Map { .. } => true,
+            TyKind::Array { ty, .. } => self.needs_deep_copy(ty),
+            _ => self.is_cloneable_adt(ty),
+        }
     }
 
     fn java_name(&self, def_id: DefId) -> &str {
@@ -498,7 +499,7 @@ impl<'a> JavaGen<'a> {
                 TyKind::Map { key, elem, .. } => {
                     self.emit_map_deep_copy(w, mem, key, elem, def.id);
                 }
-                TyKind::Adt(_) if self.is_cloneable(&member.ty) => {
+                TyKind::Adt(_) if self.is_cloneable_adt(&member.ty) => {
                     w!(w, "this.", mem, " = other.", mem, " != null ? other.", mem, ".clone() : null;\n");
                 }
                 _ => {
@@ -512,31 +513,9 @@ impl<'a> JavaGen<'a> {
 
     fn emit_sequence_deep_copy(&self, w: &mut Twine, name: &str, elem_ty: &Ty, def_id: DefId) {
         w!(w, "this.", name, " = new java.util.ArrayList<>(other.", name, ".size());\n");
-        w!(w, "for (var _elem : other.", name, ") {\n");
-        if self.is_cloneable(elem_ty) {
-            w!(w, "this.", name, ".add(_elem != null ? _elem.clone() : null);\n");
-        } else if self.needs_deep_copy(elem_ty) {
-            let resolved = self.hir.context.resolve_ty(elem_ty);
-            match &resolved.kind {
-                TyKind::Sequence { ty, .. } => {
-                    let inner_type = self.boxed_java_type(ty, def_id);
-                    w!(w, "var _copy = new java.util.ArrayList<", inner_type, ">(_elem.size());\n");
-                    w!(w, "for (var _inner : _elem) {\n");
-                    if self.is_cloneable(ty) {
-                        w!(w, "_copy.add(_inner != null ? _inner.clone() : null);\n");
-                    } else {
-                        w!(w, "_copy.add(_inner);\n");
-                    }
-                    w!(w, "}\n");
-                    w!(w, "this.", name, ".add(_copy);\n");
-                }
-                _ => {
-                    w!(w, "this.", name, ".add(_elem);\n");
-                }
-            }
-        } else {
-            w!(w, "this.", name, ".add(_elem);\n");
-        }
+        w!(w, "for (var _e0 : other.", name, ") {\n");
+        let copy_expr = self.deep_copy_expr("_e0", elem_ty, def_id, 1);
+        w!(w, "this.", name, ".add(", copy_expr, ");\n");
         w!(w, "}\n");
     }
 
@@ -552,18 +531,46 @@ impl<'a> JavaGen<'a> {
         let elem_type = self.boxed_java_type(elem_ty, def_id);
         w!(w, "this.", name, " = new java.util.HashMap<", key_type, ", ", elem_type, ">();\n");
         w!(w, "for (var _entry : other.", name, ".entrySet()) {\n");
-        if self.is_cloneable(elem_ty) {
-            w!(w, "this.", name, ".put(_entry.getKey(), _entry.getValue() != null ? _entry.getValue().clone() : null);\n");
-        } else {
-            w!(w, "this.", name, ".put(_entry.getKey(), _entry.getValue());\n");
-        }
+        let copy_expr = self.deep_copy_expr("_entry.getValue()", elem_ty, def_id, 0);
+        w!(w, "this.", name, ".put(_entry.getKey(), ", copy_expr, ");\n");
         w!(w, "}\n");
+    }
+
+    fn deep_copy_expr(&self, src: &str, ty: &Ty, def_id: DefId, depth: usize) -> String {
+        let resolved = self.hir.context.resolve_ty(ty);
+        match &resolved.kind {
+            _ if self.is_cloneable_adt(ty) => {
+                format!("{src} != null ? {src}.clone() : null")
+            }
+            TyKind::Sequence { ty: inner, .. } => {
+                let inner_copy =
+                    self.deep_copy_expr(&format!("_e{depth}"), inner, def_id, depth + 1);
+                let elem_type = self.boxed_java_type(inner, def_id);
+                format!(
+                    "{src} != null ? {src}.stream().map(_e{depth} -> \
+                     {inner_copy}).collect(java.util.stream.Collectors.toCollection(() -> new \
+                     java.util.ArrayList<{elem_type}>())) : null"
+                )
+            }
+            TyKind::Map { key, elem, .. } => {
+                let key_type = self.boxed_java_type(key, def_id);
+                let elem_type = self.boxed_java_type(elem, def_id);
+                let val_copy = self.deep_copy_expr(&format!("_v{depth}"), elem, def_id, depth + 1);
+                format!(
+                    "{src} != null ? \
+                     {src}.entrySet().stream().collect(java.util.stream.Collectors.toMap(java.\
+                     util.Map.Entry::getKey, _e{depth} -> {{ var _v{depth} = \
+                     _e{depth}.getValue(); return {val_copy}; }}, (a, b) -> b, () -> new \
+                     java.util.HashMap<{key_type}, {elem_type}>())) : null"
+                )
+            }
+            _ => src.to_string(),
+        }
     }
 
     fn emit_array_deep_copy(&self, w: &mut Twine, def_id: DefId, name: &str, ty: &Ty) {
         let (dimensions, base_type) = self.array_dimensions(ty, def_id);
         let innermost_ty = self.get_innermost_array_type(ty);
-        let needs_elem_clone = self.is_cloneable(&innermost_ty);
 
         w!(w, "this.", name, " = new ", &base_type);
         for dim in &dimensions {
@@ -571,8 +578,8 @@ impl<'a> JavaGen<'a> {
         }
         w!(w, ";\n");
 
-        if needs_elem_clone {
-            self.emit_array_deep_clone_loop(w, name, &dimensions);
+        if self.needs_deep_copy(&innermost_ty) {
+            self.emit_array_deep_clone_loop(w, def_id, name, &dimensions, &innermost_ty);
         } else {
             self.emit_array_shallow_clone(w, name, &dimensions);
         }
@@ -590,7 +597,14 @@ impl<'a> JavaGen<'a> {
         }
     }
 
-    fn emit_array_deep_clone_loop(&self, w: &mut Twine, name: &str, dimensions: &[usize]) {
+    fn emit_array_deep_clone_loop(
+        &self,
+        w: &mut Twine,
+        def_id: DefId,
+        name: &str,
+        dimensions: &[usize],
+        elem_ty: &Ty,
+    ) {
         for (idx, dim) in dimensions.iter().enumerate() {
             let var = format!("_i{idx}");
             w!(w, "for (int ", var, " = 0; ", var, " < ", dim, "; ", var, "++) {\n");
@@ -601,9 +615,15 @@ impl<'a> JavaGen<'a> {
             _ = write!(indices, "[_i{idx}]");
         }
 
-        w!(w, "if (other.", name, indices, " != null) {\n");
-        w!(w, "this.", name, indices, " = other.", name, indices, ".clone();\n");
-        w!(w, "}\n");
+        let src = format!("other.{name}{indices}");
+        if self.is_cloneable_adt(elem_ty) {
+            w!(w, "if (", src, " != null) {\n");
+            w!(w, "this.", name, indices, " = ", src, ".clone();\n");
+            w!(w, "}\n");
+        } else {
+            let copy_expr = self.deep_copy_expr(&src, elem_ty, def_id, 0);
+            w!(w, "this.", name, indices, " = ", copy_expr, ";\n");
+        }
 
         for _ in 0..dimensions.len() {
             w!(w, "}\n");

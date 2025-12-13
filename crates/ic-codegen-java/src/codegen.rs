@@ -721,7 +721,7 @@ impl<'a> JavaGen<'a> {
         }
 
         w!(w, "}\n");
-        w!(w, "throw new java.lang.RuntimeException(\"invalid enum value\");\n");
+        w!(w, "throw new java.lang.IllegalArgumentException(\"invalid ", def, " value: \" + val);\n");
         w!(w, "}\n\n");
 
         w!(w, "private final int _value;\n");

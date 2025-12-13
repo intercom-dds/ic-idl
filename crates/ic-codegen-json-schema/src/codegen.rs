@@ -26,6 +26,7 @@
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use std::collections::BTreeMap;
+use std::path::PathBuf;
 
 use ic_emit::File;
 use ic_hir::ResolvedGraph;
@@ -37,7 +38,7 @@ use crate::JsonSchemaOptions;
 
 pub struct JsonSchemaGen<'a> {
     hir: &'a ResolvedGraph,
-    _source_map: &'a SourceMap,
+    source_map: &'a SourceMap,
     options: JsonSchemaOptions,
 }
 
@@ -49,7 +50,7 @@ impl<'a> JsonSchemaGen<'a> {
     ) -> Self {
         Self {
             hir,
-            _source_map: source_map,
+            source_map,
             options,
         }
     }
@@ -72,10 +73,8 @@ impl<'a> JsonSchemaGen<'a> {
         }
 
         for (file_id, def_ids) in file_map {
-            for def_id in def_ids {
-                if let Some(file) = self.generate_file(file_id, def_id) {
-                    files.push(file);
-                }
+            if let Some(file) = self.generate_file(file_id, &def_ids) {
+                files.push(file);
             }
         }
 
@@ -103,27 +102,49 @@ impl<'a> JsonSchemaGen<'a> {
         path.join("/")
     }
 
-    fn make_reference(&self, def_id: DefId) -> String {
+    fn get_qualified_name(&self, def_id: DefId) -> String {
         let def = self.hir.context.definitions.get(def_id);
         let path = self.make_path(def_id);
-        let name = &def.ident.name;
+        if path.is_empty() {
+            def.ident.name.clone()
+        } else {
+            format!("{}.{}", path.replace('/', "."), def.ident.name)
+        }
+    }
 
-        let default_uri = "file:///".to_string();
-        let mut base = self
-            .options
-            .schema_base_uri
-            .as_ref()
-            .unwrap_or(&default_uri)
-            .clone();
-
+    fn join_uri(base: &str, path: &str) -> String {
+        let mut base = base.to_string();
         if !base.is_empty() && !base.ends_with('/') {
             base.push('/');
         }
+        // Normalize path separators and strip leading slash
+        let path = path.replace('\\', "/");
+        let path_clean = path.trim_start_matches('/');
+        format!("{base}{path_clean}")
+    }
 
-        if path.is_empty() {
-            format!("{base}{name}.json")
+    fn make_reference(&self, def_id: DefId, current_file_id: FileId) -> String {
+        let target_file_id = self.get_file_id(def_id);
+        let key = self.get_qualified_name(def_id);
+
+        if target_file_id == current_file_id {
+            format!("#/$defs/{key}")
         } else {
-            format!("{base}{path}/{name}.json")
+            let target_path = self.source_map.included_as(target_file_id);
+            let target_filename =
+                PathBuf::from(target_path.file_name().unwrap_or(target_path.as_os_str()))
+                    .with_extension("json");
+            let target_filename_str = target_filename.to_string_lossy();
+
+            let default_uri = "file:///".to_string();
+            let base = self
+                .options
+                .schema_base_uri
+                .as_ref()
+                .unwrap_or(&default_uri);
+
+            let full_uri = Self::join_uri(base, &target_filename_str);
+            format!("{full_uri}#/$defs/{key}")
         }
     }
 
@@ -229,30 +250,26 @@ impl<'a> JsonSchemaGen<'a> {
         }
     }
 
-    fn generate_preamble(&self, def: &Def) -> BTreeMap<String, Value> {
+    fn generate_preamble(def: &Def) -> BTreeMap<String, Value> {
         let mut obj = BTreeMap::new();
-
-        obj.insert(
-            "$schema".to_string(),
-            Value::String("https://json-schema.org/draft/2019-09/schema#".to_string()),
-        );
-
-        let reference = self.make_reference(def.id);
-        obj.insert("$id".to_string(), Value::String(reference));
         obj.insert("title".to_string(), Value::String(def.ident.name.clone()));
 
         if let Some(desc) = Self::get_doc_comments(def) {
             obj.insert("description".to_string(), Value::String(desc));
         }
-
         obj
     }
 
-    fn generate_struct(&self, def: &Def, struct_ty: &ic_hir::hir::StructTy) -> Value {
-        let mut obj = self.generate_preamble(def);
+    fn generate_struct(
+        &self,
+        def: &Def,
+        struct_ty: &ic_hir::hir::StructTy,
+        current_file_id: FileId,
+    ) -> Value {
+        let mut obj = Self::generate_preamble(def);
 
         if let Some(parent_id) = struct_ty.parent {
-            let ref_url = self.make_reference(parent_id);
+            let ref_url = self.make_reference(parent_id, current_file_id);
             obj.insert("allOf".to_string(), value!([{ "$ref": ref_url }]));
         }
 
@@ -269,7 +286,7 @@ impl<'a> JsonSchemaGen<'a> {
                 }
                 TyKind::Sequence { ty, .. } => {
                     if let TyKind::Adt(def_id) = &ty.kind {
-                        let ref_url = self.make_reference(*def_id);
+                        let ref_url = self.make_reference(*def_id, current_file_id);
                         value!({
                             "type": "array",
                             "items": { "$ref": ref_url }
@@ -284,7 +301,7 @@ impl<'a> JsonSchemaGen<'a> {
                 }
                 TyKind::Map { elem, .. } => {
                     if let TyKind::Adt(def_id) = &elem.kind {
-                        let ref_url = self.make_reference(*def_id);
+                        let ref_url = self.make_reference(*def_id, current_file_id);
                         value!({
                             "type": "object",
                             "additionalProperties": { "$ref": ref_url }
@@ -300,7 +317,7 @@ impl<'a> JsonSchemaGen<'a> {
                     }
                 }
                 TyKind::Adt(def_id) => {
-                    let ref_url = self.make_reference(*def_id);
+                    let ref_url = self.make_reference(*def_id, current_file_id);
                     value!({ "$ref": ref_url })
                 }
                 _ => {
@@ -329,8 +346,13 @@ impl<'a> JsonSchemaGen<'a> {
         Value::Object(obj)
     }
 
-    fn generate_union(&self, def: &Def, union_ty: &ic_hir::hir::UnionTy) -> Value {
-        let mut obj = self.generate_preamble(def);
+    fn generate_union(
+        &self,
+        def: &Def,
+        union_ty: &ic_hir::hir::UnionTy,
+        current_file_id: FileId,
+    ) -> Value {
+        let mut obj = Self::generate_preamble(def);
         obj.insert("type".to_string(), Value::String("object".to_string()));
 
         let mut explicit_discriminators = Vec::new();
@@ -369,7 +391,7 @@ impl<'a> JsonSchemaGen<'a> {
                         value!({ "type": ty_name })
                     }
                     TyKind::Adt(def_id) => {
-                        let ref_url = self.make_reference(*def_id);
+                        let ref_url = self.make_reference(*def_id, current_file_id);
                         value!({ "$ref": ref_url })
                     }
                     _ => {
@@ -404,7 +426,7 @@ impl<'a> JsonSchemaGen<'a> {
     }
 
     fn generate_enum(&self, def: &Def, enum_ty: &ic_hir::hir::EnumTy) -> Value {
-        let mut obj = self.generate_preamble(def);
+        let mut obj = Self::generate_preamble(def);
 
         let variants: Vec<Value> = enum_ty
             .fields
@@ -420,8 +442,13 @@ impl<'a> JsonSchemaGen<'a> {
         Value::Object(obj)
     }
 
-    fn generate_typedef(&self, def: &Def, typedef: &ic_hir::hir::AliasTy) -> Value {
-        let mut obj = self.generate_preamble(def);
+    fn generate_typedef(
+        &self,
+        def: &Def,
+        typedef: &ic_hir::hir::AliasTy,
+        _current_file_id: FileId,
+    ) -> Value {
+        let mut obj = Self::generate_preamble(def);
         obj.insert(
             "type".to_string(),
             Value::String(self.json_type(&typedef.ty).to_string()),
@@ -432,26 +459,52 @@ impl<'a> JsonSchemaGen<'a> {
         Value::Object(obj)
     }
 
-    fn generate_file(&self, _file_id: FileId, def_id: DefId) -> Option<File> {
-        let def = self.hir.context.definitions.get(def_id);
-        let value = match &def.kind {
-            DefKind::Struct(s) => self.generate_struct(def, s),
-            DefKind::Union(u) => self.generate_union(def, u),
-            DefKind::Enum(e) => self.generate_enum(def, e),
-            DefKind::Alias(t) => self.generate_typedef(def, t),
-            _ => return None,
-        };
+    fn generate_file(&self, file_id: FileId, def_ids: &[DefId]) -> Option<File> {
+        let mut defs_map = BTreeMap::new();
 
-        let source = json::to_string(&value, true).ok()?;
-        let path = self.make_path(def_id);
-        let file_name = if path.is_empty() {
-            format!("{}.json", def.ident.name)
-        } else {
-            format!("{}/{}.json", path, def.ident.name)
-        };
+        for &def_id in def_ids {
+            let def = self.hir.context.definitions.get(def_id);
+            let schema = match &def.kind {
+                DefKind::Struct(s) => self.generate_struct(def, s, file_id),
+                DefKind::Union(u) => self.generate_union(def, u, file_id),
+                DefKind::Enum(e) => self.generate_enum(def, e),
+                DefKind::Alias(t) => self.generate_typedef(def, t, file_id),
+                _ => continue,
+            };
+            let key = self.get_qualified_name(def_id);
+            defs_map.insert(key, schema);
+        }
+
+        if defs_map.is_empty() {
+            return None;
+        }
+
+        let mut root = BTreeMap::new();
+        root.insert(
+            "$schema".to_string(),
+            Value::String("https://json-schema.org/draft/2019-09/schema#".to_string()),
+        );
+
+        // Calculate $id for the file
+        let file_path = self.source_map.included_as(file_id);
+        let file_name = PathBuf::from(file_path.file_name().unwrap_or(file_path.as_os_str()))
+            .with_extension("json");
+
+        let file_name_str = file_name.to_string_lossy();
+        let default_uri = "file:///".to_string();
+        let base = self
+            .options
+            .schema_base_uri
+            .as_ref()
+            .unwrap_or(&default_uri);
+
+        let full_id = Self::join_uri(base, &file_name_str);
+        root.insert("$id".to_string(), Value::String(full_id));
+        root.insert("$defs".to_string(), Value::Object(defs_map));
+        let source = json::to_string(&root, true).ok()?;
 
         Some(File::Generated {
-            path: file_name.into(),
+            path: file_name,
             source,
         })
     }

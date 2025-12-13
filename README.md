@@ -33,7 +33,7 @@ A generic IDL compiler.
 
 ## Building
 
-Building `ic-idl` requires a C++17 toolchain and a Rust 1.85+ toolchain.
+Building `ic-idl` requires a C++17 toolchain and a Rust 1.88+ toolchain.
 
 The system's default C++ toolchain will be used unless otherwise is specified.
 This can be overridden by using the `CXX` environment variable, and custom

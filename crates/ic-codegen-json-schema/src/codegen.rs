@@ -232,6 +232,8 @@ impl<'a> JsonSchemaGen<'a> {
         let mut properties = BTreeMap::new();
         let mut required = Vec::new();
 
+        let is_final_struct = def.annotations.iter().any(|a| a.ident.name == "final");
+
         for member in &struct_ty.members {
             let member_obj = match &member.ty.kind {
                 TyKind::Primitive(_) | TyKind::String { .. } => {
@@ -279,7 +281,13 @@ impl<'a> JsonSchemaGen<'a> {
                 }
             };
 
-            required.push(Value::String(member.ident.name.clone()));
+            let is_optional = member
+                .annotations
+                .iter()
+                .any(|a| a.ident.name == "optional");
+            if is_final_struct && !is_optional {
+                required.push(Value::String(member.ident.name.clone()));
+            }
             properties.insert(member.ident.name.clone(), member_obj);
         }
 
@@ -293,6 +301,13 @@ impl<'a> JsonSchemaGen<'a> {
         let mut obj = self.generate_preamble(def);
         obj.insert("type".to_string(), Value::String("object".to_string()));
 
+        let mut explicit_discriminators = Vec::new();
+        for variant in &union_ty.variants {
+            for label in &variant.labels {
+                explicit_discriminators.push(self.format_numeric(&label.value));
+            }
+        }
+
         let one_of: Vec<Value> = union_ty
             .variants
             .iter()
@@ -305,7 +320,11 @@ impl<'a> JsonSchemaGen<'a> {
                         "type": ty_name
                     })
                 } else {
-                    value!({ "type": "integer" })
+                    let ty_name = self.json_type(&union_ty.disc.ty);
+                    value!({
+                        "type": ty_name,
+                        "not": { "enum": explicit_discriminators }
+                    })
                 };
 
                 let value_obj = match &variant.ty.kind {

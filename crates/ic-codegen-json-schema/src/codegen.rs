@@ -63,7 +63,11 @@ impl<'a> JsonSchemaGen<'a> {
             let def = self.hir.context.definitions.get(def_id);
             if !matches!(
                 def.kind,
-                DefKind::Struct(_) | DefKind::Union(_) | DefKind::Enum(_) | DefKind::Alias(_)
+                DefKind::Struct(_)
+                    | DefKind::Union(_)
+                    | DefKind::Enum(_)
+                    | DefKind::Alias(_)
+                    | DefKind::Bitmask(_)
             ) {
                 continue;
             }
@@ -170,10 +174,10 @@ impl<'a> JsonSchemaGen<'a> {
             TyKind::String { .. } => "string",
             TyKind::Adt(def_id) => {
                 let def = self.hir.context.definitions.get(*def_id);
-                if matches!(def.kind, DefKind::Enum(_)) {
-                    "string"
-                } else {
-                    "object"
+                match &def.kind {
+                    DefKind::Enum(_) => "string",
+                    DefKind::Alias(alias) => self.json_type(&alias.ty),
+                    _ => "object",
                 }
             }
             _ => "object",
@@ -328,6 +332,7 @@ impl<'a> JsonSchemaGen<'a> {
                 let ref_url = self.make_reference(*def_id, current_file_id);
                 value!({ "$ref": ref_url })
             }
+            TyKind::Any => Value::Object(BTreeMap::new()),
             _ => {
                 let ty_name = self.json_type(ty);
                 value!({ "type": ty_name })
@@ -474,6 +479,18 @@ impl<'a> JsonSchemaGen<'a> {
         Value::Object(obj)
     }
 
+    fn generate_bitmask(def: &Def) -> Value {
+        let mut obj = Self::generate_preamble(def);
+        obj.insert(
+            "oneOf".to_string(),
+            value!([
+                { "type": "integer", "minimum": 0 },
+                { "type": "string", "pattern": "^[A-Za-z_][A-Za-z0-9_]*(\\|[A-Za-z_][A-Za-z0-9_]*)*$" }
+            ]),
+        );
+        Value::Object(obj)
+    }
+
     fn generate_typedef(
         &self,
         def: &Def,
@@ -501,6 +518,7 @@ impl<'a> JsonSchemaGen<'a> {
                 DefKind::Struct(s) => self.generate_struct(def, s, file_id),
                 DefKind::Union(u) => self.generate_union(def, u, file_id),
                 DefKind::Enum(e) => self.generate_enum(def, e),
+                DefKind::Bitmask(_) => Self::generate_bitmask(def),
                 DefKind::Alias(t) => self.generate_typedef(def, t, file_id),
                 _ => continue,
             };

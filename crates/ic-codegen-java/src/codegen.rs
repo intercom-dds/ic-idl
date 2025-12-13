@@ -236,7 +236,7 @@ impl<'a> JavaGen<'a> {
                 PrimitiveTy::Float64 | PrimitiveTy::Float128 => "0.0".to_string(),
                 PrimitiveTy::Void => String::new(),
             },
-            TyKind::String { .. } => "new String()".to_string(),
+            TyKind::String { .. } => "\"\"".to_string(),
             TyKind::Adt(def_id) => {
                 let type_name = self.scoped_name(*def_id, relative_def);
                 let def = self.hir.context.definitions.get(*def_id);
@@ -740,6 +740,7 @@ impl<'a> JavaGen<'a> {
         w!(w, "return new ", def.ident.name, "(this);\n");
         w!(w, "}\n\n");
 
+        self.emit_union_clear(w, union_ty);
         self.emit_union_accessors(w, def, union_ty);
 
         w!(w, "public ", disc_type, " ", disc_get, "() {\n");
@@ -749,6 +750,7 @@ impl<'a> JavaGen<'a> {
         w!(w, "public void ", disc_set, "(", disc_type, " discriminator) {\n");
         w!(w, "if (this.discriminator != discriminator) {\n");
         w!(w, "this.discriminator = discriminator;\n");
+        w!(w, "_clear();\n");
         w!(w, "switch (discriminator) {\n");
 
         for variant in &union_ty.variants {
@@ -769,6 +771,26 @@ impl<'a> JavaGen<'a> {
         }
 
         w!(w, "}\n");
+    }
+
+    fn emit_union_clear(&self, w: &mut Twine, union_ty: &UnionTy) {
+        w!(w, "private void _clear() {\n");
+        for variant in &union_ty.variants {
+            let resolved = self.hir.context.resolve_ty(&variant.ty);
+            let clear_value = match &resolved.kind {
+                TyKind::Primitive(prim) => match prim {
+                    PrimitiveTy::Bool => "false",
+                    PrimitiveTy::Char | PrimitiveTy::WChar => "'\\0'",
+                    PrimitiveTy::Float32 => "0.0f",
+                    PrimitiveTy::Float64 | PrimitiveTy::Float128 => "0.0",
+                    PrimitiveTy::Int64 | PrimitiveTy::UInt64 => "0L",
+                    _ => "0",
+                },
+                _ => "null",
+            };
+            w!(w, "this.", variant.ident.name, " = ", clear_value, ";\n");
+        }
+        w!(w, "}\n\n");
     }
 
     fn emit_union_accessors(&self, w: &mut Twine, def: &Def, union_ty: &UnionTy) {
@@ -792,6 +814,7 @@ impl<'a> JavaGen<'a> {
                     self.find_default_discriminator_value(union_ty, &union_ty.disc.ty, def.id);
                 w!(w, "this.discriminator = ", default_value, ";\n");
             }
+            w!(w, "_clear();\n");
             w!(w, "this.", variant.ident.name, " = ", variant.ident.name, ";\n");
             w!(w, "}\n\n");
 

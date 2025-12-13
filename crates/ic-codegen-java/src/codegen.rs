@@ -903,8 +903,17 @@ impl<'a> JavaGen<'a> {
     }
 
     fn emit_bitmask(&self, w: &mut Twine, def: &Def, bitmask_ty: &BitmaskTy) {
-        w!(w, "public enum ", def, " {\n");
-        self.emit_enumerators(w, &bitmask_ty.flags);
+        w!(w, "public final class ", def, " {\n");
+        w!(w, "private ", def, "() {}\n\n");
+
+        for &flag_id in &bitmask_ty.flags {
+            let flag_def = self.hir.context.definitions.get(flag_id);
+            if let DefKind::Const(const_ty) = &flag_def.kind {
+                let value = self.hir.context.integer_value(&const_ty.value).unwrap_or(0);
+                w!(w, "public static final int ", flag_def.ident.name, " = ", value, ";\n");
+            }
+        }
+
         w!(w, "}\n");
     }
 

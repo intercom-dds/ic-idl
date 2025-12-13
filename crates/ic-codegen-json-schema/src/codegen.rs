@@ -68,7 +68,7 @@ impl<'a> JsonSchemaGen<'a> {
                 continue;
             }
 
-            let file_id = self.get_file_id(def_id);
+            let file_id = self.file_id(def_id);
             file_map.entry(file_id).or_default().push(def_id);
         }
 
@@ -81,7 +81,7 @@ impl<'a> JsonSchemaGen<'a> {
         files
     }
 
-    fn get_file_id(&self, def_id: DefId) -> FileId {
+    fn file_id(&self, def_id: DefId) -> FileId {
         let def = self.hir.context.definitions.get(def_id);
         def.span.start.file_id
     }
@@ -102,7 +102,7 @@ impl<'a> JsonSchemaGen<'a> {
         path.join("/")
     }
 
-    fn get_qualified_name(&self, def_id: DefId) -> String {
+    fn qualified_name(&self, def_id: DefId) -> String {
         let def = self.hir.context.definitions.get(def_id);
         let path = self.make_path(def_id);
         if path.is_empty() {
@@ -123,27 +123,31 @@ impl<'a> JsonSchemaGen<'a> {
         format!("{base}{path_clean}")
     }
 
+    fn output_filename(&self, file_id: FileId) -> PathBuf {
+        let path = self.source_map.included_as(file_id);
+        PathBuf::from(path.file_name().unwrap_or(path.as_os_str())).with_extension("json")
+    }
+
+    fn schema_uri(&self, file_id: FileId) -> String {
+        let filename = self.output_filename(file_id);
+        let filename_str = filename.to_string_lossy();
+        let default_uri = "file:///".to_string();
+        let base = self
+            .options
+            .schema_base_uri
+            .as_ref()
+            .unwrap_or(&default_uri);
+        Self::join_uri(base, &filename_str)
+    }
+
     fn make_reference(&self, def_id: DefId, current_file_id: FileId) -> String {
-        let target_file_id = self.get_file_id(def_id);
-        let key = self.get_qualified_name(def_id);
+        let target_file_id = self.file_id(def_id);
+        let key = self.qualified_name(def_id);
 
         if target_file_id == current_file_id {
             format!("#/$defs/{key}")
         } else {
-            let target_path = self.source_map.included_as(target_file_id);
-            let target_filename =
-                PathBuf::from(target_path.file_name().unwrap_or(target_path.as_os_str()))
-                    .with_extension("json");
-            let target_filename_str = target_filename.to_string_lossy();
-
-            let default_uri = "file:///".to_string();
-            let base = self
-                .options
-                .schema_base_uri
-                .as_ref()
-                .unwrap_or(&default_uri);
-
-            let full_uri = Self::join_uri(base, &target_filename_str);
+            let full_uri = self.schema_uri(target_file_id);
             format!("{full_uri}#/$defs/{key}")
         }
     }
@@ -194,7 +198,11 @@ impl<'a> JsonSchemaGen<'a> {
             Numeric::String(s) => Value::String(s.clone()),
             Numeric::Const(def_id) => {
                 let def = self.hir.context.definitions.get(*def_id);
-                Value::String(def.ident.name.clone())
+                if let DefKind::Const(const_ty) = &def.kind {
+                    self.format_numeric(&const_ty.value)
+                } else {
+                    Value::String(def.ident.name.clone())
+                }
             }
             Numeric::Null
             | Numeric::Array { .. }
@@ -205,7 +213,7 @@ impl<'a> JsonSchemaGen<'a> {
         }
     }
 
-    fn get_doc_comments(def: &Def) -> Option<String> {
+    fn doc_comments(def: &Def) -> Option<String> {
         let docs: Vec<String> = def
             .annotations
             .iter()
@@ -259,10 +267,37 @@ impl<'a> JsonSchemaGen<'a> {
         let mut obj = BTreeMap::new();
         obj.insert("title".to_string(), Value::String(def.ident.name.clone()));
 
-        if let Some(desc) = Self::get_doc_comments(def) {
+        if let Some(desc) = Self::doc_comments(def) {
             obj.insert("description".to_string(), Value::String(desc));
         }
         obj
+    }
+
+    fn generate_type_schema(&self, ty: &Ty, current_file_id: FileId) -> Value {
+        match &ty.kind {
+            TyKind::Sequence { ty: elem_ty, .. } | TyKind::Array { ty: elem_ty, .. } => {
+                let items_schema = self.generate_type_schema(elem_ty, current_file_id);
+                value!({
+                    "type": "array",
+                    "items": items_schema
+                })
+            }
+            TyKind::Map { elem: elem_ty, .. } => {
+                let additional_properties = self.generate_type_schema(elem_ty, current_file_id);
+                value!({
+                    "type": "object",
+                    "additionalProperties": additional_properties
+                })
+            }
+            TyKind::Adt(def_id) => {
+                let ref_url = self.make_reference(*def_id, current_file_id);
+                value!({ "$ref": ref_url })
+            }
+            _ => {
+                let ty_name = self.json_type(ty);
+                value!({ "type": ty_name })
+            }
+        }
     }
 
     fn generate_struct(
@@ -284,51 +319,7 @@ impl<'a> JsonSchemaGen<'a> {
         let is_final_struct = def.annotations.iter().any(|a| a.ident.name == "final");
 
         for member in &struct_ty.members {
-            let mut member_obj = match &member.ty.kind {
-                TyKind::Primitive(_) | TyKind::String { .. } => {
-                    let ty_name = self.json_type(&member.ty);
-                    value!({ "type": ty_name })
-                }
-                TyKind::Sequence { ty, .. } => {
-                    if let TyKind::Adt(def_id) = &ty.kind {
-                        let ref_url = self.make_reference(*def_id, current_file_id);
-                        value!({
-                            "type": "array",
-                            "items": { "$ref": ref_url }
-                        })
-                    } else {
-                        let ty_name = self.json_type(ty);
-                        value!({
-                            "type": "array",
-                            "items": { "type": ty_name }
-                        })
-                    }
-                }
-                TyKind::Map { elem, .. } => {
-                    if let TyKind::Adt(def_id) = &elem.kind {
-                        let ref_url = self.make_reference(*def_id, current_file_id);
-                        value!({
-                            "type": "object",
-                            "additionalProperties": { "$ref": ref_url }
-                        })
-                    } else {
-                        let ty_name = self.json_type(elem);
-                        value!({
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": ty_name,
-                            }
-                        })
-                    }
-                }
-                TyKind::Adt(def_id) => {
-                    let ref_url = self.make_reference(*def_id, current_file_id);
-                    value!({ "$ref": ref_url })
-                }
-                _ => {
-                    value!({ "type": "object" })
-                }
-            };
+            let mut member_obj = self.generate_type_schema(&member.ty, current_file_id);
 
             let is_optional = member
                 .annotations
@@ -347,6 +338,10 @@ impl<'a> JsonSchemaGen<'a> {
 
         obj.insert("properties".to_string(), Value::Object(properties));
         obj.insert("required".to_string(), Value::Array(required));
+
+        if is_final_struct {
+            obj.insert("additionalProperties".to_string(), Value::Bool(false));
+        }
 
         Value::Object(obj)
     }
@@ -390,19 +385,7 @@ impl<'a> JsonSchemaGen<'a> {
                     })
                 };
 
-                let mut value_obj = match &variant.ty.kind {
-                    TyKind::Primitive(_) | TyKind::String { .. } => {
-                        let ty_name = self.json_type(&variant.ty);
-                        value!({ "type": ty_name })
-                    }
-                    TyKind::Adt(def_id) => {
-                        let ref_url = self.make_reference(*def_id, current_file_id);
-                        value!({ "$ref": ref_url })
-                    }
-                    _ => {
-                        value!({ "type": "object" })
-                    }
-                };
+                let mut value_obj = self.generate_type_schema(&variant.ty, current_file_id);
 
                 if let Value::Object(ref mut map) = value_obj {
                     self.apply_bounds(&variant.annotations, map);
@@ -482,7 +465,7 @@ impl<'a> JsonSchemaGen<'a> {
                 DefKind::Alias(t) => self.generate_typedef(def, t, file_id),
                 _ => continue,
             };
-            let key = self.get_qualified_name(def_id);
+            let key = self.qualified_name(def_id);
             defs_map.insert(key, schema);
         }
 
@@ -497,25 +480,13 @@ impl<'a> JsonSchemaGen<'a> {
         );
 
         // Calculate $id for the file
-        let file_path = self.source_map.included_as(file_id);
-        let file_name = PathBuf::from(file_path.file_name().unwrap_or(file_path.as_os_str()))
-            .with_extension("json");
-
-        let file_name_str = file_name.to_string_lossy();
-        let default_uri = "file:///".to_string();
-        let base = self
-            .options
-            .schema_base_uri
-            .as_ref()
-            .unwrap_or(&default_uri);
-
-        let full_id = Self::join_uri(base, &file_name_str);
+        let full_id = self.schema_uri(file_id);
         root.insert("$id".to_string(), Value::String(full_id));
         root.insert("$defs".to_string(), Value::Object(defs_map));
         let source = json::to_string(&root, true).ok()?;
 
         Some(File::Generated {
-            path: file_name,
+            path: self.output_filename(file_id),
             source,
         })
     }

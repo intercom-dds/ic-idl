@@ -27,10 +27,22 @@
 
 mod codegen;
 
+use ic_cli::Command;
 use ic_emit::File;
 
+#[derive(Command, Debug, Default, Clone)]
+pub struct JsonSchemaOptions {
+    /// Base URI for the schema
+    #[option(long, arg = "uri")]
+    pub schema_base_uri: Option<String>,
+}
+
 #[must_use]
-pub fn codegen_schema(hir: &ic_hir::ResolvedGraph, source_map: &ic_vfs::SourceMap) -> Vec<File> {
-    let generator = codegen::JsonSchemaGen::new(hir, source_map);
+pub fn codegen_schema(
+    hir: &ic_hir::ResolvedGraph,
+    source_map: &ic_vfs::SourceMap,
+    options: JsonSchemaOptions,
+) -> Vec<File> {
+    let generator = codegen::JsonSchemaGen::new(hir, source_map, options);
     generator.generate()
 }

@@ -232,7 +232,7 @@ fn generate_code(
     if let Some(output_dir) = &options.codegen.json_schema_out {
         let files = invoke_backend(
             output_dir,
-            || ic_codegen_json_schema::codegen_schema(hir, vfs),
+            || ic_codegen_json_schema::codegen_schema(hir, vfs, options.json_schema.clone()),
             options.purge_dirs,
         )?;
         generated.extend(files);

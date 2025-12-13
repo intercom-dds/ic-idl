@@ -33,16 +33,24 @@ use ic_hir::hir::{Def, DefId, DefKind, Numeric, PrimitiveTy, Ty, TyKind};
 use ic_vfs::{FileId, SourceMap};
 use intercom_cts::json::{self, Value, value};
 
+use crate::JsonSchemaOptions;
+
 pub struct JsonSchemaGen<'a> {
     hir: &'a ResolvedGraph,
     _source_map: &'a SourceMap,
+    options: JsonSchemaOptions,
 }
 
 impl<'a> JsonSchemaGen<'a> {
-    pub fn new(hir: &'a ResolvedGraph, source_map: &'a SourceMap) -> Self {
+    pub fn new(
+        hir: &'a ResolvedGraph,
+        source_map: &'a SourceMap,
+        options: JsonSchemaOptions,
+    ) -> Self {
         Self {
             hir,
             _source_map: source_map,
+            options,
         }
     }
 
@@ -100,10 +108,22 @@ impl<'a> JsonSchemaGen<'a> {
         let path = self.make_path(def_id);
         let name = &def.ident.name;
 
+        let default_uri = "file:///".to_string();
+        let mut base = self
+            .options
+            .schema_base_uri
+            .as_ref()
+            .unwrap_or(&default_uri)
+            .clone();
+
+        if !base.is_empty() && !base.ends_with('/') {
+            base.push('/');
+        }
+
         if path.is_empty() {
-            format!("file:///{name}.json")
+            format!("{base}{name}.json")
         } else {
-            format!("file:///{path}/{name}.json")
+            format!("{base}{path}/{name}.json")
         }
     }
 

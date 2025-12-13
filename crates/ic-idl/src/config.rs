@@ -200,6 +200,9 @@ pub struct Options {
     #[option(section = "idl options")]
     pub idl: ic_codegen_idl::IdlOptions,
 
+    #[option(section = "json schema options")]
+    pub json_schema: ic_codegen_json_schema::JsonSchemaOptions,
+
     #[option(section = "backends")]
     pub codegen: CodegenOptions,
 }

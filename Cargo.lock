@@ -142,6 +142,7 @@ dependencies = [
 name = "ic-codegen-json-schema"
 version = "0.1.0"
 dependencies = [
+ "ic-cli",
  "ic-emit",
  "ic-hir",
  "ic-vfs",

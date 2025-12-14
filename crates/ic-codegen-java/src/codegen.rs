@@ -621,7 +621,7 @@ impl<'a> JavaGen<'a> {
 
     fn emit_default_ctor(&self, w: &mut Twine, def_id: DefId, members: &[Member]) {
         let def = self.hir.context.definitions.get(def_id);
-        w!(w, "public ", def.ident.name, " () {\n");
+        w!(w, "public ", def.ident.name, "() {\n");
 
         for member in members {
             let default_val = self.default_value(&member.ty, def_id);
@@ -660,7 +660,7 @@ impl<'a> JavaGen<'a> {
                 self.emit_map_deep_copy(w, name, key, elem, def_id);
             }
             TyKind::Adt(_) if self.is_cloneable_adt(ty) => {
-                w!(w, "this.", name, " = other.", name, " != null ? other.", name, ".clone() : null;\n");
+                w!(w, "this.", name, " = other.", name, ".clone();\n");
             }
             _ => {
                 w!(w, "this.", name, " = other.", name, ";\n");
@@ -671,7 +671,7 @@ impl<'a> JavaGen<'a> {
     fn emit_sequence_deep_copy(&self, w: &mut Twine, name: &str, elem_ty: &Ty, def_id: DefId) {
         w!(w, "this.", name, " = new java.util.ArrayList<>(other.", name, ".size());\n");
         w!(w, "for (var _e0 : other.", name, ") {\n");
-        let copy_expr = self.deep_copy_expr("_e0", elem_ty, def_id, 1);
+        let copy_expr = self.emit_value_copy(w, "_e0", elem_ty, def_id, 1);
         w!(w, "this.", name, ".add(", copy_expr, ");\n");
         w!(w, "}\n");
     }
@@ -687,39 +687,49 @@ impl<'a> JavaGen<'a> {
         let key_type = self.boxed_java_type(key_ty, def_id);
         let elem_type = self.boxed_java_type(elem_ty, def_id);
         w!(w, "this.", name, " = new java.util.HashMap<", key_type, ", ", elem_type, ">();\n");
-        w!(w, "for (var _entry : other.", name, ".entrySet()) {\n");
-        let copy_expr = self.deep_copy_expr("_entry.getValue()", elem_ty, def_id, 0);
-        w!(w, "this.", name, ".put(_entry.getKey(), ", copy_expr, ");\n");
+        w!(w, "for (var _entry0 : other.", name, ".entrySet()) {\n");
+        let key_copy = self.emit_value_copy(w, "_entry0.getKey()", key_ty, def_id, 1);
+        let val_copy = self.emit_value_copy(w, "_entry0.getValue()", elem_ty, def_id, 1);
+        w!(w, "this.", name, ".put(", key_copy, ", ", val_copy, ");\n");
         w!(w, "}\n");
     }
 
-    fn deep_copy_expr(&self, src: &str, ty: &Ty, def_id: DefId, depth: usize) -> String {
+    fn emit_value_copy(
+        &self,
+        w: &mut Twine,
+        src: &str,
+        ty: &Ty,
+        def_id: DefId,
+        depth: usize,
+    ) -> String {
         let resolved = self.hir.context.resolve_ty(ty);
         match &resolved.kind {
-            _ if self.is_cloneable_adt(ty) => {
-                format!("{src} != null ? {src}.clone() : null")
-            }
+            _ if self.is_cloneable_adt(ty) => format!("{src}.clone()"),
             TyKind::Sequence { ty: inner, .. } => {
-                let inner_copy =
-                    self.deep_copy_expr(&format!("_e{depth}"), inner, def_id, depth + 1);
+                let var = format!("_seq{depth}");
                 let elem_type = self.boxed_java_type(inner, def_id);
-                format!(
-                    "{src} != null ? {src}.stream().map(_e{depth} -> \
-                     {inner_copy}).collect(java.util.stream.Collectors.toCollection(() -> new \
-                     java.util.ArrayList<{elem_type}>())) : null"
-                )
+                w!(w, "var ", &var, " = new java.util.ArrayList<", elem_type, ">();\n");
+                let iter_var = format!("_e{depth}");
+                w!(w, "for (var ", &iter_var, " : ", src, ") {\n");
+                let copy = self.emit_value_copy(w, &iter_var, inner, def_id, depth + 1);
+                w!(w, var, ".add(", copy, ");\n");
+                w!(w, "}\n");
+                var
             }
             TyKind::Map { key, elem, .. } => {
+                let var = format!("_map{depth}");
                 let key_type = self.boxed_java_type(key, def_id);
                 let elem_type = self.boxed_java_type(elem, def_id);
-                let val_copy = self.deep_copy_expr(&format!("_v{depth}"), elem, def_id, depth + 1);
-                format!(
-                    "{src} != null ? \
-                     {src}.entrySet().stream().collect(java.util.stream.Collectors.toMap(java.\
-                     util.Map.Entry::getKey, _e{depth} -> {{ var _v{depth} = \
-                     _e{depth}.getValue(); return {val_copy}; }}, (a, b) -> b, () -> new \
-                     java.util.HashMap<{key_type}, {elem_type}>())) : null"
-                )
+                w!(w, "var ", &var, " = new java.util.HashMap<", key_type, ", ", elem_type, ">();\n");
+                let entry_var = format!("_entry{depth}");
+                w!(w, "for (var ", &entry_var, " : ", src, ".entrySet()) {\n");
+                let key_src = format!("{entry_var}.getKey()");
+                let val_src = format!("{entry_var}.getValue()");
+                let key_copy = self.emit_value_copy(w, &key_src, key, def_id, depth + 1);
+                let val_copy = self.emit_value_copy(w, &val_src, elem, def_id, depth + 1);
+                w!(w, var, ".put(", key_copy, ", ", val_copy, ");\n");
+                w!(w, "}\n");
+                var
             }
             _ => src.to_string(),
         }
@@ -729,16 +739,15 @@ impl<'a> JavaGen<'a> {
         let (dimensions, base_type) = self.array_dimensions(ty, def_id);
         let innermost_ty = self.get_innermost_array_type(ty);
 
-        w!(w, "this.", name, " = new ", &base_type);
-        for dim in &dimensions {
-            w!(w, "[", dim, "]");
-        }
-        w!(w, ";\n");
-
         if self.needs_deep_copy(&innermost_ty) {
+            w!(w, "this.", name, " = new ", &base_type);
+            for dim in &dimensions {
+                w!(w, "[", dim, "]");
+            }
+            w!(w, ";\n");
             self.emit_array_deep_clone_loop(w, def_id, name, &dimensions, &innermost_ty);
         } else {
-            self.emit_array_shallow_clone(w, name, &dimensions);
+            self.emit_array_shallow_clone(w, name, &base_type, &dimensions);
         }
     }
 
@@ -773,21 +782,37 @@ impl<'a> JavaGen<'a> {
         }
 
         let src = format!("other.{name}{indices}");
-        if self.is_cloneable_adt(elem_ty) {
-            w!(w, "if (", src, " != null) {\n");
-            w!(w, "this.", name, indices, " = ", src, ".clone();\n");
-            w!(w, "}\n");
-        } else {
-            let copy_expr = self.deep_copy_expr(&src, elem_ty, def_id, 0);
-            w!(w, "this.", name, indices, " = ", copy_expr, ";\n");
-        }
+        let copy_expr = self.emit_value_copy(w, &src, elem_ty, def_id, 0);
+        w!(w, "this.", name, indices, " = ", copy_expr, ";\n");
 
         for _ in 0..dimensions.len() {
             w!(w, "}\n");
         }
     }
 
-    fn emit_array_shallow_clone(&self, w: &mut Twine, name: &str, dimensions: &[usize]) {
+    fn emit_array_shallow_clone(
+        &self,
+        w: &mut Twine,
+        name: &str,
+        base_type: &str,
+        dimensions: &[usize],
+    ) {
+        if dimensions.len() == 1 {
+            let dim = dimensions[0];
+            w!(w, "this.", name, " = java.util.Arrays.copyOf(other.", name, ", ", dim, ");\n");
+            return;
+        }
+
+        w!(w, "this.", name, " = new ", base_type);
+        for (i, dim) in dimensions.iter().enumerate() {
+            if i == 0 {
+                w!(w, "[", dim, "]");
+            } else {
+                w!(w, "[]");
+            }
+        }
+        w!(w, ";\n");
+
         for (idx, dim) in dimensions.iter().enumerate().take(dimensions.len() - 1) {
             let var = format!("_i{idx}");
             w!(w, "for (int ", var, " = 0; ", var, " < ", dim, "; ", var, "++) {\n");
@@ -799,11 +824,7 @@ impl<'a> JavaGen<'a> {
         }
 
         let last_dim = dimensions[dimensions.len() - 1];
-        if indices.is_empty() {
-            w!(w, "this.", name, " = java.util.Arrays.copyOf(other.", name, ", ", last_dim, ");\n");
-        } else {
-            w!(w, "this.", name, indices, " = java.util.Arrays.copyOf(other.", name, indices, ", ", last_dim, ");\n");
-        }
+        w!(w, "this.", name, indices, " = java.util.Arrays.copyOf(other.", name, indices, ", ", last_dim, ");\n");
 
         for _ in 0..dimensions.len() - 1 {
             w!(w, "}\n");

@@ -1000,7 +1000,7 @@ impl<'a> JavaGen<'a> {
         w!(w, "}\n\n");
 
         self.emit_union_equals(w, def, union_ty);
-        self.emit_union_hashcode(w, union_ty);
+        self.emit_union_hashcode(w, def, union_ty);
 
         w!(w, "private ", disc_type, " discriminator;\n");
         for variant in &union_ty.variants {
@@ -1066,13 +1066,13 @@ impl<'a> JavaGen<'a> {
         w!(w, "}\n\n");
     }
 
-    fn emit_union_hashcode(&self, w: &mut Twine, union_ty: &UnionTy) {
+    fn emit_union_hashcode(&self, w: &mut Twine, def: &Def, union_ty: &UnionTy) {
         w!(w, "@Override\n");
         w!(w, "public int hashCode() {\n");
         w!(w, "int result = java.util.Objects.hashCode(discriminator);\n");
         self.emit_switch_discriminator(w, &union_ty.disc.ty, "discriminator");
         for variant in &union_ty.variants {
-            self.emit_variant_cases_no_def(w, variant);
+            self.emit_variant_cases(w, &union_ty.disc.ty, variant, def.id);
             let resolved = self.hir.context.resolve_ty(&variant.ty);
             let name = &variant.ident.name;
             if let TyKind::Array { ty: inner, .. } = &resolved.kind {
@@ -1090,19 +1090,6 @@ impl<'a> JavaGen<'a> {
         w!(w, "}\n");
         w!(w, "return result;\n");
         w!(w, "}\n\n");
-    }
-
-    fn emit_variant_cases_no_def(&self, w: &mut Twine, variant: &Variant) {
-        w.dedent();
-        for label in &variant.labels {
-            if let Some(val) = self.hir.context.integer_value(&label.value) {
-                w!(w, "case ", val, ":\n");
-            }
-        }
-        if variant.is_default {
-            w!(w, "default:\n");
-        }
-        w.indent();
     }
 
     fn emit_union_clear(&self, w: &mut Twine, union_ty: &UnionTy) {

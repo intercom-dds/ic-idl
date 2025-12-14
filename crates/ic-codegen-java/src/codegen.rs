@@ -1140,6 +1140,13 @@ impl<'a> JavaGen<'a> {
 
             if variant.labels.len() > 1 {
                 w!(w, "public void ", setter, "(", java_type, " ", variant.ident.name, ", ", disc_type, " discriminator) {\n");
+                self.emit_variant_discriminator_check(
+                    w,
+                    &union_ty.disc.ty,
+                    variant,
+                    union_ty,
+                    def.id,
+                );
                 w!(w, disc_set, "(discriminator);\n");
                 w!(w, "this.", variant.ident.name, " = ", variant.ident.name, ";\n");
                 w!(w, "}\n\n");

@@ -220,12 +220,15 @@ impl<'a> JavaGen<'a> {
     }
 
     fn file_path(&self, def: &Def, suffix: impl Into<Option<&'a str>>) -> PathBuf {
-        let mut path = if let Some(package) = self.package(def.id) {
-            let pkg_path = package.replace('.', "/");
-            PathBuf::from(pkg_path)
-        } else {
-            PathBuf::new()
-        };
+        let mut path = PathBuf::new();
+
+        if let Some(prefix) = &self.options.package_prefix {
+            path.push(prefix.replace('.', "/"));
+        }
+
+        if let Some(package) = self.package(def.id) {
+            path.push(package.replace('.', "/"));
+        }
 
         if let Some(suffix) = suffix.into() {
             path.push(format!("{def}{suffix}.java"));
@@ -274,19 +277,6 @@ impl<'a> JavaGen<'a> {
         }
     }
 
-    fn raw_java_type(&self, ty: &Ty, relative_def: DefId) -> String {
-        let resolved_ty = self.hir.context.resolve_ty(ty);
-        match &resolved_ty.kind {
-            TyKind::Sequence { .. } => "java.util.List".to_string(),
-            TyKind::Map { .. } => "java.util.Map".to_string(),
-            TyKind::Array { ty, .. } => {
-                let inner = self.raw_java_type(ty, relative_def);
-                format!("{inner}[]")
-            }
-            _ => self.java_type(ty, relative_def),
-        }
-    }
-
     fn array_dimensions(&self, ty: &Ty, relative_def: DefId) -> (Vec<usize>, String) {
         let mut dimensions = vec![];
         let mut current_ty = ty.clone();
@@ -300,6 +290,19 @@ impl<'a> JavaGen<'a> {
                 let base_type = self.raw_java_type(&resolved, relative_def);
                 return (dimensions, base_type);
             }
+        }
+    }
+
+    fn raw_java_type(&self, ty: &Ty, relative_def: DefId) -> String {
+        let resolved_ty = self.hir.context.resolve_ty(ty);
+        match &resolved_ty.kind {
+            TyKind::Sequence { .. } => "java.util.List".to_string(),
+            TyKind::Map { .. } => "java.util.Map".to_string(),
+            TyKind::Array { ty, .. } => {
+                let inner = self.raw_java_type(ty, relative_def);
+                format!("{inner}[]")
+            }
+            _ => self.java_type(ty, relative_def),
         }
     }
 
@@ -322,6 +325,9 @@ impl<'a> JavaGen<'a> {
             },
             TyKind::String { .. } => "\"\"".to_string(),
             TyKind::Adt(def_id) => {
+                if self.is_bitmask(*def_id) {
+                    return "new java.util.BitSet()".to_string();
+                }
                 let type_name = self.scoped_name(*def_id, relative_def);
                 let def = self.hir.context.definitions.get(*def_id);
                 match &def.kind {

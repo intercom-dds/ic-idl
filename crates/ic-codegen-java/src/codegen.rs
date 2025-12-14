@@ -42,6 +42,34 @@ use ic_hir::hir::{
 
 use crate::JavaOptions;
 
+const OFFSET_BASIS: u64 = 0xCBF2_9CE4_8422_2325;
+const PRIME: u64 = 0x0100_0000_01B3;
+
+struct Fnv1a {
+    state: u64,
+}
+
+impl Fnv1a {
+    fn new() -> Self {
+        Self {
+            state: OFFSET_BASIS,
+        }
+    }
+}
+
+impl Hasher for Fnv1a {
+    fn write(&mut self, bytes: &[u8]) {
+        for &byte in bytes {
+            self.state ^= u64::from(byte);
+            self.state = self.state.wrapping_mul(PRIME);
+        }
+    }
+
+    fn finish(&self) -> u64 {
+        self.state
+    }
+}
+
 fn primitive_type(prim: PrimitiveTy) -> &'static str {
     match prim {
         PrimitiveTy::Void => "void",
@@ -147,7 +175,7 @@ impl<'a> JavaGen<'a> {
     }
 
     fn serial_version_uid(&self, def: &Def, members: &[Member]) -> i64 {
-        let mut hasher = std::collections::hash_map::DefaultHasher::new();
+        let mut hasher = Fnv1a::new();
         def.ident.name.hash(&mut hasher);
         for member in members {
             member.ident.name.hash(&mut hasher);
@@ -157,7 +185,7 @@ impl<'a> JavaGen<'a> {
     }
 
     fn serial_version_uid_union(&self, def: &Def, union_ty: &UnionTy) -> i64 {
-        let mut hasher = std::collections::hash_map::DefaultHasher::new();
+        let mut hasher = Fnv1a::new();
         def.ident.name.hash(&mut hasher);
         self.hash_type(&union_ty.disc.ty, &mut hasher);
         for variant in &union_ty.variants {
@@ -602,29 +630,32 @@ impl<'a> JavaGen<'a> {
         }
 
         for member in members {
-            let mem = &member.ident.name;
-            let resolved_ty = self.hir.context.resolve_ty(&member.ty);
-
-            match &resolved_ty.kind {
-                TyKind::Sequence { ty, .. } => {
-                    self.emit_sequence_deep_copy(w, mem, ty, def.id);
-                }
-                TyKind::Array { .. } => {
-                    self.emit_array_deep_copy(w, def.id, mem, &member.ty);
-                }
-                TyKind::Map { key, elem, .. } => {
-                    self.emit_map_deep_copy(w, mem, key, elem, def.id);
-                }
-                TyKind::Adt(_) if self.is_cloneable_adt(&member.ty) => {
-                    w!(w, "this.", mem, " = other.", mem, " != null ? other.", mem, ".clone() : null;\n");
-                }
-                _ => {
-                    w!(w, "this.", mem, " = other.", mem, ";\n");
-                }
-            }
+            self.emit_field_copy(w, &member.ident.name, &member.ty, def.id);
         }
 
         w!(w, "}\n\n");
+    }
+
+    fn emit_field_copy(&self, w: &mut Twine, name: &str, ty: &Ty, def_id: DefId) {
+        let resolved_ty = self.hir.context.resolve_ty(ty);
+
+        match &resolved_ty.kind {
+            TyKind::Sequence { ty: elem, .. } => {
+                self.emit_sequence_deep_copy(w, name, elem, def_id);
+            }
+            TyKind::Array { .. } => {
+                self.emit_array_deep_copy(w, def_id, name, ty);
+            }
+            TyKind::Map { key, elem, .. } => {
+                self.emit_map_deep_copy(w, name, key, elem, def_id);
+            }
+            TyKind::Adt(_) if self.is_cloneable_adt(ty) => {
+                w!(w, "this.", name, " = other.", name, " != null ? other.", name, ".clone() : null;\n");
+            }
+            _ => {
+                w!(w, "this.", name, " = other.", name, ";\n");
+            }
+        }
     }
 
     fn emit_sequence_deep_copy(&self, w: &mut Twine, name: &str, elem_ty: &Ty, def_id: DefId) {
@@ -1030,6 +1061,7 @@ impl<'a> JavaGen<'a> {
             let (getter, setter) = self.get_set(&variant.ident.name);
 
             w!(w, "public ", java_type, " ", getter, "() {\n");
+            self.emit_variant_discriminator_check(w, &union_ty.disc.ty, variant, union_ty, def.id);
             w!(w, "return ", variant.ident.name, ";\n");
             w!(w, "}\n\n");
 
@@ -1073,7 +1105,7 @@ impl<'a> JavaGen<'a> {
 
         for variant in &union_ty.variants {
             self.emit_variant_cases(w, &union_ty.disc.ty, variant, def.id);
-            w!(w, "this.", variant.ident.name, " = other.", variant.ident.name, ";\n");
+            self.emit_field_copy(w, &variant.ident.name, &variant.ty, def.id);
             w!(w, "break;\n");
         }
 
@@ -1091,6 +1123,63 @@ impl<'a> JavaGen<'a> {
             w!(w, "default:\n");
         }
         w.indent();
+    }
+
+    fn emit_variant_discriminator_check(
+        &self,
+        w: &mut Twine,
+        disc_ty: &Ty,
+        variant: &Variant,
+        union_ty: &UnionTy,
+        def_id: DefId,
+    ) {
+        if variant.labels.is_empty() && !variant.is_default {
+            return;
+        }
+
+        let resolved = self.hir.context.resolve_ty(disc_ty);
+        let is_enum = matches!(resolved.kind, TyKind::Adt(_));
+
+        let labels: Vec<_> = if variant.is_default {
+            union_ty
+                .variants
+                .iter()
+                .filter(|v| !v.is_default)
+                .flat_map(|v| &v.labels)
+                .collect()
+        } else {
+            variant.labels.iter().collect()
+        };
+
+        if labels.is_empty() {
+            return;
+        }
+
+        w!(w, "if (");
+        for (i, label) in labels.iter().enumerate() {
+            if i > 0 {
+                if variant.is_default {
+                    w!(w, " || ");
+                } else {
+                    w!(w, " && ");
+                }
+            }
+            let disc_value = self.format_numeric(&label.value, disc_ty, def_id);
+            if is_enum {
+                if variant.is_default {
+                    w!(w, "java.util.Objects.equals(discriminator, ", disc_value, ")");
+                } else {
+                    w!(w, "!java.util.Objects.equals(discriminator, ", disc_value, ")");
+                }
+            } else if variant.is_default {
+                w!(w, "discriminator == ", disc_value);
+            } else {
+                w!(w, "discriminator != ", disc_value);
+            }
+        }
+        w!(w, ") {\n");
+        w!(w, "throw new IllegalStateException(\"Invalid union access: discriminator is \" + discriminator);\n");
+        w!(w, "}\n");
     }
 
     // TODO: we should do this in the HIR and inject the value there instead

@@ -274,6 +274,19 @@ impl<'a> JavaGen<'a> {
         }
     }
 
+    fn raw_java_type(&self, ty: &Ty, relative_def: DefId) -> String {
+        let resolved_ty = self.hir.context.resolve_ty(ty);
+        match &resolved_ty.kind {
+            TyKind::Sequence { .. } => "java.util.List".to_string(),
+            TyKind::Map { .. } => "java.util.Map".to_string(),
+            TyKind::Array { ty, .. } => {
+                let inner = self.raw_java_type(ty, relative_def);
+                format!("{inner}[]")
+            }
+            _ => self.java_type(ty, relative_def),
+        }
+    }
+
     fn array_dimensions(&self, ty: &Ty, relative_def: DefId) -> (Vec<usize>, String) {
         let mut dimensions = vec![];
         let mut current_ty = ty.clone();
@@ -284,7 +297,7 @@ impl<'a> JavaGen<'a> {
                 dimensions.push(len);
                 current_ty = *inner;
             } else {
-                let base_type = self.java_type(&resolved, relative_def);
+                let base_type = self.raw_java_type(&resolved, relative_def);
                 return (dimensions, base_type);
             }
         }

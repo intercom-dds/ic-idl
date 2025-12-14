@@ -148,6 +148,19 @@ impl<'a> JavaGen<'a> {
         )
     }
 
+    fn is_bool_discriminator(&self, disc_ty: &Ty) -> bool {
+        let resolved = self.hir.context.resolve_ty(disc_ty);
+        matches!(resolved.kind, TyKind::Primitive(PrimitiveTy::Bool))
+    }
+
+    fn emit_switch_discriminator(&self, w: &mut Twine, disc_ty: &Ty, disc_expr: &str) {
+        if self.is_bool_discriminator(disc_ty) {
+            w!(w, "switch (", disc_expr, " ? 1 : 0) {\n");
+        } else {
+            w!(w, "switch (", disc_expr, ") {\n");
+        }
+    }
+
     fn is_cloneable_adt(&self, ty: &Ty) -> bool {
         let resolved = self.hir.context.resolve_ty(ty);
         match &resolved.kind {
@@ -929,13 +942,13 @@ impl<'a> JavaGen<'a> {
             let field_def = self.hir.context.definitions.get(field_id);
             let field_name = &field_def.ident.name;
 
-            if let DefKind::Const(const_ty) = &field_def.kind {
-                if let Some(val) = self.hir.context.integer_value(&const_ty.value) {
-                    w.dedent();
-                    w!(w, "case ", val, ":\n");
-                    w.indent();
-                    w!(w, "return ", field_name, ";\n");
-                }
+            if let DefKind::Const(const_ty) = &field_def.kind
+                && let Some(val) = self.hir.context.integer_value(&const_ty.value)
+            {
+                w.dedent();
+                w!(w, "case ", val, ":\n");
+                w.indent();
+                w!(w, "return ", field_name, ";\n");
             }
         }
 
@@ -973,7 +986,7 @@ impl<'a> JavaGen<'a> {
         w!(w, "if (this.discriminator != discriminator) {\n");
         w!(w, "this.discriminator = discriminator;\n");
         w!(w, "_clear();\n");
-        w!(w, "switch (discriminator) {\n");
+        self.emit_switch_discriminator(w, &union_ty.disc.ty, "discriminator");
 
         for variant in &union_ty.variants {
             self.emit_variant_cases(w, &union_ty.disc.ty, variant, def.id);
@@ -1018,7 +1031,7 @@ impl<'a> JavaGen<'a> {
         w!(w, "return false;\n");
         w!(w, "}\n");
 
-        w!(w, "switch (discriminator) {\n");
+        self.emit_switch_discriminator(w, &union_ty.disc.ty, "discriminator");
         for variant in &union_ty.variants {
             self.emit_variant_cases(w, &union_ty.disc.ty, variant, def.id);
             let resolved = self.hir.context.resolve_ty(&variant.ty);
@@ -1057,7 +1070,7 @@ impl<'a> JavaGen<'a> {
         w!(w, "@Override\n");
         w!(w, "public int hashCode() {\n");
         w!(w, "int result = java.util.Objects.hashCode(discriminator);\n");
-        w!(w, "switch (discriminator) {\n");
+        self.emit_switch_discriminator(w, &union_ty.disc.ty, "discriminator");
         for variant in &union_ty.variants {
             self.emit_variant_cases_no_def(w, variant);
             let resolved = self.hir.context.resolve_ty(&variant.ty);
@@ -1151,17 +1164,18 @@ impl<'a> JavaGen<'a> {
         let (disc_get, disc_set) = self.disc_get_set();
 
         w!(w, "public ", def, "() {\n");
-        if let Some(first_variant) = union_ty.variants.first() {
-            if let Some(first_label) = first_variant.labels.first() {
-                let disc_value = self.format_numeric(&first_label.value, &union_ty.disc.ty, def.id);
-                w!(w, disc_set, "(", disc_value, ");\n");
-            }
+        if let Some(first_variant) = union_ty.variants.first()
+            && let Some(first_label) = first_variant.labels.first()
+        {
+            let disc_value = self.format_numeric(&first_label.value, &union_ty.disc.ty, def.id);
+            w!(w, disc_set, "(", disc_value, ");\n");
         }
         w!(w, "}\n\n");
 
         w!(w, "public ", def, "(", def, " other) {\n");
         w!(w, disc_set, "(other.", disc_get, "());\n");
-        w!(w, "switch (", disc_get, "()) {\n");
+        let disc_expr = format!("{disc_get}()");
+        self.emit_switch_discriminator(w, &union_ty.disc.ty, &disc_expr);
 
         for variant in &union_ty.variants {
             self.emit_variant_cases(w, &union_ty.disc.ty, variant, def.id);
@@ -1174,10 +1188,16 @@ impl<'a> JavaGen<'a> {
     }
 
     fn emit_variant_cases(&self, w: &mut Twine, disc_ty: &Ty, variant: &Variant, def_id: DefId) {
+        let is_bool = self.is_bool_discriminator(disc_ty);
         w.dedent();
         for label in &variant.labels {
-            let case_val = self.format_numeric(&label.value, disc_ty, def_id);
-            w!(w, "case ", case_val, ":\n");
+            if is_bool {
+                let val = self.hir.context.integer_value(&label.value).unwrap_or(0);
+                w!(w, "case ", val, ":\n");
+            } else {
+                let case_val = self.format_numeric(&label.value, disc_ty, def_id);
+                w!(w, "case ", case_val, ":\n");
+            }
         }
         if variant.is_default {
             w!(w, "default:\n");
@@ -1272,12 +1292,11 @@ impl<'a> JavaGen<'a> {
                 if let DefKind::Enum(enum_ty) = &adt_def.kind {
                     for &field_id in &enum_ty.fields {
                         let field_def = self.hir.context.definitions.get(field_id);
-                        if let DefKind::Const(const_ty) = &field_def.kind {
-                            if let Some(val) = self.hir.context.integer_value(&const_ty.value) {
-                                if !used_values.contains(&val) {
-                                    return self.format_numeric(&const_ty.value, disc_ty, def_id);
-                                }
-                            }
+                        if let DefKind::Const(const_ty) = &field_def.kind
+                            && let Some(val) = self.hir.context.integer_value(&const_ty.value)
+                            && !used_values.contains(&val)
+                        {
+                            return self.format_numeric(&const_ty.value, disc_ty, def_id);
                         }
                     }
                 }

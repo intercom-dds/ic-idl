@@ -84,7 +84,7 @@ pub fn codegen_java(hir: &ic_hir::ResolvedGraph, options: JavaOptions) -> Vec<Fi
             bit_flag: Some(Case::UpperSnake),
             bitset_field: Some(Case::Camel),
             constant: Some(Case::UpperSnake),
-            module: Some(Case::Pascal),
+            module: Some(Case::Snake),
             operation: Some(Case::Camel),
             attribute: Some(Case::Camel),
             parameter: Some(Case::Camel),

@@ -86,7 +86,7 @@ fn primitive_type(prim: PrimitiveTy) -> &'static str {
 
 fn boxed_primitive(prim: PrimitiveTy) -> &'static str {
     match prim {
-        PrimitiveTy::Void => "void",
+        PrimitiveTy::Void => "java.lang.Void",
         PrimitiveTy::Bool => "java.lang.Boolean",
         PrimitiveTy::Char | PrimitiveTy::WChar => "java.lang.Character",
         PrimitiveTy::Int8 | PrimitiveTy::UInt8 => "java.lang.Byte",
@@ -572,8 +572,13 @@ impl<'a> JavaGen<'a> {
                             w!(w, name, " == other.", name);
                         }
                     },
-                    TyKind::Array { .. } => {
-                        w!(w, "java.util.Arrays.deepEquals(", name, ", other.", name, ")");
+                    TyKind::Array { ty: inner, .. } => {
+                        let inner_resolved = self.hir.context.resolve_ty(inner);
+                        if matches!(inner_resolved.kind, TyKind::Primitive(_)) {
+                            w!(w, "java.util.Arrays.equals(", name, ", other.", name, ")");
+                        } else {
+                            w!(w, "java.util.Arrays.deepEquals(", name, ", other.", name, ")");
+                        }
                     }
                     _ => {
                         w!(w, "java.util.Objects.equals(", name, ", other.", name, ")");
@@ -598,8 +603,13 @@ impl<'a> JavaGen<'a> {
                 }
                 let resolved = self.hir.context.resolve_ty(&member.ty);
                 let name = &member.ident.name;
-                if matches!(resolved.kind, TyKind::Array { .. }) {
-                    w!(w, "java.util.Arrays.deepHashCode(", name, ")");
+                if let TyKind::Array { ty: inner, .. } = &resolved.kind {
+                    let inner_resolved = self.hir.context.resolve_ty(inner);
+                    if matches!(inner_resolved.kind, TyKind::Primitive(_)) {
+                        w!(w, "java.util.Arrays.hashCode(", name, ")");
+                    } else {
+                        w!(w, "java.util.Arrays.deepHashCode(", name, ")");
+                    }
                 } else {
                     w!(w, name);
                 }
@@ -985,8 +995,13 @@ impl<'a> JavaGen<'a> {
                         w!(w, "return ", name, " == other.", name, ";\n");
                     }
                 },
-                TyKind::Array { .. } => {
-                    w!(w, "return java.util.Arrays.deepEquals(", name, ", other.", name, ");\n");
+                TyKind::Array { ty: inner, .. } => {
+                    let inner_resolved = self.hir.context.resolve_ty(inner);
+                    if matches!(inner_resolved.kind, TyKind::Primitive(_)) {
+                        w!(w, "return java.util.Arrays.equals(", name, ", other.", name, ");\n");
+                    } else {
+                        w!(w, "return java.util.Arrays.deepEquals(", name, ", other.", name, ");\n");
+                    }
                 }
                 _ => {
                     w!(w, "return java.util.Objects.equals(", name, ", other.", name, ");\n");
@@ -1007,8 +1022,13 @@ impl<'a> JavaGen<'a> {
             self.emit_variant_cases_no_def(w, variant);
             let resolved = self.hir.context.resolve_ty(&variant.ty);
             let name = &variant.ident.name;
-            if matches!(resolved.kind, TyKind::Array { .. }) {
-                w!(w, "result = 31 * result + java.util.Arrays.deepHashCode(", name, ");\n");
+            if let TyKind::Array { ty: inner, .. } = &resolved.kind {
+                let inner_resolved = self.hir.context.resolve_ty(inner);
+                if matches!(inner_resolved.kind, TyKind::Primitive(_)) {
+                    w!(w, "result = 31 * result + java.util.Arrays.hashCode(", name, ");\n");
+                } else {
+                    w!(w, "result = 31 * result + java.util.Arrays.deepHashCode(", name, ");\n");
+                }
             } else {
                 w!(w, "result = 31 * result + java.util.Objects.hashCode(", name, ");\n");
             }

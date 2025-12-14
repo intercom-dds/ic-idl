@@ -155,14 +155,14 @@ fn test_const_to_smaller_type_overflow() {
 
     // Verify SMALL has a Const reference to BIG_NUM
     for (_, def) in &result.context.definitions {
-        if def.ident.name == "SMALL" {
-            if let ic_hir::hir::DefKind::Const(const_ty) = &def.kind {
-                assert!(
-                    matches!(const_ty.value, ic_hir::hir::Numeric::Const(_)),
-                    "Expected Const reference, got {:?}",
-                    const_ty.value
-                );
-            }
+        if def.ident.name == "SMALL"
+            && let ic_hir::hir::DefKind::Const(const_ty) = &def.kind
+        {
+            assert!(
+                matches!(const_ty.value, ic_hir::hir::Numeric::Const(_)),
+                "Expected Const reference, got {:?}",
+                const_ty.value
+            );
         }
     }
 }

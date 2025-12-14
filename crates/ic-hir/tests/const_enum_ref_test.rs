@@ -93,15 +93,15 @@ fn test_const_ref_to_const() {
 
     // Verify DERIVED has the correct value
     for (_, def) in &result.context.definitions {
-        if def.ident.name == "DERIVED" {
-            if let ic_hir::hir::DefKind::Const(const_ty) = &def.kind {
-                // DERIVED = BASE + 50 should be evaluated since it's an expression
-                if let ic_hir::hir::Numeric::Int32(val) = const_ty.value {
-                    assert_eq!(val, 150, "DERIVED should have value 150 (BASE + 50)");
-                    return;
-                }
-                panic!("DERIVED should be Int32(150), but got {:?}", const_ty.value);
+        if def.ident.name == "DERIVED"
+            && let ic_hir::hir::DefKind::Const(const_ty) = &def.kind
+        {
+            // DERIVED = BASE + 50 should be evaluated since it's an expression
+            if let ic_hir::hir::Numeric::Int32(val) = const_ty.value {
+                assert_eq!(val, 150, "DERIVED should have value 150 (BASE + 50)");
+                return;
             }
+            panic!("DERIVED should be Int32(150), but got {:?}", const_ty.value);
         }
     }
 

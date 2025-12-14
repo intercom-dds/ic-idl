@@ -326,28 +326,27 @@ fn test_multidimensional_arrays() {
         .iter()
         .rfind(|&&def_id| {
             let def = transformed.context.definitions.get(def_id);
-            if let DefKind::Alias(alias_ty) = &def.kind {
-                if let TyKind::Array { len, .. } = &alias_ty.ty.kind {
-                    return *len == 5;
-                }
+            if let DefKind::Alias(alias_ty) = &def.kind
+                && let TyKind::Array { len, .. } = &alias_ty.ty.kind
+            {
+                return *len == 5;
             }
             false
         })
         .expect("Should have outer array alias with length 5");
 
     let outer_alias = transformed.context.definitions.get(*outer_alias_def);
-    if let DefKind::Alias(alias_ty) = &outer_alias.kind {
-        if let TyKind::Array {
+    if let DefKind::Alias(alias_ty) = &outer_alias.kind
+        && let TyKind::Array {
             ty: elem_ty, len, ..
         } = &alias_ty.ty.kind
-        {
-            assert_eq!(*len, 5, "Outer array should have length 5");
-            assert!(
-                matches!(elem_ty.kind, TyKind::Adt(_)),
-                "Element should reference the inner array typedef, but got: {:?}",
-                elem_ty.kind
-            );
-        }
+    {
+        assert_eq!(*len, 5, "Outer array should have length 5");
+        assert!(
+            matches!(elem_ty.kind, TyKind::Adt(_)),
+            "Element should reference the inner array typedef, but got: {:?}",
+            elem_ty.kind
+        );
     }
 }
 

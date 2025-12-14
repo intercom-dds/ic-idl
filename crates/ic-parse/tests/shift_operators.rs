@@ -50,15 +50,15 @@ fn test_shift_operators_in_constants() {
 
     // Check that shift operators are present in the AST
     for item in &items {
-        if let Item::ConstValue(c) = item {
-            if let Expr::Binary(b) = &c.value {
-                // Get the constant name from the declarator
-                if let ic_syntax::Declarator::Simple(ident) = &c.decl {
-                    match &ident.name[..] {
-                        "LEFT_SHIFT" => assert_eq!(b.op.kind, OpKind::Lshift),
-                        "RIGHT_SHIFT" => assert_eq!(b.op.kind, OpKind::Rshift),
-                        _ => {}
-                    }
+        if let Item::ConstValue(c) = item
+            && let Expr::Binary(b) = &c.value
+        {
+            // Get the constant name from the declarator
+            if let ic_syntax::Declarator::Simple(ident) = &c.decl {
+                match &ident.name[..] {
+                    "LEFT_SHIFT" => assert_eq!(b.op.kind, OpKind::Lshift),
+                    "RIGHT_SHIFT" => assert_eq!(b.op.kind, OpKind::Rshift),
+                    _ => {}
                 }
             }
         }

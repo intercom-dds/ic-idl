@@ -51,23 +51,22 @@ fn valuetype_enum_values_assigned() {
 
     for (_, def) in &result.context.definitions {
         if def.ident.name == "ACTIVE" {
-            if let DefKind::Const(const_ty) = &def.kind {
-                if let Numeric::Int32(val) = const_ty.value {
-                    active_value = Some(val);
-                }
+            if let DefKind::Const(const_ty) = &def.kind
+                && let Numeric::Int32(val) = const_ty.value
+            {
+                active_value = Some(val);
             }
         } else if def.ident.name == "INACTIVE" {
-            if let DefKind::Const(const_ty) = &def.kind {
-                if let Numeric::Int32(val) = const_ty.value {
-                    inactive_value = Some(val);
-                }
+            if let DefKind::Const(const_ty) = &def.kind
+                && let Numeric::Int32(val) = const_ty.value
+            {
+                inactive_value = Some(val);
             }
-        } else if def.ident.name == "PENDING" {
-            if let DefKind::Const(const_ty) = &def.kind {
-                if let Numeric::Int32(val) = const_ty.value {
-                    pending_value = Some(val);
-                }
-            }
+        } else if def.ident.name == "PENDING"
+            && let DefKind::Const(const_ty) = &def.kind
+            && let Numeric::Int32(val) = const_ty.value
+        {
+            pending_value = Some(val);
         }
     }
 
@@ -257,29 +256,28 @@ fn valuetype_enum_explicit_values() {
 
     for (_, def) in &result.context.definitions {
         if def.ident.name == "DEBUG" {
-            if let DefKind::Const(const_ty) = &def.kind {
-                if let Numeric::Int32(val) = const_ty.value {
-                    debug_value = Some(val);
-                }
+            if let DefKind::Const(const_ty) = &def.kind
+                && let Numeric::Int32(val) = const_ty.value
+            {
+                debug_value = Some(val);
             }
         } else if def.ident.name == "INFO" {
-            if let DefKind::Const(const_ty) = &def.kind {
-                if let Numeric::Int32(val) = const_ty.value {
-                    info_value = Some(val);
-                }
+            if let DefKind::Const(const_ty) = &def.kind
+                && let Numeric::Int32(val) = const_ty.value
+            {
+                info_value = Some(val);
             }
         } else if def.ident.name == "WARN" {
-            if let DefKind::Const(const_ty) = &def.kind {
-                if let Numeric::Int32(val) = const_ty.value {
-                    warn_value = Some(val);
-                }
+            if let DefKind::Const(const_ty) = &def.kind
+                && let Numeric::Int32(val) = const_ty.value
+            {
+                warn_value = Some(val);
             }
-        } else if def.ident.name == "ERROR" {
-            if let DefKind::Const(const_ty) = &def.kind {
-                if let Numeric::Int32(val) = const_ty.value {
-                    error_value = Some(val);
-                }
-            }
+        } else if def.ident.name == "ERROR"
+            && let DefKind::Const(const_ty) = &def.kind
+            && let Numeric::Int32(val) = const_ty.value
+        {
+            error_value = Some(val);
         }
     }
 

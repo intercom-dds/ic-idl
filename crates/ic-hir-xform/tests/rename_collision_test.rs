@@ -63,20 +63,20 @@ fn test_namespace_aware_collision_handling() {
 
     // Now look in the test module specifically
     for def in &renamed {
-        if let DefKind::Module(m) = &def.kind {
-            if def.ident.name == "test" {
-                // Look at children of the test module
-                for &child_id in &m.definitions {
-                    let child = renamed.context.type_of(child_id);
-                    match &child.kind {
-                        DefKind::Struct(_) => {
-                            struct_name = Some(child.ident.name.clone());
-                        }
-                        DefKind::Module(_) => {
-                            module_name = Some(child.ident.name.clone());
-                        }
-                        _ => {}
+        if let DefKind::Module(m) = &def.kind
+            && def.ident.name == "test"
+        {
+            // Look at children of the test module
+            for &child_id in &m.definitions {
+                let child = renamed.context.type_of(child_id);
+                match &child.kind {
+                    DefKind::Struct(_) => {
+                        struct_name = Some(child.ident.name.clone());
                     }
+                    DefKind::Module(_) => {
+                        module_name = Some(child.ident.name.clone());
+                    }
+                    _ => {}
                 }
             }
         }
@@ -113,14 +113,14 @@ fn test_same_namespace_collision() {
 
     // Look in the test module for structs
     for def in &renamed {
-        if let DefKind::Module(m) = &def.kind {
-            if def.ident.name == "test" {
-                // Look at children of the test module
-                for &child_id in &m.definitions {
-                    let child = renamed.context.type_of(child_id);
-                    if let DefKind::Struct(_) = &child.kind {
-                        struct_names.push(child.ident.name.clone());
-                    }
+        if let DefKind::Module(m) = &def.kind
+            && def.ident.name == "test"
+        {
+            // Look at children of the test module
+            for &child_id in &m.definitions {
+                let child = renamed.context.type_of(child_id);
+                if let DefKind::Struct(_) = &child.kind {
+                    struct_names.push(child.ident.name.clone());
                 }
             }
         }

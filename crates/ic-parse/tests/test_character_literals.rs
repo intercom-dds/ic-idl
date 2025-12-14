@@ -37,12 +37,11 @@ fn parse_char_literal(input: &str) -> Option<char> {
 
     // Extract the character value from the parsed AST
     for item in &result.tree {
-        if let Item::ConstValue(c) = item {
-            if let Expr::Literal(lit) = &c.value {
-                if let LiteralValue::Char(ch) = &lit.value {
-                    return Some(*ch);
-                }
-            }
+        if let Item::ConstValue(c) = item
+            && let Expr::Literal(lit) = &c.value
+            && let LiteralValue::Char(ch) = &lit.value
+        {
+            return Some(*ch);
         }
     }
     None

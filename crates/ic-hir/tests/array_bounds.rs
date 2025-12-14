@@ -43,20 +43,20 @@ fn test_array_bounds_in_struct() {
 
     // Find the struct and check array bounds
     for def in &hir {
-        if def.ident.name == "MyStruct" {
-            if let DefKind::Struct(s) = &def.kind {
-                // array1[5]
-                if let TyKind::Array { ty: _, len, .. } = &s.members[0].ty.kind {
-                    assert_eq!(*len, 5);
-                }
-                // array2[10]
-                if let TyKind::Array { ty: _, len, .. } = &s.members[1].ty.kind {
-                    assert_eq!(*len, 10);
-                }
-                // array3[2 + 3]
-                if let TyKind::Array { ty: _, len, .. } = &s.members[2].ty.kind {
-                    assert_eq!(*len, 5);
-                }
+        if def.ident.name == "MyStruct"
+            && let DefKind::Struct(s) = &def.kind
+        {
+            // array1[5]
+            if let TyKind::Array { ty: _, len, .. } = &s.members[0].ty.kind {
+                assert_eq!(*len, 5);
+            }
+            // array2[10]
+            if let TyKind::Array { ty: _, len, .. } = &s.members[1].ty.kind {
+                assert_eq!(*len, 10);
+            }
+            // array3[2 + 3]
+            if let TyKind::Array { ty: _, len, .. } = &s.members[2].ty.kind {
+                assert_eq!(*len, 5);
             }
         }
     }
@@ -77,16 +77,16 @@ fn test_array_bounds_in_union() {
 
     // Find the union and check array bounds
     for def in &hir {
-        if def.ident.name == "MyUnion" {
-            if let DefKind::Union(u) = &def.kind {
-                // buffer[256]
-                if let TyKind::Array { ty: _, len, .. } = &u.variants[0].ty.kind {
-                    assert_eq!(*len, 256);
-                }
-                // data[4 * 2]
-                if let TyKind::Array { ty: _, len, .. } = &u.variants[1].ty.kind {
-                    assert_eq!(*len, 8);
-                }
+        if def.ident.name == "MyUnion"
+            && let DefKind::Union(u) = &def.kind
+        {
+            // buffer[256]
+            if let TyKind::Array { ty: _, len, .. } = &u.variants[0].ty.kind {
+                assert_eq!(*len, 256);
+            }
+            // data[4 * 2]
+            if let TyKind::Array { ty: _, len, .. } = &u.variants[1].ty.kind {
+                assert_eq!(*len, 8);
             }
         }
     }
@@ -105,16 +105,16 @@ fn test_array_bounds_in_exception() {
 
     // Find the exception and check array bounds
     for def in &hir {
-        if def.ident.name == "MyException" {
-            if let DefKind::Except(e) = &def.kind {
-                // messages[3]
-                if let TyKind::Array { ty: _, len, .. } = &e.members[0].ty.kind {
-                    assert_eq!(*len, 3);
-                }
-                // codes[1 << 3]
-                if let TyKind::Array { ty: _, len, .. } = &e.members[1].ty.kind {
-                    assert_eq!(*len, 8);
-                }
+        if def.ident.name == "MyException"
+            && let DefKind::Except(e) = &def.kind
+        {
+            // messages[3]
+            if let TyKind::Array { ty: _, len, .. } = &e.members[0].ty.kind {
+                assert_eq!(*len, 3);
+            }
+            // codes[1 << 3]
+            if let TyKind::Array { ty: _, len, .. } = &e.members[1].ty.kind {
+                assert_eq!(*len, 8);
             }
         }
     }
@@ -133,23 +133,23 @@ fn test_multidimensional_arrays() {
 
     // Find the struct and check nested array bounds
     for def in &hir {
-        if def.ident.name == "Matrix" {
-            if let DefKind::Struct(s) = &def.kind {
-                // matrix2d[3][4] - In HIR, arrays are nested with innermost dimension first
-                if let TyKind::Array { ty, len, .. } = &s.members[0].ty.kind {
-                    assert_eq!(*len, 3); // First dimension
-                    if let TyKind::Array { ty: _, len, .. } = &ty.kind {
-                        assert_eq!(*len, 4); // Second dimension
-                    }
+        if def.ident.name == "Matrix"
+            && let DefKind::Struct(s) = &def.kind
+        {
+            // matrix2d[3][4] - In HIR, arrays are nested with innermost dimension first
+            if let TyKind::Array { ty, len, .. } = &s.members[0].ty.kind {
+                assert_eq!(*len, 3); // First dimension
+                if let TyKind::Array { ty: _, len, .. } = &ty.kind {
+                    assert_eq!(*len, 4); // Second dimension
                 }
-                // matrix3d[2][3][4]
-                if let TyKind::Array { ty, len, .. } = &s.members[1].ty.kind {
-                    assert_eq!(*len, 2); // First dimension
-                    if let TyKind::Array { ty, len, .. } = &ty.kind {
-                        assert_eq!(*len, 3); // Second dimension
-                        if let TyKind::Array { ty: _, len, .. } = &ty.kind {
-                            assert_eq!(*len, 4); // Third dimension
-                        }
+            }
+            // matrix3d[2][3][4]
+            if let TyKind::Array { ty, len, .. } = &s.members[1].ty.kind {
+                assert_eq!(*len, 2); // First dimension
+                if let TyKind::Array { ty, len, .. } = &ty.kind {
+                    assert_eq!(*len, 3); // Second dimension
+                    if let TyKind::Array { ty: _, len, .. } = &ty.kind {
+                        assert_eq!(*len, 4); // Third dimension
                     }
                 }
             }
@@ -176,16 +176,16 @@ fn test_array_bounds_with_enum_values() {
 
     // Find the struct and check array bounds
     for def in &hir {
-        if def.ident.name == "Storage" {
-            if let DefKind::Struct(s) = &def.kind {
-                // small_buffer[Sizes::SMALL] = 4
-                if let TyKind::Array { ty: _, len, .. } = &s.members[0].ty.kind {
-                    assert_eq!(*len, 4);
-                }
-                // large_buffer[Sizes::LARGE] = 16
-                if let TyKind::Array { ty: _, len, .. } = &s.members[1].ty.kind {
-                    assert_eq!(*len, 16);
-                }
+        if def.ident.name == "Storage"
+            && let DefKind::Struct(s) = &def.kind
+        {
+            // small_buffer[Sizes::SMALL] = 4
+            if let TyKind::Array { ty: _, len, .. } = &s.members[0].ty.kind {
+                assert_eq!(*len, 4);
+            }
+            // large_buffer[Sizes::LARGE] = 16
+            if let TyKind::Array { ty: _, len, .. } = &s.members[1].ty.kind {
+                assert_eq!(*len, 16);
             }
         }
     }

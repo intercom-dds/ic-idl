@@ -264,10 +264,10 @@ impl<'a> ConstEvaluator<'a> {
         }
 
         // Perform literal range checks before evaluation
-        if let Some(lit) = extract_direct_int_literal(expr) {
-            if !self.check_literal_range(lit, expected_ty, expr.span()) {
-                return None;
-            }
+        if let Some(lit) = extract_direct_int_literal(expr)
+            && !self.check_literal_range(lit, expected_ty, expr.span())
+        {
+            return None;
         }
 
         // If assigning from a path to a constant, check compatibility and optionally reuse it
@@ -868,10 +868,10 @@ fn extract_direct_int_literal(expr: &ic_syntax::Expr) -> Option<i128> {
         },
         E::Group(g) => extract_direct_int_literal(&g.expr),
         E::Unary(u) => {
-            if u.op.kind == ic_syntax::OpKind::Sub {
-                if let Some(v) = extract_direct_int_literal(&u.expr) {
-                    return v.checked_neg();
-                }
+            if u.op.kind == ic_syntax::OpKind::Sub
+                && let Some(v) = extract_direct_int_literal(&u.expr)
+            {
+                return v.checked_neg();
             }
             None
         }

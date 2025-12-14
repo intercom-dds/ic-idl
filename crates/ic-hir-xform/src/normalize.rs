@@ -227,14 +227,13 @@ impl Normalizer {
         for (def_id, def) in &hir.context.definitions {
             if let Some(parent_id) = def.parent {
                 // Check if this is a bitmask flag constant
-                if let DefKind::Const(c) = &def.kind {
-                    if let TyKind::Adt(type_id) = &c.ty.kind {
-                        if let DefKind::Bitmask(_) = &hir.context.definitions.get(*type_id).kind {
-                            // This is a bitmask flag - don't add it to actual_children
-                            // as bitmask flags are stored in the parent scope, not in the bitmask's definition list
-                            continue;
-                        }
-                    }
+                if let DefKind::Const(c) = &def.kind
+                    && let TyKind::Adt(type_id) = &c.ty.kind
+                    && let DefKind::Bitmask(_) = &hir.context.definitions.get(*type_id).kind
+                {
+                    // This is a bitmask flag - don't add it to actual_children
+                    // as bitmask flags are stored in the parent scope, not in the bitmask's definition list
+                    continue;
                 }
                 actual_children.entry(parent_id).or_default().push(def_id);
             }

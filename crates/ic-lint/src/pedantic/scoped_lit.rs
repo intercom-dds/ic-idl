@@ -59,40 +59,40 @@ impl<'a> Visitor<'a> for ScopedLit<'a> {
 
     fn visit_expr(&mut self, expr: &'a Expr) {
         if let Expr::Path(path) = expr {
-            if let Some(v) = path.segments.iter().rev().nth(1) {
-                if let Some(kind) = self.seen.get(v.name.as_str()) {
-                    let (ty, member) = match kind {
-                        Kind::Bitmask => ("bitmask", "bitmask flags"),
-                        Kind::Enum => ("enum", "enumerators"),
-                    };
+            if let Some(v) = path.segments.iter().rev().nth(1)
+                && let Some(kind) = self.seen.get(v.name.as_str())
+            {
+                let (ty, member) = match kind {
+                    Kind::Bitmask => ("bitmask", "bitmask flags"),
+                    Kind::Enum => ("enum", "enumerators"),
+                };
 
-                    // Get just the enumerator name (last segment)
-                    let enumerator = path.segments.last().map_or("", |s| s.name.as_str()).green();
-                    // Get enum::enumerator (last two segments)
-                    let enum_and_enumerator = if path.segments.len() >= 2 {
-                        let last_two: Vec<&str> = path
-                            .segments
-                            .iter()
-                            .rev()
-                            .take(2)
-                            .rev()
-                            .map(|s| s.name.as_str())
-                            .collect();
-                        last_two.join("::").green()
-                    } else {
-                        path.segments.iter().map(|s| &s.name).join("::").green()
-                    };
-                    let label = warn_span(
-                        format!("scoped {ty}s are non-standard"),
-                        Label::new(v.span).message("used here"),
-                    )
-                    .note(format!("{member} are registered in the parent scope"))
-                    .help(format!(
-                        "use `{enumerator}` instead of `{enum_and_enumerator}`"
-                    ));
+                // Get just the enumerator name (last segment)
+                let enumerator = path.segments.last().map_or("", |s| s.name.as_str()).green();
+                // Get enum::enumerator (last two segments)
+                let enum_and_enumerator = if path.segments.len() >= 2 {
+                    let last_two: Vec<&str> = path
+                        .segments
+                        .iter()
+                        .rev()
+                        .take(2)
+                        .rev()
+                        .map(|s| s.name.as_str())
+                        .collect();
+                    last_two.join("::").green()
+                } else {
+                    path.segments.iter().map(|s| &s.name).join("::").green()
+                };
+                let label = warn_span(
+                    format!("scoped {ty}s are non-standard"),
+                    Label::new(v.span).message("used here"),
+                )
+                .note(format!("{member} are registered in the parent scope"))
+                .help(format!(
+                    "use `{enumerator}` instead of `{enum_and_enumerator}`"
+                ));
 
-                    Self::report(self.ctx, label);
-                }
+                Self::report(self.ctx, label);
             }
         } else {
             // Continue traversal -- this may be a binary expression of bitmask

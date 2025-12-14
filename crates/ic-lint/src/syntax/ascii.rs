@@ -54,14 +54,14 @@ impl<'a> Visitor<'a> for AsciiIdent<'_> {
     }
 
     fn visit_literal(&mut self, num: &'a ic_syntax::Literal) {
-        if let ic_syntax::LiteralValue::Char(c) = &num.value {
-            if !c.is_ascii() {
-                let diag = error_span(
-                    "character literals can only consist of alphanumeric ASCII characters",
-                    Label::new(num.span).message("non-ASCII character"),
-                );
-                Self::report(self.ctx, diag);
-            }
+        if let ic_syntax::LiteralValue::Char(c) = &num.value
+            && !c.is_ascii()
+        {
+            let diag = error_span(
+                "character literals can only consist of alphanumeric ASCII characters",
+                Label::new(num.span).message("non-ASCII character"),
+            );
+            Self::report(self.ctx, diag);
         }
     }
 }

@@ -68,15 +68,14 @@ impl DuplicateAnnotations<'_> {
             let def = self.hir.context.type_of(def_id);
             if !(seen.insert(def_id)
                 || def.flags.contains(DefFlags::IS_BUILTIN) && def.ident.name == "doc")
-            {
-                if let Some(diag) = self.ctx.diag_span(
+                && let Some(diag) = self.ctx.diag_span(
                     Self::name(),
                     Self::category(),
                     format!("duplicate annotation '@{}'", ann.ident.name),
                     Label::new(ann.ident.span).message("duplicate annotation"),
-                ) {
-                    Self::report(self.ctx, diag);
-                }
+                )
+            {
+                Self::report(self.ctx, diag);
             }
         }
 
@@ -91,16 +90,16 @@ impl DuplicateAnnotations<'_> {
 
         if has_optional && has_key {
             // Find the optional annotation for the span
-            if let Some(optional_ann) = annotations.iter().find(|a| a.ident.name == "optional") {
-                if let Some(diag) = self.ctx.diag_span(
+            if let Some(optional_ann) = annotations.iter().find(|a| a.ident.name == "optional")
+                && let Some(diag) = self.ctx.diag_span(
                     Self::name(),
                     Self::category(),
                     "@optional and @key are mutually exclusive",
                     Label::new(optional_ann.ident.span)
                         .message("@optional cannot be used with @key"),
-                ) {
-                    Self::report(self.ctx, diag.help("remove either @optional or @key"));
-                }
+                )
+            {
+                Self::report(self.ctx, diag.help("remove either @optional or @key"));
             }
         }
     }

@@ -167,13 +167,12 @@ impl<'a> Visitor<'a> for PreferEnumName<'a> {
 
     fn visit_const(&mut self, def: &'a Def, data: &'a ConstTy) {
         // Skip enum members themselves
-        if def.parent.is_some() {
-            if let Some(parent_def) = def.parent.map(|p| self.context().definitions.get(p)) {
-                if matches!(parent_def.kind, DefKind::Enum(_)) {
-                    // This is an enum member, skip checking
-                    return;
-                }
-            }
+        if def.parent.is_some()
+            && let Some(parent_def) = def.parent.map(|p| self.context().definitions.get(p))
+            && matches!(parent_def.kind, DefKind::Enum(_))
+        {
+            // This is an enum member, skip checking
+            return;
         }
 
         self.check_const(def, data);

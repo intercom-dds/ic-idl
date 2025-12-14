@@ -110,36 +110,34 @@ impl<'a> Visitor<'a> for LargeUnionVariant<'a> {
         if avg_except_largest > 0
             && largest_size > avg_except_largest * SIZE_RATIO_THRESHOLD
             && largest_size - avg_except_largest >= MIN_SIZE_DIFFERENCE
+            && let Some(largest) = largest_variant
         {
-            if let Some(largest) = largest_variant {
-                let diag = self.ctx.diag_span(
-                    Self::name(),
-                    Self::category(),
-                    format!(
-                        "union variant `{}` is {} bytes, which is significantly larger than the \
-                         average of other variants ({} bytes)",
-                        largest.ident.name, largest_size, avg_except_largest
-                    ),
-                    Label::new(largest.ident.span)
-                        .message(format!("large variant ({largest_size} bytes)")),
+            let diag = self.ctx.diag_span(
+                Self::name(),
+                Self::category(),
+                format!(
+                    "union variant `{}` is {} bytes, which is significantly larger than the \
+                     average of other variants ({} bytes)",
+                    largest.ident.name, largest_size, avg_except_largest
+                ),
+                Label::new(largest.ident.span)
+                    .message(format!("large variant ({largest_size} bytes)")),
+            );
+
+            if let Some(mut diag) = diag {
+                // Add notes about other variants for context
+                for (variant, size) in &variant_sizes {
+                    if variant.ident.name != largest.ident.name {
+                        diag = diag
+                            .label(Label::new(variant.ident.span).message(format!("{size} bytes")));
+                    }
+                }
+
+                diag = diag.note(
+                    "consider annotating large variants with `@shared` to heap allocate them",
                 );
 
-                if let Some(mut diag) = diag {
-                    // Add notes about other variants for context
-                    for (variant, size) in &variant_sizes {
-                        if variant.ident.name != largest.ident.name {
-                            diag = diag.label(
-                                Label::new(variant.ident.span).message(format!("{size} bytes")),
-                            );
-                        }
-                    }
-
-                    diag = diag.note(
-                        "consider annotating large variants with `@shared` to heap allocate them",
-                    );
-
-                    Self::report(self.ctx, diag);
-                }
+                Self::report(self.ctx, diag);
             }
         }
 

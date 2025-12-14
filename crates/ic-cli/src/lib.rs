@@ -363,10 +363,10 @@ impl CommandLine {
     }
 
     fn exe_name(&self) -> String {
-        if let Ok(exe) = env::current_exe() {
-            if let Some(stem) = exe.file_stem() {
-                return stem.to_string_lossy().to_string();
-            }
+        if let Ok(exe) = env::current_exe()
+            && let Some(stem) = exe.file_stem()
+        {
+            return stem.to_string_lossy().to_string();
         }
         self.name.clone()
     }
@@ -506,12 +506,13 @@ impl CommandLine {
 
     fn validate(result: &ParseResult) {
         for opt in result.options.values() {
-            if let Some(token) = opt.tokens.last() {
-                if opt.required && result.get_vec(token).is_none() {
-                    let error = "error:".red().bold();
-                    eprintln!("{error} required option '{token}' was not specified");
-                    std::process::exit(1);
-                }
+            if let Some(token) = opt.tokens.last()
+                && opt.required
+                && result.get_vec(token).is_none()
+            {
+                let error = "error:".red().bold();
+                eprintln!("{error} required option '{token}' was not specified");
+                std::process::exit(1);
             }
         }
 

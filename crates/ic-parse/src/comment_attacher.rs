@@ -129,12 +129,12 @@ fn find_last_position_in_file<T>(
 impl Processor<'_> {
     /// Skip orphaned comments that appear before a given position
     fn skip_orphaned_comments_before_position(&mut self, file_id: ic_vfs::FileId, position: u32) {
-        if let Some(idx) = self.comment_indices.get_mut(&file_id) {
-            if let Some(comments) = self.comments_by_file.get(&file_id) {
-                // Skip comments that appear before the given position
-                while *idx < comments.len() && comments[*idx].span.end.offset <= position {
-                    *idx += 1;
-                }
+        if let Some(idx) = self.comment_indices.get_mut(&file_id)
+            && let Some(comments) = self.comments_by_file.get(&file_id)
+        {
+            // Skip comments that appear before the given position
+            while *idx < comments.len() && comments[*idx].span.end.offset <= position {
+                *idx += 1;
             }
         }
     }
@@ -586,10 +586,10 @@ impl Processor<'_> {
         while *comment_idx < comments.len() {
             let comment = &comments[*comment_idx];
 
-            if let Some(max) = max_offset {
-                if comment.span.start.offset >= max {
-                    break;
-                }
+            if let Some(max) = max_offset
+                && comment.span.start.offset >= max
+            {
+                break;
             }
 
             if comment.is_trailing {

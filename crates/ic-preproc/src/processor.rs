@@ -1169,26 +1169,26 @@ where
         }
 
         // Check if it's a number
-        if let Some(first_char) = text.chars().next() {
-            if first_char.is_ascii_digit() {
-                // Simple number detection - could be decimal, octal, or hex
-                if text.starts_with("0x") || text.starts_with("0X") {
-                    return Kind::Number {
-                        base: Base::Hexadecimal,
-                    };
-                } else if text.starts_with('0')
-                    && text.len() > 1
-                    && text.chars().all(|c| c.is_ascii_digit())
-                {
-                    return Kind::Number { base: Base::Octal };
-                } else if text.chars().all(|c| c.is_ascii_digit()) {
-                    return Kind::Number {
-                        base: Base::Decimal,
-                    };
-                }
-                // If it contains non-digit characters after starting with a digit,
-                // it's an invalid identifier (but we'll treat it as one)
+        if let Some(first_char) = text.chars().next()
+            && first_char.is_ascii_digit()
+        {
+            // Simple number detection - could be decimal, octal, or hex
+            if text.starts_with("0x") || text.starts_with("0X") {
+                return Kind::Number {
+                    base: Base::Hexadecimal,
+                };
+            } else if text.starts_with('0')
+                && text.len() > 1
+                && text.chars().all(|c| c.is_ascii_digit())
+            {
+                return Kind::Number { base: Base::Octal };
+            } else if text.chars().all(|c| c.is_ascii_digit()) {
+                return Kind::Number {
+                    base: Base::Decimal,
+                };
             }
+            // If it contains non-digit characters after starting with a digit,
+            // it's an invalid identifier (but we'll treat it as one)
         }
 
         // Default to identifier
@@ -1696,10 +1696,10 @@ where
         );
 
         // Optional filename
-        if let Some(tok) = self.cursor().peek() {
-            if matches!(tok, Kind::String { terminated: true }) {
-                self.cursor().next();
-            }
+        if let Some(tok) = self.cursor().peek()
+            && matches!(tok, Kind::String { terminated: true })
+        {
+            self.cursor().next();
         }
 
         self.warn_trailing(Directive::Line);

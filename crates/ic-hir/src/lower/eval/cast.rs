@@ -340,37 +340,36 @@ pub fn check_float_to_int_precision_loss(
     diagnostics: &mut super::super::Diagnostics,
 ) {
     // Check if we have a float literal
-    if let ic_syntax::Expr::Literal(lit) = expr {
-        if let ic_syntax::LiteralValue::Float(float_val) = &lit.value {
-            // Check if target type is integer
-            if let TyKind::Primitive(prim) = &expected_ty.kind {
-                let is_int_type = matches!(
-                    prim,
-                    crate::hir::PrimitiveTy::Int8
-                        | crate::hir::PrimitiveTy::UInt8
-                        | crate::hir::PrimitiveTy::Int16
-                        | crate::hir::PrimitiveTy::UInt16
-                        | crate::hir::PrimitiveTy::Int32
-                        | crate::hir::PrimitiveTy::UInt32
-                        | crate::hir::PrimitiveTy::Int64
-                        | crate::hir::PrimitiveTy::UInt64
-                );
+    if let ic_syntax::Expr::Literal(lit) = expr
+        && let ic_syntax::LiteralValue::Float(float_val) = &lit.value
+    {
+        // Check if target type is integer
+        if let TyKind::Primitive(prim) = &expected_ty.kind {
+            let is_int_type = matches!(
+                prim,
+                crate::hir::PrimitiveTy::Int8
+                    | crate::hir::PrimitiveTy::UInt8
+                    | crate::hir::PrimitiveTy::Int16
+                    | crate::hir::PrimitiveTy::UInt16
+                    | crate::hir::PrimitiveTy::Int32
+                    | crate::hir::PrimitiveTy::UInt32
+                    | crate::hir::PrimitiveTy::Int64
+                    | crate::hir::PrimitiveTy::UInt64
+            );
 
-                if is_int_type {
-                    let truncated = float_val.trunc();
-                    // Check if the fractional part is non-zero
-                    if (float_val - truncated).abs() > f64::EPSILON {
-                        diagnostics.warnings.push(ic_diagnostic::warn_span(
-                            format!(
-                                "implicit conversion from 'double' to '{}' changes value from {} \
-                                 to {}",
-                                prim.name(),
-                                float_val,
-                                truncated as i64
-                            ),
-                            Label::new(expr.span()).message("precision loss here"),
-                        ));
-                    }
+            if is_int_type {
+                let truncated = float_val.trunc();
+                // Check if the fractional part is non-zero
+                if (float_val - truncated).abs() > f64::EPSILON {
+                    diagnostics.warnings.push(ic_diagnostic::warn_span(
+                        format!(
+                            "implicit conversion from 'double' to '{}' changes value from {} to {}",
+                            prim.name(),
+                            float_val,
+                            truncated as i64
+                        ),
+                        Label::new(expr.span()).message("precision loss here"),
+                    ));
                 }
             }
         }

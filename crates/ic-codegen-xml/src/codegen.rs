@@ -450,20 +450,20 @@ impl<'a> XmlGen<'a> {
 fn type_attrs(def: &Def) -> Vec<(String, String)> {
     let mut attrs = Vec::new();
 
-    if let Some(ext) = annotation_str(def, "extensibility") {
-        if ext != "appendable" {
-            attrs.push(("extensibility".to_string(), ext));
-        }
+    if let Some(ext) = annotation_str(def, "extensibility")
+        && ext != "appendable"
+    {
+        attrs.push(("extensibility".to_string(), ext));
     }
 
     if has_annotation(def, "nested") {
         attrs.push(("nested".to_string(), "true".to_string()));
     }
 
-    if let Some(autoid) = annotation_str(def, "autoid") {
-        if autoid == "hash" {
-            attrs.push(("autoid".to_string(), "hash".to_string()));
-        }
+    if let Some(autoid) = annotation_str(def, "autoid")
+        && autoid == "hash"
+    {
+        attrs.push(("autoid".to_string(), "hash".to_string()));
     }
 
     if has_annotation(def, "must_understand") {

@@ -527,16 +527,16 @@ impl<'a> Formatter<'a> {
         let mut prev_line = None;
         for &line_num in &all_lines {
             // Check if we need to insert ellipsis
-            if let Some(prev) = prev_line {
-                if line_num > prev + 1 {
-                    // There's a gap, insert ellipsis
-                    writeln!(
-                        f,
-                        " {} {}",
-                        format!("{:>line_width$}", "···").gray(),
-                        self.chars.vertical.blue().bold()
-                    )?;
-                }
+            if let Some(prev) = prev_line
+                && line_num > prev + 1
+            {
+                // There's a gap, insert ellipsis
+                writeln!(
+                    f,
+                    " {} {}",
+                    format!("{:>line_width$}", "···").gray(),
+                    self.chars.vertical.blue().bold()
+                )?;
             }
 
             write!(

@@ -36,14 +36,14 @@ pub struct BitmaskAnn<'a> {
 
 impl<'a> Visitor<'a> for BitmaskAnn<'_> {
     fn visit_annotation_field(&mut self, def: &'a ic_syntax::AnnotationField) {
-        if let ic_syntax::AnnotationField::Item(item) = def {
-            if let ic_syntax::Item::BitmaskValue(bitmask) = item.as_ref() {
-                let diag = warn_span(
-                    "defining bitmasks in annotations is non-standard",
-                    Label::new(bitmask.ident.span).message("defined here"),
-                );
-                Self::report(self.ctx, diag);
-            }
+        if let ic_syntax::AnnotationField::Item(item) = def
+            && let ic_syntax::Item::BitmaskValue(bitmask) = item.as_ref()
+        {
+            let diag = warn_span(
+                "defining bitmasks in annotations is non-standard",
+                Label::new(bitmask.ident.span).message("defined here"),
+            );
+            Self::report(self.ctx, diag);
         }
     }
 }

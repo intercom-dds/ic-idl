@@ -569,10 +569,9 @@ impl<'ctx> TypeItemProcessor<'ctx> {
             def_id,
             &mut self.ctx.diagnostics,
             &self.ctx.context,
-        ) {
-            if existing_id != def_id {
-                return existing_id;
-            }
+        ) && existing_id != def_id
+        {
+            return existing_id;
         }
 
         // Register in scope

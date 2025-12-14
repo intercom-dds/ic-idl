@@ -366,10 +366,10 @@ fn process_enum_constants(hir: &mut ResolvedGraph, target: &Target) {
 /// Check if a constant is an enum constant by checking all enums
 fn is_enum_constant(hir: &ResolvedGraph, const_id: hir::DefId) -> bool {
     for (_, def) in &hir.context.definitions {
-        if let DefKind::Enum(enum_ty) = &def.kind {
-            if enum_ty.fields.contains(&const_id) {
-                return true;
-            }
+        if let DefKind::Enum(enum_ty) = &def.kind
+            && enum_ty.fields.contains(&const_id)
+        {
+            return true;
         }
     }
     false
@@ -400,12 +400,11 @@ fn rename_breadth(
         let def = hir.context.type_of(id);
 
         // Skip non-representative modules
-        if let DefKind::Module(_) = &def.kind {
-            if let Some(group) = module_groups.get(&def.ident.name) {
-                if group[0] != id {
-                    continue; // Skip non-representative modules
-                }
-            }
+        if let DefKind::Module(_) = &def.kind
+            && let Some(group) = module_groups.get(&def.ident.name)
+            && group[0] != id
+        {
+            continue; // Skip non-representative modules
         }
 
         // Determine the appropriate case for this definition

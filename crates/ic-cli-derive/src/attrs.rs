@@ -146,13 +146,12 @@ pub fn extract_doc_comment(attrs: &[Attribute]) -> String {
             continue;
         }
 
-        if let Meta::NameValue(meta) = &attr.meta {
-            if let Expr::Lit(ExprLit {
+        if let Meta::NameValue(meta) = &attr.meta
+            && let Expr::Lit(ExprLit {
                 lit: Lit::Str(s), ..
             }) = &meta.value
-            {
-                lines.push(s.value().trim_start().to_string());
-            }
+        {
+            lines.push(s.value().trim_start().to_string());
         }
     }
 
@@ -166,13 +165,12 @@ pub fn extract_string_attr(name: &str, attrs: &[Attribute]) -> Option<String> {
             continue;
         }
 
-        if let Meta::NameValue(meta) = &attr.meta {
-            if let Expr::Lit(ExprLit {
+        if let Meta::NameValue(meta) = &attr.meta
+            && let Expr::Lit(ExprLit {
                 lit: Lit::Str(s), ..
             }) = &meta.value
-            {
-                return Some(s.value());
-            }
+        {
+            return Some(s.value());
         }
     }
 

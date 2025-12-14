@@ -699,31 +699,29 @@ impl<'ctx> ValueItemProcessor<'ctx> {
             .get_scope(self.current_scope)
             .annotations
             .get(&a.ident.name)
+            && existing_def_ids.len() > 1
         {
-            if existing_def_ids.len() > 1 {
-                // We just added one, so if there's more than one, check if they're consistent
-                let prev_def_id = existing_def_ids[existing_def_ids.len() - 2];
-                let existing_def = self.ctx.context.definitions.get(prev_def_id);
-                let new_def = self.ctx.context.definitions.get(def_id);
+            // We just added one, so if there's more than one, check if they're consistent
+            let prev_def_id = existing_def_ids[existing_def_ids.len() - 2];
+            let existing_def = self.ctx.context.definitions.get(prev_def_id);
+            let new_def = self.ctx.context.definitions.get(def_id);
 
-                // Check if the annotations are consistent
-                if !are_annotations_consistent(&existing_def.kind, &new_def.kind, &self.ctx.context)
-                {
-                    self.ctx.diagnostics.errors.push(
-                        error_span(
-                            format!(
-                                "inconsistent redefinition of annotation `@{}`",
-                                a.ident.name
-                            ),
-                            Label::new(existing_def.ident.span).message("originally defined here"),
-                        )
-                        .label(Label::new(a.ident.span).message("redefined inconsistently here"))
-                        .note(
-                            "annotation redefinitions must have the same parameters, types, and \
-                             defaults",
+            // Check if the annotations are consistent
+            if !are_annotations_consistent(&existing_def.kind, &new_def.kind, &self.ctx.context) {
+                self.ctx.diagnostics.errors.push(
+                    error_span(
+                        format!(
+                            "inconsistent redefinition of annotation `@{}`",
+                            a.ident.name
                         ),
-                    );
-                }
+                        Label::new(existing_def.ident.span).message("originally defined here"),
+                    )
+                    .label(Label::new(a.ident.span).message("redefined inconsistently here"))
+                    .note(
+                        "annotation redefinitions must have the same parameters, types, and \
+                         defaults",
+                    ),
+                );
             }
         }
 

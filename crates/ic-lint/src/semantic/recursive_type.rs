@@ -122,24 +122,24 @@ impl RecursiveType<'_> {
             }
             // Arrays of self are also problematic
             TyKind::Array { ty, .. } => {
-                if let TyKind::Adt(id) = &ty.kind {
-                    if *id == containing_type {
-                        let def = self.hir.context.definitions.get(containing_type);
-                        Self::report(
-                            self.ctx,
-                            ic_diagnostic::error_span(
-                                format!(
-                                    "type `{}` contains itself without indirection",
-                                    def.ident.name
-                                ),
-                                Label::new(member_span).message("recursive member here"),
-                            )
-                            .note(
-                                "recursive types must use indirection through sequences, maps, or \
-                                 @external annotations",
+                if let TyKind::Adt(id) = &ty.kind
+                    && *id == containing_type
+                {
+                    let def = self.hir.context.definitions.get(containing_type);
+                    Self::report(
+                        self.ctx,
+                        ic_diagnostic::error_span(
+                            format!(
+                                "type `{}` contains itself without indirection",
+                                def.ident.name
                             ),
-                        );
-                    }
+                            Label::new(member_span).message("recursive member here"),
+                        )
+                        .note(
+                            "recursive types must use indirection through sequences, maps, or \
+                             @external annotations",
+                        ),
+                    );
                 }
             }
             // Maps provide indirection, so no need to check

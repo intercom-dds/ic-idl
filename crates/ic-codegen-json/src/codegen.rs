@@ -204,10 +204,10 @@ impl<'a> JsonGen<'a> {
                     Value::String(field_def.ident.name.clone()),
                 );
 
-                if field_def.flags.contains(DefFlags::IS_ENUMERATED) {
-                    if let DefKind::Const(c) = &field_def.kind {
-                        enumerator.insert("value".to_string(), self.format_numeric(&c.value));
-                    }
+                if field_def.flags.contains(DefFlags::IS_ENUMERATED)
+                    && let DefKind::Const(c) = &field_def.kind
+                {
+                    enumerator.insert("value".to_string(), self.format_numeric(&c.value));
                 }
 
                 Value::Object(enumerator)

@@ -237,10 +237,10 @@ impl Context {
             let scope_data = self.scopes.get_scope(scope_id);
 
             if i == segments.len() - 1 {
-                if let Some(def_ids) = scope_data.definitions.get(segment_name) {
-                    if let Some(&def_id) = def_ids.last() {
-                        return Ok(def_id);
-                    }
+                if let Some(def_ids) = scope_data.definitions.get(segment_name)
+                    && let Some(&def_id) = def_ids.last()
+                {
+                    return Ok(def_id);
                 }
                 return Err(PathResolutionError {
                     segment: &path_segments[i],
@@ -416,11 +416,10 @@ impl Context {
                 match &def.kind {
                     DefKind::Module(_) | DefKind::Interface(_) | DefKind::Valuetype(_) => {
                         // These types have child scopes - find it
-                        if let Some(def_scope) = self.scopes.find_scope_for_def(def_id) {
-                            if let Some(result) = self.lookup_path_from_scope(def_scope, remaining)
-                            {
-                                return Some(result);
-                            }
+                        if let Some(def_scope) = self.scopes.find_scope_for_def(def_id)
+                            && let Some(result) = self.lookup_path_from_scope(def_scope, remaining)
+                        {
+                            return Some(result);
                         }
                     }
                     _ => {} // Other types don't have child scopes
@@ -459,12 +458,12 @@ impl Context {
 
             // Also check child scopes with matching names (for modules)
             for (child_name, &child_scope_id) in scope.children.iter() {
-                if child_name.eq_ignore_ascii_case(name) {
-                    if let Some(def_id) = self.scopes.get_scope(child_scope_id).def_id {
-                        let def = self.definitions.get(def_id);
-                        if matches!(def.kind, DefKind::Module(_)) {
-                            result.push(def_id);
-                        }
+                if child_name.eq_ignore_ascii_case(name)
+                    && let Some(def_id) = self.scopes.get_scope(child_scope_id).def_id
+                {
+                    let def = self.definitions.get(def_id);
+                    if matches!(def.kind, DefKind::Module(_)) {
+                        result.push(def_id);
                     }
                 }
             }

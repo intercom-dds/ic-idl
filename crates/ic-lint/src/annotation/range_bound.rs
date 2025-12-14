@@ -99,18 +99,18 @@ impl RangeBound<'_> {
                         diag.help(format!("valid range is {min_bound}..{max_bound}")),
                     );
                 }
-            } else if value > max_bound {
-                if let Some(diag) = self.ctx.diag_span(
+            } else if value > max_bound
+                && let Some(diag) = self.ctx.diag_span(
                     Self::name(),
                     Self::category(),
                     format!("@{annotation_type} value {value} exceeds type maximum {max_bound}"),
                     Label::new(ann.ident.span).message("value out of bounds"),
-                ) {
-                    Self::report(
-                        self.ctx,
-                        diag.help(format!("valid range is {min_bound}..{max_bound}")),
-                    );
-                }
+                )
+            {
+                Self::report(
+                    self.ctx,
+                    diag.help(format!("valid range is {min_bound}..{max_bound}")),
+                );
             }
         }
     }
@@ -135,28 +135,29 @@ impl RangeBound<'_> {
 
                 // Validate the range values
                 if let (Some(min), Some(max)) = (range.min, range.max) {
-                    if min > max {
-                        if let Some(diag) = self.ctx.diag_span(
+                    if min > max
+                        && let Some(diag) = self.ctx.diag_span(
                             Self::name(),
                             Self::category(),
                             format!("@range min value ({min}) is greater than max value ({max})"),
                             Label::new(ann.ident.span).message("invalid range"),
-                        ) {
-                            Self::report(self.ctx, diag.help("swap min and max values"));
-                        }
+                        )
+                    {
+                        Self::report(self.ctx, diag.help("swap min and max values"));
                     }
-                } else if range.min.is_none() && range.max.is_none() {
-                    if let Some(diag) = self.ctx.diag_span(
+                } else if range.min.is_none()
+                    && range.max.is_none()
+                    && let Some(diag) = self.ctx.diag_span(
                         Self::name(),
                         Self::category(),
                         "@range annotation requires at least one of min or max",
                         Label::new(ann.ident.span).message("empty range"),
-                    ) {
-                        Self::report(
-                            self.ctx,
-                            diag.help("specify either min=value, max=value, or both"),
-                        );
-                    }
+                    )
+                {
+                    Self::report(
+                        self.ctx,
+                        diag.help("specify either min=value, max=value, or both"),
+                    );
                 }
             }
             Err(err) => {
@@ -234,21 +235,19 @@ impl RangeBound<'_> {
         // Check if min > max when both are present
         if let (Some(min), Some(max), Some(min_sp), Some(max_sp)) =
             (min_value, max_value, min_span, max_span)
+            && min > max
+            && let Some(diag) = self.ctx.diag_span(
+                Self::name(),
+                Self::category(),
+                format!("@min value ({min}) is greater than @max value ({max})"),
+                Label::new(min_sp).message("min value here"),
+            )
         {
-            if min > max {
-                if let Some(diag) = self.ctx.diag_span(
-                    Self::name(),
-                    Self::category(),
-                    format!("@min value ({min}) is greater than @max value ({max})"),
-                    Label::new(min_sp).message("min value here"),
-                ) {
-                    Self::report(
-                        self.ctx,
-                        diag.label(Label::new(max_sp).message("max value here"))
-                            .help("ensure @min is less than or equal to @max"),
-                    );
-                }
-            }
+            Self::report(
+                self.ctx,
+                diag.label(Label::new(max_sp).message("max value here"))
+                    .help("ensure @min is less than or equal to @max"),
+            );
         }
     }
 

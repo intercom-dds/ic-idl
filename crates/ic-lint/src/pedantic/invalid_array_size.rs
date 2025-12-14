@@ -81,8 +81,8 @@ impl<'a> Visitor<'a> for InvalidArraySize<'a> {
             // Calculate the total size of the array
             if let Some(elem_size) = type_size(elem_ty, self.hir_ctx) {
                 let total_size = elem_size * len;
-                if total_size > MAX_REASONABLE_SIZE_BYTES {
-                    if let Some(diag) = self.ctx.diag_span(
+                if total_size > MAX_REASONABLE_SIZE_BYTES
+                    && let Some(diag) = self.ctx.diag_span(
                         Self::name(),
                         Self::category(),
                         format!(
@@ -91,9 +91,9 @@ impl<'a> Visitor<'a> for InvalidArraySize<'a> {
                              bytes each)"
                         ),
                         Label::new(*len_span).message("very large array"),
-                    ) {
-                        Self::report(self.ctx, diag);
-                    }
+                    )
+                {
+                    Self::report(self.ctx, diag);
                 }
             }
         }

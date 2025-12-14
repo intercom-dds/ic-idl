@@ -63,17 +63,16 @@ impl BitBound<'_> {
             return;
         }
 
-        if let Some(bit_pos) = Self::get_bit_position(ann) {
-            if bit_pos >= type_bits {
-                if let Some(diag) = self.ctx.diag_span(
-                    Self::name(),
-                    Self::category(),
-                    format!("@bit({bit_pos}) exceeds type bit width of {type_bits}"),
-                    Label::new(ann.ident.span).message("bit position out of bounds"),
-                ) {
-                    Self::report(self.ctx, diag);
-                }
-            }
+        if let Some(bit_pos) = Self::get_bit_position(ann)
+            && bit_pos >= type_bits
+            && let Some(diag) = self.ctx.diag_span(
+                Self::name(),
+                Self::category(),
+                format!("@bit({bit_pos}) exceeds type bit width of {type_bits}"),
+                Label::new(ann.ident.span).message("bit position out of bounds"),
+            )
+        {
+            Self::report(self.ctx, diag);
         }
     }
 
@@ -126,21 +125,19 @@ impl<'a> Visitor<'a> for BitBound<'a> {
                 }
 
                 // Also check if the explicit value exceeds the type bounds
-                if let ic_hir::hir::DefKind::Const(const_ty) = &flag_def.kind {
-                    if let ic_hir::hir::Numeric::UInt64(value) = const_ty.value {
-                        #[allow(clippy::cast_possible_truncation)]
-                        if value >= (1u64 << type_bits) {
-                            // This would be a different lint, but we can warn here too
-                            if let Some(diag) = self.ctx.diag_span(
-                                Self::name(),
-                                Self::category(),
-                                format!(
-                                    "bitmask value {value} exceeds type bit width of {type_bits}"
-                                ),
-                                Label::new(flag_def.ident.span).message("value out of bounds"),
-                            ) {
-                                Self::report(self.ctx, diag);
-                            }
+                if let ic_hir::hir::DefKind::Const(const_ty) = &flag_def.kind
+                    && let ic_hir::hir::Numeric::UInt64(value) = const_ty.value
+                {
+                    #[allow(clippy::cast_possible_truncation)]
+                    if value >= (1u64 << type_bits) {
+                        // This would be a different lint, but we can warn here too
+                        if let Some(diag) = self.ctx.diag_span(
+                            Self::name(),
+                            Self::category(),
+                            format!("bitmask value {value} exceeds type bit width of {type_bits}"),
+                            Label::new(flag_def.ident.span).message("value out of bounds"),
+                        ) {
+                            Self::report(self.ctx, diag);
                         }
                     }
                 }

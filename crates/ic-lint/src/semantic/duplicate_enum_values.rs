@@ -80,8 +80,8 @@ impl<'a> Visitor<'a> for DuplicateEnumValues<'a> {
             let field_def = self.context().definitions.get(field_id);
 
             // Check for duplicate names (case-insensitive)
-            if !field_names.insert(field_def.ident.name.as_str()) {
-                if let Some(diag) = self.ctx.diag_span(
+            if !field_names.insert(field_def.ident.name.as_str())
+                && let Some(diag) = self.ctx.diag_span(
                     Self::name(),
                     Self::category(),
                     format!(
@@ -90,9 +90,9 @@ impl<'a> Visitor<'a> for DuplicateEnumValues<'a> {
                         def.ident.name
                     ),
                     Label::new(field_def.ident.span).message("redefined here"),
-                ) {
-                    Self::report(self.ctx, diag.note("field names are case-insensitive"));
-                }
+                )
+            {
+                Self::report(self.ctx, diag.note("field names are case-insensitive"));
             }
 
             // Track values for duplicate checking

@@ -184,17 +184,17 @@ impl ScopeTree {
             let scope = &self.scopes[scope_id.0];
 
             // Check local definitions
-            if let Some(def_ids) = scope.definitions.get(name) {
-                if let Some(&def_id) = def_ids.last() {
-                    return Some(def_id);
-                }
+            if let Some(def_ids) = scope.definitions.get(name)
+                && let Some(&def_id) = def_ids.last()
+            {
+                return Some(def_id);
             }
 
             // Check child scopes (for module names)
-            if let Some(&child_scope_id) = scope.children.get(name) {
-                if let Some(def_id) = self.scopes[child_scope_id.0].def_id {
-                    return Some(def_id);
-                }
+            if let Some(&child_scope_id) = scope.children.get(name)
+                && let Some(def_id) = self.scopes[child_scope_id.0].def_id
+            {
+                return Some(def_id);
             }
 
             // Move to parent
@@ -213,10 +213,10 @@ impl ScopeTree {
             let scope = &self.scopes[scope_id.0];
 
             // Check local annotation definitions
-            if let Some(def_ids) = scope.annotations.get(name) {
-                if let Some(&def_id) = def_ids.last() {
-                    return Some(def_id);
-                }
+            if let Some(def_ids) = scope.annotations.get(name)
+                && let Some(&def_id) = def_ids.last()
+            {
+                return Some(def_id);
             }
 
             // Move to parent
@@ -242,26 +242,26 @@ impl ScopeTree {
             let scope = &self.scopes[scope_id.0];
 
             // Check local definitions
-            if let Some(def_ids) = scope.definitions.get(name) {
-                if let Some(&def_id) = def_ids.last() {
-                    // Found the definition - but check if it's accessible
-                    // If we found it in an interface scope and we started outside that interface,
-                    // it's not accessible
-                    if self.is_interface_scope(scope_id, definitions)
-                        && !self.is_inside_scope(starting_scope, scope_id)
-                    {
-                        // This type is inside an interface but we're outside - not accessible
-                        return None;
-                    }
-                    return Some(def_id);
+            if let Some(def_ids) = scope.definitions.get(name)
+                && let Some(&def_id) = def_ids.last()
+            {
+                // Found the definition - but check if it's accessible
+                // If we found it in an interface scope and we started outside that interface,
+                // it's not accessible
+                if self.is_interface_scope(scope_id, definitions)
+                    && !self.is_inside_scope(starting_scope, scope_id)
+                {
+                    // This type is inside an interface but we're outside - not accessible
+                    return None;
                 }
+                return Some(def_id);
             }
 
             // Check child scopes (for module names and interfaces)
-            if let Some(&child_scope_id) = scope.children.get(name) {
-                if let Some(def_id) = self.scopes[child_scope_id.0].def_id {
-                    return Some(def_id);
-                }
+            if let Some(&child_scope_id) = scope.children.get(name)
+                && let Some(def_id) = self.scopes[child_scope_id.0].def_id
+            {
+                return Some(def_id);
             }
 
             // Before moving to parent, check if we would cross an interface boundary
@@ -401,13 +401,13 @@ impl ScopeTree {
 
         // If not a child scope, check if it's a definition (like an enum)
         // whose own scope we should look into
-        if let Some(def_ids) = scope_data.definitions.get(path[0]) {
-            if let Some(&def_id) = def_ids.last() {
-                // Find the scope for this definition
-                if let Some(def_scope) = self.find_scope_for_def(def_id) {
-                    // Continue resolution from the definition's scope
-                    return self.resolve_path_from_scope(def_scope, &path[1..]);
-                }
+        if let Some(def_ids) = scope_data.definitions.get(path[0])
+            && let Some(&def_id) = def_ids.last()
+        {
+            // Find the scope for this definition
+            if let Some(def_scope) = self.find_scope_for_def(def_id) {
+                // Continue resolution from the definition's scope
+                return self.resolve_path_from_scope(def_scope, &path[1..]);
             }
         }
 
@@ -537,20 +537,20 @@ impl ScopeTree {
         let parent_modules = module_scopes.entry(parent).or_insert_with(CaseMap::new);
 
         if let Some(&(scope_id, original_span)) = parent_modules.get(name) {
-            if let Some(canonical_name) = parent_modules.get_key(name) {
-                if canonical_name != name {
-                    use ic_diagnostic::{Label, warn_span};
-                    diagnostics.warnings.push(
-                        warn_span(
-                            format!(
-                                "inconsistent capitalization: module `{name}` was previously \
-                                 defined as `{canonical_name}`"
-                            ),
-                            Label::new(span).message("module reopened here"),
-                        )
-                        .label(Label::new(original_span).message("first defined here")),
-                    );
-                }
+            if let Some(canonical_name) = parent_modules.get_key(name)
+                && canonical_name != name
+            {
+                use ic_diagnostic::{Label, warn_span};
+                diagnostics.warnings.push(
+                    warn_span(
+                        format!(
+                            "inconsistent capitalization: module `{name}` was previously defined \
+                             as `{canonical_name}`"
+                        ),
+                        Label::new(span).message("module reopened here"),
+                    )
+                    .label(Label::new(original_span).message("first defined here")),
+                );
             }
             return scope_id;
         }

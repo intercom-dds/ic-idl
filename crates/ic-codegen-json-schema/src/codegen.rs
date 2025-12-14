@@ -280,10 +280,10 @@ impl<'a> JsonSchemaGen<'a> {
         match &ty.kind {
             TyKind::String { bound, .. } => {
                 let mut obj = value!({ "type": "string" });
-                if let Some(b) = bound {
-                    if let Value::Object(ref mut map) = obj {
-                        map.insert("maxLength".to_string(), Value::Number((*b).into()));
-                    }
+                if let Some(b) = bound
+                    && let Value::Object(ref mut map) = obj
+                {
+                    map.insert("maxLength".to_string(), Value::Number((*b).into()));
                 }
                 obj
             }
@@ -306,10 +306,10 @@ impl<'a> JsonSchemaGen<'a> {
                     "type": "array",
                     "items": items_schema
                 });
-                if let Some(b) = bound {
-                    if let Value::Object(ref mut map) = obj {
-                        map.insert("maxItems".to_string(), Value::Number((*b).into()));
-                    }
+                if let Some(b) = bound
+                    && let Value::Object(ref mut map) = obj
+                {
+                    map.insert("maxItems".to_string(), Value::Number((*b).into()));
                 }
                 obj
             }

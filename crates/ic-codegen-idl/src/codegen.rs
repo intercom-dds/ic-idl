@@ -752,10 +752,10 @@ fn filter_non_default_args<'a>(ann: &'a Ann, hir: &ResolvedGraph) -> Vec<&'a Ann
                 && let DefKind::Annotation(ann_ty) = &ann_def.kind
             {
                 for param in &ann_ty.params {
-                    if param.ident.name == arg.ident.name {
-                        if let Some(default_val) = &param.default {
-                            return &arg.value != default_val;
-                        }
+                    if param.ident.name == arg.ident.name
+                        && let Some(default_val) = &param.default
+                    {
+                        return &arg.value != default_val;
                     }
                 }
             }

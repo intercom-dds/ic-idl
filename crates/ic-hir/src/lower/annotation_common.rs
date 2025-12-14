@@ -302,10 +302,10 @@ fn process_positional_arguments(
 
         // Process each positional argument
         for (i, arg) in ast_args.iter().enumerate() {
-            if let Some(param) = params.get(i) {
-                if let Some(processed_arg) = evaluate_argument(ctx, arg, param, def_id, scope) {
-                    args.push(processed_arg);
-                }
+            if let Some(param) = params.get(i)
+                && let Some(processed_arg) = evaluate_argument(ctx, arg, param, def_id, scope)
+            {
+                args.push(processed_arg);
             }
         }
 

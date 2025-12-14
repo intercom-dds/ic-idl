@@ -160,10 +160,10 @@ impl<'a> ProtoGen<'a> {
 
     fn resolve_typedef(&self, def_id: DefId) -> DefId {
         let def = self.hir.context.definitions.get(def_id);
-        if let DefKind::Alias(alias_ty) = &def.kind {
-            if let TyKind::Adt(aliased_id) = alias_ty.ty.kind {
-                return self.resolve_typedef(aliased_id);
-            }
+        if let DefKind::Alias(alias_ty) = &def.kind
+            && let TyKind::Adt(aliased_id) = alias_ty.ty.kind
+        {
+            return self.resolve_typedef(aliased_id);
         }
         def_id
     }

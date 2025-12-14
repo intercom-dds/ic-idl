@@ -326,10 +326,11 @@ pub fn detect_color_mode<W: std::io::IsTerminal>(stream: W) -> ColorMode {
     }
 
     // Check FORCE_COLOR
-    if let Ok(force) = std::env::var("FORCE_COLOR") {
-        if force != "0" && !force.is_empty() {
-            return ColorMode::Always;
-        }
+    if let Ok(force) = std::env::var("FORCE_COLOR")
+        && force != "0"
+        && !force.is_empty()
+    {
+        return ColorMode::Always;
     }
 
     // Otherwise, auto-detect

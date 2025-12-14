@@ -235,10 +235,10 @@ fn update_def_references(
 
     match &mut def.kind {
         DefKind::Struct(s) => {
-            if let Some(parent) = &mut s.parent {
-                if let Some(new_id) = mapping.get(parent) {
-                    *parent = *new_id;
-                }
+            if let Some(parent) = &mut s.parent
+                && let Some(new_id) = mapping.get(parent)
+            {
+                *parent = *new_id;
             }
 
             for member in &mut s.members {
@@ -271,16 +271,16 @@ fn update_def_references(
             }
         }
         DefKind::Valuetype(v) => {
-            if let Some(parent) = &mut v.parent {
-                if let Some(new_id) = mapping.get(parent) {
-                    *parent = *new_id;
-                }
+            if let Some(parent) = &mut v.parent
+                && let Some(new_id) = mapping.get(parent)
+            {
+                *parent = *new_id;
             }
 
-            if let Some(supports) = &mut v.supports {
-                if let Some(new_id) = mapping.get(supports) {
-                    *supports = *new_id;
-                }
+            if let Some(supports) = &mut v.supports
+                && let Some(new_id) = mapping.get(supports)
+            {
+                *supports = *new_id;
             }
 
             for member in &mut v.members {

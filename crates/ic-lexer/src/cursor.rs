@@ -283,11 +283,12 @@ impl Cursor {
     // non-alphanumeric characters.
     #[inline]
     fn annotation(&mut self) -> Kind {
-        if let Some(v) = self.clone().next() {
-            if v.kind == Kind::Ident && self.source_of(v.span) == "annotation" {
-                _ = self.next();
-                return Kind::Keyword(Kw::Annotation);
-            }
+        if let Some(v) = self.clone().next()
+            && v.kind == Kind::Ident
+            && self.source_of(v.span) == "annotation"
+        {
+            _ = self.next();
+            return Kind::Keyword(Kw::Annotation);
         }
         Kind::At
     }

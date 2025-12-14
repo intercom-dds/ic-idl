@@ -407,10 +407,10 @@ impl HirMerger {
         old_scope: ScopeId,
     ) {
         let old_scope_data = &old_context.scopes.scopes[old_scope.0];
-        if let Some(old_parent_def_id) = old_scope_data.def_id {
-            if let Some(mapped_parent) = self.map_def_id(graph_index, Some(old_parent_def_id)) {
-                self.update_parent_child_relationship(new_def_id, mapped_parent);
-            }
+        if let Some(old_parent_def_id) = old_scope_data.def_id
+            && let Some(mapped_parent) = self.map_def_id(graph_index, Some(old_parent_def_id))
+        {
+            self.update_parent_child_relationship(new_def_id, mapped_parent);
         }
     }
 
@@ -458,24 +458,22 @@ impl HirMerger {
 
     fn add_to_order(&mut self, graph_index: usize, order: &[DefId]) {
         for &def_id in order {
-            if let Some(&new_def_id) = self.def_id_maps[graph_index].get(&def_id) {
-                if self.is_new_definition(graph_index, new_def_id)
-                    && !self.order.contains(&new_def_id)
-                {
-                    self.order.push(new_def_id);
-                }
+            if let Some(&new_def_id) = self.def_id_maps[graph_index].get(&def_id)
+                && self.is_new_definition(graph_index, new_def_id)
+                && !self.order.contains(&new_def_id)
+            {
+                self.order.push(new_def_id);
             }
         }
     }
 
     fn add_to_builtin_order(&mut self, graph_index: usize, order: &[DefId]) {
         for &def_id in order {
-            if let Some(&new_def_id) = self.def_id_maps[graph_index].get(&def_id) {
-                if self.is_new_definition(graph_index, new_def_id)
-                    && !self.builtin_order.contains(&new_def_id)
-                {
-                    self.builtin_order.push(new_def_id);
-                }
+            if let Some(&new_def_id) = self.def_id_maps[graph_index].get(&def_id)
+                && self.is_new_definition(graph_index, new_def_id)
+                && !self.builtin_order.contains(&new_def_id)
+            {
+                self.builtin_order.push(new_def_id);
             }
         }
     }
@@ -502,17 +500,13 @@ impl HirMerger {
             if old_def.ident.span == existing_span {
                 self.def_id_maps[graph_index].insert(old_def_id, existing_def_id);
 
-                if let Some(parent_def_id) = old_def.parent {
-                    if let Some(&mapped_parent) = self.def_id_maps[graph_index].get(&parent_def_id)
-                    {
-                        if let DefKind::Module(module) =
-                            &mut self.new_context.definitions.get_mut(mapped_parent).kind
-                        {
-                            if !module.definitions.contains(&existing_def_id) {
-                                module.definitions.push(existing_def_id);
-                            }
-                        }
-                    }
+                if let Some(parent_def_id) = old_def.parent
+                    && let Some(&mapped_parent) = self.def_id_maps[graph_index].get(&parent_def_id)
+                    && let DefKind::Module(module) =
+                        &mut self.new_context.definitions.get_mut(mapped_parent).kind
+                    && !module.definitions.contains(&existing_def_id)
+                {
+                    module.definitions.push(existing_def_id);
                 }
 
                 return Some(existing_def_id);
@@ -555,10 +549,10 @@ impl HirMerger {
         if old_def.ident.span == existing_def.ident.span {
             self.def_id_maps[graph_index].insert(old_def_id, existing_def_id);
 
-            if let Some(parent_def_id) = old_def.parent {
-                if let Some(&mapped_parent) = self.def_id_maps[graph_index].get(&parent_def_id) {
-                    self.ensure_child_in_parent(existing_def_id, mapped_parent);
-                }
+            if let Some(parent_def_id) = old_def.parent
+                && let Some(&mapped_parent) = self.def_id_maps[graph_index].get(&parent_def_id)
+            {
+                self.ensure_child_in_parent(existing_def_id, mapped_parent);
             }
 
             return Some(existing_def_id);
@@ -707,24 +701,23 @@ impl HirMerger {
         let old_def = old_context.definitions.get(old_def_id);
         let qualified_name = Self::get_qualified_name(old_context, old_def_id);
 
-        if matches!(&old_def.kind, DefKind::Module(_)) {
-            if let Some(def_id) = self.try_deduplicate_module(
+        if matches!(&old_def.kind, DefKind::Module(_))
+            && let Some(def_id) = self.try_deduplicate_module(
                 graph_index,
                 old_context,
                 old_def_id,
                 old_def,
                 &qualified_name,
-            ) {
-                return def_id;
-            }
+            )
+        {
+            return def_id;
         }
 
-        if let Some(&existing_def_id) = self.dedup_map.get(&qualified_name) {
-            if let Some(def_id) =
+        if let Some(&existing_def_id) = self.dedup_map.get(&qualified_name)
+            && let Some(def_id) =
                 self.handle_existing_definition(graph_index, old_def_id, old_def, existing_def_id)
-            {
-                return def_id;
-            }
+        {
+            return def_id;
         }
 
         let new_def_id = self.new_context.definitions.alloc_with_id(|id| Def {
@@ -848,12 +841,12 @@ impl HirMerger {
         // Update the def_id field in scopes to point to new definitions
         for (old_scope_id, &new_scope_id) in &self.scope_id_maps[graph_index] {
             // Get the old scope's def_id
-            if let Some(old_def_id) = old_context.scopes.scopes[old_scope_id.0].def_id {
-                if let Some(&new_def_id) = self.def_id_maps[graph_index].get(&old_def_id) {
-                    self.new_context
-                        .scopes
-                        .set_scope_def_id(new_scope_id, new_def_id);
-                }
+            if let Some(old_def_id) = old_context.scopes.scopes[old_scope_id.0].def_id
+                && let Some(&new_def_id) = self.def_id_maps[graph_index].get(&old_def_id)
+            {
+                self.new_context
+                    .scopes
+                    .set_scope_def_id(new_scope_id, new_def_id);
             }
         }
     }

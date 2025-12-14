@@ -76,15 +76,15 @@ impl<'a> Visitor<'a> for ComplexMapKey<'a> {
     }
 
     fn visit_ty(&mut self, ty: &'a Ty) {
-        if let TyKind::Map { key, .. } = &ty.kind {
-            if is_complex(&self.hir.context, key) {
-                let diag = warn_span(
-                    "complex types as map keys are not standard",
-                    Label::new(key.span).message("non-primitive map key"),
-                )
-                .note("only integers, strings, and enums may be used as map keys");
-                Self::report(self.ctx, diag);
-            }
+        if let TyKind::Map { key, .. } = &ty.kind
+            && is_complex(&self.hir.context, key)
+        {
+            let diag = warn_span(
+                "complex types as map keys are not standard",
+                Label::new(key.span).message("non-primitive map key"),
+            )
+            .note("only integers, strings, and enums may be used as map keys");
+            Self::report(self.ctx, diag);
         }
     }
 }

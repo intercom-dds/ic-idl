@@ -64,10 +64,10 @@ impl ParseResult {
 
     #[must_use]
     pub fn get_vec(&self, key: &str) -> Option<&Vec<String>> {
-        if let Some(value) = self.options.get(key).map(|v| &v.values) {
-            if !value.is_empty() {
-                return Some(value);
-            }
+        if let Some(value) = self.options.get(key).map(|v| &v.values)
+            && !value.is_empty()
+        {
+            return Some(value);
         }
         None
     }

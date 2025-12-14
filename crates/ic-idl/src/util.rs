@@ -85,10 +85,10 @@ where
             for file in iter.flatten() {
                 collect(&file.path(), files)?;
             }
-        } else if let Some(ext) = p.extension() {
-            if ext.eq_ignore_ascii_case("idl") {
-                files.insert(p.to_owned());
-            }
+        } else if let Some(ext) = p.extension()
+            && ext.eq_ignore_ascii_case("idl")
+        {
+            files.insert(p.to_owned());
         }
         Ok(())
     }
@@ -143,19 +143,19 @@ where
 {
     const BLACKLIST: &[&str] = &[".git", ".hg"];
 
-    if let Ok(v) = std::fs::metadata(&dir) {
-        if v.is_dir() {
-            for entry in std::fs::read_dir(&dir)?.flatten() {
-                let file_name = entry.file_name();
-                if BLACKLIST.iter().any(|v| file_name.eq_ignore_ascii_case(v)) {
-                    return Err(Error::Custom(format!(
-                        "cowardly refusing to purge output directory that contains `{}`",
-                        file_name.to_string_lossy(),
-                    )));
-                }
+    if let Ok(v) = std::fs::metadata(&dir)
+        && v.is_dir()
+    {
+        for entry in std::fs::read_dir(&dir)?.flatten() {
+            let file_name = entry.file_name();
+            if BLACKLIST.iter().any(|v| file_name.eq_ignore_ascii_case(v)) {
+                return Err(Error::Custom(format!(
+                    "cowardly refusing to purge output directory that contains `{}`",
+                    file_name.to_string_lossy(),
+                )));
             }
-            std::fs::remove_dir_all(&dir)?;
         }
+        std::fs::remove_dir_all(&dir)?;
     }
     Ok(())
 }

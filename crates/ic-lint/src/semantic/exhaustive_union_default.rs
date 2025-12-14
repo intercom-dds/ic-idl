@@ -140,12 +140,11 @@ impl ExhaustiveUnionDefaultLint<'_> {
             for label in &variant.labels {
                 if let Numeric::Const(const_id) = &label.value {
                     let const_def = self.hir.context.definitions.get(*const_id);
-                    if let DefKind::Const(const_ty) = &const_def.kind {
-                        if let TyKind::Adt(const_enum_id) = &const_ty.ty.kind {
-                            if *const_enum_id == enum_id {
-                                referenced_enumerators.insert(*const_id);
-                            }
-                        }
+                    if let DefKind::Const(const_ty) = &const_def.kind
+                        && let TyKind::Adt(const_enum_id) = &const_ty.ty.kind
+                        && *const_enum_id == enum_id
+                    {
+                        referenced_enumerators.insert(*const_id);
                     }
                 }
             }

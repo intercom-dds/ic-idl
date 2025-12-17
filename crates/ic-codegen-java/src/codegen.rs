@@ -1330,6 +1330,22 @@ impl<'a> JavaGen<'a> {
         w!(w, "}\n");
     }
 
+    fn emit_param_holder(&self, w: &mut Twine, prototypes: &[ProtoTy]) {
+        let needs_holder = prototypes
+            .iter()
+            .any(|proto| proto.params.iter().any(|param| param.kind != ParamKind::In));
+
+        if needs_holder {
+            w!(w, "public static class Holder<T> {\n");
+            w!(w, "public T value;\n\n");
+            w!(w, "public Holder() {}\n\n");
+            w!(w, "public Holder(T value) {\n");
+            w!(w, "this.value = value;\n");
+            w!(w, "}\n");
+            w!(w, "}\n\n");
+        }
+    }
+
     fn emit_proto(&self, w: &mut Twine, def: &Def, proto: &ProtoTy, is_abstract: bool) {
         let proto_ty = self.java_type(&proto.ty, def.id);
         w!(w, "public ");
@@ -1368,6 +1384,8 @@ impl<'a> JavaGen<'a> {
     fn emit_interface(&self, w: &mut Twine, def: &Def, interface_ty: &InterfaceTy) {
         w!(w, "public interface ", def, " {\n");
 
+        self.emit_param_holder(w, &interface_ty.prototypes);
+
         for proto in &interface_ty.prototypes {
             self.emit_proto(w, def, proto, false);
             w!(w, ";\n");
@@ -1389,6 +1407,8 @@ impl<'a> JavaGen<'a> {
             w!(w, " implements ", name);
         }
         w!(w, " {\n");
+
+        self.emit_param_holder(w, &value_ty.prototypes);
 
         for proto in &value_ty.prototypes {
             self.emit_proto(w, def, proto, true);

@@ -101,9 +101,12 @@ fn character_literal() -> impl IdlParser<Literal> {
 
 fn string_literal() -> impl IdlParser<Literal> {
     let lit = select! { Kind::StringLit(v) => v };
-    lit.map_with_span(|v, span| Literal {
-        span,
-        value: LiteralValue::String(v),
+    lit.repeated().at_least(1).map_with_span(|strings, span| {
+        let value = strings.concat();
+        Literal {
+            span,
+            value: LiteralValue::String(value),
+        }
     })
 }
 

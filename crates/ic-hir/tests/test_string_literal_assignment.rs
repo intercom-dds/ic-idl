@@ -38,15 +38,13 @@ fn test_string_literal_assigned_to_string() {
     let result = common::parse_and_resolve_successfully(input);
     assert_eq!(result.order.len(), 1);
 
-    // Verify the constant has the correct string value
     let def = result.context.definitions.get(result.order[0]);
-    if let DefKind::Const(const_ty) = &def.kind {
-        match &const_ty.value {
-            Numeric::String(s) => assert_eq!(s, "hello world"),
-            _ => panic!("Expected string value, got {:?}", const_ty.value),
-        }
+    if let DefKind::Const(const_ty) = &def.kind
+        && let Numeric::String(s) = &const_ty.value
+    {
+        assert_eq!(s, "hello world");
     } else {
-        panic!("Expected const definition");
+        panic!("Expected const with string value");
     }
 }
 
@@ -59,15 +57,13 @@ fn test_wide_string_literal_assigned_to_wstring() {
     let result = common::parse_and_resolve_successfully(input);
     assert_eq!(result.order.len(), 1);
 
-    // Verify the constant has the correct string value
     let def = result.context.definitions.get(result.order[0]);
-    if let DefKind::Const(const_ty) = &def.kind {
-        match &const_ty.value {
-            Numeric::String(s) => assert_eq!(s, "wide string"),
-            _ => panic!("Expected string value, got {:?}", const_ty.value),
-        }
+    if let DefKind::Const(const_ty) = &def.kind
+        && let Numeric::String(s) = &const_ty.value
+    {
+        assert_eq!(s, "wide string");
     } else {
-        panic!("Expected const definition");
+        panic!("Expected const with string value");
     }
 }
 
@@ -80,14 +76,88 @@ fn test_string_literal_with_escapes() {
     let result = common::parse_and_resolve_successfully(input);
     assert_eq!(result.order.len(), 1);
 
-    // Verify the constant has the correct string value with escapes
     let def = result.context.definitions.get(result.order[0]);
-    if let DefKind::Const(const_ty) = &def.kind {
-        match &const_ty.value {
-            Numeric::String(s) => assert_eq!(s, "hello\\nworld\\ttab"),
-            _ => panic!("Expected string value, got {:?}", const_ty.value),
-        }
+    if let DefKind::Const(const_ty) = &def.kind
+        && let Numeric::String(s) = &const_ty.value
+    {
+        assert_eq!(s, "hello\\nworld\\ttab");
     } else {
-        panic!("Expected const definition");
+        panic!("Expected const with string value");
+    }
+}
+
+#[test]
+fn test_adjacent_string_literal_concatenation() {
+    let input = r#"
+        const string myValue = "hello" "world";
+    "#;
+
+    let result = common::parse_and_resolve_successfully(input);
+    assert_eq!(result.order.len(), 1);
+
+    let def = result.context.definitions.get(result.order[0]);
+    if let DefKind::Const(const_ty) = &def.kind
+        && let Numeric::String(s) = &const_ty.value
+    {
+        assert_eq!(s, "helloworld");
+    } else {
+        panic!("Expected const with string value");
+    }
+}
+
+#[test]
+fn test_multiple_adjacent_string_literals() {
+    let input = r#"
+        const string myValue = "one" "two" "three";
+    "#;
+
+    let result = common::parse_and_resolve_successfully(input);
+    assert_eq!(result.order.len(), 1);
+
+    let def = result.context.definitions.get(result.order[0]);
+    if let DefKind::Const(const_ty) = &def.kind
+        && let Numeric::String(s) = &const_ty.value
+    {
+        assert_eq!(s, "onetwothree");
+    } else {
+        panic!("Expected const with string value");
+    }
+}
+
+#[test]
+fn test_string_literal_concatenation_with_spaces() {
+    let input = r#"
+        const string myValue = "hello "   "world";
+    "#;
+
+    let result = common::parse_and_resolve_successfully(input);
+    assert_eq!(result.order.len(), 1);
+
+    let def = result.context.definitions.get(result.order[0]);
+    if let DefKind::Const(const_ty) = &def.kind
+        && let Numeric::String(s) = &const_ty.value
+    {
+        assert_eq!(s, "hello world");
+    } else {
+        panic!("Expected const with string value");
+    }
+}
+
+#[test]
+fn test_string_literal_concatenation_with_escapes() {
+    let input = r#"
+        const string myValue = "hello\n" "world\t" "!";
+    "#;
+
+    let result = common::parse_and_resolve_successfully(input);
+    assert_eq!(result.order.len(), 1);
+
+    let def = result.context.definitions.get(result.order[0]);
+    if let DefKind::Const(const_ty) = &def.kind
+        && let Numeric::String(s) = &const_ty.value
+    {
+        assert_eq!(s, "hello\\nworld\\t!");
+    } else {
+        panic!("Expected const with string value");
     }
 }

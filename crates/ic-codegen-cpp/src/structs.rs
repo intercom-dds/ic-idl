@@ -137,7 +137,7 @@ impl CppGen<'_> {
 
         let qualified_name = self.scoped_name(def.id, None);
         w!(impl_w, "inline ", qualified_name, "::", exception_name, "()  :\n");
-        w!(impl_w, "runtime_error(\"", exception_name, "\") {}\n\n");
+        w!(impl_w, "std::runtime_error(\"", exception_name, "\") {}\n\n");
 
         if !members.is_empty() {
             w!(impl_w, "inline ", qualified_name, "::", exception_name, "(\n");
@@ -149,7 +149,7 @@ impl CppGen<'_> {
                 }
             }
             w!(impl_w, ") :\n");
-            w!(impl_w, "runtime_error(\"", exception_name, "\"),\n");
+            w!(impl_w, "std::runtime_error(\"", exception_name, "\"),\n");
 
             for (i, member) in members.iter().enumerate() {
                 if self.should_use_move(&member.ty) {

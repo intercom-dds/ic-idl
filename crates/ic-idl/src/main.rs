@@ -265,6 +265,15 @@ fn generate_code(
         generated.extend(files);
     }
 
+    if let Some(output_dir) = &options.codegen.typescript_out {
+        let files = invoke_backend(
+            output_dir,
+            || ic_codegen_typescript::codegen_typescript(hir, options.typescript.clone()),
+            options.purge_dirs,
+        )?;
+        generated.extend(files);
+    }
+
     Ok(generated)
 }
 

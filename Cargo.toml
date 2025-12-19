@@ -40,6 +40,7 @@ members = [
     "crates/ic-codegen-protobuf",
     "crates/ic-codegen-python",
     "crates/ic-codegen-rust",
+    "crates/ic-codegen-typescript",
     "crates/ic-codegen-xml",
     "crates/ic-diagnostic",
     "crates/ic-emit",

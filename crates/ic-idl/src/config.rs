@@ -206,6 +206,9 @@ pub struct Options {
     #[option(section = "json schema options")]
     pub json_schema: ic_codegen_json_schema::JsonSchemaOptions,
 
+    #[option(section = "typescript options")]
+    pub typescript: ic_codegen_typescript::TypeScriptOptions,
+
     #[option(section = "backends")]
     pub codegen: CodegenOptions,
 }
@@ -248,6 +251,10 @@ pub struct CodegenOptions {
     /// Generate XML files in <dir>
     #[option(long, arg = "dir")]
     pub xml_out: Option<PathBuf>,
+
+    /// Generate TypeScript files in <dir>
+    #[option(long, arg = "dir")]
+    pub typescript_out: Option<PathBuf>,
 }
 
 #[derive(Command, Debug, Default)]

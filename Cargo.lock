@@ -198,6 +198,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "ic-codegen-typescript"
+version = "0.1.0"
+dependencies = [
+ "ic-cli",
+ "ic-emit",
+ "ic-hir",
+ "ic-hir-xform",
+ "ic-vfs",
+]
+
+[[package]]
 name = "ic-codegen-xml"
 version = "0.1.0"
 dependencies = [
@@ -279,6 +290,7 @@ dependencies = [
  "ic-codegen-protobuf",
  "ic-codegen-python",
  "ic-codegen-rust",
+ "ic-codegen-typescript",
  "ic-codegen-xml",
  "ic-diagnostic",
  "ic-emit",

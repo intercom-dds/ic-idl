@@ -171,8 +171,8 @@ fn validate_struct_init(
     ctx: &LintCtx<'_>,
     context: &Context,
     ty: hir::DefId,
-    fields: &[(ic_syntax::Ident, Numeric)],
-    expected_ty: &hir::Ty,
+    fields: &[Numeric],
+    _expected_ty: &hir::Ty,
     span: Span,
 ) {
     let struct_def = context.definitions.get(ty);
@@ -195,13 +195,9 @@ fn validate_struct_init(
                 ),
             );
         }
-        for (field_name, value) in fields {
-            let field_ty = struct_ty
-                .members
-                .iter()
-                .find(|m| m.ident.name == field_name.name)
-                .map_or(expected_ty, |m| &m.ty);
-            validate_init_list(ctx, context, value, field_ty, span);
+        // Validate each field value against its expected type
+        for (value, member) in fields.iter().zip(struct_ty.members.iter()) {
+            validate_init_list(ctx, context, value, &member.ty, span);
         }
     }
 }

@@ -74,7 +74,7 @@ fn test_merge_constant_struct_value_defid_update() {
                 assert!(matches!(&point_def.kind, DefKind::Struct(_)));
 
                 assert_eq!(fields.len(), 3);
-                match (&fields[0].1, &fields[1].1, &fields[2].1) {
+                match (&fields[0], &fields[1], &fields[2]) {
                     (Numeric::Int32(1), Numeric::Int32(2), Numeric::Int32(3)) => {}
                     _ => panic!("Expected field values to be 1, 2, 3"),
                 }

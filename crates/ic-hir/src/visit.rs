@@ -356,7 +356,7 @@ where
             }
         }
         Numeric::Struct { fields, .. } => {
-            for (_, value) in fields {
+            for value in fields {
                 visitor.visit_numeric(value);
             }
         }

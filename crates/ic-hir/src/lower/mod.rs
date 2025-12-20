@@ -368,14 +368,14 @@ fn update_numeric_references(
             if let Some(new_id) = mapping.get(ty) {
                 *ty = *new_id;
             }
-            for (_, field_value) in fields.iter_mut() {
+            for field_value in fields.iter_mut() {
                 update_numeric_references(field_value, mapping);
             }
         }
         Numeric::Union {
             ty,
             discriminant,
-            field: _,
+            field_index: _,
             value,
         } => {
             if let Some(new_id) = mapping.get(ty) {

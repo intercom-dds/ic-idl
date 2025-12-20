@@ -975,27 +975,22 @@ fn numerics_equal(a: &Numeric, b: &Numeric, ctx: &Context) -> bool {
                 && f1
                     .iter()
                     .zip(f2.iter())
-                    .all(|((i1, v1), (i2, v2))| i1.name == i2.name && numerics_equal(v1, v2, ctx))
+                    .all(|(v1, v2)| numerics_equal(v1, v2, ctx))
         }
         (
             Union {
                 ty: ty1,
                 discriminant: d1,
-                field: f1,
+                field_index: f1,
                 value: v1,
             },
             Union {
                 ty: ty2,
                 discriminant: d2,
-                field: f2,
+                field_index: f2,
                 value: v2,
             },
-        ) => {
-            ty1 == ty2
-                && f1.name == f2.name
-                && numerics_equal(d1, d2, ctx)
-                && numerics_equal(v1, v2, ctx)
-        }
+        ) => ty1 == ty2 && f1 == f2 && numerics_equal(d1, d2, ctx) && numerics_equal(v1, v2, ctx),
         _ => false,
     }
 }

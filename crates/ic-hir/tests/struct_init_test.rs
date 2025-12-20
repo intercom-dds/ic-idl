@@ -55,9 +55,8 @@ fn test_struct_init_basic() {
         DefKind::Const(const_ty) => match &const_ty.value {
             Numeric::Struct { fields, .. } => {
                 assert_eq!(fields.len(), 2);
-                assert_eq!(fields[0].0.name, "x");
-                assert_eq!(fields[1].0.name, "y");
-                match (&fields[0].1, &fields[1].1) {
+                // Fields are stored in struct member declaration order (x, y)
+                match (&fields[0], &fields[1]) {
                     (Numeric::Int32(0), Numeric::Int32(0)) => {}
                     _ => panic!("Expected both fields to be 0"),
                 }
@@ -98,19 +97,16 @@ fn test_struct_init_with_strings() {
         DefKind::Const(const_ty) => match &const_ty.value {
             Numeric::Struct { fields, .. } => {
                 assert_eq!(fields.len(), 3);
-                assert_eq!(fields[0].0.name, "name");
-                assert_eq!(fields[1].0.name, "port");
-                assert_eq!(fields[2].0.name, "enabled");
-
-                match &fields[0].1 {
+                // Fields are in struct member declaration order: name, port, enabled
+                match &fields[0] {
                     Numeric::String(s) => assert_eq!(s, "localhost"),
                     _ => panic!("Expected string for name field"),
                 }
-                match &fields[1].1 {
+                match &fields[1] {
                     Numeric::Int32(8080) => {}
                     _ => panic!("Expected 8080 for port field"),
                 }
-                match &fields[2].1 {
+                match &fields[2] {
                     Numeric::Bool(true) => {}
                     _ => panic!("Expected true for enabled field"),
                 }
@@ -148,12 +144,8 @@ fn test_struct_init_positional() {
             match &const_ty.value {
                 Numeric::Struct { fields, .. } => {
                     assert_eq!(fields.len(), 3);
-                    // Fields should be in order= x, y, z
-                    assert_eq!(fields[0].0.name, "x");
-                    assert_eq!(fields[1].0.name, "y");
-                    assert_eq!(fields[2].0.name, "z");
-
-                    match (&fields[0].1, &fields[1].1, &fields[2].1) {
+                    // Fields are in struct member declaration order: x, y, z
+                    match (&fields[0], &fields[1], &fields[2]) {
                         (Numeric::Float(x), Numeric::Float(y), Numeric::Float(z)) => {
                             assert!((x - 1.0).abs() < f32::EPSILON);
                             assert!(y.abs() < f32::EPSILON);
@@ -211,6 +203,30 @@ fn test_struct_init_missing_field_error() {
     assert!(
         !result.errors.is_empty(),
         "Expected error for missing struct field"
+    );
+
+    // Snapshot test the error message
+    insta::assert_snapshot!(output);
+}
+
+#[test]
+#[ignore = "Extra field validation not yet implemented"]
+fn test_struct_init_extra_field_error() {
+    let input = r"
+        struct Point {
+            int32 x;
+            int32 y;
+        };
+        
+        const Point EXTRA = { x= 1, y= 2, z= 3 };  // Extra field z
+    ";
+
+    let (result, _, output) = common::parse_and_resolve(input);
+
+    // Should have an error about extra field
+    assert!(
+        !result.errors.is_empty(),
+        "Expected error for extra struct field"
     );
 
     // Snapshot test the error message

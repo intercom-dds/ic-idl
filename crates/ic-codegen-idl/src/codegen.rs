@@ -112,7 +112,7 @@ impl<'a> IdlGen<'a> {
             Numeric::Struct { fields, .. } => {
                 let formatted: Vec<_> = fields
                     .iter()
-                    .map(|(_, v)| self.format_numeric(v, relative_to_def_id))
+                    .map(|v| self.format_numeric(v, relative_to_def_id))
                     .collect();
 
                 format!("{{{}}}", formatted.join(", "))

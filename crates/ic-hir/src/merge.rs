@@ -1177,18 +1177,18 @@ impl HirMerger {
                 ty: self.map_single_def_id(graph_index, *ty),
                 fields: fields
                     .iter()
-                    .map(|(ident, v)| (ident.clone(), self.update_numeric(graph_index, v)))
+                    .map(|v| self.update_numeric(graph_index, v))
                     .collect(),
             },
             Numeric::Union {
                 ty,
                 discriminant,
-                field,
+                field_index,
                 value,
             } => Numeric::Union {
                 ty: self.map_single_def_id(graph_index, *ty),
                 discriminant: Box::new(self.update_numeric(graph_index, discriminant)),
-                field: field.clone(),
+                field_index: *field_index,
                 value: Box::new(self.update_numeric(graph_index, value)),
             },
             other => other.clone(),

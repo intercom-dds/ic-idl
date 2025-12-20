@@ -340,17 +340,16 @@ pub enum Numeric {
         entries: Box<[(Numeric, Numeric)]>,
     },
 
-    /// Struct initialization with named fields.
-    Struct {
-        ty: DefId,
-        fields: Box<[(Ident, Numeric)]>,
-    },
+    /// Struct initialization with field values in declaration order.
+    /// Field names are not stored; look them up from the struct definition.
+    Struct { ty: DefId, fields: Box<[Numeric]> },
 
     /// Union initialization with discriminant and value.
+    /// The field index refers to the variant in the union definition.
     Union {
         ty: DefId,
         discriminant: Box<Numeric>,
-        field: Ident,
+        field_index: usize,
         value: Box<Numeric>,
     },
 }

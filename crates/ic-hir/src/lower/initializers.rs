@@ -92,13 +92,15 @@ impl<'a, 'b> InitializerEvaluator<'a, 'b> {
 
         if is_named {
             // Named initialization: { .field1 = value1, .field2 = value2 }
+            // Build a map of field name -> value from the initializer list
+            let mut value_map = std::collections::HashMap::new();
             for named_expr in &init_list.values {
                 if let Some(ref ident) = named_expr.ident {
                     if let Some(field_ty) = field_map.get(&ident.name) {
                         if let Some(value) =
                             self.evaluator.eval_for_type(&named_expr.value, field_ty)
                         {
-                            fields.push((ident.clone(), value));
+                            value_map.insert(ident.name.clone(), value);
                         }
                     } else {
                         self.evaluator.diagnostics().error(
@@ -115,6 +117,13 @@ impl<'a, 'b> InitializerEvaluator<'a, 'b> {
                         Label::new(ic_syntax::util::expr_span(&named_expr.value))
                             .message("expected named field"),
                     );
+                }
+            }
+
+            // Collect values in struct member declaration order
+            for member in &struct_members {
+                if let Some(value) = value_map.remove(&member.ident.name) {
+                    fields.push(value);
                 }
             }
         } else {
@@ -139,7 +148,7 @@ impl<'a, 'b> InitializerEvaluator<'a, 'b> {
             for (i, named_expr) in init_list.values.iter().enumerate() {
                 let member = &struct_members[i];
                 if let Some(value) = self.evaluator.eval_for_type(&named_expr.value, &member.ty) {
-                    fields.push((member.ident.clone(), value));
+                    fields.push(value);
                 }
             }
         }

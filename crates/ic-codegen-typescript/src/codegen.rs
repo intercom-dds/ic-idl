@@ -280,10 +280,21 @@ impl<'a> TsGen<'a> {
                     .collect();
                 format!("{{ {} }}", formatted.join(", "))
             }
-            Numeric::Struct { fields, .. } => {
+            Numeric::Struct { ty, fields } => {
+                // Look up struct definition to get renamed member names
+                let struct_def = self.hir.context.type_of(*ty);
+                let members = if let DefKind::Struct(s) = &struct_def.kind {
+                    &s.members
+                } else {
+                    return "{}".to_string();
+                };
+
                 let formatted: Vec<_> = fields
                     .iter()
-                    .map(|(name, v)| format!("{}: {}", name.name, self.format_numeric(v, def_id)))
+                    .zip(members.iter())
+                    .map(|(v, member)| {
+                        format!("{}: {}", member.ident.name, self.format_numeric(v, def_id))
+                    })
                     .collect();
                 format!("{{ {} }}", formatted.join(", "))
             }

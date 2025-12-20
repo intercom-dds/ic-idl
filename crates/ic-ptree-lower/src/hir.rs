@@ -214,12 +214,24 @@ impl<'a> TreeBuilder<'a> {
                 let numeric = sys::create_numeric_node(self.state, node);
                 sys::create_value_node(self.state, numeric, ptr::null_mut())
             }
-            Numeric::Struct { fields, .. } => {
-                let values = collect_with(sys::append_node, fields, |(ident, num)| {
-                    let num = self.lower_numeric(num);
-                    let decl = self.lower_decl(ident);
-                    sys::create_const_node(self.state, decl, std::ptr::null_mut(), num)
-                });
+            Numeric::Struct { ty, fields } => {
+                // Look up struct definition to get member names
+                let struct_def = self.ctx.definitions.get(*ty);
+                let members = if let DefKind::Struct(s) = &struct_def.kind {
+                    &s.members
+                } else {
+                    return sys::create_value_node(self.state, NUM_UNDEF, ptr::null_mut());
+                };
+
+                let values = collect_with(
+                    sys::append_node,
+                    fields.iter().zip(members.iter()),
+                    |(num, member)| {
+                        let num = self.lower_numeric(num);
+                        let decl = self.lower_decl(&member.ident);
+                        sys::create_const_node(self.state, decl, std::ptr::null_mut(), num)
+                    },
+                );
                 sys::create_value_node(self.state, NUM_UNDEF, values)
             }
             Numeric::Sequence { values, .. } | Numeric::Array { values, .. } => {

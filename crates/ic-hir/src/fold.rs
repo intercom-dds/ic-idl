@@ -299,18 +299,18 @@ pub fn fold_numeric<F: Fold + ?Sized>(folder: &mut F, num: Numeric) -> Numeric {
             fields: fields
                 .into_vec()
                 .into_iter()
-                .map(|(name, val)| (name, folder.fold_numeric(val)))
+                .map(|val| folder.fold_numeric(val))
                 .collect(),
         },
         Numeric::Union {
             ty,
             discriminant,
-            field,
+            field_index,
             value,
         } => Numeric::Union {
             ty,
             discriminant: Box::new(folder.fold_numeric(*discriminant)),
-            field,
+            field_index,
             value: Box::new(folder.fold_numeric(*value)),
         },
         Numeric::Const(id) => Numeric::Const(id),

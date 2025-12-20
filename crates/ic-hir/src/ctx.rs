@@ -752,7 +752,7 @@ impl Context {
                 if include(self.definitions.get(*ty)) {
                     deps.insert(*ty);
                 }
-                for (_, v) in &**fields {
+                for v in &**fields {
                     self.collect_numeric_refs(v, include, deps);
                 }
             }

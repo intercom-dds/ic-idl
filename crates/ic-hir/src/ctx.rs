@@ -25,6 +25,8 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+use std::collections::HashSet;
+
 use ic_alloc::arena::Arena;
 use ic_syntax::Ident;
 
@@ -74,10 +76,19 @@ impl Context {
     /// Panics if the given type ID does not exist, or if the ID came from a
     /// different arena. This can only ever happen if there are multiple
     /// `Context`s whose arenas have been mixed up.
-    pub fn base_def_of(&self, mut id: DefId) -> &Def {
+    pub fn base_def_of(&self, id: DefId) -> &Def {
+        self.type_of(self.base_id_of(id))
+    }
+
+    /// Returns the underlying `DefId` of the given definition, resolving any
+    /// intermediate typedefs.
+    ///
+    /// This is similar to [`base_def_of`](Self::base_def_of) but returns the
+    /// `DefId` instead of the `Def`.
+    pub fn base_id_of(&self, mut id: DefId) -> DefId {
         loop {
-            let ty = self.type_of(id);
-            match &ty.kind {
+            let def = self.type_of(id);
+            match &def.kind {
                 DefKind::Alias(v) => match v.ty.kind {
                     TyKind::Adt(next_id) => {
                         id = next_id;
@@ -93,7 +104,7 @@ impl Context {
                 _ => break,
             }
         }
-        self.type_of(id)
+        id
     }
 
     /// Returns the type definition of the specified type.
@@ -564,6 +575,200 @@ impl Context {
             Numeric::Double(v) => Some(v.to_string()),
             Numeric::String(v) => Some(v.clone()),
             _ => None,
+        }
+    }
+
+    /// Returns all `DefId`s referenced by a definition.
+    ///
+    /// This includes types used in members, parent types, interface parents,
+    /// constant references in union labels, etc. It does not include children
+    /// (e.g., module definitions or enum fields).
+    #[must_use]
+    pub fn deps(&self, def_id: DefId) -> HashSet<DefId> {
+        self.deps_where(def_id, |_| true)
+    }
+
+    /// Returns all `DefId`s referenced by a definition, filtered by a predicate.
+    ///
+    /// Only includes references where `include(def)` returns true. This allows
+    /// backends to exclude types they don't support (e.g., valuetypes).
+    #[must_use]
+    pub fn deps_where<F>(&self, def_id: DefId, include: F) -> HashSet<DefId>
+    where
+        F: Fn(&Def) -> bool,
+    {
+        let mut deps = HashSet::new();
+        let def = self.definitions.get(def_id);
+
+        match &def.kind {
+            DefKind::Struct(s) => {
+                self.insert_if(s.parent, &include, &mut deps);
+                for m in &s.members {
+                    self.collect_ty_refs(&m.ty, &include, &mut deps);
+                }
+            }
+            DefKind::Union(u) => {
+                self.collect_ty_refs(&u.disc.ty, &include, &mut deps);
+                for v in &u.variants {
+                    self.collect_ty_refs(&v.ty, &include, &mut deps);
+                    for label in &v.labels {
+                        self.collect_numeric_refs(&label.value, &include, &mut deps);
+                    }
+                }
+            }
+            DefKind::Interface(i) => {
+                self.extend_if(&i.parents, &include, &mut deps);
+                for attr in &i.attributes {
+                    self.collect_ty_refs(&attr.ty, &include, &mut deps);
+                    self.extend_if(&attr.getraises, &include, &mut deps);
+                    self.extend_if(&attr.setraises, &include, &mut deps);
+                }
+                for proto in &i.prototypes {
+                    self.collect_ty_refs(&proto.ty, &include, &mut deps);
+                    self.extend_if(&proto.raises, &include, &mut deps);
+                    for param in &proto.params {
+                        self.collect_ty_refs(&param.ty, &include, &mut deps);
+                    }
+                }
+            }
+            DefKind::Valuetype(v) => {
+                self.insert_if(v.parent, &include, &mut deps);
+                self.insert_if(v.supports, &include, &mut deps);
+                for m in &v.members {
+                    self.collect_ty_refs(&m.ty, &include, &mut deps);
+                }
+                for attr in &v.attributes {
+                    self.collect_ty_refs(&attr.ty, &include, &mut deps);
+                    self.extend_if(&attr.getraises, &include, &mut deps);
+                    self.extend_if(&attr.setraises, &include, &mut deps);
+                }
+                for proto in &v.prototypes {
+                    self.collect_ty_refs(&proto.ty, &include, &mut deps);
+                    self.extend_if(&proto.raises, &include, &mut deps);
+                    for param in &proto.params {
+                        self.collect_ty_refs(&param.ty, &include, &mut deps);
+                    }
+                }
+            }
+            DefKind::Except(e) => {
+                for m in &e.members {
+                    self.collect_ty_refs(&m.ty, &include, &mut deps);
+                }
+            }
+            DefKind::Alias(a) => {
+                self.collect_ty_refs(&a.ty, &include, &mut deps);
+            }
+            DefKind::Const(c) => {
+                self.collect_ty_refs(&c.ty, &include, &mut deps);
+                self.collect_numeric_refs(&c.value, &include, &mut deps);
+            }
+            DefKind::Bitset(b) => {
+                self.insert_if(b.parent, &include, &mut deps);
+                for field in &b.fields {
+                    self.collect_ty_refs(&field.ty, &include, &mut deps);
+                }
+            }
+            DefKind::Annotation(a) => {
+                for param in &a.params {
+                    self.collect_ty_refs(&param.ty, &include, &mut deps);
+                    if let Some(default) = &param.default {
+                        self.collect_numeric_refs(default, &include, &mut deps);
+                    }
+                }
+            }
+            DefKind::Module(_) | DefKind::Enum(_) | DefKind::Bitmask(_) | DefKind::Decl(_) => {}
+        }
+
+        deps
+    }
+
+    fn insert_if<F>(&self, id: Option<DefId>, include: &F, deps: &mut HashSet<DefId>)
+    where
+        F: Fn(&Def) -> bool,
+    {
+        if let Some(id) = id
+            && include(self.definitions.get(id))
+        {
+            deps.insert(id);
+        }
+    }
+
+    fn extend_if<F>(&self, ids: &[DefId], include: &F, deps: &mut HashSet<DefId>)
+    where
+        F: Fn(&Def) -> bool,
+    {
+        for &id in ids {
+            if include(self.definitions.get(id)) {
+                deps.insert(id);
+            }
+        }
+    }
+
+    #[allow(clippy::only_used_in_recursion)]
+    fn collect_ty_refs<F>(&self, ty: &Ty, include: &F, deps: &mut HashSet<DefId>)
+    where
+        F: Fn(&Def) -> bool,
+    {
+        match &ty.kind {
+            TyKind::Adt(def_id) => {
+                if include(self.definitions.get(*def_id)) {
+                    deps.insert(*def_id);
+                }
+            }
+            TyKind::Array { ty, .. } | TyKind::Sequence { ty, .. } => {
+                self.collect_ty_refs(ty, include, deps);
+            }
+            TyKind::Map { key, elem, .. } => {
+                self.collect_ty_refs(key, include, deps);
+                self.collect_ty_refs(elem, include, deps);
+            }
+            _ => {}
+        }
+    }
+
+    #[allow(clippy::only_used_in_recursion)]
+    fn collect_numeric_refs<F>(&self, numeric: &Numeric, include: &F, deps: &mut HashSet<DefId>)
+    where
+        F: Fn(&Def) -> bool,
+    {
+        match numeric {
+            Numeric::Const(def_id) => {
+                if include(self.definitions.get(*def_id)) {
+                    deps.insert(*def_id);
+                }
+            }
+            Numeric::Array { values, .. } | Numeric::Sequence { values, .. } => {
+                for v in &**values {
+                    self.collect_numeric_refs(v, include, deps);
+                }
+            }
+            Numeric::Map { entries, .. } => {
+                for (k, v) in &**entries {
+                    self.collect_numeric_refs(k, include, deps);
+                    self.collect_numeric_refs(v, include, deps);
+                }
+            }
+            Numeric::Struct { ty, fields } => {
+                if include(self.definitions.get(*ty)) {
+                    deps.insert(*ty);
+                }
+                for (_, v) in &**fields {
+                    self.collect_numeric_refs(v, include, deps);
+                }
+            }
+            Numeric::Union {
+                ty,
+                discriminant,
+                value,
+                ..
+            } => {
+                if include(self.definitions.get(*ty)) {
+                    deps.insert(*ty);
+                }
+                self.collect_numeric_refs(discriminant, include, deps);
+                self.collect_numeric_refs(value, include, deps);
+            }
+            _ => {}
         }
     }
 }

@@ -159,13 +159,7 @@ impl<'a> ProtoGen<'a> {
     }
 
     fn resolve_typedef(&self, def_id: DefId) -> DefId {
-        let def = self.hir.context.definitions.get(def_id);
-        if let DefKind::Alias(alias_ty) = &def.kind
-            && let TyKind::Adt(aliased_id) = alias_ty.ty.kind
-        {
-            return self.resolve_typedef(aliased_id);
-        }
-        def_id
+        self.hir.context.base_id_of(def_id)
     }
 
     fn proto_type(&self, ty: &Ty, current_package: &Path) -> String {
@@ -240,39 +234,29 @@ impl<'a> ProtoGen<'a> {
         members
     }
 
-    fn find_type_dependencies(&self, ty: &Ty, deps: &mut HashSet<DefId>) {
-        match &ty.kind {
-            TyKind::Adt(def_id) => {
-                let resolved_id = self.resolve_typedef(*def_id);
-                let resolved_def = self.hir.context.definitions.get(resolved_id);
+    fn collect_dependencies(&self, def_id: DefId) -> HashSet<DefId> {
+        let mut all_deps = HashSet::new();
+        let mut current = Some(def_id);
 
-                if let DefKind::Alias(alias_ty) = &resolved_def.kind {
-                    self.find_type_dependencies(&alias_ty.ty, deps);
-                } else if self.is_proto_type(resolved_id) {
-                    deps.insert(resolved_id);
+        while let Some(id) = current {
+            let def = self.hir.context.definitions.get(id);
+
+            for dep_id in self.hir.context.deps(id) {
+                let resolved_id = self.resolve_typedef(dep_id);
+                if self.is_proto_type(resolved_id) {
+                    all_deps.insert(resolved_id);
                 }
             }
-            TyKind::Array { ty, .. } | TyKind::Sequence { ty, .. } => {
-                self.find_type_dependencies(ty, deps);
-            }
-            TyKind::Map { key, elem, .. } => {
-                self.find_type_dependencies(key, deps);
-                self.find_type_dependencies(elem, deps);
-            }
-            _ => {}
-        }
-    }
 
-    fn collect_dependencies(&self, def_id: DefId) -> HashSet<DefId> {
-        let mut deps = HashSet::new();
-        let members = self.collect_struct_members(def_id);
-
-        for (_name, ty) in members {
-            self.find_type_dependencies(&ty, &mut deps);
+            current = match &def.kind {
+                DefKind::Struct(s) => s.parent,
+                DefKind::Valuetype(v) => v.parent,
+                _ => None,
+            };
         }
 
-        deps.remove(&def_id);
-        deps
+        all_deps.remove(&def_id);
+        all_deps
     }
 
     fn emit_message(&self, def_id: DefId) -> String {

@@ -142,99 +142,11 @@ impl<'a> TsGen<'a> {
         }
     }
 
-    fn collect_type_deps(&self, ty: &Ty, deps: &mut HashSet<DefId>) {
-        let resolved_ty = self.hir.context.resolve_ty(ty);
-        match &resolved_ty.kind {
-            TyKind::Adt(def_id) => {
-                deps.insert(*def_id);
-            }
-            TyKind::Array { ty, .. } | TyKind::Sequence { ty, .. } => {
-                self.collect_type_deps(ty, deps);
-            }
-            TyKind::Map { key, elem, .. } => {
-                self.collect_type_deps(key, deps);
-                self.collect_type_deps(elem, deps);
-            }
-            _ => {}
-        }
-    }
-
     fn collect_deps(&self, def_ids: &[DefId]) -> HashSet<DefId> {
-        let mut deps = HashSet::new();
-        for &def_id in def_ids {
-            let def = self.hir.context.definitions.get(def_id);
-            match &def.kind {
-                DefKind::Struct(s) => {
-                    if let Some(parent) = s.parent {
-                        deps.insert(parent);
-                    }
-                    for m in &s.members {
-                        self.collect_type_deps(&m.ty, &mut deps);
-                    }
-                }
-                DefKind::Union(u) => {
-                    self.collect_type_deps(&u.disc.ty, &mut deps);
-                    for v in &u.variants {
-                        self.collect_type_deps(&v.ty, &mut deps);
-                        for label in &v.labels {
-                            if let Numeric::Const(const_def_id) = &label.value {
-                                deps.insert(*const_def_id);
-                            }
-                        }
-                    }
-                }
-                DefKind::Interface(i) => {
-                    for &p in &i.parents {
-                        deps.insert(p);
-                    }
-                    for m in &i.attributes {
-                        self.collect_type_deps(&m.ty, &mut deps);
-                    }
-                    for p in &i.prototypes {
-                        self.collect_type_deps(&p.ty, &mut deps);
-                        for param in &p.params {
-                            self.collect_type_deps(&param.ty, &mut deps);
-                        }
-                    }
-                }
-                DefKind::Valuetype(v) => {
-                    if let Some(parent) = v.parent {
-                        deps.insert(parent);
-                    }
-                    if let Some(supports) = v.supports {
-                        deps.insert(supports);
-                    }
-                    for m in &v.members {
-                        self.collect_type_deps(&m.ty, &mut deps);
-                    }
-                    for m in &v.attributes {
-                        self.collect_type_deps(&m.ty, &mut deps);
-                    }
-                    for p in &v.prototypes {
-                        self.collect_type_deps(&p.ty, &mut deps);
-                        for param in &p.params {
-                            self.collect_type_deps(&param.ty, &mut deps);
-                        }
-                    }
-                }
-                DefKind::Except(e) => {
-                    for m in &e.members {
-                        self.collect_type_deps(&m.ty, &mut deps);
-                    }
-                }
-                DefKind::Alias(a) => {
-                    self.collect_type_deps(&a.ty, &mut deps);
-                }
-                DefKind::Const(c) => {
-                    self.collect_type_deps(&c.ty, &mut deps);
-                    if let Numeric::Const(const_def_id) = &c.value {
-                        deps.insert(*const_def_id);
-                    }
-                }
-                _ => {}
-            }
-        }
-        deps
+        def_ids
+            .iter()
+            .flat_map(|&id| self.hir.context.deps(id))
+            .collect()
     }
 
     fn primitive_type(&self, prim: PrimitiveTy) -> &'static str {
@@ -711,9 +623,11 @@ impl<'a> TsGen<'a> {
             }
         }
 
-        let deps = self.collect_deps(defs);
-        let mut import_sources: HashSet<Option<DefId>> =
-            deps.iter().map(|&id| self.get_root_module(id)).collect();
+        let referenced = self.collect_deps(defs);
+        let mut import_sources: HashSet<Option<DefId>> = referenced
+            .iter()
+            .map(|&id| self.get_root_module(id))
+            .collect();
         for &exclude in exclude_from_deps {
             import_sources.remove(&Some(exclude));
         }
@@ -726,9 +640,7 @@ impl<'a> TsGen<'a> {
             if has_re_exports {
                 w!(w, "\n");
             }
-            let ups = dir_module
-                .map(|m| self.module_ancestors(m).len())
-                .unwrap_or(0);
+            let ups = dir_module.map_or(0, |m| self.module_ancestors(m).len());
             for &source in &import_sources {
                 let (name, import_path) = match source {
                     None => {

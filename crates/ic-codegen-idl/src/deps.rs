@@ -28,123 +28,29 @@
 use std::collections::HashSet;
 
 use ic_hir::ResolvedGraph;
-use ic_hir::hir::{DefId, DefKind, Ty, TyKind};
+use ic_hir::hir::{DefId, DefKind};
 use ic_vfs::FileId;
-
-pub fn collect_type_dependencies(
-    hir: &ResolvedGraph,
-    ty: &Ty,
-    current_file: FileId,
-    deps: &mut HashSet<FileId>,
-) {
-    match &ty.kind {
-        TyKind::Adt(def_id) => {
-            let def = hir.context.definitions.get(*def_id);
-            let dep_file = def.ident.span.start.file_id;
-            if dep_file != current_file {
-                deps.insert(dep_file);
-            }
-        }
-        TyKind::Sequence { ty, .. } | TyKind::Array { ty, .. } => {
-            collect_type_dependencies(hir, ty, current_file, deps);
-        }
-        TyKind::Map { key, elem, .. } => {
-            collect_type_dependencies(hir, key, current_file, deps);
-            collect_type_dependencies(hir, elem, current_file, deps);
-        }
-        _ => {}
-    }
-}
 
 pub fn collect_def_dependencies(
     hir: &ResolvedGraph,
     def_id: DefId,
     current_file: FileId,
-    deps: &mut HashSet<FileId>,
+    file_deps: &mut HashSet<FileId>,
 ) {
     let def = hir.context.definitions.get(def_id);
 
-    match &def.kind {
-        DefKind::Module(module_ty) => {
-            for &child_def_id in &module_ty.definitions {
-                collect_def_dependencies(hir, child_def_id, current_file, deps);
-            }
+    if let DefKind::Module(module_ty) = &def.kind {
+        for &child_def_id in &module_ty.definitions {
+            collect_def_dependencies(hir, child_def_id, current_file, file_deps);
         }
-        DefKind::Struct(struct_ty) => {
-            if let Some(parent) = struct_ty.parent {
-                let parent_def = hir.context.definitions.get(parent);
-                let parent_file = parent_def.ident.span.start.file_id;
-                if parent_file != current_file {
-                    deps.insert(parent_file);
-                }
-            }
-            for member in &struct_ty.members {
-                collect_type_dependencies(hir, &member.ty, current_file, deps);
-            }
+        return;
+    }
+
+    for dep_id in hir.context.deps(def_id) {
+        let dep_def = hir.context.definitions.get(dep_id);
+        let dep_file = dep_def.ident.span.start.file_id;
+        if dep_file != current_file {
+            file_deps.insert(dep_file);
         }
-        DefKind::Union(union_ty) => {
-            collect_type_dependencies(hir, &union_ty.disc.ty, current_file, deps);
-            for variant in &union_ty.variants {
-                collect_type_dependencies(hir, &variant.ty, current_file, deps);
-            }
-        }
-        DefKind::Interface(interface) => {
-            for &parent in &interface.parents {
-                let parent_def = hir.context.definitions.get(parent);
-                let parent_file = parent_def.ident.span.start.file_id;
-                if parent_file != current_file {
-                    deps.insert(parent_file);
-                }
-            }
-            for attr in &interface.attributes {
-                collect_type_dependencies(hir, &attr.ty, current_file, deps);
-            }
-            for proto in &interface.prototypes {
-                collect_type_dependencies(hir, &proto.ty, current_file, deps);
-                for param in &proto.params {
-                    collect_type_dependencies(hir, &param.ty, current_file, deps);
-                }
-            }
-        }
-        DefKind::Valuetype(valuetype) => {
-            if let Some(parent) = valuetype.parent {
-                let parent_def = hir.context.definitions.get(parent);
-                let parent_file = parent_def.ident.span.start.file_id;
-                if parent_file != current_file {
-                    deps.insert(parent_file);
-                }
-            }
-            if let Some(supports) = valuetype.supports {
-                let supports_def = hir.context.definitions.get(supports);
-                let supports_file = supports_def.ident.span.start.file_id;
-                if supports_file != current_file {
-                    deps.insert(supports_file);
-                }
-            }
-            for member in &valuetype.members {
-                collect_type_dependencies(hir, &member.ty, current_file, deps);
-            }
-        }
-        DefKind::Except(except) => {
-            for member in &except.members {
-                collect_type_dependencies(hir, &member.ty, current_file, deps);
-            }
-        }
-        DefKind::Alias(alias) => {
-            collect_type_dependencies(hir, &alias.ty, current_file, deps);
-        }
-        DefKind::Const(const_ty) => {
-            collect_type_dependencies(hir, &const_ty.ty, current_file, deps);
-        }
-        DefKind::Bitset(bitset) => {
-            if let Some(parent) = bitset.parent {
-                let parent_def = hir.context.definitions.get(parent);
-                let parent_file = parent_def.ident.span.start.file_id;
-                if parent_file != current_file {
-                    deps.insert(parent_file);
-                }
-            }
-        }
-        _ => (),
     }
 }

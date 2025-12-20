@@ -2,7 +2,7 @@
 source: crates/ic-hir/tests/case_consistency_warnings.rs
 expression: compile_idl_with_warnings(idl)
 ---
-warning: inconsistent capitalization: `kind` should be `Kind`
+error: inconsistent capitalization: `kind` should be `Kind`
    ┌ test.idl:7:31
    │
  4 │             STRING
@@ -14,7 +14,7 @@ warning: inconsistent capitalization: `kind` should be `Kind`
  9 │             case STRING: string strValue;
    └──
  note: the canonical name is `Kind`
-warning: inconsistent capitalization: `myunion` should be `MyUnion`
+error: inconsistent capitalization: `myunion` should be `MyUnion`
     ┌ test.idl:13:13
     │
  10 │         };
@@ -26,7 +26,7 @@ warning: inconsistent capitalization: `myunion` should be `MyUnion`
  15 │             MyUnion field3; // Correct
     └──
  note: the canonical name is `MyUnion`
-warning: inconsistent capitalization: `MYUNION` should be `MyUnion`
+error: inconsistent capitalization: `MYUNION` should be `MyUnion`
     ┌ test.idl:14:13
     │
  12 │         struct Test {

@@ -29,7 +29,7 @@
 
 #![allow(clippy::uninlined_format_args)]
 
-use ic_diagnostic::{Label, error_span, warn_span};
+use ic_diagnostic::{Label, error_span};
 use ic_syntax::{Path, Type as AstType};
 
 use super::LoweringContext;
@@ -223,8 +223,8 @@ impl<'ctx> TypeResolver<'ctx> {
                     // Check if it exists as a definition
                     if let Some(canonical_name) = scope.definitions.get_key(name) {
                         if canonical_name != name.as_str() {
-                            self.ctx.diagnostics.warnings.push(
-                                warn_span(
+                            self.ctx.diagnostics.errors.push(
+                                error_span(
                                     format!(
                                         "inconsistent capitalization: `{}` should be `{}`",
                                         name, canonical_name
@@ -245,8 +245,8 @@ impl<'ctx> TypeResolver<'ctx> {
 
                 if let Some(canonical_name) = scope.children.get_key(name) {
                     if canonical_name != name.as_str() {
-                        self.ctx.diagnostics.warnings.push(
-                            warn_span(
+                        self.ctx.diagnostics.errors.push(
+                            error_span(
                                 format!(
                                     "inconsistent capitalization: `{}` should be `{}`",
                                     name, canonical_name

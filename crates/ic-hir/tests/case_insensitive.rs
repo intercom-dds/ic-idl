@@ -41,8 +41,8 @@ fn test_case_insensitive_type_resolution() {
         };
     ";
 
-    // Should have no errors - all references should resolve
-    common::parse_and_resolve_successfully(idl);
+    let diagnostics = common::parse_and_expect_errors(idl);
+    insta::assert_snapshot!(diagnostics);
 }
 
 #[test]
@@ -63,8 +63,8 @@ fn test_case_insensitive_module_paths() {
         };
     ";
 
-    // Should have no errors
-    common::parse_and_resolve_successfully(idl);
+    let diagnostics = common::parse_and_expect_errors(idl);
+    insta::assert_snapshot!(diagnostics);
 }
 
 #[test]
@@ -105,7 +105,8 @@ fn test_case_insensitive_enum_references() {
     ";
 
     // Should have no errors
-    common::parse_and_resolve_successfully(idl);
+    let diagnostics = common::parse_and_expect_errors(idl);
+    insta::assert_snapshot!(diagnostics);
 }
 
 #[test]

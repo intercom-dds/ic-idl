@@ -122,39 +122,8 @@ fn test_module_case_insensitive_reopening_with_order() {
         struct TopLevel3 {};
     ";
 
-    let (hir, diagnostics) = common::parse_and_get_warnings(idl);
-
-    // Check warnings in diagnostics string
-    assert!(diagnostics.contains("inconsistent capitalization"));
-
-    // Check order contains only top-level items
-    let order_names: Vec<String> = hir
-        .order
-        .iter()
-        .map(|&id| {
-            let def = hir.context.definitions.get(id);
-            def.ident.name.clone()
-        })
-        .collect();
-
-    // Should contain all top-level items
-    assert_eq!(order_names.len(), 5); // TopLevel1, Foo (first), TopLevel2, FOO (reopened), TopLevel3
-    assert!(order_names.contains(&"TopLevel1".to_string()));
-    assert!(order_names.contains(&"TopLevel2".to_string()));
-    assert!(order_names.contains(&"TopLevel3".to_string()));
-
-    // Should contain both module declarations
-    assert_eq!(
-        order_names
-            .iter()
-            .filter(|n| n == &"Foo" || n == &"FOO")
-            .count(),
-        2
-    );
-
-    // Should NOT contain structs defined inside modules
-    assert!(!order_names.contains(&"Bar".to_string()));
-    assert!(!order_names.contains(&"Baz".to_string()));
+    let diagnostics = common::parse_and_expect_errors(idl);
+    insta::assert_snapshot!(diagnostics);
 }
 
 #[test]

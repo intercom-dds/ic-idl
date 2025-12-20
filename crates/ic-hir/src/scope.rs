@@ -31,6 +31,7 @@ use std::collections::HashMap;
 
 use ic_alloc::arena::Arena;
 use ic_alloc::insensitive::CaseMap;
+use ic_diagnostic::{Label, error_span};
 
 use crate::hir::{Def, DefId};
 
@@ -540,9 +541,8 @@ impl ScopeTree {
             if let Some(canonical_name) = parent_modules.get_key(name)
                 && canonical_name != name
             {
-                use ic_diagnostic::{Label, warn_span};
-                diagnostics.warnings.push(
-                    warn_span(
+                diagnostics.errors.push(
+                    error_span(
                         format!(
                             "inconsistent capitalization: module `{name}` was previously defined \
                              as `{canonical_name}`"

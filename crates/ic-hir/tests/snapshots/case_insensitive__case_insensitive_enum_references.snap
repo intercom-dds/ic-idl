@@ -1,0 +1,26 @@
+---
+source: crates/ic-hir/tests/case_insensitive.rs
+expression: diagnostics
+---
+error: inconsistent capitalization: `COLOR` should be `Color`
+    ┌ test.idl:9:13
+    │
+  6 │         };
+  7 │ 
+  8 │         struct Item {
+  9 │             COLOR c1;  // Uppercase enum name
+    ·             ^^^^^ used here
+ 10 │             color c2;  // Lowercase enum name
+ 11 │         };
+    └──
+ note: the canonical name is `Color`
+error: inconsistent capitalization: `color` should be `Color`
+    ┌ test.idl:10:13
+    │
+  8 │         struct Item {
+  9 │             COLOR c1;  // Uppercase enum name
+ 10 │             color c2;  // Lowercase enum name
+    ·             ^^^^^ used here
+ 11 │         };
+    └──
+ note: the canonical name is `Color`

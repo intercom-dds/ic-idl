@@ -2,7 +2,7 @@
 source: crates/ic-hir/tests/case_consistency_warnings.rs
 expression: compile_idl_with_warnings(idl)
 ---
-warning: inconsistent capitalization: `mystruct` should be `MyStruct`
+error: inconsistent capitalization: `mystruct` should be `MyStruct`
    ┌ test.idl:7:13
    │
  4 │         };
@@ -14,7 +14,7 @@ warning: inconsistent capitalization: `mystruct` should be `MyStruct`
  9 │             MyStruct field3; // Correct
    └──
  note: the canonical name is `MyStruct`
-warning: inconsistent capitalization: `MYSTRUCT` should be `MyStruct`
+error: inconsistent capitalization: `MYSTRUCT` should be `MyStruct`
     ┌ test.idl:8:13
     │
   6 │         struct Test {

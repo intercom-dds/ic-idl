@@ -351,13 +351,36 @@ type BoundedList = number[];
 Maps become `Record<K, V>` rather than ES6 `Map` because `Map` doesn't serialize
 transparently to JSON.
 
+TypeScript's `Record<K, V>` requires `K` to be `string | number | symbol`. Since JSON
+object keys are always strings, non-string key types use template literal types to
+represent string-encoded values:
+
+| IDL Key Type | TypeScript Key Type |
+|--------------|---------------------|
+| `string` | `string` |
+| Integer types | `` `${number}` `` |
+| `boolean` | `` `${boolean}` `` |
+| Enum types | `keyof typeof EnumType` |
+
+For enums, we use `keyof typeof EnumType` because DDS-JSON prefers enumerator names
+as keys (e.g., `"RED"` rather than `0`), though both are accepted. This gives the
+type `"RED" | "GREEN" | "BLUE"` for the enum's member names.
+
 ```idl
 typedef map<string, long> StringIntMap;
+typedef map<long, string> IntStringMap;
+typedef map<boolean, long> BoolIntMap;
 ```
 
 ```typescript
 type StringIntMap = Record<string, number>;
+type IntStringMap = Record<`${number}`, string>;
+type BoolIntMap = Record<`${boolean}`, number>;
 ```
+
+For complex key types (structs, unions), the keys are serialized as strings. Since
+there is no well-defined canonical string representation, these maps use `string`
+as the key type.
 
 ### Strings
 

@@ -88,6 +88,9 @@ pub struct TypeScriptOptions {
 
 #[must_use]
 pub fn codegen_typescript(hir: &ic_hir::ResolvedGraph, options: TypeScriptOptions) -> Vec<File> {
+    // Squash reopened modules into single definitions
+    let hir = ic_hir_xform::squash_modules::transform(hir.clone());
+
     let target = Target {
         convention: if options.no_rename {
             Convention::default()
@@ -98,7 +101,7 @@ pub fn codegen_typescript(hir: &ic_hir::ResolvedGraph, options: TypeScriptOption
         ..Target::default()
     };
 
-    let hir = rename::transform(hir.clone(), &target);
+    let hir = rename::transform(hir, &target);
     let generator = codegen::TsGen::new(&hir, options);
     generator.generate()
 }

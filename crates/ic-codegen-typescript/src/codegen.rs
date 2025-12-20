@@ -58,7 +58,7 @@ impl<'a> TsGen<'a> {
 
         loop {
             let def = self.hir.context.definitions.get(current);
-            if matches!(def.kind, DefKind::Module(_) | DefKind::Interface(_)) {
+            if matches!(def.kind, DefKind::Module(_)) {
                 return Some(current);
             }
             current = def.parent?;
@@ -105,7 +105,7 @@ impl<'a> TsGen<'a> {
             match def.parent {
                 Some(parent_id) => {
                     let parent_def = self.hir.context.definitions.get(parent_id);
-                    if matches!(parent_def.kind, DefKind::Module(_) | DefKind::Interface(_)) {
+                    if matches!(parent_def.kind, DefKind::Module(_)) {
                         current = parent_id;
                     } else {
                         break;
@@ -130,7 +130,40 @@ impl<'a> TsGen<'a> {
             (Some(target_scope), Some(current_scope)) if target_scope == current_scope => {
                 type_name.to_string()
             }
-            (Some(target_scope), _) => {
+            (Some(target_scope), Some(current_scope)) => {
+                // Find common ancestor and build relative path
+                let target_ancestors = self.module_ancestors(target_scope);
+                let current_ancestors = self.module_ancestors(current_scope);
+
+                // Find the common prefix length
+                let common_len = target_ancestors
+                    .iter()
+                    .zip(current_ancestors.iter())
+                    .take_while(|(a, b)| a == b)
+                    .count();
+
+                // Build path from the divergence point
+                let relative_path: Vec<_> = target_ancestors[common_len..]
+                    .iter()
+                    .map(|&id| self.hir.context.definitions.get(id).ident.name.clone())
+                    .collect();
+
+                if relative_path.is_empty() {
+                    // Target is in an ancestor of current scope
+                    // We need to reference via the ancestor's name
+                    if common_len > 0 && current_ancestors.len() > common_len {
+                        // Get the name of the module that contains the target
+                        let target_module = self.hir.context.definitions.get(target_scope);
+                        format!("{}.{type_name}", target_module.ident.name)
+                    } else {
+                        type_name.to_string()
+                    }
+                } else {
+                    let pkg_name = relative_path.join(".");
+                    format!("{pkg_name}.{type_name}")
+                }
+            }
+            (Some(target_scope), None) => {
                 let full_path = self.build_path_from(target_scope, None);
                 let pkg_name = full_path.join(".");
                 if pkg_name.is_empty() {
@@ -188,13 +221,80 @@ impl<'a> TsGen<'a> {
                 }
             }
             TyKind::Map { key, elem, .. } => {
-                let key_ty = self.ts_type(key, relative_def);
+                let key_ty = self.ts_map_key_type(key, relative_def);
                 let elem_ty = self.ts_type(elem, relative_def);
                 format!("Record<{key_ty}, {elem_ty}>")
             }
             TyKind::Any => "unknown".to_string(),
             TyKind::Fixed => "number".to_string(),
             TyKind::Null => "void".to_string(),
+        }
+    }
+
+    /// Returns the TypeScript type for a map key.
+    ///
+    /// JavaScript object keys are always strings at runtime, so non-string keys
+    /// need to use template literal types to maintain type safety:
+    /// - `string` → `string` (as-is)
+    /// - `boolean` → `` `${boolean}` ``
+    /// - numeric types → `` `${number}` `` or `` `${bigint}` ``
+    /// - enum types → `` `${EnumType}` ``
+    fn ts_map_key_type(&self, ty: &Ty, relative_def: DefId) -> String {
+        let resolved_ty = self.hir.context.resolve_ty(ty);
+        match &resolved_ty.kind {
+            // String types can be used directly as keys
+            TyKind::String { .. } | TyKind::Primitive(PrimitiveTy::Char | PrimitiveTy::WChar) => {
+                "string".to_string()
+            }
+
+            // Boolean needs template literal
+            TyKind::Primitive(PrimitiveTy::Bool) => "`${boolean}`".to_string(),
+
+            // Numeric types need template literal
+            TyKind::Fixed
+            | TyKind::Primitive(
+                PrimitiveTy::Int8
+                | PrimitiveTy::UInt8
+                | PrimitiveTy::Int16
+                | PrimitiveTy::UInt16
+                | PrimitiveTy::Int32
+                | PrimitiveTy::UInt32
+                | PrimitiveTy::Float32
+                | PrimitiveTy::Float64
+                | PrimitiveTy::Float128,
+            ) => "`${number}`".to_string(),
+
+            // 64-bit integers: bigint or number depending on options
+            TyKind::Primitive(PrimitiveTy::Int64 | PrimitiveTy::UInt64) => {
+                if self.options.use_bigint {
+                    "`${bigint}`".to_string()
+                } else {
+                    "`${number | string}`".to_string()
+                }
+            }
+
+            // ADT types: check if it's an enum or bitmask
+            TyKind::Adt(def_id) => {
+                let def = self.hir.context.type_of(*def_id);
+                match &def.kind {
+                    // Enums/bitmasks: DDS-JSON prefers string names as keys
+                    DefKind::Enum(_) | DefKind::Bitmask(_) => {
+                        let name = self.scoped_name(*def_id, relative_def);
+                        format!("keyof typeof {name}")
+                    }
+                    // Structs/unions as keys are serialized to strings (e.g., JSON)
+                    DefKind::Struct(_) | DefKind::Union(_) | DefKind::Valuetype(_) => {
+                        "string".to_string()
+                    }
+                    // Aliases: recurse through the alias
+                    DefKind::Alias(alias) => self.ts_map_key_type(&alias.ty, relative_def),
+                    // Other ADT types - use string as fallback
+                    _ => "string".to_string(),
+                }
+            }
+
+            // Other types - use regular type (will likely be a TS error)
+            _ => self.ts_type(ty, relative_def),
         }
     }
 
@@ -389,7 +489,7 @@ impl<'a> TsGen<'a> {
 
         w!(w, "options?: { cause?: Error }\n");
         w!(w, ") {\n");
-        w!(w, "super('", def.ident.name, "', options);\n");
+        w!(w, "super('", def.ident.name, "');\n");
         w!(w, "this.name = '", def.ident.name, "';\n");
 
         for member in &except_ty.members {
@@ -628,6 +728,12 @@ impl<'a> TsGen<'a> {
         Self::emit_header(&mut w);
 
         if let Some(nested_modules) = re_exports {
+            // Import nested modules for use within this file
+            for &nested_id in nested_modules {
+                let nested_def = self.hir.context.definitions.get(nested_id);
+                w!(w, "import * as ", nested_def.ident.name, " from './", nested_def.ident.name, "';\n");
+            }
+            // Re-export nested modules for external consumers
             for &nested_id in nested_modules {
                 let nested_def = self.hir.context.definitions.get(nested_id);
                 w!(w, "export * as ", nested_def.ident.name, " from './", nested_def.ident.name, "';\n");

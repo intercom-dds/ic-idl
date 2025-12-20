@@ -60,20 +60,7 @@ impl<'a> JsonSchemaGen<'a> {
         let mut file_map: BTreeMap<FileId, Vec<DefId>> = BTreeMap::new();
 
         for &def_id in &self.hir.order {
-            let def = self.hir.context.definitions.get(def_id);
-            if !matches!(
-                def.kind,
-                DefKind::Struct(_)
-                    | DefKind::Union(_)
-                    | DefKind::Enum(_)
-                    | DefKind::Alias(_)
-                    | DefKind::Bitmask(_)
-            ) {
-                continue;
-            }
-
-            let file_id = self.file_id(def_id);
-            file_map.entry(file_id).or_default().push(def_id);
+            self.collect_defs(def_id, &mut file_map);
         }
 
         for (file_id, def_ids) in file_map {
@@ -83,6 +70,29 @@ impl<'a> JsonSchemaGen<'a> {
         }
 
         files
+    }
+
+    fn collect_defs(&self, def_id: DefId, file_map: &mut BTreeMap<FileId, Vec<DefId>>) {
+        let def = self.hir.context.definitions.get(def_id);
+
+        if let DefKind::Module(module) = &def.kind {
+            for &child_id in &module.definitions {
+                self.collect_defs(child_id, file_map);
+            }
+            return;
+        }
+
+        if matches!(
+            def.kind,
+            DefKind::Struct(_)
+                | DefKind::Union(_)
+                | DefKind::Enum(_)
+                | DefKind::Alias(_)
+                | DefKind::Bitmask(_)
+        ) {
+            let file_id = self.file_id(def_id);
+            file_map.entry(file_id).or_default().push(def_id);
+        }
     }
 
     fn file_id(&self, def_id: DefId) -> FileId {
@@ -128,7 +138,12 @@ impl<'a> JsonSchemaGen<'a> {
     }
 
     fn output_path(&self, file_id: FileId) -> PathBuf {
-        self.source_map.included_as(file_id).with_extension("json")
+        let file_path = self.source_map.name(file_id);
+        let file_name = file_path
+            .file_name()
+            .and_then(|n| n.to_str())
+            .unwrap_or("unknown");
+        PathBuf::from(file_name).with_extension("json")
     }
 
     fn schema_uri(&self, file_id: FileId) -> String {

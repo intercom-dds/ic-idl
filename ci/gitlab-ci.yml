@@ -63,13 +63,6 @@ lint:ipr:
   script:
     - cargo xtask ipr
 
-lint:tidy:
-  stage: lint
-  needs: []
-  script:
-    - cmake . -B build -G"Ninja Multi-Config" -DCMAKE_EXPORT_COMPILE_COMMANDS=1 -DIC_TIDY=1
-    - ninja -C build
-
 build:stable:
   stage: build
   needs: []

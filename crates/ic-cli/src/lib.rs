@@ -581,12 +581,12 @@ impl Opt {
             tokens.push(format!("{sep}{token}"));
         }
 
-        let mut line = tokens.join(", ");
+        let mut line = tokens.join(", ").cyan().to_string();
         if self.kind != Value::Flag {
             let name = self.value_name.clone().unwrap_or_else(|| "arg".into());
-            line = format!("{line} <{name}>");
+            line = format!("{line} {}", format!("<{name}>").cyan().dim());
         }
-        line.bold().to_string()
+        line
     }
 
     fn with_prefix(&self, prefix: &str) -> String {
@@ -595,12 +595,12 @@ impl Opt {
             tokens.push(format!("{prefix}{token}"));
         }
 
-        let mut line = tokens.join(", ");
+        let mut line = tokens.join(", ").cyan().to_string();
         if self.kind != Value::Flag {
             let name = self.value_name.clone().unwrap_or_else(|| "arg".into());
-            line = format!("{line} <{name}>");
+            line = format!("{line} {}", format!("<{name}>").cyan().dim());
         }
-        line.bold().to_string()
+        line
     }
 
     pub(crate) fn insert_value(&mut self, value: String) {

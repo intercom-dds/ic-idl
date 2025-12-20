@@ -68,6 +68,7 @@ struct Style {
     fg: Option<Color>,
     bg: Option<Color>,
     bold: bool,
+    dim: bool,
 }
 
 impl<T: Display> Display for Colored<T> {
@@ -119,6 +120,10 @@ impl<T: Display> Display for Colored<T> {
             codes.push("1");
         }
 
+        if self.style.dim {
+            codes.push("2");
+        }
+
         if codes.is_empty() {
             write!(f, "{}", self.value)
         } else {
@@ -159,6 +164,18 @@ pub trait Colorize: Display + Clone {
             value: self.clone(),
             style: Style {
                 bold: true,
+                ..Default::default()
+            },
+            mode: ColorMode::Auto,
+        }
+    }
+
+    #[must_use]
+    fn dim(&self) -> Colored<Self> {
+        Colored {
+            value: self.clone(),
+            style: Style {
+                dim: true,
                 ..Default::default()
             },
             mode: ColorMode::Auto,
@@ -253,6 +270,12 @@ impl<T> Colored<T> {
     #[must_use]
     pub fn bold(mut self) -> Self {
         self.style.bold = true;
+        self
+    }
+
+    #[must_use]
+    pub fn dim(mut self) -> Self {
+        self.style.dim = true;
         self
     }
 

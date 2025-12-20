@@ -158,7 +158,7 @@ pub struct Options {
     pub include: Vec<String>,
 
     /// Define preprocessor directive <def> to <val>
-    #[option(short = 'D', long, arg = "def>=<val")]
+    #[option(short = 'D', long, arg = "def=val")]
     pub define: Vec<String>,
 
     /// Output list of files to be generated

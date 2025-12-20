@@ -1524,6 +1524,16 @@ where
             if let Some(v) = self.search_includes(include, kind) {
                 match self.vfs.open(v, kind) {
                     Ok((id, source)) => {
+                        // Record the include for lint purposes
+                        let including_file = self.cursor().file_id();
+                        self.vfs.record_include(ic_vfs::IncludeInfo {
+                            path_span: path,
+                            included_as: include.to_owned(),
+                            included_file: id,
+                            including_file,
+                            kind,
+                        });
+
                         // Skip files that we've already parsed if they used
                         // the `once` pragma.
                         if !self.state().parsed_files.contains(&id) {

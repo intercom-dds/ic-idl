@@ -78,6 +78,28 @@ pub enum Include {
     Static,
 }
 
+/// Information about an `#include` directive.
+///
+/// This tracks which file was included, from where, and the span of the
+/// path for diagnostic purposes.
+#[derive(Clone, Debug)]
+pub struct IncludeInfo {
+    /// The span of the include path (e.g., `"foo.idl"` or `<foo.idl>`).
+    pub path_span: Span,
+
+    /// The path as written in the include directive (e.g., `foo.idl`).
+    pub included_as: String,
+
+    /// The `FileId` of the file that was included.
+    pub included_file: FileId,
+
+    /// The `FileId` of the file containing the `#include` directive.
+    pub including_file: FileId,
+
+    /// The kind of include (system vs local).
+    pub kind: Include,
+}
+
 /// Information about a file loaded into the source map.
 #[must_use]
 #[derive(Debug)]
@@ -105,6 +127,8 @@ pub struct SourceMap {
     sources: Arena<FileInfo>,
     files: BTreeMap<PathBuf, FileId>,
     builtin_count: usize,
+    /// Tracks all `#include` directives processed.
+    includes: Vec<IncludeInfo>,
 }
 
 impl SourceMap {
@@ -187,6 +211,21 @@ impl SourceMap {
     #[must_use]
     pub fn files(&self) -> &BTreeMap<PathBuf, FileId> {
         &self.files
+    }
+
+    /// Records an `#include` directive.
+    ///
+    /// This is called by the preprocessor when it processes an `#include`
+    /// directive, allowing lints to track which files were included and from
+    /// where.
+    pub fn record_include(&mut self, info: IncludeInfo) {
+        self.includes.push(info);
+    }
+
+    /// Returns all recorded `#include` directives.
+    #[must_use]
+    pub fn includes(&self) -> &[IncludeInfo] {
+        &self.includes
     }
 
     fn insert(

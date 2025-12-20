@@ -285,6 +285,11 @@ impl LintCtx<'_> {
         // span.range() will panic in debug builds if start.file_id != end.file_id
         &self.vfs.source_str(span.start.file_id)[span.range()]
     }
+
+    /// Returns all recorded `#include` directives.
+    pub fn includes(&self) -> &[ic_vfs::IncludeInfo] {
+        self.vfs.includes()
+    }
 }
 
 pub trait Lint<'a>: Sized {
@@ -501,6 +506,7 @@ define_lints! {
         semantic::unreachable_union_cases::UnreachableUnionCases,
         semantic::zero_bound::ZeroBound,
         semantic::void_ty::VoidTy,
+        pedantic::unused_include::UnusedInclude,
         // unsupported::proto::Proto, // Commented out - too restrictive for non-proto3 IDL
     ],
 }

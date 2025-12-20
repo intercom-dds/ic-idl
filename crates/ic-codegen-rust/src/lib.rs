@@ -67,6 +67,30 @@ const RUST_KEYWORDS: &[&str] = &[
     "String", "Option", "Box", "Vec",
 ];
 
+const RUST_CONVENTION: rename::Convention = rename::Convention {
+    struct_type: Some(Case::Pascal),
+    union_type: Some(Case::Pascal),
+    enum_type: Some(Case::Pascal),
+    interface: Some(Case::Pascal),
+    valuetype: Some(Case::Pascal),
+    alias: Some(Case::Pascal),
+    bitmask: Some(Case::Pascal),
+    bitset: Some(Case::Pascal),
+    exception: Some(Case::Pascal),
+    annotation: Some(Case::Pascal),
+    member: Some(Case::Snake),
+    variant: Some(Case::Pascal),
+    enumerator: Some(Case::Pascal),
+    bit_flag: Some(Case::Snake),
+    bitset_field: Some(Case::Snake),
+    constant: Some(Case::UpperSnake),
+    module: Some(Case::Snake),
+    operation: Some(Case::Snake),
+    attribute: Some(Case::Snake),
+    parameter: Some(Case::Snake),
+    name_preprocessor: Some(rename::strip_common_suffixes),
+};
+
 #[must_use]
 #[allow(clippy::undocumented_unsafe_blocks, clippy::needless_pass_by_value)]
 pub fn codegen_rust(
@@ -95,30 +119,10 @@ pub fn codegen_rust(
     let hir = ic_hir_xform::rename::transform(
         hir,
         &rename::Target {
-            struct_type: Some(Case::Pascal),
-            union_type: Some(Case::Pascal),
-            enum_type: Some(Case::Pascal),
-            interface: Some(Case::Pascal),
-            valuetype: Some(Case::Pascal),
-            alias: Some(Case::Pascal),
-            bitmask: Some(Case::Pascal),
-            bitset: Some(Case::Pascal),
-            exception: Some(Case::Pascal),
-            annotation: Some(Case::Pascal),
-            member: Some(Case::Snake),
-            variant: Some(Case::Pascal),
-            enumerator: Some(Case::Pascal),
-            bit_flag: Some(Case::Snake),
+            convention: RUST_CONVENTION,
             keywords: RUST_KEYWORDS.iter().copied().collect(),
-            keyword_escape_fn: |name| format!("{name}_"),
-            bitset_field: Some(Case::Snake),
-            constant: Some(Case::UpperSnake),
-            module: Some(Case::Snake),
-            operation: Some(Case::Snake),
-            attribute: Some(Case::Snake),
-            parameter: Some(Case::Snake),
-            name_preprocessor: Some(ic_hir_xform::rename::strip_common_suffixes),
             moved_defs,
+            ..Default::default()
         },
     );
 

@@ -442,7 +442,6 @@ pub fn codegen_proto(hir: &ic_hir::ResolvedGraph) -> Vec<File> {
     // Escape keywords
     let target = Target {
         keywords: PROTO_KEYWORDS.iter().copied().collect(),
-        keyword_escape_fn: |name| format!("{name}_"),
         moved_defs,
         ..Target::default()
     };

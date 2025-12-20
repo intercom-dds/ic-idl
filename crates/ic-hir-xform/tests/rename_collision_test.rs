@@ -29,14 +29,18 @@ mod common;
 
 use ic_emit::case::Case;
 use ic_hir::hir::DefKind;
-use ic_hir_xform::{Target, rename, strip_common_suffixes};
+use ic_hir_xform::rename::{Convention, Target};
+use ic_hir_xform::{rename, strip_common_suffixes};
 
 /// Helper to create a minimal Rust-like target for testing collisions
 fn test_rust_target() -> Target {
     Target {
-        struct_type: Some(Case::Pascal),
-        module: Some(Case::Snake),
-        name_preprocessor: Some(strip_common_suffixes),
+        convention: Convention {
+            struct_type: Some(Case::Pascal),
+            module: Some(Case::Snake),
+            name_preprocessor: Some(strip_common_suffixes),
+            ..Default::default()
+        },
         ..Default::default()
     }
 }

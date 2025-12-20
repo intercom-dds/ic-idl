@@ -50,13 +50,11 @@ pub fn strip_common_suffixes(name: &str) -> String {
     }
 }
 
-/// Defines the naming convention to use for types of a specific kind.
+/// Naming conventions for different kinds of definitions.
 ///
-/// If there are specific language items that should not be renamed, setting
-/// the corresponding field to `None` will prevent the transformation from
-/// renaming them.
-#[derive(Clone)]
-pub struct Target {
+/// If a field is `None`, the corresponding items will not have their case changed.
+#[derive(Clone, Default)]
+pub struct Convention {
     /// Structs
     pub struct_type: Option<Case>,
 
@@ -118,55 +116,28 @@ pub struct Target {
     pub parameter: Option<Case>,
 
     /// Optional preprocessor function to apply to names before case conversion
-    /// If None, names are used as-is
     pub name_preprocessor: Option<NamePreprocessor>,
+}
 
-    /// Set of keywords that should be escaped
-    /// If an identifier matches a keyword, the escape function will be applied
+/// Configuration for the rename transformation.
+#[derive(Clone, Default)]
+pub struct Target {
+    /// Case conversion settings for different definition kinds
+    pub convention: Convention,
+
+    /// Set of keywords that should be escaped.
+    /// Used with default case-sensitive matching and `{name}_` escaping.
+    /// Ignored if `keyword_escape` is set.
     pub keywords: HashSet<&'static str>,
 
-    /// Function to apply when escaping keywords
-    /// Default: append underscore
-    pub keyword_escape_fn: fn(&str) -> String,
+    /// Optional custom keyword escaper function.
+    /// Returns `Some(escaped)` if the name needs escaping, `None` otherwise.
+    /// If set, this takes precedence over `keywords`.
+    pub keyword_escape: Option<fn(&str) -> Option<String>>,
 
-    /// Set of `DefIds` that were moved by previous transformations
-    /// These will have lower priority in collision resolution
+    /// Set of `DefIds` that were moved by previous transformations.
+    /// These will have lower priority in collision resolution.
     pub moved_defs: HashSet<hir::DefId>,
-}
-
-fn default_keyword_escape(name: &str) -> String {
-    format!("{name}_")
-}
-
-impl Default for Target {
-    fn default() -> Self {
-        Self {
-            struct_type: None,
-            union_type: None,
-            enum_type: None,
-            interface: None,
-            valuetype: None,
-            alias: None,
-            bitmask: None,
-            bitset: None,
-            exception: None,
-            annotation: None,
-            member: None,
-            variant: None,
-            enumerator: None,
-            bit_flag: None,
-            bitset_field: None,
-            constant: None,
-            module: None,
-            operation: None,
-            attribute: None,
-            parameter: None,
-            name_preprocessor: None,
-            keywords: HashSet::new(),
-            keyword_escape_fn: default_keyword_escape,
-            moved_defs: HashSet::new(),
-        }
-    }
 }
 
 /// Represents a node that needs renaming
@@ -202,7 +173,7 @@ fn apply_rename(name: &str, case: Option<Case>, target: &Target) -> String {
     let mut new_name = name.to_string();
 
     // First apply preprocessor if specified
-    if let Some(preprocessor) = target.name_preprocessor {
+    if let Some(preprocessor) = target.convention.name_preprocessor {
         new_name = preprocessor(&new_name);
     }
 
@@ -212,8 +183,14 @@ fn apply_rename(name: &str, case: Option<Case>, target: &Target) -> String {
     }
 
     // Finally check if the result is a keyword and escape it
-    if target.keywords.contains(new_name.as_str()) {
-        new_name = (target.keyword_escape_fn)(&new_name);
+    if let Some(escaper) = target.keyword_escape {
+        // Custom escaper takes precedence
+        if let Some(escaped) = escaper(&new_name) {
+            new_name = escaped;
+        }
+    } else if target.keywords.contains(new_name.as_str()) {
+        // Default: case-sensitive match with suffix underscore
+        new_name = format!("{new_name}_");
     }
 
     new_name
@@ -261,47 +238,47 @@ pub fn transform(mut hir: ResolvedGraph, target: &Target) -> ResolvedGraph {
         match &mut def.kind {
             DefKind::Struct(s) => {
                 for member in &mut s.members {
-                    renamer.rename_ident(&mut member.ident, target.member);
+                    renamer.rename_ident(&mut member.ident, target.convention.member);
                 }
             }
             DefKind::Union(u) => {
                 for variant in &mut u.variants {
-                    renamer.rename_ident(&mut variant.ident, target.variant);
+                    renamer.rename_ident(&mut variant.ident, target.convention.variant);
                 }
             }
             DefKind::Except(e) => {
                 for member in &mut e.members {
-                    renamer.rename_ident(&mut member.ident, target.member);
+                    renamer.rename_ident(&mut member.ident, target.convention.member);
                 }
             }
             DefKind::Valuetype(v) => {
                 for member in &mut v.members {
-                    renamer.rename_ident(&mut member.ident, target.member);
+                    renamer.rename_ident(&mut member.ident, target.convention.member);
                 }
                 for proto in &mut v.prototypes {
-                    renamer.rename_ident(&mut proto.ident, target.operation);
+                    renamer.rename_ident(&mut proto.ident, target.convention.operation);
                     for param in &mut proto.params {
-                        renamer.rename_ident(&mut param.ident, target.parameter);
+                        renamer.rename_ident(&mut param.ident, target.convention.parameter);
                     }
                 }
                 for attr in &mut v.attributes {
-                    renamer.rename_ident(&mut attr.ident, target.attribute);
+                    renamer.rename_ident(&mut attr.ident, target.convention.attribute);
                 }
             }
             DefKind::Interface(i) => {
                 for proto in &mut i.prototypes {
-                    renamer.rename_ident(&mut proto.ident, target.operation);
+                    renamer.rename_ident(&mut proto.ident, target.convention.operation);
                     for param in &mut proto.params {
-                        renamer.rename_ident(&mut param.ident, target.parameter);
+                        renamer.rename_ident(&mut param.ident, target.convention.parameter);
                     }
                 }
                 for attr in &mut i.attributes {
-                    renamer.rename_ident(&mut attr.ident, target.attribute);
+                    renamer.rename_ident(&mut attr.ident, target.convention.attribute);
                 }
             }
             DefKind::Bitset(b) => {
                 for field in &mut b.fields {
-                    renamer.rename_ident(&mut field.ident, target.bitset_field);
+                    renamer.rename_ident(&mut field.ident, target.convention.bitset_field);
                 }
             }
             _ => {}
@@ -338,7 +315,7 @@ fn process_module_contents(hir: &mut ResolvedGraph, target: &Target) {
 /// Process enum constants
 fn process_enum_constants(hir: &mut ResolvedGraph, target: &Target) {
     // Only process if we have a target for enumerators
-    if let Some(case) = target.enumerator {
+    if let Some(case) = target.convention.enumerator {
         // Collect all enum constants
         let enum_constants: Vec<_> = hir
             .context
@@ -411,24 +388,24 @@ fn rename_breadth(
         let case = if matches!(def.kind, hir::DefKind::Const(_)) {
             // Check if this is an enum constant
             if is_enum_constant(hir, id) {
-                target.enumerator
+                target.convention.enumerator
             } else {
-                target.constant
+                target.convention.constant
             }
         } else {
             match &def.kind {
-                DefKind::Module(_) => target.module,
-                DefKind::Const(_) => target.constant,
-                DefKind::Struct(_) => target.struct_type,
-                DefKind::Union(_) => target.union_type,
-                DefKind::Enum(_) => target.enum_type,
-                DefKind::Interface(_) => target.interface,
-                DefKind::Valuetype(_) => target.valuetype,
-                DefKind::Alias(_) => target.alias,
-                DefKind::Bitmask(_) => target.bitmask,
-                DefKind::Bitset(_) => target.bitset,
-                DefKind::Except(_) => target.exception,
-                DefKind::Annotation(_) => target.annotation,
+                DefKind::Module(_) => target.convention.module,
+                DefKind::Const(_) => target.convention.constant,
+                DefKind::Struct(_) => target.convention.struct_type,
+                DefKind::Union(_) => target.convention.union_type,
+                DefKind::Enum(_) => target.convention.enum_type,
+                DefKind::Interface(_) => target.convention.interface,
+                DefKind::Valuetype(_) => target.convention.valuetype,
+                DefKind::Alias(_) => target.convention.alias,
+                DefKind::Bitmask(_) => target.convention.bitmask,
+                DefKind::Bitset(_) => target.convention.bitset,
+                DefKind::Except(_) => target.convention.exception,
+                DefKind::Annotation(_) => target.convention.annotation,
                 DefKind::Decl(_) => None,
             }
         };
@@ -505,16 +482,32 @@ fn rename_items_with_occupied<T, F>(
 }
 
 /// Rename members, variants, parameters, etc. within a definition
+#[allow(clippy::too_many_lines)]
 fn rename_members(target: &Target, mut def: hir::Def) -> hir::Def {
     match &mut def.kind {
         DefKind::Struct(s) => {
-            rename_items(&mut s.members, target.member, |m| &mut m.ident, target);
+            rename_items(
+                &mut s.members,
+                target.convention.member,
+                |m| &mut m.ident,
+                target,
+            );
         }
         DefKind::Except(e) => {
-            rename_items(&mut e.members, target.member, |m| &mut m.ident, target);
+            rename_items(
+                &mut e.members,
+                target.convention.member,
+                |m| &mut m.ident,
+                target,
+            );
         }
         DefKind::Union(u) => {
-            rename_items(&mut u.variants, target.variant, |v| &mut v.ident, target);
+            rename_items(
+                &mut u.variants,
+                target.convention.variant,
+                |v| &mut v.ident,
+                target,
+            );
         }
         DefKind::Interface(i) => {
             // Operations and attributes share the same namespace
@@ -528,7 +521,7 @@ fn rename_members(target: &Target, mut def: hir::Def) -> hir::Def {
             // Rename operations
             rename_items_with_occupied(
                 &mut i.prototypes,
-                target.operation,
+                target.convention.operation,
                 |p| &mut p.ident,
                 &mut occupied,
                 target,
@@ -537,7 +530,7 @@ fn rename_members(target: &Target, mut def: hir::Def) -> hir::Def {
             // Rename attributes
             rename_items_with_occupied(
                 &mut i.attributes,
-                target.attribute,
+                target.convention.attribute,
                 |a| &mut a.ident,
                 &mut occupied,
                 target,
@@ -547,7 +540,7 @@ fn rename_members(target: &Target, mut def: hir::Def) -> hir::Def {
             for proto in &mut i.prototypes {
                 rename_items(
                     &mut proto.params,
-                    target.parameter,
+                    target.convention.parameter,
                     |p| &mut p.ident,
                     target,
                 );
@@ -566,7 +559,7 @@ fn rename_members(target: &Target, mut def: hir::Def) -> hir::Def {
             // Rename members
             rename_items_with_occupied(
                 &mut v.members,
-                target.member,
+                target.convention.member,
                 |m| &mut m.ident,
                 &mut occupied,
                 target,
@@ -575,7 +568,7 @@ fn rename_members(target: &Target, mut def: hir::Def) -> hir::Def {
             // Rename operations
             rename_items_with_occupied(
                 &mut v.prototypes,
-                target.operation,
+                target.convention.operation,
                 |p| &mut p.ident,
                 &mut occupied,
                 target,
@@ -584,7 +577,7 @@ fn rename_members(target: &Target, mut def: hir::Def) -> hir::Def {
             // Rename attributes
             rename_items_with_occupied(
                 &mut v.attributes,
-                target.attribute,
+                target.convention.attribute,
                 |a| &mut a.ident,
                 &mut occupied,
                 target,
@@ -594,14 +587,19 @@ fn rename_members(target: &Target, mut def: hir::Def) -> hir::Def {
             for proto in &mut v.prototypes {
                 rename_items(
                     &mut proto.params,
-                    target.parameter,
+                    target.convention.parameter,
                     |p| &mut p.ident,
                     target,
                 );
             }
         }
         DefKind::Bitset(b) => {
-            rename_items(&mut b.fields, target.bitset_field, |f| &mut f.ident, target);
+            rename_items(
+                &mut b.fields,
+                target.convention.bitset_field,
+                |f| &mut f.ident,
+                target,
+            );
         }
         _ => {}
     }

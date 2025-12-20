@@ -44,6 +44,17 @@ pub struct IdlOptions {
     pub idl_legacy: bool,
 }
 
+/// Case-insensitive keyword escaper for IDL.
+/// IDL identifiers are case-insensitive, so `object` collides with keyword `Object`.
+fn escape_idl_keyword(name: &str) -> Option<String> {
+    let lower = name.to_lowercase();
+    if IDL_KEYWORDS.iter().any(|kw| kw.to_lowercase() == lower) {
+        Some(format!("_{name}"))
+    } else {
+        None
+    }
+}
+
 #[must_use]
 pub fn codegen_idl(
     hir: &ic_hir::ResolvedGraph,
@@ -51,8 +62,7 @@ pub fn codegen_idl(
     options: IdlOptions,
 ) -> Vec<File> {
     let target = Target {
-        keywords: IDL_KEYWORDS.iter().copied().collect(),
-        keyword_escape_fn: |name| format!("_{name}"),
+        keyword_escape: Some(escape_idl_keyword),
         ..Target::default()
     };
 

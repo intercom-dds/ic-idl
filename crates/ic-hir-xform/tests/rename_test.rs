@@ -30,33 +30,35 @@ mod common;
 use ic_emit::case::Case;
 use ic_hir::hir::{DefKind, EnumTy, InterfaceTy, StructTy, UnionTy, ValueTy};
 use ic_hir::visit::Visitor;
-use ic_hir_xform::{Target, rename, strip_common_suffixes};
+use ic_hir_xform::rename::{Convention, Target};
+use ic_hir_xform::{rename, strip_common_suffixes};
 
 /// Helper to create Rust naming convention target
 fn rust_target() -> Target {
     Target {
-        struct_type: Some(Case::Pascal),
-        union_type: Some(Case::Pascal),
-        enum_type: Some(Case::Pascal),
-        interface: Some(Case::Pascal),
-        valuetype: Some(Case::Pascal),
-        alias: Some(Case::Pascal),
-        bitmask: Some(Case::Pascal),
-        bitset: Some(Case::Pascal),
-        exception: Some(Case::Pascal),
-        annotation: Some(Case::Pascal),
-        member: Some(Case::Snake),
-        variant: Some(Case::Pascal),
-        enumerator: Some(Case::Pascal),
-        bit_flag: Some(Case::Snake),
-        bitset_field: Some(Case::Snake),
-        constant: Some(Case::Snake),
-        module: Some(Case::Snake),
-        operation: Some(Case::Snake),
-        attribute: Some(Case::Snake),
-        parameter: Some(Case::Snake),
-        name_preprocessor: Some(strip_common_suffixes),
-        moved_defs: std::collections::HashSet::new(),
+        convention: Convention {
+            struct_type: Some(Case::Pascal),
+            union_type: Some(Case::Pascal),
+            enum_type: Some(Case::Pascal),
+            interface: Some(Case::Pascal),
+            valuetype: Some(Case::Pascal),
+            alias: Some(Case::Pascal),
+            bitmask: Some(Case::Pascal),
+            bitset: Some(Case::Pascal),
+            exception: Some(Case::Pascal),
+            annotation: Some(Case::Pascal),
+            member: Some(Case::Snake),
+            variant: Some(Case::Pascal),
+            enumerator: Some(Case::Pascal),
+            bit_flag: Some(Case::Snake),
+            bitset_field: Some(Case::Snake),
+            constant: Some(Case::Snake),
+            module: Some(Case::Snake),
+            operation: Some(Case::Snake),
+            attribute: Some(Case::Snake),
+            parameter: Some(Case::Snake),
+            name_preprocessor: Some(strip_common_suffixes),
+        },
         ..Target::default()
     }
 }
@@ -64,28 +66,29 @@ fn rust_target() -> Target {
 /// Helper to create Python naming convention target
 fn python_target() -> Target {
     Target {
-        struct_type: Some(Case::Pascal),
-        union_type: Some(Case::Pascal),
-        enum_type: Some(Case::Pascal),
-        interface: Some(Case::Pascal),
-        valuetype: Some(Case::Pascal),
-        alias: Some(Case::Pascal),
-        bitmask: Some(Case::Pascal),
-        bitset: Some(Case::Pascal),
-        exception: Some(Case::Pascal),
-        annotation: Some(Case::Pascal),
-        member: Some(Case::Snake),
-        variant: Some(Case::Snake),
-        enumerator: Some(Case::Snake),
-        bit_flag: Some(Case::Snake),
-        bitset_field: Some(Case::Snake),
-        constant: Some(Case::Snake),
-        module: Some(Case::Snake),
-        operation: Some(Case::Snake),
-        attribute: Some(Case::Snake),
-        parameter: Some(Case::Snake),
-        name_preprocessor: Some(strip_common_suffixes),
-        moved_defs: std::collections::HashSet::new(),
+        convention: Convention {
+            struct_type: Some(Case::Pascal),
+            union_type: Some(Case::Pascal),
+            enum_type: Some(Case::Pascal),
+            interface: Some(Case::Pascal),
+            valuetype: Some(Case::Pascal),
+            alias: Some(Case::Pascal),
+            bitmask: Some(Case::Pascal),
+            bitset: Some(Case::Pascal),
+            exception: Some(Case::Pascal),
+            annotation: Some(Case::Pascal),
+            member: Some(Case::Snake),
+            variant: Some(Case::Snake),
+            enumerator: Some(Case::Snake),
+            bit_flag: Some(Case::Snake),
+            bitset_field: Some(Case::Snake),
+            constant: Some(Case::Snake),
+            module: Some(Case::Snake),
+            operation: Some(Case::Snake),
+            attribute: Some(Case::Snake),
+            parameter: Some(Case::Snake),
+            name_preprocessor: Some(strip_common_suffixes),
+        },
         ..Target::default()
     }
 }
@@ -309,8 +312,11 @@ fn test_custom_naming_target() {
 
     // Create custom target - all kebab-case
     let target = Target {
-        struct_type: Some(Case::Kebab),
-        member: Some(Case::Kebab),
+        convention: Convention {
+            struct_type: Some(Case::Kebab),
+            member: Some(Case::Kebab),
+            ..Default::default()
+        },
         ..Default::default()
     };
 
@@ -383,9 +389,12 @@ fn test_no_suffix_stripping() {
 
     // Create target with no preprocessing (default)
     let target = Target {
-        struct_type: Some(Case::Pascal),
-        enum_type: Some(Case::Pascal),
-        enumerator: Some(Case::Pascal),
+        convention: Convention {
+            struct_type: Some(Case::Pascal),
+            enum_type: Some(Case::Pascal),
+            enumerator: Some(Case::Pascal),
+            ..Default::default()
+        },
         ..Default::default()
     };
 
@@ -421,8 +430,11 @@ fn test_custom_preprocessor() {
     let hir = common::parse_and_resolve(idl);
 
     let target = Target {
-        struct_type: Some(Case::Pascal),
-        name_preprocessor: Some(remove_foo_prefix),
+        convention: Convention {
+            struct_type: Some(Case::Pascal),
+            name_preprocessor: Some(remove_foo_prefix),
+            ..Default::default()
+        },
         ..Default::default()
     };
 

@@ -27,12 +27,10 @@
 
 mod codegen;
 
-use std::collections::HashSet;
-
 use ic_cli::Command;
 use ic_emit::File;
 use ic_emit::case::Case;
-use ic_hir_xform::{Target, rename};
+use ic_hir_xform::{Convention, Target, rename};
 
 #[rustfmt::skip]
 const KEYWORDS: &[&str] = &[
@@ -53,6 +51,30 @@ const KEYWORDS: &[&str] = &[
     "require", "set", "string", "symbol", "type", "unique", "unknown",
 ];
 
+const TYPESCRIPT_CONVENTION: Convention = Convention {
+    struct_type: Some(Case::Pascal),
+    union_type: Some(Case::Pascal),
+    enum_type: Some(Case::Pascal),
+    interface: Some(Case::Pascal),
+    valuetype: Some(Case::Pascal),
+    alias: Some(Case::Pascal),
+    bitmask: Some(Case::Pascal),
+    bitset: Some(Case::Pascal),
+    exception: Some(Case::Pascal),
+    annotation: Some(Case::Pascal),
+    member: Some(Case::Camel),
+    variant: Some(Case::Camel),
+    enumerator: Some(Case::UpperSnake),
+    bit_flag: Some(Case::UpperSnake),
+    bitset_field: Some(Case::Camel),
+    constant: Some(Case::UpperSnake),
+    module: Some(Case::Pascal),
+    operation: Some(Case::Camel),
+    attribute: Some(Case::Camel),
+    parameter: Some(Case::Camel),
+    name_preprocessor: Some(rename::strip_common_suffixes),
+};
+
 #[derive(Command, Clone, Debug, Default)]
 pub struct TypeScriptOptions {
     /// Do not rename types to TypeScript conventions
@@ -66,39 +88,14 @@ pub struct TypeScriptOptions {
 
 #[must_use]
 pub fn codegen_typescript(hir: &ic_hir::ResolvedGraph, options: TypeScriptOptions) -> Vec<File> {
-    let target = if options.no_rename {
-        Target {
-            keywords: KEYWORDS.iter().copied().collect(),
-            keyword_escape_fn: |name| format!("{name}_"),
-            ..Target::default()
-        }
-    } else {
-        Target {
-            keywords: KEYWORDS.iter().copied().collect(),
-            keyword_escape_fn: |name| format!("{name}_"),
-            struct_type: Some(Case::Pascal),
-            union_type: Some(Case::Pascal),
-            enum_type: Some(Case::Pascal),
-            interface: Some(Case::Pascal),
-            valuetype: Some(Case::Pascal),
-            alias: Some(Case::Pascal),
-            bitmask: Some(Case::Pascal),
-            bitset: Some(Case::Pascal),
-            exception: Some(Case::Pascal),
-            annotation: Some(Case::Pascal),
-            member: Some(Case::Camel),
-            variant: Some(Case::Camel),
-            enumerator: Some(Case::UpperSnake),
-            bit_flag: Some(Case::UpperSnake),
-            bitset_field: Some(Case::Camel),
-            constant: Some(Case::UpperSnake),
-            module: Some(Case::Camel),
-            operation: Some(Case::Camel),
-            attribute: Some(Case::Camel),
-            parameter: Some(Case::Camel),
-            name_preprocessor: Some(rename::strip_common_suffixes),
-            moved_defs: HashSet::default(),
-        }
+    let target = Target {
+        convention: if options.no_rename {
+            Convention::default()
+        } else {
+            TYPESCRIPT_CONVENTION
+        },
+        keywords: KEYWORDS.iter().copied().collect(),
+        ..Target::default()
     };
 
     let hir = rename::transform(hir.clone(), &target);

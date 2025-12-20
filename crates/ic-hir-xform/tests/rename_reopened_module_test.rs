@@ -29,7 +29,8 @@ mod common;
 
 use ic_emit::case::Case;
 use ic_hir::hir::DefKind;
-use ic_hir_xform::{Target, rename};
+use ic_hir_xform::rename;
+use ic_hir_xform::rename::{Convention, Target};
 
 #[test]
 fn test_reopened_modules_keep_same_name() {
@@ -47,8 +48,11 @@ fn test_reopened_modules_keep_same_name() {
 
     // Apply rename transformation to convert to snake_case
     let target = Target {
-        module: Some(Case::Snake),
-        struct_type: Some(Case::Pascal),
+        convention: Convention {
+            module: Some(Case::Snake),
+            struct_type: Some(Case::Pascal),
+            ..Default::default()
+        },
         ..Default::default()
     };
 
@@ -95,8 +99,11 @@ fn test_nested_reopened_modules() {
 
     // Apply rename transformation (no changes expected for PascalCase modules)
     let target = Target {
-        module: Some(Case::Pascal),
-        struct_type: Some(Case::Pascal),
+        convention: Convention {
+            module: Some(Case::Pascal),
+            struct_type: Some(Case::Pascal),
+            ..Default::default()
+        },
         ..Default::default()
     };
 
@@ -163,8 +170,11 @@ fn test_module_with_similar_name_not_blocked() {
 
     // Apply rename transformation to convert to snake_case
     let target = Target {
-        module: Some(Case::Snake),
-        struct_type: Some(Case::Pascal),
+        convention: Convention {
+            module: Some(Case::Snake),
+            struct_type: Some(Case::Pascal),
+            ..Default::default()
+        },
         ..Default::default()
     };
 

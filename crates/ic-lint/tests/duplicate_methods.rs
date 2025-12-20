@@ -200,3 +200,41 @@ interface Derived : Base {
 
     assert_snapshot!(test_lint_hir(source));
 }
+
+#[test]
+fn test_forward_declaration_not_duplicate() {
+    let source = r"
+module M {
+    struct Foo;
+
+    struct Foo {
+        long x;
+    };
+};
+";
+
+    let output = test_lint_hir(source);
+    assert!(
+        output.is_empty(),
+        "Forward declaration should not conflict with definition: {output}"
+    );
+}
+
+#[test]
+fn test_module_reopening_not_duplicate() {
+    let source = r"
+module M {
+    struct A { long x; };
+};
+
+module M {
+    struct B { long y; };
+};
+";
+
+    let output = test_lint_hir(source);
+    assert!(
+        output.is_empty(),
+        "Module reopening should not be flagged as duplicate: {output}"
+    );
+}

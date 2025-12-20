@@ -48,4 +48,4 @@ pub mod type_flags;
 pub mod value_annotation;
 
 // Re-export commonly used items
-pub use rename::{NamePreprocessor, Target, strip_common_suffixes};
+pub use rename::{Convention, NamePreprocessor, Target, strip_common_suffixes};

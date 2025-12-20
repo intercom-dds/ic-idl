@@ -631,7 +631,7 @@ impl<'a> TsGen<'a> {
         for &exclude in exclude_from_deps {
             import_sources.remove(&Some(exclude));
         }
-        if file_name == "types.ts" {
+        if file_name == "index.ts" && dir_module.is_none() {
             import_sources.remove(&None);
         }
 
@@ -645,8 +645,8 @@ impl<'a> TsGen<'a> {
                 let (name, import_path) = match source {
                     None => {
                         let path = match ups {
-                            0 => "./types".to_string(),
-                            n => format!("{}/types", vec![".."; n].join("/")),
+                            0 => ".".to_string(),
+                            n => vec![".."; n].join("/"),
                         };
                         ("types".to_string(), path)
                     }
@@ -758,7 +758,7 @@ impl<'a> TsGen<'a> {
         }
 
         if !top_level_defs.is_empty() {
-            result.push(self.emit_file(None, "types.ts", &top_level_defs, &[], None));
+            result.push(self.emit_file(None, "index.ts", &top_level_defs, &[], None));
         }
 
         result

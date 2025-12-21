@@ -787,6 +787,11 @@ impl<'a> TsGen<'a> {
             self.emit_non_module_definition(&mut w, def_id);
         }
 
+        // Ensure the file is a valid module even if empty
+        if defs.is_empty() && !has_re_exports && import_sources.is_empty() {
+            w!(w, "export {}\n");
+        }
+
         let mut path: PathBuf = dir_module
             .map(|m| self.module_ancestors(m))
             .unwrap_or_default()

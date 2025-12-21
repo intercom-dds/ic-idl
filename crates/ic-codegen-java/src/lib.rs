@@ -33,7 +33,7 @@ use ic_emit::case::Case;
 use ic_hir_xform::{Convention, Target, rename};
 
 #[rustfmt::skip]
-const KEYWORDS: &[&str] = &[
+pub(crate) const KEYWORDS: &[&str] = &[
     "_", "abstract", "assert", "boolean", "break", "byte", "case", "catch", "char", "class",
     "clone", "const", "continue", "default", "do", "double", "else", "enum", "equals", "extends",
     "false", "final", "finalize", "finally", "float", "for", "getClass", "goto", "hashCode", "if",

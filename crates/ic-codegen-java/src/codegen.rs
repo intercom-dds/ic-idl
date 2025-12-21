@@ -98,9 +98,26 @@ fn boxed_primitive(prim: PrimitiveTy) -> &'static str {
     }
 }
 
+/// Create a getter/setter name with prefix, optional camelCase conversion, and escaping
+fn accessor_name(prefix: &str, name: &str, to_camel: bool) -> String {
+    let result = format!("{prefix}_{name}");
+    let result = if to_camel {
+        case::camel(result)
+    } else {
+        result
+    };
+
+    if crate::KEYWORDS.contains(&result.as_str()) {
+        format!("{result}_")
+    } else {
+        result
+    }
+}
+
 fn format_primitive_value(value: i64, ty: &Ty) -> String {
     match &ty.kind {
         TyKind::Primitive(prim) => match prim {
+            PrimitiveTy::Bool => if value == 0 { "false" } else { "true" }.to_string(),
             PrimitiveTy::Int8 | PrimitiveTy::UInt8 => format!("(byte){value}"),
             PrimitiveTy::Int16 | PrimitiveTy::UInt16 => format!("(short){value}"),
             PrimitiveTy::Int64 | PrimitiveTy::UInt64 => format!("{value}L"),
@@ -161,6 +178,11 @@ impl<'a> JavaGen<'a> {
         }
     }
 
+    fn is_null_type(&self, ty: &Ty) -> bool {
+        let resolved = self.hir.context.resolve_ty(ty);
+        matches!(resolved.kind, TyKind::Null)
+    }
+
     fn is_cloneable_adt(&self, ty: &Ty) -> bool {
         let resolved = self.hir.context.resolve_ty(ty);
         match &resolved.kind {
@@ -184,6 +206,43 @@ impl<'a> JavaGen<'a> {
             TyKind::Sequence { .. } | TyKind::Map { .. } => true,
             TyKind::Array { ty, .. } => self.needs_deep_copy(ty),
             _ => self.is_cloneable_adt(ty),
+        }
+    }
+
+    /// Generate an equality comparison expression for two field accesses of the given type.
+    fn equals_expr(&self, ty: &Ty, lhs: &str, rhs: &str) -> String {
+        match &ty.kind {
+            TyKind::Primitive(prim) => match prim {
+                PrimitiveTy::Float32 => format!("Float.compare({lhs}, {rhs}) == 0"),
+                PrimitiveTy::Float64 | PrimitiveTy::Float128 => {
+                    format!("Double.compare({lhs}, {rhs}) == 0")
+                }
+                _ => format!("{lhs} == {rhs}"),
+            },
+            TyKind::Array { ty: inner, .. } => {
+                let inner_resolved = self.hir.context.resolve_ty(inner);
+                if matches!(inner_resolved.kind, TyKind::Primitive(_)) {
+                    format!("java.util.Arrays.equals({lhs}, {rhs})")
+                } else {
+                    format!("java.util.Arrays.deepEquals({lhs}, {rhs})")
+                }
+            }
+            _ => format!("java.util.Objects.equals({lhs}, {rhs})"),
+        }
+    }
+
+    /// Generate a hashcode expression for a field access of the given type.
+    fn hashcode_expr(&self, ty: &Ty, expr: &str) -> String {
+        match &ty.kind {
+            TyKind::Array { ty: inner, .. } => {
+                let inner_resolved = self.hir.context.resolve_ty(inner);
+                if matches!(inner_resolved.kind, TyKind::Primitive(_)) {
+                    format!("java.util.Arrays.hashCode({expr})")
+                } else {
+                    format!("java.util.Arrays.deepHashCode({expr})")
+                }
+            }
+            _ => format!("java.util.Objects.hashCode({expr})"),
         }
     }
 
@@ -416,15 +475,31 @@ impl<'a> JavaGen<'a> {
         let current_scope = self.scope_of(relative_to_def_id);
 
         match (target_scope, current_scope) {
-            (None, _) => type_name.to_string(),
+            // Both in same scope => use unqualified name
             (Some(target_scope), Some(current_scope)) if target_scope == current_scope => {
                 type_name.to_string()
             }
+
+            // Target is global, current is also global => use unqualified name
+            (None, None) => type_name.to_string(),
+
+            // Target is global but current is in a module => need package prefix
+            (None, Some(_)) => {
+                if let Some(prefix) = &self.options.package_prefix {
+                    format!("{prefix}.{type_name}")
+                } else {
+                    type_name.to_string()
+                }
+            }
+
+            // Target is in a module => build full path with prefix
             (Some(target_scope), _) => {
                 let full_path = self.build_path_from(target_scope, None);
                 let pkg_name = full_path.join(".");
                 if pkg_name.is_empty() {
                     type_name.to_string()
+                } else if let Some(prefix) = &self.options.package_prefix {
+                    format!("{prefix}.{pkg_name}.{type_name}")
                 } else {
                     format!("{pkg_name}.{type_name}")
                 }
@@ -448,13 +523,11 @@ impl<'a> JavaGen<'a> {
     }
 
     fn get_set(&self, name: &str) -> (String, String) {
-        let getter = format!("get_{name}");
-        let setter = format!("set_{name}");
-        if self.options.no_rename {
-            (getter, setter)
-        } else {
-            (case::camel(getter), case::camel(setter))
-        }
+        let to_camel = !self.options.no_rename;
+        (
+            accessor_name("get", name, to_camel),
+            accessor_name("set", name, to_camel),
+        )
     }
 
     fn disc_get_set(&self) -> (String, String) {
@@ -494,27 +567,27 @@ impl<'a> JavaGen<'a> {
         let def = self.hir.context.definitions.get(def_id);
         match &def.kind {
             DefKind::Struct(struct_ty) => {
-                let f = self.emit_file(def, None, |w| self.emit_struct(w, def, struct_ty));
+                let f = self.emit_file(def, None, |w| self.emit_struct(w, def, struct_ty, false));
                 files.push(f);
             }
             DefKind::Union(union_ty) => {
-                let f = self.emit_file(def, None, |w| self.emit_union(w, def, union_ty));
+                let f = self.emit_file(def, None, |w| self.emit_union(w, def, union_ty, false));
                 files.push(f);
             }
             DefKind::Enum(enum_ty) => {
-                let f = self.emit_file(def, None, |w| self.emit_enum(w, def, enum_ty));
+                let f = self.emit_file(def, None, |w| self.emit_enum(w, def, enum_ty, false));
                 files.push(f);
             }
             DefKind::Except(except_ty) => {
-                let f = self.emit_file(def, None, |w| self.emit_except(w, def, except_ty));
+                let f = self.emit_file(def, None, |w| self.emit_except(w, def, except_ty, false));
                 files.push(f);
             }
             DefKind::Bitmask(bitmask_ty) => {
-                let f = self.emit_file(def, None, |w| self.emit_bitmask(w, def, bitmask_ty));
+                let f = self.emit_file(def, None, |w| self.emit_bitmask(w, def, bitmask_ty, false));
                 files.push(f);
             }
             DefKind::Const(const_ty) => {
-                let f = self.emit_file(def, None, |w| self.emit_const(w, def, const_ty));
+                let f = self.emit_file(def, None, |w| self.emit_const(w, def, const_ty, false));
                 files.push(f);
             }
             DefKind::Interface(interface_ty) => {
@@ -539,8 +612,12 @@ impl<'a> JavaGen<'a> {
         }
     }
 
-    fn emit_struct(&self, w: &mut Twine, def: &Def, struct_ty: &StructTy) {
-        w!(w, "public class ", def);
+    fn emit_struct(&self, w: &mut Twine, def: &Def, struct_ty: &StructTy, nested: bool) {
+        if nested {
+            w!(w, "public static class ", def);
+        } else {
+            w!(w, "public class ", def);
+        }
         if let Some(parent) = struct_ty.parent {
             let parent = self.java_name(parent);
             w!(w, " extends ", parent);
@@ -550,7 +627,7 @@ impl<'a> JavaGen<'a> {
         w!(w, "private static final long serialVersionUID = ", uid, "L;\n\n");
 
         self.emit_default_ctor(w, def.id, &struct_ty.members);
-        self.emit_copy_ctor(w, def, def.parent, &struct_ty.members);
+        self.emit_copy_ctor(w, def, struct_ty.parent, &struct_ty.members);
         if !struct_ty.members.is_empty() {
             self.emit_arg_ctor(w, def.id, &struct_ty.members);
         }
@@ -592,30 +669,8 @@ impl<'a> JavaGen<'a> {
                 }
                 let resolved = self.hir.context.resolve_ty(&member.ty);
                 let name = &member.ident.name;
-                match &resolved.kind {
-                    TyKind::Primitive(prim) => match prim {
-                        PrimitiveTy::Float32 => {
-                            w!(w, "Float.compare(", name, ", other.", name, ") == 0");
-                        }
-                        PrimitiveTy::Float64 | PrimitiveTy::Float128 => {
-                            w!(w, "Double.compare(", name, ", other.", name, ") == 0");
-                        }
-                        _ => {
-                            w!(w, name, " == other.", name);
-                        }
-                    },
-                    TyKind::Array { ty: inner, .. } => {
-                        let inner_resolved = self.hir.context.resolve_ty(inner);
-                        if matches!(inner_resolved.kind, TyKind::Primitive(_)) {
-                            w!(w, "java.util.Arrays.equals(", name, ", other.", name, ")");
-                        } else {
-                            w!(w, "java.util.Arrays.deepEquals(", name, ", other.", name, ")");
-                        }
-                    }
-                    _ => {
-                        w!(w, "java.util.Objects.equals(", name, ", other.", name, ")");
-                    }
-                }
+                let rhs = format!("other.{name}");
+                w!(w, self.equals_expr(&resolved, name, &rhs));
             }
             w!(w, ";\n");
         }
@@ -635,13 +690,8 @@ impl<'a> JavaGen<'a> {
                 }
                 let resolved = self.hir.context.resolve_ty(&member.ty);
                 let name = &member.ident.name;
-                if let TyKind::Array { ty: inner, .. } = &resolved.kind {
-                    let inner_resolved = self.hir.context.resolve_ty(inner);
-                    if matches!(inner_resolved.kind, TyKind::Primitive(_)) {
-                        w!(w, "java.util.Arrays.hashCode(", name, ")");
-                    } else {
-                        w!(w, "java.util.Arrays.deepHashCode(", name, ")");
-                    }
+                if matches!(resolved.kind, TyKind::Array { .. }) {
+                    w!(w, self.hashcode_expr(&resolved, name));
                 } else {
                     w!(w, name);
                 }
@@ -692,7 +742,8 @@ impl<'a> JavaGen<'a> {
                 self.emit_map_deep_copy(w, name, key, elem, def_id);
             }
             TyKind::Adt(_) if self.is_cloneable_adt(ty) => {
-                w!(w, "this.", name, " = other.", name, ".clone();\n");
+                let java_type = self.java_type(ty, def_id);
+                w!(w, "this.", name, " = new ", java_type, "(other.", name, ");\n");
             }
             _ => {
                 w!(w, "this.", name, " = other.", name, ";\n");
@@ -736,7 +787,7 @@ impl<'a> JavaGen<'a> {
     ) -> String {
         let resolved = self.hir.context.resolve_ty(ty);
         match &resolved.kind {
-            _ if self.is_cloneable_adt(ty) => format!("{src}.clone()"),
+            _ if self.is_cloneable_adt(ty) => format!("new {0}({src})", self.java_type(ty, def_id)),
             TyKind::Sequence { ty: inner, .. } => {
                 let var = format!("_seq{depth}");
                 let elem_type = self.boxed_java_type(inner, def_id);
@@ -902,8 +953,9 @@ impl<'a> JavaGen<'a> {
         }
     }
 
-    fn emit_except(&self, w: &mut Twine, def: &Def, except_ty: &ExceptTy) {
-        w!(w, "public class ", def, " extends java.lang.RuntimeException {\n");
+    fn emit_except(&self, w: &mut Twine, def: &Def, except_ty: &ExceptTy, nested: bool) {
+        let static_mod = if nested { "static " } else { "" };
+        w!(w, "public ", static_mod, "class ", def, " extends java.lang.RuntimeException {\n");
         let uid = self.serial_version_uid(def, &except_ty.members);
         w!(w, "private static final long serialVersionUID = ", uid, "L;\n\n");
 
@@ -922,8 +974,9 @@ impl<'a> JavaGen<'a> {
         w!(w, "}\n");
     }
 
-    fn emit_enum(&self, w: &mut Twine, def: &Def, enum_ty: &EnumTy) {
-        w!(w, "public enum ", def, " {\n");
+    fn emit_enum(&self, w: &mut Twine, def: &Def, enum_ty: &EnumTy, nested: bool) {
+        let static_mod = if nested { "static " } else { "" };
+        w!(w, "public ", static_mod, "enum ", def, " {\n");
         self.emit_enumerators(w, &enum_ty.fields);
         w!(w, "\n");
 
@@ -960,11 +1013,12 @@ impl<'a> JavaGen<'a> {
         w!(w, "}\n");
     }
 
-    fn emit_union(&self, w: &mut Twine, def: &Def, union_ty: &UnionTy) {
+    fn emit_union(&self, w: &mut Twine, def: &Def, union_ty: &UnionTy, nested: bool) {
         let disc_type = self.java_type(&union_ty.disc.ty, def.id);
         let (disc_get, disc_set) = self.disc_get_set();
 
-        w!(w, "public final class ", def, " implements java.io.Serializable {\n");
+        let static_mod = if nested { "static " } else { "" };
+        w!(w, "public ", static_mod, "final class ", def, " implements java.io.Serializable {\n");
         let uid = self.serial_version_uid_union(def, union_ty);
         w!(w, "private static final long serialVersionUID = ", uid, "L;\n\n");
 
@@ -990,8 +1044,11 @@ impl<'a> JavaGen<'a> {
 
         for variant in &union_ty.variants {
             self.emit_variant_cases(w, &union_ty.disc.ty, variant, def.id);
-            let default_val = self.default_value(&variant.ty, def.id);
-            w!(w, "this.", variant.ident.name, " = ", default_val, ";\n");
+            // Skip field assignment for null type variants
+            if !self.is_null_type(&variant.ty) {
+                let default_val = self.default_value(&variant.ty, def.id);
+                w!(w, "this.", variant.ident.name, " = ", default_val, ";\n");
+            }
             w!(w, "break;\n");
         }
 
@@ -1004,6 +1061,10 @@ impl<'a> JavaGen<'a> {
 
         w!(w, "private ", disc_type, " discriminator;\n");
         for variant in &union_ty.variants {
+            // Skip null type variants, they don't need a field
+            if self.is_null_type(&variant.ty) {
+                continue;
+            }
             let java_type = self.java_type(&variant.ty, def.id);
             w!(w, "protected ", java_type, " ", variant.ident.name, ";\n");
         }
@@ -1024,66 +1085,49 @@ impl<'a> JavaGen<'a> {
 
         let disc_resolved = self.hir.context.resolve_ty(&union_ty.disc.ty);
         if let TyKind::Adt(_) = &disc_resolved.kind {
-            w!(w, "if (!java.util.Objects.equals(discriminator, other.discriminator)) {\n");
+            w!(w, "if (!java.util.Objects.equals(this.discriminator, other.discriminator)) {\n");
         } else {
-            w!(w, "if (discriminator != other.discriminator) {\n");
+            w!(w, "if (this.discriminator != other.discriminator) {\n");
         }
         w!(w, "return false;\n");
         w!(w, "}\n");
 
-        self.emit_switch_discriminator(w, &union_ty.disc.ty, "discriminator");
+        self.emit_switch_discriminator(w, &union_ty.disc.ty, "this.discriminator");
+        let has_default = union_ty.variants.iter().any(|v| v.is_default);
         for variant in &union_ty.variants {
             self.emit_variant_cases(w, &union_ty.disc.ty, variant, def.id);
             let resolved = self.hir.context.resolve_ty(&variant.ty);
             let name = &variant.ident.name;
-            match &resolved.kind {
-                TyKind::Primitive(prim) => match prim {
-                    PrimitiveTy::Float32 => {
-                        w!(w, "return Float.compare(", name, ", other.", name, ") == 0;\n");
-                    }
-                    PrimitiveTy::Float64 | PrimitiveTy::Float128 => {
-                        w!(w, "return Double.compare(", name, ", other.", name, ") == 0;\n");
-                    }
-                    _ => {
-                        w!(w, "return ", name, " == other.", name, ";\n");
-                    }
-                },
-                TyKind::Array { ty: inner, .. } => {
-                    let inner_resolved = self.hir.context.resolve_ty(inner);
-                    if matches!(inner_resolved.kind, TyKind::Primitive(_)) {
-                        w!(w, "return java.util.Arrays.equals(", name, ", other.", name, ");\n");
-                    } else {
-                        w!(w, "return java.util.Arrays.deepEquals(", name, ", other.", name, ");\n");
-                    }
-                }
-                _ => {
-                    w!(w, "return java.util.Objects.equals(", name, ", other.", name, ");\n");
-                }
+            if matches!(resolved.kind, TyKind::Null) {
+                // Null variants are always equal (no field to compare)
+                w!(w, "return true;\n");
+            } else {
+                let lhs = format!("this.{name}");
+                let rhs = format!("other.{name}");
+                w!(w, "return ", self.equals_expr(&resolved, &lhs, &rhs), ";\n");
             }
         }
         w!(w, "}\n");
-        w!(w, "return true;\n");
+        // Only emit final return if there's no default case (otherwise it's unreachable)
+        if !has_default {
+            w!(w, "return true;\n");
+        }
         w!(w, "}\n\n");
     }
 
     fn emit_union_hashcode(&self, w: &mut Twine, def: &Def, union_ty: &UnionTy) {
         w!(w, "@Override\n");
         w!(w, "public int hashCode() {\n");
-        w!(w, "int result = java.util.Objects.hashCode(discriminator);\n");
-        self.emit_switch_discriminator(w, &union_ty.disc.ty, "discriminator");
+        w!(w, "int result = java.util.Objects.hashCode(this.discriminator);\n");
+        self.emit_switch_discriminator(w, &union_ty.disc.ty, "this.discriminator");
         for variant in &union_ty.variants {
             self.emit_variant_cases(w, &union_ty.disc.ty, variant, def.id);
             let resolved = self.hir.context.resolve_ty(&variant.ty);
-            let name = &variant.ident.name;
-            if let TyKind::Array { ty: inner, .. } = &resolved.kind {
-                let inner_resolved = self.hir.context.resolve_ty(inner);
-                if matches!(inner_resolved.kind, TyKind::Primitive(_)) {
-                    w!(w, "result = 31 * result + java.util.Arrays.hashCode(", name, ");\n");
-                } else {
-                    w!(w, "result = 31 * result + java.util.Arrays.deepHashCode(", name, ");\n");
-                }
-            } else {
-                w!(w, "result = 31 * result + java.util.Objects.hashCode(", name, ");\n");
+            // Null variants don't contribute to hashCode (no field)
+            if !matches!(resolved.kind, TyKind::Null) {
+                let name = &variant.ident.name;
+                let expr = format!("this.{name}");
+                w!(w, "result = 31 * result + ", self.hashcode_expr(&resolved, &expr), ";\n");
             }
             w!(w, "break;\n");
         }
@@ -1095,6 +1139,10 @@ impl<'a> JavaGen<'a> {
     fn emit_union_clear(&self, w: &mut Twine, union_ty: &UnionTy) {
         w!(w, "private void _clear() {\n");
         for variant in &union_ty.variants {
+            // Skip null type variants, they don't have a field
+            if self.is_null_type(&variant.ty) {
+                continue;
+            }
             let resolved = self.hir.context.resolve_ty(&variant.ty);
             let clear_value = match &resolved.kind {
                 TyKind::Primitive(prim) => match prim {
@@ -1117,15 +1165,40 @@ impl<'a> JavaGen<'a> {
         let (_disc_get, disc_set) = self.disc_get_set();
 
         for variant in &union_ty.variants {
-            let java_type = self.java_type(&variant.ty, def.id);
+            let is_null = self.is_null_type(&variant.ty);
             let (getter, setter) = self.get_set(&variant.ident.name);
 
-            w!(w, "public ", java_type, " ", getter, "() {\n");
-            self.emit_variant_discriminator_check(w, &union_ty.disc.ty, variant, union_ty, def.id);
-            w!(w, "return ", variant.ident.name, ";\n");
-            w!(w, "}\n\n");
+            if is_null {
+                // For null type variants, getter returns void and has no return statement
+                w!(w, "public void ", getter, "() {\n");
+                self.emit_variant_discriminator_check(
+                    w,
+                    &union_ty.disc.ty,
+                    variant,
+                    union_ty,
+                    def.id,
+                );
+                w!(w, "}\n\n");
 
-            w!(w, "public void ", setter, "(", java_type, " ", variant.ident.name, ") {\n");
+                // Setter takes no arguments
+                w!(w, "public void ", setter, "() {\n");
+            } else {
+                let java_type = self.java_type(&variant.ty, def.id);
+
+                w!(w, "public ", java_type, " ", getter, "() {\n");
+                self.emit_variant_discriminator_check(
+                    w,
+                    &union_ty.disc.ty,
+                    variant,
+                    union_ty,
+                    def.id,
+                );
+                w!(w, "return ", variant.ident.name, ";\n");
+                w!(w, "}\n\n");
+
+                w!(w, "public void ", setter, "(", java_type, " ", variant.ident.name, ") {\n");
+            }
+
             if let Some(first_label) = variant.labels.first() {
                 let disc_value = self.format_numeric(&first_label.value, &union_ty.disc.ty, def.id);
                 w!(w, "this.discriminator = ", disc_value, ";\n");
@@ -1135,10 +1208,13 @@ impl<'a> JavaGen<'a> {
                 w!(w, "this.discriminator = ", default_value, ";\n");
             }
             w!(w, "_clear();\n");
-            w!(w, "this.", variant.ident.name, " = ", variant.ident.name, ";\n");
+            if !is_null {
+                w!(w, "this.", variant.ident.name, " = ", variant.ident.name, ";\n");
+            }
             w!(w, "}\n\n");
 
-            if variant.labels.len() > 1 {
+            if variant.labels.len() > 1 && !is_null {
+                let java_type = self.java_type(&variant.ty, def.id);
                 w!(w, "public void ", setter, "(", java_type, " ", variant.ident.name, ", ", disc_type, " discriminator) {\n");
                 self.emit_variant_discriminator_check(
                     w,
@@ -1173,7 +1249,10 @@ impl<'a> JavaGen<'a> {
 
         for variant in &union_ty.variants {
             self.emit_variant_cases(w, &union_ty.disc.ty, variant, def.id);
-            self.emit_field_copy(w, &variant.ident.name, &variant.ty, def.id);
+            // Skip field copy for null type variants
+            if !self.is_null_type(&variant.ty) {
+                self.emit_field_copy(w, &variant.ident.name, &variant.ty, def.id);
+            }
             w!(w, "break;\n");
         }
 
@@ -1186,10 +1265,11 @@ impl<'a> JavaGen<'a> {
         w.dedent();
         for label in &variant.labels {
             if is_bool {
-                let val = self.hir.context.integer_value(&label.value).unwrap_or(0);
+                // For boolean discriminators, we need to convert to 0/1 for switch
+                let val = self.bool_label_value(&label.value);
                 w!(w, "case ", val, ":\n");
             } else {
-                let case_val = self.format_numeric(&label.value, disc_ty, def_id);
+                let case_val = self.format_case_label(&label.value, disc_ty, def_id);
                 w!(w, "case ", case_val, ":\n");
             }
         }
@@ -1197,6 +1277,22 @@ impl<'a> JavaGen<'a> {
             w!(w, "default:\n");
         }
         w.indent();
+    }
+
+    /// Get the integer value (0 or 1) for a boolean union case label.
+    fn bool_label_value(&self, value: &Numeric) -> i64 {
+        match value {
+            Numeric::Bool(b) => i64::from(*b),
+            Numeric::Const(def_id) => {
+                let def = self.hir.context.definitions.get(*def_id);
+                if let DefKind::Const(const_ty) = &def.kind {
+                    self.bool_label_value(&const_ty.value)
+                } else {
+                    0
+                }
+            }
+            _ => self.hir.context.integer_value(value).unwrap_or(0),
+        }
     }
 
     fn emit_variant_discriminator_check(
@@ -1290,7 +1386,8 @@ impl<'a> JavaGen<'a> {
                             && let Some(val) = self.hir.context.integer_value(&const_ty.value)
                             && !used_values.contains(&val)
                         {
-                            return self.format_numeric(&const_ty.value, disc_ty, def_id);
+                            // Use Numeric::Const to format as enum constant (e.g., MyEnum.ZERO)
+                            return self.format_numeric(&Numeric::Const(field_id), disc_ty, def_id);
                         }
                     }
                 }
@@ -1315,15 +1412,24 @@ impl<'a> JavaGen<'a> {
         }
     }
 
-    fn emit_bitmask(&self, w: &mut Twine, def: &Def, bitmask_ty: &BitmaskTy) {
-        w!(w, "public final class ", def, " {\n");
+    fn emit_bitmask(&self, w: &mut Twine, def: &Def, bitmask_ty: &BitmaskTy, nested: bool) {
+        if nested {
+            w!(w, "public static final class ", def, " {\n");
+        } else {
+            w!(w, "public final class ", def, " {\n");
+        }
         w!(w, "private ", def, "() {}\n\n");
 
         for &flag_id in &bitmask_ty.flags {
             let flag_def = self.hir.context.definitions.get(flag_id);
             if let DefKind::Const(const_ty) = &flag_def.kind {
+                // Bitmask flags are always integers, check if value exceeds int range
                 let value = self.hir.context.integer_value(&const_ty.value).unwrap_or(0);
-                w!(w, "public static final int ", flag_def.ident.name, " = ", value, ";\n");
+                if value > i64::from(i32::MAX) {
+                    w!(w, "public static final long ", flag_def.ident.name, " = ", value, "L;\n");
+                } else {
+                    w!(w, "public static final int ", flag_def.ident.name, " = ", value, ";\n");
+                }
             }
         }
 
@@ -1384,6 +1490,21 @@ impl<'a> JavaGen<'a> {
     fn emit_interface(&self, w: &mut Twine, def: &Def, interface_ty: &InterfaceTy) {
         w!(w, "public interface ", def, " {\n");
 
+        // Emit nested definitions
+        for &nested_id in &interface_ty.definitions {
+            let nested_def = self.hir.context.definitions.get(nested_id);
+            match &nested_def.kind {
+                DefKind::Struct(struct_ty) => self.emit_struct(w, nested_def, struct_ty, true),
+                DefKind::Union(union_ty) => self.emit_union(w, nested_def, union_ty, true),
+                DefKind::Enum(enum_ty) => self.emit_enum(w, nested_def, enum_ty, true),
+                DefKind::Except(except_ty) => self.emit_except(w, nested_def, except_ty, true),
+                DefKind::Const(const_ty) => self.emit_const(w, nested_def, const_ty, true),
+                DefKind::Bitmask(bitmask_ty) => self.emit_bitmask(w, nested_def, bitmask_ty, true),
+                _ => {}
+            }
+            w!(w, "\n");
+        }
+
         self.emit_param_holder(w, &interface_ty.prototypes);
 
         for proto in &interface_ty.prototypes {
@@ -1402,9 +1523,10 @@ impl<'a> JavaGen<'a> {
             w!(w, " extends ", name);
         }
 
+        w!(w, " implements Cloneable");
         if let Some(supports) = value_ty.supports {
             let name = self.java_name(supports);
-            w!(w, " implements ", name);
+            w!(w, ", ", name);
         }
         w!(w, " {\n");
 
@@ -1425,12 +1547,34 @@ impl<'a> JavaGen<'a> {
             w!(w, "public ", attr_ty, " ", mem.ident.name, ";\n");
         }
 
+        // Provide a public clone() that throws CloneNotSupportedException
+        w!(w, "\n@Override\n");
+        w!(w, "public ", def, "Abstract clone() throws CloneNotSupportedException {\n");
+        w!(w, "return (", def, "Abstract) super.clone();\n");
+        w!(w, "}\n");
+
         w!(w, "}\n");
     }
 
     fn emit_valuetype(&self, w: &mut Twine, def: &Def, value_ty: &ValueTy) {
         w!(w, "public class ", def, " extends ", def, "Abstract {\n");
         w!(w, "public ", def, "() {}\n\n");
+
+        // Copy constructor
+        w!(w, "public ", def, "(", def, " other) {\n");
+        for attr in &value_ty.attributes {
+            self.emit_field_copy(w, &attr.ident.name, &attr.ty, def.id);
+        }
+        for mem in &value_ty.members {
+            self.emit_field_copy(w, &mem.ident.name, &mem.ty, def.id);
+        }
+        w!(w, "}\n\n");
+
+        // Generate clone method, override to return concrete type
+        w!(w, "@Override\n");
+        w!(w, "public ", def, " clone() throws CloneNotSupportedException {\n");
+        w!(w, "return (", def, ") super.clone();\n");
+        w!(w, "}\n\n");
 
         for proto in &value_ty.prototypes {
             w!(w, "@Override\n");
@@ -1443,28 +1587,100 @@ impl<'a> JavaGen<'a> {
         w!(w, "}\n");
     }
 
-    fn emit_const(&self, w: &mut Twine, def: &Def, const_ty: &ConstTy) {
-        w!(w, "public interface ", def, " {\n");
-        let java_type = self.java_type(&const_ty.ty, def.id);
+    fn emit_const(&self, w: &mut Twine, def: &Def, const_ty: &ConstTy, nested: bool) {
+        // Check if unsigned value exceeds signed Java type range, promote type
+        let java_type = match &const_ty.value {
+            Numeric::UInt8(i) if *i > i8::MAX as u8 => "short",
+            Numeric::UInt16(i) if *i > i16::MAX as u16 => "int",
+            Numeric::UInt32(i) if *i > i32::MAX as u32 => "long",
+            Numeric::UInt64(i) if *i > i64::MAX as u64 => "java.math.BigInteger",
+            _ => &self.java_type(&const_ty.ty, def.id),
+        };
         let value = self.format_numeric(&const_ty.value, &const_ty.ty, def.id);
 
-        w!(w, "public static final ", java_type, " value = ", value, ";\n");
-        w!(w, "}\n");
+        if nested {
+            // Emit as a static field
+            w!(w, "public static final ", java_type, " ", def, " = ", value, ";\n");
+        } else {
+            // Emit as an interface with a value field
+            w!(w, "public interface ", def, " {\n");
+            w!(w, "public static final ", java_type, " value = ", value, ";\n");
+            w!(w, "}\n");
+        }
     }
 
     fn format_numeric(&self, value: &ic_hir::hir::Numeric, ty: &Ty, def_id: DefId) -> String {
+        self.format_numeric_impl(value, ty, def_id, false)
+    }
+
+    /// Format a numeric value for use in a switch case label.
+    /// For enums, this returns the unqualified name (e.g., `IDLE` instead of `Status.IDLE`).
+    fn format_case_label(&self, value: &ic_hir::hir::Numeric, ty: &Ty, def_id: DefId) -> String {
+        self.format_numeric_impl(value, ty, def_id, true)
+    }
+
+    fn format_numeric_impl(
+        &self,
+        value: &ic_hir::hir::Numeric,
+        ty: &Ty,
+        def_id: DefId,
+        for_switch_case: bool,
+    ) -> String {
         let resolved_ty = self.hir.context.resolve_ty(ty);
         match value {
             Numeric::Bool(b) => b.to_string(),
             Numeric::Char(c) => format!("'\\u{:04x}'", u32::from(*c)),
             Numeric::Int8(i) => format_primitive_value(i64::from(*i), &resolved_ty),
-            Numeric::UInt8(i) => format_primitive_value(i64::from(*i), &resolved_ty),
+            Numeric::UInt8(i) => {
+                // For switch case labels on byte, convert to signed equivalent
+                // For other contexts, cast to byte if exceeds signed byte range
+                if *i > i8::MAX as u8 {
+                    if for_switch_case {
+                        // Convert to signed byte: 128 -> -128, 255 -> -1, etc.
+                        let signed = *i as i8;
+                        format!("{signed}")
+                    } else {
+                        // Cast needed for assignment to byte field
+                        format!("(byte) {i}")
+                    }
+                } else {
+                    format_primitive_value(i64::from(*i), &resolved_ty)
+                }
+            }
             Numeric::Int16(i) => format_primitive_value(i64::from(*i), &resolved_ty),
-            Numeric::UInt16(i) => format_primitive_value(i64::from(*i), &resolved_ty),
+            Numeric::UInt16(i) => {
+                // For switch case labels on short, convert to signed equivalent
+                // For other contexts, cast to short if exceeds signed short range
+                if *i > i16::MAX as u16 {
+                    if for_switch_case {
+                        let signed = *i as i16;
+                        format!("{signed}")
+                    } else {
+                        // Cast needed for assignment to short field
+                        format!("(short) {i}")
+                    }
+                } else {
+                    format_primitive_value(i64::from(*i), &resolved_ty)
+                }
+            }
             Numeric::Int32(i) => format_primitive_value(i64::from(*i), &resolved_ty),
-            Numeric::UInt32(i) => format_primitive_value(i64::from(*i), &resolved_ty),
+            Numeric::UInt32(i) => {
+                // Promote to long if exceeds int range
+                if *i > i32::MAX as u32 {
+                    format!("{i}L")
+                } else {
+                    format_primitive_value(i64::from(*i), &resolved_ty)
+                }
+            }
             Numeric::Int64(i) => format_primitive_value(*i, &resolved_ty),
-            Numeric::UInt64(i) => format!("{i}L"),
+            Numeric::UInt64(i) => {
+                // Promote to BigInteger if exceeds long range
+                if *i > i64::MAX as u64 {
+                    format!("new java.math.BigInteger(\"{i}\")")
+                } else {
+                    format!("{i}L")
+                }
+            }
             Numeric::Float(f) => format!("(float){f:e}"),
             Numeric::Double(f) => format!("(double){f:e}"),
             Numeric::String(s) => escape_java_string(s),
@@ -1473,12 +1689,18 @@ impl<'a> JavaGen<'a> {
                 if let Some(parent_id) = const_def.parent {
                     let parent_def = self.hir.context.definitions.get(parent_id);
                     if matches!(parent_def.kind, DefKind::Enum(_)) {
-                        let enum_name = self.scoped_name(parent_id, def_id);
                         let const_name = &const_def.ident.name;
+                        // In switch case labels, use unqualified name
+                        if for_switch_case {
+                            return const_name.clone();
+                        }
+                        let enum_name = self.scoped_name(parent_id, def_id);
                         return format!("{enum_name}.{const_name}");
                     }
                 }
-                self.scoped_name(*const_def_id, def_id)
+                // For standalone constants, they're emitted as interfaces with a 'value' field
+                let const_name = self.scoped_name(*const_def_id, def_id);
+                format!("{const_name}.value")
             }
             _ => "null".to_string(),
         }

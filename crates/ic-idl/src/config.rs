@@ -149,10 +149,6 @@ pub struct Options {
     #[option(short = 'E', long)]
     pub preprocessor_only: bool,
 
-    /// Do not generate code for included files
-    #[option(short = 'H', long)]
-    pub no_header_follow: bool,
-
     /// Add directory to include search paths
     #[option(short = 'I', long, arg = "dir")]
     pub include: Vec<String>,
@@ -169,7 +165,7 @@ pub struct Options {
     #[option(long)]
     pub purge_dirs: bool,
 
-    /// Do not parse Doxy-like comments
+    /// Ignore Doxygen-style comments
     #[option(long)]
     pub ignore_comments: bool,
 

@@ -40,6 +40,10 @@ pub struct CppOptions {
     #[option(long)]
     pub access_functions: bool,
 
+    /// Do not generate code for included files
+    #[option(long)]
+    pub no_header_follow: bool,
+
     /// Do not generate ostream operators for serialization
     #[option(long)]
     pub no_stream_op: bool,

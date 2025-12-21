@@ -764,12 +764,18 @@ impl<'a> TsGen<'a> {
             }
         }
 
-        for module_id in top_level_modules {
-            self.generate_module(module_id, &mut result);
+        for module_id in &top_level_modules {
+            self.generate_module(*module_id, &mut result);
         }
 
-        if !top_level_defs.is_empty() {
-            result.push(self.emit_file(None, "index.ts", &top_level_defs, &[], None));
+        if !top_level_defs.is_empty() || !top_level_modules.is_empty() {
+            result.push(self.emit_file(
+                None,
+                "index.ts",
+                &top_level_defs,
+                &[],
+                Some(&top_level_modules),
+            ));
         }
 
         result

@@ -727,20 +727,30 @@ impl<'a> TsGen<'a> {
         let mut w = Twine::new();
         Self::emit_header(&mut w);
 
+        let referenced = self.collect_deps(defs);
+
+        // For each referenced def, find which module ancestors it has
+        let is_in_module = |def_id: DefId, module_id: DefId| -> bool {
+            self.module_ancestors(def_id).contains(&module_id)
+        };
+
         if let Some(nested_modules) = re_exports {
-            // Import nested modules for use within this file
             for &nested_id in nested_modules {
                 let nested_def = self.hir.context.definitions.get(nested_id);
-                w!(w, "import * as ", nested_def.ident.name, " from './", nested_def.ident.name, "';\n");
-            }
-            // Re-export nested modules for external consumers
-            for &nested_id in nested_modules {
-                let nested_def = self.hir.context.definitions.get(nested_id);
-                w!(w, "export * as ", nested_def.ident.name, " from './", nested_def.ident.name, "';\n");
+                let is_used = referenced
+                    .iter()
+                    .any(|&ref_id| is_in_module(ref_id, nested_id));
+                if is_used {
+                    // Module is used locally: import and re-export
+                    w!(w, "import * as ", nested_def.ident.name, " from './", nested_def.ident.name, "';\n");
+                    w!(w, "export { ", nested_def.ident.name, " };\n");
+                } else {
+                    // Module is only re-exported
+                    w!(w, "export * as ", nested_def.ident.name, " from './", nested_def.ident.name, "';\n");
+                }
             }
         }
 
-        let referenced = self.collect_deps(defs);
         let mut import_sources: HashSet<Option<DefId>> = referenced
             .iter()
             .map(|&id| self.get_root_module(id))
@@ -750,6 +760,12 @@ impl<'a> TsGen<'a> {
         }
         if file_name == "index.ts" && dir_module.is_none() {
             import_sources.remove(&None);
+        }
+        // Remove re-exported modules since they're already handled above
+        if let Some(nested_modules) = re_exports {
+            for &nested_id in nested_modules {
+                import_sources.remove(&Some(nested_id));
+            }
         }
 
         let has_re_exports = re_exports.is_some_and(|r| !r.is_empty());

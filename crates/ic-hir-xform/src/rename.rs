@@ -288,26 +288,25 @@ pub fn transform(mut hir: ResolvedGraph, target: &Target) -> ResolvedGraph {
     hir
 }
 
-/// Recursively process all modules and their contents
+/// Recursively process all modules, interfaces, and valuetypes and their contents
 fn process_module_contents(hir: &mut ResolvedGraph, target: &Target) {
-    // Collect all module IDs to process
-    let module_ids: Vec<_> = hir
+    // Collect all container IDs to process (modules, interfaces, valuetypes)
+    let container_ids: Vec<_> = hir
         .context
         .definitions
         .iter()
-        .filter_map(|(id, def)| {
-            if let DefKind::Module(m) = &def.kind {
-                Some((id, m.definitions.clone()))
-            } else {
-                None
-            }
+        .filter_map(|(id, def)| match &def.kind {
+            DefKind::Module(m) => Some((id, m.definitions.clone())),
+            DefKind::Interface(i) => Some((id, i.definitions.clone())),
+            DefKind::Valuetype(v) => Some((id, v.definitions.clone())),
+            _ => None,
         })
         .collect();
 
-    // Process each module's children
-    for (module_id, child_ids) in module_ids {
+    // Process each container's children
+    for (container_id, child_ids) in container_ids {
         if !child_ids.is_empty() {
-            rename_breadth(hir, &child_ids, Some(module_id), target);
+            rename_breadth(hir, &child_ids, Some(container_id), target);
         }
     }
 }

@@ -487,3 +487,108 @@ fn test_enum_constant_vs_regular_constant() {
         }
     }
 }
+
+#[test]
+fn test_constants_inside_interface_and_valuetype() {
+    // Regression test: constants nested inside interfaces and valuetypes
+    // should be renamed by the rename transformation
+    let idl = r"
+        interface MyInterface {
+            const long INTERFACE_CONST = 1;
+            struct NestedStruct {
+                long FIELD_NAME;
+            };
+        };
+
+        valuetype MyValue {
+            public long member_field;
+            const long VALUE_CONST = 2;
+            struct AnotherNested {
+                long ANOTHER_FIELD;
+            };
+        };
+    ";
+
+    let hir = common::parse_and_resolve(idl);
+
+    // Use a target that converts constants to snake_case
+    let target = Target {
+        convention: Convention {
+            interface: Some(Case::Pascal),
+            valuetype: Some(Case::Pascal),
+            struct_type: Some(Case::Pascal),
+            constant: Some(Case::Snake),
+            member: Some(Case::Snake),
+            ..Default::default()
+        },
+        ..Default::default()
+    };
+
+    let transformed = rename::transform(hir, &target);
+
+    // Find the interface
+    let interface = transformed
+        .iter()
+        .find(|d| d.ident.name == "MyInterface")
+        .expect("MyInterface should exist");
+
+    if let DefKind::Interface(i) = &interface.kind {
+        // Find the constant inside the interface
+        let const_def = i
+            .definitions
+            .iter()
+            .find(|&&id| matches!(transformed.context.type_of(id).kind, DefKind::Const(_)))
+            .map(|&id| transformed.context.type_of(id))
+            .expect("Interface should have a constant");
+
+        assert_eq!(
+            const_def.ident.name, "interface_const",
+            "Constant inside interface should be renamed to snake_case"
+        );
+
+        // Find the nested struct inside the interface
+        let nested_struct = i
+            .definitions
+            .iter()
+            .find(|&&id| matches!(transformed.context.type_of(id).kind, DefKind::Struct(_)))
+            .map(|&id| transformed.context.type_of(id))
+            .expect("Interface should have a nested struct");
+
+        assert_eq!(nested_struct.ident.name, "NestedStruct");
+    } else {
+        panic!("Expected interface");
+    }
+
+    // Find the valuetype
+    let valuetype = transformed
+        .iter()
+        .find(|d| d.ident.name == "MyValue")
+        .expect("MyValue should exist");
+
+    if let DefKind::Valuetype(v) = &valuetype.kind {
+        // Find the constant inside the valuetype
+        let const_def = v
+            .definitions
+            .iter()
+            .find(|&&id| matches!(transformed.context.type_of(id).kind, DefKind::Const(_)))
+            .map(|&id| transformed.context.type_of(id))
+            .expect("Valuetype should have a constant");
+
+        assert_eq!(
+            const_def.ident.name, "value_const",
+            "Constant inside valuetype should be renamed to snake_case"
+        );
+
+        // Find the nested struct inside the valuetype
+        let nested_struct = v
+            .definitions
+            .iter()
+            .find(|&&id| matches!(transformed.context.type_of(id).kind, DefKind::Struct(_)))
+            .map(|&id| transformed.context.type_of(id))
+            .expect("Valuetype should have a nested struct");
+
+        assert_eq!(nested_struct.ident.name, "AnotherNested");
+    } else {
+        panic!("Expected valuetype");
+    }
+}

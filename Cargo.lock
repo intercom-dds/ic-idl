@@ -105,6 +105,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "ic-codegen-csharp"
+version = "0.1.0"
+dependencies = [
+ "ic-cli",
+ "ic-emit",
+ "ic-hir",
+ "ic-hir-xform",
+ "ic-vfs",
+]
+
+[[package]]
 name = "ic-codegen-cxx"
 version = "0.1.0"
 dependencies = [
@@ -282,6 +293,7 @@ name = "ic-idl"
 version = "0.1.0"
 dependencies = [
  "ic-cli",
+ "ic-codegen-csharp",
  "ic-codegen-cxx",
  "ic-codegen-idl",
  "ic-codegen-java",

@@ -187,17 +187,20 @@ pub struct Options {
     #[option(section = "c++ options")]
     pub cpp: ic_codegen_cxx::CppOptions,
 
+    #[option(section = "c# options")]
+    pub csharp: ic_codegen_csharp::CSharpOptions,
+
     #[option(section = "rust options")]
     pub rust: ic_codegen_rust::RustOptions,
 
     #[option(section = "python options")]
     pub python: ic_codegen_python::PythonOptions,
 
-    #[option(section = "java options")]
-    pub java: ic_codegen_java::JavaOptions,
-
     #[option(section = "idl options")]
     pub idl: ic_codegen_idl::IdlOptions,
+
+    #[option(section = "java options")]
+    pub java: ic_codegen_java::JavaOptions,
 
     #[option(section = "json schema options")]
     pub json_schema: ic_codegen_json_schema::JsonSchemaOptions,
@@ -215,6 +218,10 @@ pub struct CodegenOptions {
     /// Generate C++ files in <dir>
     #[option(long, arg = "dir")]
     pub cpp_out: Option<PathBuf>,
+
+    /// Generate C# files in <dir>
+    #[option(long, arg = "dir")]
+    pub csharp_out: Option<PathBuf>,
 
     /// Generate Rust files in <dir>
     #[option(long, arg = "dir")]

@@ -32,6 +32,7 @@ members = [
     "crates/ic-cc",
     "crates/ic-cli",
     "crates/ic-cli-derive",
+    "crates/ic-codegen-csharp",
     "crates/ic-codegen-cxx",
     "crates/ic-codegen-idl",
     "crates/ic-codegen-java",

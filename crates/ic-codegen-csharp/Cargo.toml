@@ -26,52 +26,19 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 [package]
-name = "ic-idl"
+name = "ic-codegen-csharp"
 edition = "2024"
 
 publish.workspace = true
 rust-version.workspace = true
 version.workspace = true
 
-[[bin]]
-name = "ic-idl"
-path = "src/main.rs"
-
-[lib]
-name = "ic_idl"
-path = "src/lib.rs"
-
 [lints]
 workspace = true
 
 [dependencies]
 ic-cli = { path = "../ic-cli" }
-ic-diagnostic = { path = "../ic-diagnostic" }
 ic-emit = { path = "../ic-emit" }
 ic-hir = { path = "../ic-hir" }
-ic-hir-tree = { path = "../ic-hir-tree" }
 ic-hir-xform = { path = "../ic-hir-xform" }
-ic-lint = { path = "../ic-lint" }
-ic-parse = { path = "../ic-parse" }
-ic-preproc = { path = "../ic-preproc" }
-ic-ptree = { path = "../ic-ptree" }
-ic-syntax = { path = "../ic-syntax" }
-ic-ptree-dump = { path = "../ic-ptree-dump" }
-ic-ptree-lower = { path = "../ic-ptree-lower" }
 ic-vfs = { path = "../ic-vfs" }
-
-ic-codegen-cxx = { path = "../ic-codegen-cxx" }
-ic-codegen-csharp = { path = "../ic-codegen-csharp" }
-ic-codegen-idl = { path = "../ic-codegen-idl" }
-ic-codegen-java = { path = "../ic-codegen-java" }
-ic-codegen-json = { path = "../ic-codegen-json" }
-ic-codegen-json-schema = { path = "../ic-codegen-json-schema" }
-ic-codegen-protobuf = { path = "../ic-codegen-protobuf" }
-ic-codegen-python = { path = "../ic-codegen-python" }
-ic-codegen-rust = { path = "../ic-codegen-rust" }
-ic-codegen-typescript = { path = "../ic-codegen-typescript" }
-ic-codegen-xml = { path = "../ic-codegen-xml" }
-
-intercom-cts.workspace = true
-
-[dev-dependencies]

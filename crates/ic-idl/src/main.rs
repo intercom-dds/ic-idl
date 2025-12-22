@@ -193,6 +193,15 @@ fn generate_code(
         generated.extend(files);
     }
 
+    if let Some(output_dir) = &options.codegen.csharp_out {
+        let files = invoke_backend(
+            output_dir,
+            || ic_codegen_csharp::codegen_csharp(hir, vfs, options.csharp),
+            options.purge_dirs,
+        )?;
+        generated.extend(files);
+    }
+
     if let Some(output_dir) = &options.codegen.rust_out {
         let files = invoke_backend(
             output_dir,

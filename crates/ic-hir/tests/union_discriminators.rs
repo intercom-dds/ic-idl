@@ -132,3 +132,66 @@ fn test_nested_union_resolution() {
     // Should resolve correctly
     common::parse_and_resolve_successfully(idl);
 }
+
+#[test]
+fn test_typedef_discriminator() {
+    let idl = r"
+        typedef long MyDisc;
+        
+        union MyUnion switch (MyDisc) {
+            case 1: long a;
+            case 2: string b;
+        };
+    ";
+
+    // Should resolve through typedef and accept long as valid discriminator
+    common::parse_and_resolve_successfully(idl);
+}
+
+#[test]
+fn test_chained_typedef_discriminator() {
+    let idl = r"
+        typedef long MyInt;
+        typedef MyInt MyDisc;
+        
+        union MyUnion switch (MyDisc) {
+            case 1: long a;
+            case 2: string b;
+        };
+    ";
+
+    // Should resolve through chained typedefs
+    common::parse_and_resolve_successfully(idl);
+}
+
+#[test]
+fn test_typedef_enum_discriminator() {
+    let idl = r"
+        enum Color { RED, GREEN, BLUE };
+        typedef Color MyColor;
+        
+        union MyUnion switch (MyColor) {
+            case RED: long a;
+            case GREEN: string b;
+            case BLUE: double c;
+        };
+    ";
+
+    // Should resolve typedef to enum and accept as valid discriminator
+    common::parse_and_resolve_successfully(idl);
+}
+
+#[test]
+fn test_invalid_typedef_discriminator() {
+    let idl = r"
+        typedef string MyString;
+        
+        union BadUnion switch (MyString) {
+            default: long value;
+        };
+    ";
+
+    // Should reject - string is not a valid discriminator even through typedef
+    let diagnostics = common::parse_and_expect_errors(idl);
+    insta::assert_snapshot!(diagnostics);
+}

@@ -323,7 +323,9 @@ impl<'ctx> TypeItemProcessor<'ctx> {
             convert_annotations(self.ctx, &u.disc.annotations, self.current_scope);
 
         // Validate that discriminator is an enum, integral type, boolean, or char
-        let is_valid_discriminator = match &disc_ty.kind {
+        // Resolve through typedefs to get the underlying type
+        let resolved_disc_ty = self.ctx.context.resolve_ty(&disc_ty);
+        let is_valid_discriminator = match &resolved_disc_ty.kind {
             TyKind::Primitive(p) => matches!(
                 p,
                 PrimitiveTy::Bool

@@ -260,7 +260,8 @@ impl<'a> CSharpGen<'a> {
         let current_scope = self.get_scope(relative_to_def_id);
 
         match (target_scope, current_scope) {
-            (None, _) => type_name.clone(),
+            (None, None) => type_name.clone(),
+            (None, Some(_)) => format!("global::{type_name}"),
             (Some(target_scope), None) => {
                 let full_path = self.build_path_from(target_scope, None);
                 let pkg_name = full_path.join(".");
@@ -338,6 +339,52 @@ impl<'a> CSharpGen<'a> {
             TyKind::Any => "object".to_string(),
             TyKind::Fixed => "decimal".to_string(),
             TyKind::Null => "void".to_string(),
+        }
+    }
+
+    /// Returns the default initializer for reference types, `None` for value types.
+    fn default_initializer(&self, ty: &Ty, relative_def: DefId) -> Option<String> {
+        match &ty.kind {
+            TyKind::String { .. } => Some("\"\"".to_string()),
+            TyKind::Sequence { ty: inner, .. } => {
+                let inner_ty = self.csharp_type(inner, relative_def);
+                Some(format!("new List<{inner_ty}>()"))
+            }
+            TyKind::Map { key, elem, .. } => {
+                let key_ty = self.csharp_type(key, relative_def);
+                let elem_ty = self.csharp_type(elem, relative_def);
+                Some(format!("new Dictionary<{key_ty}, {elem_ty}>()"))
+            }
+            TyKind::Array { .. } => {
+                let dims = Self::collect_array_dimensions(ty);
+                let (base_ty, _) = Self::count_array_dimensions(ty);
+                let base_ty_str = self.csharp_type(&base_ty, relative_def);
+                let dim_str = dims
+                    .iter()
+                    .map(|d| d.to_string())
+                    .collect::<Vec<_>>()
+                    .join(", ");
+                Some(format!("new {base_ty_str}[{dim_str}]"))
+            }
+            TyKind::Any => Some("null!".to_string()),
+            TyKind::Adt(def_id) => {
+                let def = self.hir.context.type_of(*def_id);
+                match &def.kind {
+                    DefKind::Enum(enum_ty) => {
+                        let enum_name = self.scoped_name(*def_id, relative_def);
+                        let first_field = self.hir.context.type_of(enum_ty.fields[0]);
+                        Some(format!("{}.{}", enum_name, first_field.ident.name))
+                    }
+                    DefKind::Bitmask(_) => None,
+                    // Valuetypes and interfaces are abstract, can't instantiate
+                    DefKind::Valuetype(_) | DefKind::Interface(_) => Some("null!".to_string()),
+                    _ => {
+                        let type_name = self.scoped_name(*def_id, relative_def);
+                        Some(format!("new {type_name}()"))
+                    }
+                }
+            }
+            _ => None,
         }
     }
 
@@ -514,9 +561,11 @@ impl<'a> CSharpGen<'a> {
             w!(w, "}\n");
             w!(w, "}");
         } else {
-            // Non-array - emit auto-property
             let ty_str = self.csharp_type(ty, def_id);
             w!(w, "public ", ty_str, " ", name, " { get; set; }");
+            if let Some(init) = self.default_initializer(ty, def_id) {
+                w!(w, " = ", init, ";");
+            }
         }
     }
 
@@ -686,9 +735,9 @@ impl<'a> CSharpGen<'a> {
                 );
                 w!(w, "}\n");
             }
-            // Value types use .Value, reference types use ! (null-forgiving)
+
             if self.is_value_type(&variant.ty) {
-                w!(w, "return _", var_name, ".Value;\n");
+                w!(w, "return _", var_name, "!.Value;\n");
             } else {
                 w!(w, "return _", var_name, "!;\n");
             }
@@ -1008,7 +1057,12 @@ impl<'a> CSharpGen<'a> {
         for member in &valuetype.members {
             self.emit_doc_comments(w, &member.annotations);
             let ty_str = self.csharp_type(&member.ty, def.id);
-            w!(w, "public ", ty_str, " ", member.ident.name, " { get; set; }\n");
+
+            w!(w, "public ", ty_str, " ", member.ident.name, " { get; set; }");
+            if let Some(init) = self.default_initializer(&member.ty, def.id) {
+                w!(w, " = ", init, ";");
+            }
+            w!(w, "\n");
         }
 
         // Emit abstract methods
@@ -1037,7 +1091,12 @@ impl<'a> CSharpGen<'a> {
         // Emit attributes as properties
         for attr in &valuetype.attributes {
             let ty_str = self.csharp_type(&attr.ty, def.id);
-            w!(w, "public ", ty_str, " ", attr.ident.name, " { get; set; }\n");
+
+            w!(w, "public ", ty_str, " ", attr.ident.name, " { get; set; }");
+            if let Some(init) = self.default_initializer(&attr.ty, def.id) {
+                w!(w, " = ", init, ";");
+            }
+            w!(w, "\n");
         }
 
         w!(w, "}\n\n");
@@ -1054,7 +1113,18 @@ impl<'a> CSharpGen<'a> {
         for member in &except.members {
             self.emit_doc_comments(w, &member.annotations);
             let ty_str = self.csharp_type(&member.ty, def.id);
-            w!(w, "public ", ty_str, " ", member.ident.name, " { get; set; }\n");
+
+            // Use `new` keyword if member hides an inherited Exception member
+            if crate::EXCEPTION_MEMBER_NAMES.contains(&member.ident.name.as_str()) {
+                w!(w, "public new ", ty_str, " ", member.ident.name, " { get; set; }");
+            } else {
+                w!(w, "public ", ty_str, " ", member.ident.name, " { get; set; }");
+            }
+
+            if let Some(init) = self.default_initializer(&member.ty, def.id) {
+                w!(w, " = ", init, ";");
+            }
+            w!(w, "\n");
         }
 
         // Default constructor

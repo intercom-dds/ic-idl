@@ -64,6 +64,18 @@ const RESERVED_MEMBER_NAMES: &[&str] = &[
     "Finalize",
 ];
 
+/// Members inherited from `System.Exception` that require `new` keyword to hide
+pub const EXCEPTION_MEMBER_NAMES: &[&str] = &[
+    "Data",
+    "HelpLink",
+    "HResult",
+    "InnerException",
+    "Message",
+    "Source",
+    "StackTrace",
+    "TargetSite",
+];
+
 /// Options for C# code generation.
 #[derive(Command, Copy, Clone, Debug, Default)]
 pub struct CSharpOptions {

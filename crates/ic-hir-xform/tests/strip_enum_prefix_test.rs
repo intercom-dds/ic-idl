@@ -28,7 +28,19 @@
 mod common;
 
 use ic_hir::hir::DefKind;
-use ic_hir_xform::enum_prefix;
+use ic_hir_xform::rename;
+use ic_hir_xform::rename::{Convention, Target};
+
+/// Helper to create a target that only strips enum prefixes (no case conversion)
+fn strip_prefix_target() -> Target {
+    Target {
+        convention: Convention {
+            strip_enum_prefix: true,
+            ..Convention::default()
+        },
+        ..Target::default()
+    }
+}
 
 #[test]
 fn test_enum_prefix_stripping() {
@@ -61,7 +73,7 @@ fn test_enum_prefix_stripping() {
     ";
 
     let hir = common::parse_and_resolve(idl);
-    let transformed = enum_prefix::transform(hir);
+    let transformed = rename::transform(hir, &strip_prefix_target());
 
     for def in &transformed {
         match &def.ident.name[..] {
@@ -135,7 +147,7 @@ fn test_bitmask_prefix_stripping() {
     ";
 
     let hir = common::parse_and_resolve(idl);
-    let transformed = enum_prefix::transform(hir);
+    let transformed = rename::transform(hir, &strip_prefix_target());
 
     for def in &transformed {
         match &def.ident.name[..] {
@@ -183,7 +195,7 @@ fn test_camel_case_prefix_stripping() {
     ";
 
     let hir = common::parse_and_resolve(idl);
-    let transformed = enum_prefix::transform(hir);
+    let transformed = rename::transform(hir, &strip_prefix_target());
 
     for def in &transformed {
         match &def.ident.name[..] {

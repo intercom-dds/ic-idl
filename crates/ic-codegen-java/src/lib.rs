@@ -65,6 +65,7 @@ const JAVA_CONVENTION: Convention = Convention {
     attribute: Some(Case::Camel),
     parameter: Some(Case::Camel),
     name_preprocessor: Some(rename::strip_common_suffixes),
+    strip_enum_prefix: true,
 };
 
 #[derive(Command, Clone, Debug, Default)]
@@ -88,7 +89,13 @@ pub fn codegen_java(hir: &ic_hir::ResolvedGraph, options: JavaOptions) -> Vec<Fi
 
     let target = Target {
         convention,
-        keywords: KEYWORDS.iter().copied().collect(),
+        keyword_escape: Some(|ctx| {
+            if KEYWORDS.contains(&ctx.name) {
+                Some(format!("{}_", ctx.name))
+            } else {
+                None
+            }
+        }),
         ..Target::default()
     };
 

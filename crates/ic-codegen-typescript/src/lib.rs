@@ -73,6 +73,7 @@ const TYPESCRIPT_CONVENTION: Convention = Convention {
     attribute: Some(Case::Camel),
     parameter: Some(Case::Camel),
     name_preprocessor: Some(rename::strip_common_suffixes),
+    strip_enum_prefix: true,
 };
 
 #[derive(Command, Clone, Debug, Default)]
@@ -97,7 +98,13 @@ pub fn codegen_typescript(hir: &ic_hir::ResolvedGraph, options: TypeScriptOption
         } else {
             TYPESCRIPT_CONVENTION
         },
-        keywords: KEYWORDS.iter().copied().collect(),
+        keyword_escape: Some(|ctx| {
+            if KEYWORDS.contains(&ctx.name) {
+                Some(format!("{}_", ctx.name))
+            } else {
+                None
+            }
+        }),
         ..Target::default()
     };
 

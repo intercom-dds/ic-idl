@@ -58,6 +58,7 @@ fn rust_target() -> Target {
             attribute: Some(Case::Snake),
             parameter: Some(Case::Snake),
             name_preprocessor: Some(strip_common_suffixes),
+            strip_enum_prefix: false,
         },
         ..Target::default()
     }
@@ -88,6 +89,7 @@ fn python_target() -> Target {
             attribute: Some(Case::Snake),
             parameter: Some(Case::Snake),
             name_preprocessor: Some(strip_common_suffixes),
+            strip_enum_prefix: false,
         },
         ..Target::default()
     }

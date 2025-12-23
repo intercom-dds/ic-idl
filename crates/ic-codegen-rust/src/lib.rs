@@ -67,6 +67,14 @@ const RUST_KEYWORDS: &[&str] = &[
     "String", "Option", "Box", "Vec",
 ];
 
+fn escape_rust_keyword(ctx: rename::RenameContext) -> Option<String> {
+    if RUST_KEYWORDS.contains(&ctx.name) {
+        Some(format!("{}_", ctx.name))
+    } else {
+        None
+    }
+}
+
 const RUST_CONVENTION: rename::Convention = rename::Convention {
     struct_type: Some(Case::Pascal),
     union_type: Some(Case::Pascal),
@@ -89,6 +97,7 @@ const RUST_CONVENTION: rename::Convention = rename::Convention {
     attribute: Some(Case::Snake),
     parameter: Some(Case::Snake),
     name_preprocessor: Some(rename::strip_common_suffixes),
+    strip_enum_prefix: true,
 };
 
 #[must_use]
@@ -109,9 +118,6 @@ pub fn codegen_rust(
     // Squash reopened modules into single definitions
     let hir = ic_hir_xform::squash_modules::transform(hir);
 
-    // Strip prefixes from enumerators
-    let hir = ic_hir_xform::enum_prefix::transform(hir);
-
     // Rename `DDS::XTypes` to `DDS::xtypes`
     let hir = ic_hir_xform::rename_xtypes::transform(hir);
 
@@ -120,9 +126,8 @@ pub fn codegen_rust(
         hir,
         &rename::Target {
             convention: RUST_CONVENTION,
-            keywords: RUST_KEYWORDS.iter().copied().collect(),
+            keyword_escape: Some(escape_rust_keyword),
             moved_defs,
-            ..Default::default()
         },
     );
 

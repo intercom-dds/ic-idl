@@ -46,7 +46,8 @@ pub struct IdlOptions {
 
 /// Case-insensitive keyword escaper for IDL.
 /// IDL identifiers are case-insensitive, so `object` collides with keyword `Object`.
-fn escape_idl_keyword(name: &str) -> Option<String> {
+fn escape_idl_keyword(ctx: ic_hir_xform::rename::RenameContext) -> Option<String> {
+    let name = ctx.name;
     let lower = name.to_lowercase();
     if IDL_KEYWORDS.iter().any(|kw| kw.to_lowercase() == lower) {
         Some(format!("_{name}"))

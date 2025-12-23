@@ -29,11 +29,84 @@ use std::collections::{HashMap, HashSet};
 
 use ic_emit::case::{self, Case};
 use ic_hir::hir::DefKind;
-use ic_hir::visit::Visitor;
-use ic_hir::{Context, ResolvedGraph, hir};
+use ic_hir::{ResolvedGraph, hir};
 
 /// Function type for preprocessing names before case conversion
 pub type NamePreprocessor = fn(&str) -> String;
+
+/// The kind of identifier being renamed.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum IdentifierKind {
+    /// Struct type
+    Struct,
+
+    /// Union type
+    Union,
+
+    /// Enum type
+    Enum,
+
+    /// Interface type
+    Interface,
+
+    /// Valuetype
+    Valuetype,
+
+    /// Type alias
+    Alias,
+
+    /// Bitmask type
+    Bitmask,
+
+    /// Bitset type
+    Bitset,
+
+    /// Exception type
+    Exception,
+
+    /// Annotation type
+    Annotation,
+
+    /// Member of struct, exception, or valuetype
+    Member,
+
+    /// Union variant
+    Variant,
+
+    /// Enum constant
+    Enumerator,
+
+    /// Bitmask flag
+    BitFlag,
+
+    /// Bitset field
+    BitsetField,
+
+    /// Constant
+    Constant,
+
+    /// Module/namespace
+    Module,
+
+    /// Interface or valuetype method
+    Operation,
+
+    /// Interface or valuetype attribute
+    Attribute,
+
+    /// Method parameter
+    Parameter,
+}
+
+/// Context passed to the keyword escape function.
+#[derive(Debug, Clone, Copy)]
+pub struct RenameContext<'a> {
+    /// The name to potentially escape
+    pub name: &'a str,
+
+    /// The kind of identifier
+    pub kind: IdentifierKind,
+}
 
 /// Preprocessor that strips common suffixes like _t and _e
 #[must_use]
@@ -117,6 +190,11 @@ pub struct Convention {
 
     /// Optional preprocessor function to apply to names before case conversion
     pub name_preprocessor: Option<NamePreprocessor>,
+
+    /// Strip common prefixes from enum constants and bitmask flags.
+    /// For example, if enum `Color` has constants `COLOR_RED`, `COLOR_GREEN`,
+    /// they will be renamed to `RED`, `GREEN`.
+    pub strip_enum_prefix: bool,
 }
 
 /// Configuration for the rename transformation.
@@ -125,15 +203,10 @@ pub struct Target {
     /// Case conversion settings for different definition kinds
     pub convention: Convention,
 
-    /// Set of keywords that should be escaped.
-    /// Used with default case-sensitive matching and `{name}_` escaping.
-    /// Ignored if `keyword_escape` is set.
-    pub keywords: HashSet<&'static str>,
-
-    /// Optional custom keyword escaper function.
+    /// Optional keyword escaper function.
+    /// Receives context about the identifier being renamed.
     /// Returns `Some(escaped)` if the name needs escaping, `None` otherwise.
-    /// If set, this takes precedence over `keywords`.
-    pub keyword_escape: Option<fn(&str) -> Option<String>>,
+    pub keyword_escape: Option<fn(RenameContext) -> Option<String>>,
 
     /// Set of `DefIds` that were moved by previous transformations.
     /// These will have lower priority in collision resolution.
@@ -163,13 +236,8 @@ fn is_natural_fallback(original: &str, desired: &str) -> bool {
     original[desired.len()..].chars().all(|c| c == '_')
 }
 
-struct Renamer {
-    target: Target,
-    renamed_idents: HashMap<String, String>,
-}
-
 /// Apply case conversion and keyword escaping to a name
-fn apply_rename(name: &str, case: Option<Case>, target: &Target) -> String {
+fn apply_rename(name: &str, case: Option<Case>, kind: IdentifierKind, target: &Target) -> String {
     let mut new_name = name.to_string();
 
     // First apply preprocessor if specified
@@ -182,35 +250,98 @@ fn apply_rename(name: &str, case: Option<Case>, target: &Target) -> String {
         new_name = case::convert(&new_name, case);
     }
 
-    // Finally check if the result is a keyword and escape it
+    // Finally check if the result needs escaping
     if let Some(escaper) = target.keyword_escape {
-        // Custom escaper takes precedence
-        if let Some(escaped) = escaper(&new_name) {
+        let ctx = RenameContext {
+            name: &new_name,
+            kind,
+        };
+        if let Some(escaped) = escaper(ctx) {
             new_name = escaped;
         }
-    } else if target.keywords.contains(new_name.as_str()) {
-        // Default: case-sensitive match with suffix underscore
-        new_name = format!("{new_name}_");
     }
 
     new_name
 }
 
-impl Renamer {
-    fn new(target: Target) -> Self {
-        Self {
-            target,
-            renamed_idents: HashMap::new(),
+/// Check if a string starts with an alphabetic character (allowing leading underscores)
+fn starts_with_alpha(s: &str) -> bool {
+    for c in s.chars() {
+        if c.is_alphabetic() {
+            return true;
+        }
+        if c != '_' {
+            return false;
         }
     }
+    false
+}
 
-    fn rename_ident(&mut self, ident: &mut hir::Ident, case: Option<Case>) {
-        let old_name = ident.name.clone();
-        let new_name = apply_rename(&old_name, case, &self.target);
+/// Find the last delimiter (underscore or case change) in a string.
+/// Returns the position where the prefix ends (exclusive).
+fn rfind_delimiter(s: &str) -> Option<usize> {
+    let chars: Vec<char> = s.chars().collect();
+    let mut was_upper = false;
 
-        if old_name != new_name {
-            self.renamed_idents.insert(old_name, new_name.clone());
-            ident.name = new_name;
+    for i in (1..chars.len()).rev() {
+        let c = chars[i];
+        let peek = chars[i - 1];
+
+        if peek == '_' {
+            return Some(i);
+        } else if (c.is_lowercase() && peek.is_uppercase())
+            || (was_upper && c.is_uppercase() && peek.is_lowercase())
+        {
+            return Some(i - 1);
+        }
+        was_upper = c.is_uppercase();
+    }
+
+    None
+}
+
+/// Find common prefix to strip from a list of names, given the parent type name.
+/// Returns the prefix length to strip, or 0 if no prefix should be stripped.
+fn find_prefix_to_strip(type_name: &str, names: &[String]) -> usize {
+    if names.is_empty() {
+        return 0;
+    }
+
+    let first_name = &names[0];
+    let mut prefix = match rfind_delimiter(first_name) {
+        Some(pos) => first_name[..pos].to_string(),
+        None => return 0,
+    };
+
+    loop {
+        // Check if all names have this prefix
+        let all_have_prefix = names.iter().all(|name| {
+            if name.len() > prefix.len() {
+                let remainder = &name[prefix.len()..];
+                let view = &name[..prefix.len()];
+                starts_with_alpha(remainder) && view == prefix
+            } else {
+                false
+            }
+        });
+
+        if all_have_prefix {
+            // Convert both type name and prefix to snake_case for comparison
+            let found_prefix = case::convert(&prefix, Case::Snake);
+            let type_name_snake = case::convert(type_name, Case::Snake);
+
+            // Check if the type name starts with the same prefix
+            if type_name_snake.len() >= found_prefix.len()
+                && type_name_snake.starts_with(&found_prefix)
+            {
+                return prefix.len();
+            }
+        }
+
+        // Try a shorter prefix
+        match rfind_delimiter(&prefix) {
+            Some(pos) => prefix = prefix[..pos].to_string(),
+            None => return 0,
         }
     }
 }
@@ -228,62 +359,6 @@ pub fn transform(mut hir: ResolvedGraph, target: &Target) -> ResolvedGraph {
 
     // Process enum constants separately
     process_enum_constants(&mut hir, target);
-
-    // Finally, rename members, variants, and other nested identifiers
-    // Only process user definitions (hir.order), not builtins
-    let mut renamer = Renamer::new(target.clone());
-    for &def_id in &top_level_ids {
-        let def = hir.context.definitions.get_mut(def_id);
-
-        match &mut def.kind {
-            DefKind::Struct(s) => {
-                for member in &mut s.members {
-                    renamer.rename_ident(&mut member.ident, target.convention.member);
-                }
-            }
-            DefKind::Union(u) => {
-                for variant in &mut u.variants {
-                    renamer.rename_ident(&mut variant.ident, target.convention.variant);
-                }
-            }
-            DefKind::Except(e) => {
-                for member in &mut e.members {
-                    renamer.rename_ident(&mut member.ident, target.convention.member);
-                }
-            }
-            DefKind::Valuetype(v) => {
-                for member in &mut v.members {
-                    renamer.rename_ident(&mut member.ident, target.convention.member);
-                }
-                for proto in &mut v.prototypes {
-                    renamer.rename_ident(&mut proto.ident, target.convention.operation);
-                    for param in &mut proto.params {
-                        renamer.rename_ident(&mut param.ident, target.convention.parameter);
-                    }
-                }
-                for attr in &mut v.attributes {
-                    renamer.rename_ident(&mut attr.ident, target.convention.attribute);
-                }
-            }
-            DefKind::Interface(i) => {
-                for proto in &mut i.prototypes {
-                    renamer.rename_ident(&mut proto.ident, target.convention.operation);
-                    for param in &mut proto.params {
-                        renamer.rename_ident(&mut param.ident, target.convention.parameter);
-                    }
-                }
-                for attr in &mut i.attributes {
-                    renamer.rename_ident(&mut attr.ident, target.convention.attribute);
-                }
-            }
-            DefKind::Bitset(b) => {
-                for field in &mut b.fields {
-                    renamer.rename_ident(&mut field.ident, target.convention.bitset_field);
-                }
-            }
-            _ => {}
-        }
-    }
 
     hir
 }
@@ -311,11 +386,16 @@ fn process_module_contents(hir: &mut ResolvedGraph, target: &Target) {
     }
 }
 
-/// Process enum constants
+/// Process enum constants and bitmask flags
 fn process_enum_constants(hir: &mut ResolvedGraph, target: &Target) {
-    // Only process if we have a target for enumerators
-    if let Some(case) = target.convention.enumerator {
-        // Collect all enum constants
+    // Strip enum prefixes if enabled
+    if target.convention.strip_enum_prefix {
+        strip_enum_prefixes(hir);
+        strip_bitmask_prefixes(hir);
+    }
+
+    // Process enum constants with case conversion
+    if target.convention.enumerator.is_some() {
         let enum_constants: Vec<_> = hir
             .context
             .definitions
@@ -329,10 +409,93 @@ fn process_enum_constants(hir: &mut ResolvedGraph, target: &Target) {
             })
             .collect();
 
-        // Process each enum's constants
         for (enum_id, const_ids) in enum_constants {
             if !const_ids.is_empty() {
                 rename_breadth(hir, &const_ids, Some(enum_id), target);
+            }
+        }
+    }
+
+    // Process bitmask flags with case conversion
+    if target.convention.bit_flag.is_some() {
+        let bitmask_flags: Vec<_> = hir
+            .context
+            .definitions
+            .iter()
+            .filter_map(|(id, def)| {
+                if let DefKind::Bitmask(b) = &def.kind {
+                    Some((id, b.flags.clone()))
+                } else {
+                    None
+                }
+            })
+            .collect();
+
+        for (bitmask_id, flag_ids) in bitmask_flags {
+            if !flag_ids.is_empty() {
+                rename_breadth(hir, &flag_ids, Some(bitmask_id), target);
+            }
+        }
+    }
+}
+
+/// Strip common prefixes from all enum constants
+fn strip_enum_prefixes(hir: &mut ResolvedGraph) {
+    let enums: Vec<_> = hir
+        .context
+        .definitions
+        .iter()
+        .filter_map(|(_, def)| {
+            if let DefKind::Enum(e) = &def.kind {
+                Some((def.ident.name.clone(), e.fields.clone()))
+            } else {
+                None
+            }
+        })
+        .collect();
+
+    for (enum_name, field_ids) in enums {
+        let names: Vec<String> = field_ids
+            .iter()
+            .map(|&id| hir.context.definitions.get(id).ident.name.clone())
+            .collect();
+
+        let prefix_len = find_prefix_to_strip(&enum_name, &names);
+        if prefix_len > 0 {
+            for &id in &field_ids {
+                let def = hir.context.definitions.get_mut(id);
+                def.ident.name = def.ident.name[prefix_len..].to_string();
+            }
+        }
+    }
+}
+
+/// Strip common prefixes from all bitmask flags
+fn strip_bitmask_prefixes(hir: &mut ResolvedGraph) {
+    let bitmasks: Vec<_> = hir
+        .context
+        .definitions
+        .iter()
+        .filter_map(|(_, def)| {
+            if let DefKind::Bitmask(b) = &def.kind {
+                Some((def.ident.name.clone(), b.flags.clone()))
+            } else {
+                None
+            }
+        })
+        .collect();
+
+    for (bitmask_name, flag_ids) in bitmasks {
+        let names: Vec<String> = flag_ids
+            .iter()
+            .map(|&id| hir.context.definitions.get(id).ident.name.clone())
+            .collect();
+
+        let prefix_len = find_prefix_to_strip(&bitmask_name, &names);
+        if prefix_len > 0 {
+            for &id in &flag_ids {
+                let def = hir.context.definitions.get_mut(id);
+                def.ident.name = def.ident.name[prefix_len..].to_string();
             }
         }
     }
@@ -383,34 +546,36 @@ fn rename_breadth(
             continue; // Skip non-representative modules
         }
 
-        // Determine the appropriate case for this definition
-        let case = if matches!(def.kind, hir::DefKind::Const(_)) {
+        // Determine the appropriate case and identifier kind for this definition
+        let (case, kind) = if matches!(def.kind, hir::DefKind::Const(_)) {
             // Check if this is an enum constant
             if is_enum_constant(hir, id) {
-                target.convention.enumerator
+                (target.convention.enumerator, IdentifierKind::Enumerator)
             } else {
-                target.convention.constant
+                (target.convention.constant, IdentifierKind::Constant)
             }
         } else {
             match &def.kind {
-                DefKind::Module(_) => target.convention.module,
-                DefKind::Const(_) => target.convention.constant,
-                DefKind::Struct(_) => target.convention.struct_type,
-                DefKind::Union(_) => target.convention.union_type,
-                DefKind::Enum(_) => target.convention.enum_type,
-                DefKind::Interface(_) => target.convention.interface,
-                DefKind::Valuetype(_) => target.convention.valuetype,
-                DefKind::Alias(_) => target.convention.alias,
-                DefKind::Bitmask(_) => target.convention.bitmask,
-                DefKind::Bitset(_) => target.convention.bitset,
-                DefKind::Except(_) => target.convention.exception,
-                DefKind::Annotation(_) => target.convention.annotation,
-                DefKind::Decl(_) => None,
+                DefKind::Module(_) => (target.convention.module, IdentifierKind::Module),
+                DefKind::Const(_) => (target.convention.constant, IdentifierKind::Constant),
+                DefKind::Struct(_) => (target.convention.struct_type, IdentifierKind::Struct),
+                DefKind::Union(_) => (target.convention.union_type, IdentifierKind::Union),
+                DefKind::Enum(_) => (target.convention.enum_type, IdentifierKind::Enum),
+                DefKind::Interface(_) => (target.convention.interface, IdentifierKind::Interface),
+                DefKind::Valuetype(_) => (target.convention.valuetype, IdentifierKind::Valuetype),
+                DefKind::Alias(_) => (target.convention.alias, IdentifierKind::Alias),
+                DefKind::Bitmask(_) => (target.convention.bitmask, IdentifierKind::Bitmask),
+                DefKind::Bitset(_) => (target.convention.bitset, IdentifierKind::Bitset),
+                DefKind::Except(_) => (target.convention.exception, IdentifierKind::Exception),
+                DefKind::Annotation(_) => {
+                    (target.convention.annotation, IdentifierKind::Annotation)
+                }
+                DefKind::Decl(_) => (None, IdentifierKind::Struct), // Decl doesn't matter, won't rename
             }
         };
 
         let original = def.ident.name.clone();
-        let desired = apply_rename(&original, case, target);
+        let desired = apply_rename(&original, case, kind, target);
 
         // Add to renames if:
         // 1. The name changed (for any reason: case, preprocessor, or keyword)
@@ -437,8 +602,13 @@ fn rename_breadth(
 }
 
 /// Helper to rename a list of items with collision detection
-fn rename_items<T, F>(items: &mut [T], case: Option<Case>, mut get_ident: F, target: &Target)
-where
+fn rename_items<T, F>(
+    items: &mut [T],
+    case: Option<Case>,
+    kind: IdentifierKind,
+    mut get_ident: F,
+    target: &Target,
+) where
     F: FnMut(&mut T) -> &mut hir::Ident,
 {
     // Collect existing names for collision detection
@@ -447,13 +617,14 @@ where
         .map(|item| get_ident(item).name.clone())
         .collect();
 
-    rename_items_with_occupied(items, case, get_ident, &mut occupied, target);
+    rename_items_with_occupied(items, case, kind, get_ident, &mut occupied, target);
 }
 
 /// Helper to rename items using an existing occupied set (for shared namespaces)
 fn rename_items_with_occupied<T, F>(
     items: &mut [T],
     case: Option<Case>,
+    kind: IdentifierKind,
     mut get_ident: F,
     occupied: &mut HashSet<String>,
     target: &Target,
@@ -465,7 +636,7 @@ fn rename_items_with_occupied<T, F>(
         let original = ident.name.clone();
 
         // Apply case conversion and keyword escaping
-        let mut desired = apply_rename(&original, case, target);
+        let mut desired = apply_rename(&original, case, kind, target);
 
         // Handle collisions
         while occupied.contains(&desired) && desired != original {
@@ -488,6 +659,7 @@ fn rename_members(target: &Target, mut def: hir::Def) -> hir::Def {
             rename_items(
                 &mut s.members,
                 target.convention.member,
+                IdentifierKind::Member,
                 |m| &mut m.ident,
                 target,
             );
@@ -496,6 +668,7 @@ fn rename_members(target: &Target, mut def: hir::Def) -> hir::Def {
             rename_items(
                 &mut e.members,
                 target.convention.member,
+                IdentifierKind::Member,
                 |m| &mut m.ident,
                 target,
             );
@@ -504,6 +677,7 @@ fn rename_members(target: &Target, mut def: hir::Def) -> hir::Def {
             rename_items(
                 &mut u.variants,
                 target.convention.variant,
+                IdentifierKind::Variant,
                 |v| &mut v.ident,
                 target,
             );
@@ -521,6 +695,7 @@ fn rename_members(target: &Target, mut def: hir::Def) -> hir::Def {
             rename_items_with_occupied(
                 &mut i.prototypes,
                 target.convention.operation,
+                IdentifierKind::Operation,
                 |p| &mut p.ident,
                 &mut occupied,
                 target,
@@ -530,6 +705,7 @@ fn rename_members(target: &Target, mut def: hir::Def) -> hir::Def {
             rename_items_with_occupied(
                 &mut i.attributes,
                 target.convention.attribute,
+                IdentifierKind::Attribute,
                 |a| &mut a.ident,
                 &mut occupied,
                 target,
@@ -540,6 +716,7 @@ fn rename_members(target: &Target, mut def: hir::Def) -> hir::Def {
                 rename_items(
                     &mut proto.params,
                     target.convention.parameter,
+                    IdentifierKind::Parameter,
                     |p| &mut p.ident,
                     target,
                 );
@@ -559,6 +736,7 @@ fn rename_members(target: &Target, mut def: hir::Def) -> hir::Def {
             rename_items_with_occupied(
                 &mut v.members,
                 target.convention.member,
+                IdentifierKind::Member,
                 |m| &mut m.ident,
                 &mut occupied,
                 target,
@@ -568,6 +746,7 @@ fn rename_members(target: &Target, mut def: hir::Def) -> hir::Def {
             rename_items_with_occupied(
                 &mut v.prototypes,
                 target.convention.operation,
+                IdentifierKind::Operation,
                 |p| &mut p.ident,
                 &mut occupied,
                 target,
@@ -577,6 +756,7 @@ fn rename_members(target: &Target, mut def: hir::Def) -> hir::Def {
             rename_items_with_occupied(
                 &mut v.attributes,
                 target.convention.attribute,
+                IdentifierKind::Attribute,
                 |a| &mut a.ident,
                 &mut occupied,
                 target,
@@ -587,6 +767,7 @@ fn rename_members(target: &Target, mut def: hir::Def) -> hir::Def {
                 rename_items(
                     &mut proto.params,
                     target.convention.parameter,
+                    IdentifierKind::Parameter,
                     |p| &mut p.ident,
                     target,
                 );
@@ -596,6 +777,7 @@ fn rename_members(target: &Target, mut def: hir::Def) -> hir::Def {
             rename_items(
                 &mut b.fields,
                 target.convention.bitset_field,
+                IdentifierKind::BitsetField,
                 |f| &mut f.ident,
                 target,
             );

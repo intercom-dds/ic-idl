@@ -79,23 +79,22 @@ cargo doc --document-private-items --no-deps --workspace
 
 Feature support by language:
 
-| Feature / Language | C++  | Rust | Python | Java | IDL | Protobuf | JSON | XML |
-|--------------------|:----:|:----:|:------:|:----:|:---:|:--------:|:----:|:---:|
-| Struct             |  ✔   |   ✔  |   ✔    |  ✔   |  ✔  |    ✔     |  ✔   | ✔   |
-| Union              |  ✔   |   ✔  |   ✔    |  ✔   |  ✔  |    ✔     |  ✔   | ✔   |
-| Enum               |  ✔   |   ✔  |   ✔    |  ✔   |  ✔  |    ✔     |  ✔   | ✔   |
-| Exception          |  ✔   |   ✔  |   ✔    |  ✔   |  ✔  |    ✔     |  ✔   | ✔   |
-| Valuetype          |  ✔   |   ✔  |   ✔    |  ✔   |  ✔  |    ✖     |  ✔   | ✔   |
-| Interface          |  ✔   |   ✔  |   ✔    |  ✔   |  ✔  |    ✖     |  ✔   | ✔   |
-| Typedef            |  ✔   |   ✔  |   ✔    |  ✔   |  ✔  |    ✔     |  ✔   | ✔   |
-| Constants          |  ✔   |   ✔  |   ✔    |  ✔   |  ✔  |    ✖     |  ✔   | ✔   |
-| Bitmask            |  ✔   |   ✔  |   ✔    |  ✔   |  ✔  |    ✖     |  ✔   | ✔   |
-| Bitset             |  ✖   |   ✖  |   ✖    |  ✖   |  ✔  |    ✖     |  ✖   | ✖   |
+| Feature / Language | C++  | Rust | Python | Java | TypeScript | C#  | IDL | Protobuf | JSON | XML |
+|--------------------|:----:|:----:|:------:|:----:|:----------:|:---:|:---:|:--------:|:----:|:---:|
+| Struct             |  ✔   |   ✔  |   ✔    |  ✔   |      ✔     |  ✔  |  ✔  |    ✔     |  ✔   | ✔   |
+| Union              |  ✔   |   ✔  |   ✔    |  ✔   |      ✔     |  ✔  |  ✔  |    ✔     |  ✔   | ✔   |
+| Enum               |  ✔   |   ✔  |   ✔    |  ✔   |      ✔     |  ✔  |  ✔  |    ✔     |  ✔   | ✔   |
+| Exception          |  ✔   |   ✔  |   ✔    |  ✔   |      ✔     |  ✔  |  ✔  |    ✔     |  ✔   | ✔   |
+| Valuetype          |  ✔   |   ✔  |   ✔    |  ✔   |      ✔     |  ✔  |  ✔  |    ✖     |  ✔   | ✔   |
+| Interface          |  ✔   |   ✔  |   ✔    |  ✔   |      ✔     |  ✔  |  ✔  |    ✖     |  ✔   | ✔   |
+| Typedef            |  ✔   |   ✔  |   ✔    |  ✔   |      ✔     |  ✔  |  ✔  |    ✔     |  ✔   | ✔   |
+| Constants          |  ✔   |   ✔  |   ✔    |  ✔   |      ✔     |  ✔  |  ✔  |    ✖     |  ✔   | ✔   |
+| Bitmask            |  ✔   |   ✔  |   ✔    |  ✔   |      ✔     |  ✔  |  ✔  |    ✖     |  ✔   | ✔   |
+| Bitset             |  ✖   |   ✖  |   ✖    |  ✖   |      ✖     |  ✖  |  ✔  |    ✖     |  ✖   | ✖   |
 
 ## MSRV
 
-- MSRV for the compiler is 1.87.
-- MSRV for the serialization library is 1.83.
+MSRV is currently 1.88.
 
 The MSRV may change between minor version releases and is not considered a
 semver-breaking change.

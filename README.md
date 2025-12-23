@@ -29,7 +29,17 @@
 
 # ic-idl
 
-A generic IDL compiler.
+Generic, multi-target OMG IDL compiler written in Rust.
+
+ic-idl parses [OMG IDL4](https://www.omg.org/spec/IDL/4.2) interface definitions
+and generates type definitions, interfaces, and serialization code for multiple
+target languages.
+
+## Backends
+
+ic-idl can generate code for C++, Rust, C#, Java, Python, and TypeScript. It
+can also convert IDL to other schema formats including Protobuf, JSON, JSON
+Schema, and XML.
 
 ## Building
 

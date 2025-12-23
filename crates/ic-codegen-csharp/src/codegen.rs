@@ -251,13 +251,9 @@ impl<'a> CSharpGen<'a> {
         if let Some(parent_id) = target_def.parent {
             let parent_def = self.hir.context.type_of(parent_id);
             match &parent_def.kind {
-                DefKind::Enum(_) => {
-                    let enum_name = self.scoped_name(parent_id, relative_to_def_id);
-                    return format!("{enum_name}.{type_name}");
-                }
-                DefKind::Bitmask(_) => {
+                DefKind::Enum(_) | DefKind::Bitmask(_) => {
                     let bitmask_name = self.scoped_name(parent_id, relative_to_def_id);
-                    return format!("{bitmask_name}Flags.{type_name}");
+                    return format!("{bitmask_name}.{type_name}");
                 }
                 _ => {}
             }
@@ -319,15 +315,7 @@ impl<'a> CSharpGen<'a> {
         match &ty.kind {
             TyKind::Primitive(prim) => Self::primitive_type(*prim).to_string(),
             TyKind::String { .. } => "string".to_string(),
-            TyKind::Adt(def_id) => {
-                let def = self.hir.context.type_of(*def_id);
-                match &def.kind {
-                    DefKind::Bitmask(_) => {
-                        format!("{}Flags", self.scoped_name(*def_id, relative_def))
-                    }
-                    _ => self.scoped_name(*def_id, relative_def),
-                }
-            }
+            TyKind::Adt(def_id) => self.scoped_name(*def_id, relative_def),
             TyKind::Sequence { ty, .. } => {
                 let inner = self.csharp_type(ty, relative_def);
                 format!("IList<{inner}>")
@@ -1194,7 +1182,7 @@ impl<'a> CSharpGen<'a> {
 
         let underlying_type = Self::primitive_type(bitmask.ty);
         w!(w, "[Flags]\n");
-        w!(w, "public enum ", def.ident.name, "Flags : ", underlying_type, "\n");
+        w!(w, "public enum ", def.ident.name, " : ", underlying_type, "\n");
         w!(w, "{\n");
 
         for (i, &flag_id) in bitmask.flags.iter().enumerate() {

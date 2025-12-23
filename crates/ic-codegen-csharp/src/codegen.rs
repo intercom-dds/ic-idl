@@ -595,7 +595,7 @@ impl<'a> CSharpGen<'a> {
         w!(w, "\n");
         w!(w, "public override int GetHashCode()\n");
         w!(w, "{\n");
-        w!(w, "var hash = new HashCode();\n");
+        w!(w, "HashCode hash = new HashCode();\n");
 
         if struct_ty.parent.is_some() {
             w!(w, "hash.Add(base.GetHashCode());\n");
@@ -859,7 +859,7 @@ impl<'a> CSharpGen<'a> {
         w!(w, "\n");
         w!(w, "public override int GetHashCode()\n");
         w!(w, "{\n");
-        w!(w, "var hash = new HashCode();\n");
+        w!(w, "HashCode hash = new HashCode();\n");
         w!(w, "hash.Add(Discriminator);\n");
 
         for variant in &union_ty.variants {

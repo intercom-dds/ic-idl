@@ -40,6 +40,7 @@ use ic_hir_xform::rename;
 /// C# keywords that must be escaped with `@` prefix
 #[rustfmt::skip]
 const CSHARP_KEYWORDS: &[&str] = &[
+    // Reserved keywords
     "abstract", "as", "base", "bool", "break", "byte", "case", "catch", "char", "checked", "class",
     "const", "continue", "decimal", "default", "delegate", "do", "double", "else", "enum", "event",
     "explicit", "extern", "false", "finally", "fixed", "float", "for", "foreach", "goto", "if",
@@ -48,6 +49,9 @@ const CSHARP_KEYWORDS: &[&str] = &[
     "readonly", "ref", "return", "sbyte", "sealed", "short", "sizeof", "stackalloc", "static",
     "string", "struct", "switch", "this", "throw", "true", "try", "typeof", "uint", "ulong",
     "unchecked", "unsafe", "ushort", "using", "virtual", "void", "volatile", "while",
+
+    // Contextual keywords that cause compilation errors when used as identifiers
+    "file", "record", "required", "scoped",
 ];
 
 /// Reserved member names that conflict with inherited `System.Object` methods
@@ -144,7 +148,7 @@ pub fn codegen_csharp(
     };
 
     let hir = ic_hir_xform::rename::transform(
-        hir.clone(),
+        hir,
         &rename::Target {
             convention,
             keyword_escape: Some(escape_csharp),

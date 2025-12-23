@@ -111,18 +111,7 @@ impl<'a> CSharpGen<'a> {
             Numeric::Float(v) => format!("{v}f"),
             Numeric::Double(v) => format!("{v}d"),
             Numeric::String(s) => format!("\"{}\"", s.escape_default()),
-            Numeric::Const(def_id) => {
-                let const_def = self.hir.context.definitions.get(*def_id);
-                if let Some(parent_id) = const_def.parent {
-                    let parent_def = self.hir.context.definitions.get(parent_id);
-                    if matches!(parent_def.kind, DefKind::Enum(_)) {
-                        let enum_name = self.scoped_name(parent_id, relative_to_def_id);
-                        let const_name = &const_def.ident.name;
-                        return format!("{enum_name}.{const_name}");
-                    }
-                }
-                self.scoped_name(*def_id, relative_to_def_id)
-            }
+            Numeric::Const(def_id) => self.scoped_name(*def_id, relative_to_def_id),
             Numeric::Array { values, .. } => {
                 let formatted: Vec<_> = values
                     .iter()
@@ -255,7 +244,25 @@ impl<'a> CSharpGen<'a> {
     }
 
     fn scoped_name(&self, target_def_id: DefId, relative_to_def_id: DefId) -> String {
-        let type_name = &self.hir.context.type_of(target_def_id).ident.name;
+        let target_def = self.hir.context.type_of(target_def_id);
+        let type_name = &target_def.ident.name;
+
+        // Enum fields and bitmask flags need special handling
+        if let Some(parent_id) = target_def.parent {
+            let parent_def = self.hir.context.type_of(parent_id);
+            match &parent_def.kind {
+                DefKind::Enum(_) => {
+                    let enum_name = self.scoped_name(parent_id, relative_to_def_id);
+                    return format!("{enum_name}.{type_name}");
+                }
+                DefKind::Bitmask(_) => {
+                    let bitmask_name = self.scoped_name(parent_id, relative_to_def_id);
+                    return format!("{bitmask_name}Flags.{type_name}");
+                }
+                _ => {}
+            }
+        }
+
         let target_scope = self.get_scope(target_def_id);
         let current_scope = self.get_scope(relative_to_def_id);
 
@@ -361,7 +368,7 @@ impl<'a> CSharpGen<'a> {
                 let base_ty_str = self.csharp_type(&base_ty, relative_def);
                 let dim_str = dims
                     .iter()
-                    .map(|d| d.to_string())
+                    .map(ToString::to_string)
                     .collect::<Vec<_>>()
                     .join(", ");
                 Some(format!("new {base_ty_str}[{dim_str}]"))
@@ -371,9 +378,7 @@ impl<'a> CSharpGen<'a> {
                 let def = self.hir.context.type_of(*def_id);
                 match &def.kind {
                     DefKind::Enum(enum_ty) => {
-                        let enum_name = self.scoped_name(*def_id, relative_def);
-                        let first_field = self.hir.context.type_of(enum_ty.fields[0]);
-                        Some(format!("{}.{}", enum_name, first_field.ident.name))
+                        Some(self.scoped_name(enum_ty.fields[0], relative_def))
                     }
                     DefKind::Bitmask(_) => None,
                     // Valuetypes and interfaces are abstract, can't instantiate

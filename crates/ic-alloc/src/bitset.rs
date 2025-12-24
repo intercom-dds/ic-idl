@@ -202,10 +202,10 @@ mod tests {
         bitset.set(5);
         bitset.set(10);
 
-        assert!(bitset.clone() & 5);
-        assert!(bitset.clone() & 10);
-        assert!(!(bitset.clone() & 3));
-        assert!(!(bitset.clone() & 11));
+        assert!(bitset.clone() & 0x05);
+        assert!(bitset.clone() & 0x0A);
+        assert!(!(bitset.clone() & 0x03));
+        assert!(!(bitset.clone() & 0x0B));
     }
 
     #[test]

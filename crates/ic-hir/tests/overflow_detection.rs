@@ -45,10 +45,54 @@ const int32 OVERFLOW = INTMAX + 1;
 }
 
 #[test]
-fn test_signed_overflow_subtraction() {
+fn test_bitmask_bit_position_overflow() {
     let source = r"
-const int32 INTMIN = -2147483648;
-const int32 OVERFLOW = INTMIN - 1;
+bitmask Flags {
+    A = 0,
+    B = 63,
+    C = 64
+};
+";
+
+    assert_snapshot!(test_overflow(source));
+}
+
+#[test]
+fn test_bitmask_bit_position_max_valid() {
+    let source = r"
+bitmask Flags {
+    LOW = 0,
+    HIGH = 63
+};
+";
+
+    let (result, _, _) = common::parse_and_resolve(source);
+    assert!(result.errors.is_empty());
+    assert!(result.warnings.is_empty());
+}
+
+#[test]
+fn test_bitmask_auto_increment_overflow() {
+    // Auto-increment starting at 63 should overflow on the next flag
+    let source = r"
+bitmask Flags {
+    LAST_VALID = 63,
+    OVERFLOW
+};
+";
+
+    assert_snapshot!(test_overflow(source));
+}
+
+#[test]
+fn test_bitmask_hex_bit_position_overflow() {
+    let source = r"
+bitmask PositionedBitmask {
+    LOW = 0x0001,
+    MEDIUM = 0x0010,
+    HIGH = 0x0100,
+    CRITICAL = 0x1000
+};
 ";
 
     assert_snapshot!(test_overflow(source));

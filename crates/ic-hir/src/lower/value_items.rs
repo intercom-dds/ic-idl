@@ -346,8 +346,16 @@ impl<'ctx> ValueItemProcessor<'ctx> {
 
         *last_bit = bit_pos;
 
-        // Calculate value (1 << bit_pos)
-        let (value, _) = 1u64.overflowing_shl(bit_pos);
+        // Calculate value (1 << bit_pos), checking for overflow
+        let Some(value) = 1u64.checked_shl(bit_pos) else {
+            self.ctx.diagnostics.errors.push(error_span(
+                "bitmask bit position out of range",
+                Label::new(flag.span).message(format!(
+                    "bit position {bit_pos} exceeds maximum of 63 for 64-bit bitmask"
+                )),
+            ));
+            return None;
+        };
 
         // Create flag as a constant in the parent scope
         let flag_ty = Ty {

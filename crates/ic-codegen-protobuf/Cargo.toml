@@ -37,6 +37,7 @@ version.workspace = true
 workspace = true
 
 [dependencies]
+ic-alloc = { path = "../ic-alloc" }
 ic-emit = { path = "../ic-emit" }
 ic-hir = { path = "../ic-hir" }
 ic-hir-xform = { path = "../ic-hir-xform" }

@@ -175,6 +175,7 @@ dependencies = [
 name = "ic-codegen-protobuf"
 version = "0.1.0"
 dependencies = [
+ "ic-alloc",
  "ic-emit",
  "ic-hir",
  "ic-hir-xform",

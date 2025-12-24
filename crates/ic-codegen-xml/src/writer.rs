@@ -83,6 +83,10 @@ impl XmlWriter {
         self.printer.text("/>").endl();
     }
 
+    pub fn comment(&mut self, text: &str) {
+        self.printer.text("<!-- ").text(text).text(" -->").endl();
+    }
+
     fn write_escaped_attr(&mut self, s: &str) {
         for c in s.chars() {
             match c {

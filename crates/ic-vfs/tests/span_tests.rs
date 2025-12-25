@@ -27,7 +27,7 @@
 
 use std::ops::Range;
 
-use ic_vfs::{Location, SourceMap, Span};
+use ic_vfs::{FileId, Location, SourceMap, Span};
 
 #[test]
 fn test_location_creation() {
@@ -151,7 +151,7 @@ fn test_span_ordering() {
 
 #[test]
 fn test_span_chumsky_trait() {
-    use chumsky::Span as ChumskySpan;
+    use chumsky::span::Span as ChumskySpan;
 
     let mut map = SourceMap::default();
     let id = map.embed("test content");
@@ -159,12 +159,9 @@ fn test_span_chumsky_trait() {
     let start = Location::new(10, id);
     let end = Location::new(20, id);
 
-    // Test chumsky::Span trait implementation
-    let span = Span::new((), start..end);
-    assert_eq!(span.start(), start);
-    assert_eq!(span.end(), end);
-    // Verify context method works (returns unit type)
-    span.context();
+    let span = <Span as ChumskySpan>::new((), start..end);
+    assert_eq!(ChumskySpan::start(&span), start);
+    assert_eq!(ChumskySpan::end(&span), end);
 }
 
 #[test]
@@ -172,7 +169,7 @@ fn test_location_default() {
     // Default location should have offset 0
     let loc = Location::default();
     assert_eq!(loc.offset, 0);
-    // Note: We can't test the file_id because it uses _do_not_use()
+    assert_eq!(loc.file_id, FileId::_do_not_use());
 }
 
 #[test]

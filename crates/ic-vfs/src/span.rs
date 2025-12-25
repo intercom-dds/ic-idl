@@ -60,7 +60,7 @@ pub struct Span {
 // This doesn't really belong here, but since we can't implement the trait in
 // `ic-parse` because of orphan rules, we have to do it here instead. Using a
 // newtype wrapper in `ic-parse` is not ideal because it's used _everywhere_.
-impl chumsky::Span for Span {
+impl chumsky::span::Span for Span {
     type Context = ();
     type Offset = Location;
 

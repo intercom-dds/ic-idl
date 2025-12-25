@@ -50,4 +50,4 @@ intercom-cts.workspace = true
 ic-parse = { path = "../ic-parse" }
 ic-preproc = { path = "../ic-preproc" }
 ic-vfs = { path = "../ic-vfs" }
-insta = "1.34"
+insta = "1.45"

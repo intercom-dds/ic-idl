@@ -75,10 +75,11 @@
 //! [`ic-lint`]: ../ic_lint/index.html
 //! [`ic-hir`]: ../ic_hir/index.html
 
+use std::ops::Deref;
 use std::path::Path;
 
-use chumsky::error::{Simple, SimpleReason};
-use chumsky::{Parser, Stream};
+use chumsky::error::Rich;
+use chumsky::prelude::*;
 use ic_preproc::ProcArgs;
 use ic_syntax::{Item, Span};
 pub use ic_vfs::SourceMap;
@@ -117,16 +118,6 @@ pub enum Reason {
     Custom(String),
 }
 
-impl From<SimpleReason<Kind, Span>> for Reason {
-    fn from(value: SimpleReason<Kind, Span>) -> Self {
-        match value {
-            SimpleReason::Unexpected => Self::Unexpected,
-            SimpleReason::Unclosed { span, delimiter } => Self::Unclosed { span, delimiter },
-            SimpleReason::Custom(v) => Self::Custom(v),
-        }
-    }
-}
-
 impl std::fmt::Display for Reason {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
@@ -146,14 +137,38 @@ pub struct Error {
     pub span: Span,
 }
 
-impl From<Simple<Kind, Span>> for Error {
-    fn from(value: Simple<Kind, Span>) -> Self {
+impl Error {
+    fn from_rich(value: Rich<'_, Kind, Span>) -> Self {
+        let found = value.found().cloned();
+        let span = *value.span();
+
+        // Extract expected tokens from the error
+        let expected: Vec<Kind> = value
+            .expected()
+            .filter_map(|e| match e {
+                chumsky::error::RichPattern::Token(t) => Some(t.deref().clone()),
+                _ => None,
+            })
+            .collect();
+
+        let expected = if expected.is_empty() {
+            None
+        } else {
+            Some(expected)
+        };
+
+        // Determine the reason
+        let reason = match value.into_reason() {
+            chumsky::error::RichReason::ExpectedFound { .. } => Reason::Unexpected,
+            chumsky::error::RichReason::Custom(msg) => Reason::Custom(msg),
+        };
+
         Self {
-            found: value.found().cloned(),
-            expected: value.expected().cloned().collect(),
-            reason: Reason::from(value.reason().clone()),
-            label: value.label(),
-            span: value.span(),
+            found,
+            expected,
+            reason,
+            label: None,
+            span,
         }
     }
 }
@@ -300,9 +315,8 @@ pub fn from_file(file_id: FileId, args: ProcArgs, vfs: &mut SourceMap) -> ParseR
 
     // Collect comments while filtering them out of the token stream
     let mut comments = Vec::new();
-    let filtered_stream = chumsky::Stream::from_iter(
-        Span::default(),
-        token_iter.filter_map(|tok| match &tok.kind {
+    let tokens: Vec<(Kind, Span)> = token_iter
+        .filter_map(|tok| match &tok.kind {
             Kind::Comment(text, trailing) => {
                 // Store comment and filter it out
                 comments.push(comment_attacher::Comment {
@@ -313,10 +327,14 @@ pub fn from_file(file_id: FileId, args: ProcArgs, vfs: &mut SourceMap) -> ParseR
                 None
             }
             _ => Some((tok.kind, tok.span)),
-        }),
-    );
+        })
+        .collect();
 
-    let (tree, errors) = parser::specification().parse_recovery(filtered_stream);
+    // Parse with recovery
+    let eoi_span = tokens.last().map_or(Span::default(), |(_, s)| *s);
+    let input = parser::make_input(tokens.as_slice(), eoi_span);
+    let (tree, parse_errors) = parser::specification().parse(input).into_output_errors();
+
     let mut tree = tree.unwrap_or_default();
 
     // Attach collected comments to the AST
@@ -324,7 +342,7 @@ pub fn from_file(file_id: FileId, args: ProcArgs, vfs: &mut SourceMap) -> ParseR
     tree = attacher.attach(tree);
 
     // Collect parser errors
-    let mut errors: Vec<Error> = errors.into_iter().map(Error::from).collect();
+    let mut errors: Vec<Error> = parse_errors.into_iter().map(Error::from_rich).collect();
 
     // Process preprocessor errors and warnings
     errors.extend(process_preprocessor_errors(state.errors(), vfs));
@@ -353,13 +371,15 @@ pub fn from_iter<I>(iter: I) -> ParseResult
 where
     I: IntoIterator<Item = Token>,
 {
-    let tokens = iter.into_iter();
-    let stream = Stream::from_iter(Span::default(), tokens.map(move |tok| (tok.kind, tok.span)));
-    let (tree, errors) = parser::specification().parse_recovery(stream);
+    let tokens: Vec<(Kind, Span)> = iter.into_iter().map(|tok| (tok.kind, tok.span)).collect();
+
+    let eoi_span = tokens.last().map_or(Span::default(), |(_, s)| *s);
+    let input = parser::make_input(tokens.as_slice(), eoi_span);
+    let (tree, parse_errors) = parser::specification().parse(input).into_output_errors();
 
     ParseResult {
         tree: tree.unwrap_or_default(),
-        errors: errors.into_iter().map(Error::from).collect(),
+        errors: parse_errors.into_iter().map(Error::from_rich).collect(),
         warnings: Vec::new(),
         expansion_info: std::collections::HashMap::default(),
     }

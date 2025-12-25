@@ -45,7 +45,7 @@ ic-diagnostic = { path = "../ic-diagnostic" }
 ic-vfs = { path = "../ic-vfs" }
 
 [dev-dependencies]
-insta = "1.40"
+insta = "1.45"
 ic-parse = { path = "../ic-parse" }
 ic-preproc = { path = "../ic-preproc" }
 ic-ptree-lower = { path = "../ic-ptree-lower" }

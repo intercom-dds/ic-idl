@@ -29,7 +29,6 @@
 
 use std::fmt;
 
-use chumsky::Stream;
 use ic_lexer::token::{Base, Kw};
 use ic_macros::DiscHash;
 use ic_preproc::TokenIter;
@@ -197,39 +196,6 @@ pub struct Token {
     pub kind: Kind,
 }
 
-// Constructs a stream of input tokens. Unlike [`Iterator`], a stream supports
-// backtracking and some other required features.
-// #[must_use]
-// pub fn stream(input: &str) -> Stream<'_, Kind, Span, impl Iterator<Item = (Kind, Span)> + '_> {
-//     // Remove trailing whitespace so we can correctly scope errors about
-//     // missing semicolons at the end of the file.
-//     let input = input.trim_end();
-//     let lexer = lexer(input);
-//     let end = Span {
-//         start: input.len() as u32,
-//         end: input.len() as u32 + 1,
-//     };
-//
-//     Stream::from_iter(end, lexer.map(move |tok| (tok.kind, tok.span)))
-// }
-
-// Constructs an iterator that lazily lexes the input.
-//
-// Lexing is infallible: any invalid tokens or characters will be mapped to a
-// `Kind::Invalid` token.
-// pub fn lexer(input: &str) -> impl Iterator<Item = Token> + '_ {
-//     // If push comes to shove, we create an invalid token that spans from the
-//     // current position until the next delimiter. This makes lexing infallible,
-//     // and lets us better handle the error during parsing.
-//     Kind::lexer(input).spanned().map(|(token, span)| Token {
-//         kind: token.unwrap_or(Kind::Invalid),
-//         span: Span {
-//             start: span.start as u32,
-//             end: span.end as u32,
-//         },
-//     })
-// }
-
 impl From<ic_preproc::Token> for Token {
     fn from(value: ic_preproc::Token) -> Self {
         let kind = match value.kind {
@@ -273,23 +239,6 @@ impl From<ic_preproc::Token> for Token {
             kind,
         }
     }
-}
-
-#[must_use]
-pub fn from_iter<I>(iter: I) -> Stream<'static, Kind, Span, impl Iterator<Item = (Kind, Span)>>
-where
-    I: IntoIterator<Item = ic_preproc::Token>,
-{
-    let iter = iter.into_iter().filter_map(|v| {
-        if v.kind == ic_preproc::Kind::Newline {
-            None
-        } else {
-            Some(Token::from(v))
-        }
-    });
-
-    let end = Span::default();
-    Stream::from_iter(end, iter.map(move |tok| (tok.kind, tok.span)))
 }
 
 fn kind_number(base: Base, value: u64) -> Kind {
@@ -406,20 +355,4 @@ where
             }
         }
     })
-}
-
-/// # Panics
-///
-/// Panics if the provided iterator yields invalid tokens.
-#[must_use]
-pub fn from_cursor<'a, S>(
-    iter: TokenIter<'a, S>,
-    ignore_comments: bool,
-) -> Stream<'static, Kind, Span, impl Iterator<Item = (Kind, Span)> + 'a>
-where
-    S: std::borrow::BorrowMut<ic_preproc::State> + 'a,
-{
-    let token_iter = create_token_iterator(iter, ignore_comments);
-    let end = Span::default();
-    Stream::from_iter(end, token_iter.map(move |tok| (tok.kind, tok.span)))
 }

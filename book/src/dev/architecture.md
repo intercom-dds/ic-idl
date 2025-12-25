@@ -21,7 +21,7 @@ invokes whichever backends the user selected on the command line.
 |-------|----------------|------------------|
 | Lexing | `ic-lexer` | Turns UTF-8 text into tokens; tracks trivia and spans. |
 | Preprocessing | `ic-preproc` | Handles `#include`, `#define`, conditionals, and pragma handling; expands macros while preserving expansion info. |
-| Parsing | `ic-parse`, `ic-syntax` | Builds a tolerant AST using Chumsky-based parsers; maintains comments for documentation. |
+| Parsing | `ic-parse`, `ic-syntax` | Builds a tolerant AST; maintains comments for documentation. |
 | HIR lowering | `ic-hir`, `ic-hir-tree`, `ic-expr` | Resolves names, evaluates constants, builds the canonical `ResolvedGraph`, attaches annotations, enforces semantic rules. |
 | Linting | `ic-lint` | Issues warnings/errors about style, DDS compliance, and semantic edge cases; honours `-W` flags from the CLI. |
 | Transformations | `ic-hir-xform` | Normalises HIR (module squashing, enum prefix stripping, type flag inference, implicit defaults) before codegen sees it. |

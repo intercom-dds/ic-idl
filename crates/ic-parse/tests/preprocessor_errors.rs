@@ -183,12 +183,12 @@ interface Test {
     );
 
     // Should have one warning
-    assert_eq!(result.warnings.len(), 1, "Expected exactly one warning");
+    assert_eq!(result.preproc_warnings.len(), 1, "Expected exactly one warning");
 
     assert!(
-        matches!(result.warnings[0].label, Some("preprocessor warning")),
+        matches!(result.preproc_warnings[0].label, Some("preprocessor warning")),
         "Expected preprocessor warning label, got {:?}",
-        result.warnings[0].label
+        result.preproc_warnings[0].label
     );
 
     // The parse tree should be valid
@@ -215,12 +215,12 @@ interface Test {
     // We might have parser errors due to conditional compilation,
     // but we should definitely have warnings
     assert!(
-        !result.warnings.is_empty(),
+        !result.preproc_warnings.is_empty(),
         "Expected warnings for extraneous tokens"
     );
 
     // Check that we got at least 3 warnings (one for each directive with extra tokens)
-    let warning_count = result.warnings.len();
+    let warning_count = result.preproc_warnings.len();
     assert!(
         warning_count >= 3,
         "Expected at least 3 warnings, got {warning_count}"
@@ -228,7 +228,7 @@ interface Test {
 
     // Check for extraneous token warnings
     let has_extraneous_warning = result
-        .warnings
+        .preproc_warnings
         .iter()
         .any(|w| w.reason.to_string().contains("extra tokens"));
     assert!(

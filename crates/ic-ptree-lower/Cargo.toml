@@ -42,6 +42,6 @@ ic-ptree = { path = "../ic-ptree" }
 ic-vfs = { path = "../ic-vfs" }
 
 [dev-dependencies]
-ic-parse = { path = "../ic-parse" }
+ic-parse = { path = "../ic-parse", package = "ic-parse" }
 ic-preproc = { path = "../ic-preproc" }
 ic-syntax = { path = "../ic-syntax" }

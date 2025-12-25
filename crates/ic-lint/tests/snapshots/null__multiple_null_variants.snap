@@ -7,7 +7,7 @@ warning[null-variant]: `null` variants are non-standard
    │
  2 │         union MultiNull switch(short) {
  3 │             case 0: null;
-   ·                     ^^^^^ `null` is not standard
+   ·                     ^^^^ `null` is not standard
  4 │             case 1: long value;
  5 │             case 2: null;
    └──
@@ -19,7 +19,7 @@ warning[null-variant]: `null` variants are non-standard
  3 │             case 0: null;
  4 │             case 1: long value;
  5 │             case 2: null;
-   ·                     ^^^^^ `null` is not standard
+   ·                     ^^^^ `null` is not standard
  6 │             default: string text;
  7 │         };
    └──

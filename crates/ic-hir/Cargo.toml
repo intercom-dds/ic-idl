@@ -47,7 +47,7 @@ ic-syntax = { path = "../ic-syntax" }
 intercom-cts.workspace = true
 
 [dev-dependencies]
-ic-parse = { path = "../ic-parse" }
+ic-parse = { path = "../ic-parse", package = "ic-parse" }
 ic-preproc = { path = "../ic-preproc" }
 ic-vfs = { path = "../ic-vfs" }
 insta = "1.45"

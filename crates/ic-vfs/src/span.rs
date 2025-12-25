@@ -57,35 +57,6 @@ pub struct Span {
     pub end: Location,
 }
 
-// This doesn't really belong here, but since we can't implement the trait in
-// `ic-parse` because of orphan rules, we have to do it here instead. Using a
-// newtype wrapper in `ic-parse` is not ideal because it's used _everywhere_.
-impl chumsky::span::Span for Span {
-    type Context = ();
-    type Offset = Location;
-
-    #[inline]
-    fn new(_: Self::Context, range: Range<Self::Offset>) -> Self {
-        Self {
-            start: range.start,
-            end: range.end,
-        }
-    }
-
-    #[inline]
-    fn context(&self) -> Self::Context {}
-
-    #[inline]
-    fn start(&self) -> Self::Offset {
-        self.start
-    }
-
-    #[inline]
-    fn end(&self) -> Self::Offset {
-        self.end
-    }
-}
-
 impl Span {
     #[must_use]
     pub fn range(&self) -> Range<usize> {

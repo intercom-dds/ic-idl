@@ -64,42 +64,61 @@ pub use generic_numeric::GenericNumeric;
 pub enum Op {
     /// Logical NOT (!)
     Not,
+
     /// Logical AND (&&)
     And,
+
     /// Logical OR (||)
     Or,
+
     /// Greater than (>)
     Gt,
+
     /// Greater than or equal (>=)
     GtEq,
+
     /// Less than (<)
     Lt,
+
     /// Less than or equal (<=)
     LtEq,
+
     /// Equality (==)
     EqEq,
+
     /// Inequality (!=)
     NotEq,
+
     /// Bitwise NOT (~)
     BitNot,
+
     /// Bitwise AND (&)
     BitAnd,
+
     /// Bitwise OR (|)
     BitOr,
+
     /// Bitwise XOR (^)
     BitXor,
+
     /// Left shift (<<)
     LShift,
+
     /// Right shift (>>)
     RShift,
+
     /// Addition (+)
     Add,
+
     /// Subtraction (-)
     Sub,
+
     /// Multiplication (*)
     Mul,
+
     /// Division (/)
     Div,
+
     /// Modulo (%)
     Mod,
 }
@@ -157,6 +176,7 @@ pub struct Ternary<T> {
 pub struct EvalConfig {
     /// How to handle arithmetic overflow
     pub overflow: OverflowBehavior,
+
     /// Maximum bit shift amount allowed
     pub max_shift: u32,
 }

@@ -153,30 +153,11 @@ interface Derived : Base {
 }
 
 #[test]
-fn test_duplicate_method_nested_interfaces() {
-    let source = r"
-interface Outer {
-    interface Inner {
-        void method();
-    };
-    
-    interface InnerDerived : Inner {
-        long method();  // Error: conflicts with Inner::method
-    };
-};
-";
-
-    let report = lint_hir(source);
-    assert!(report.errors.is_empty());
-    assert!(report.warnings.is_empty());
-}
-
-#[test]
 fn test_duplicate_method_same_interface() {
     let source = r"
 interface Test {
     void method();
-    long method();  // Should be caught by validate.rs, not this lint
+    long method();
 };
 ";
 

@@ -1,0 +1,15 @@
+---
+source: crates/ic-lint/tests/duplicate_annotations.rs
+expression: test_lint_hir(source)
+---
+error[duplicate-ann]: duplicate annotation '@MyAnn'
+   ┌ test.idl:7:2
+   │
+ 4 │ };
+ 5 │ 
+ 6 │ @MyAnn(1)
+ 7 │ @MyAnn(2)
+   ·  ^^^^^ duplicate annotation
+ 8 │ struct Foo {
+ 9 │     long field;
+   └──

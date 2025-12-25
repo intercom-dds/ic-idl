@@ -25,1422 +25,544 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use chumsky::input::MappedInput;
-use chumsky::prelude::*;
-use ic_lexer::token::Kw;
+use ic_lexer::token::{Kind, Kw, Token};
 use ic_syntax::{
-    AnnotationAppl, AnnotationArg, AnnotationField, AnnotationMember, ArrayDeclarator, Attribute,
-    Binary, Bit, Bitfield, DeclKind, Declarator, Discriminator, Empty, Enumerator, Expr, Field,
-    Fixed, FixedType, Group, Ident, InitList, InterfaceMember, Item, Label, Literal, LiteralValue,
-    MapType, NamedExpr, Op, OpKind, Param, ParamKind, Path, Prototype, SequenceType, Span,
-    StringType, Type, Unary, UnionElement, UnionField, UnionMember, UnionNull, ValueElement,
-    ValueMember,
+    AnnotationAppl, AnnotationArg, Expr, Ident, Item, Literal, LiteralValue, Path, Span,
 };
+use ic_vfs::SourceMap;
 
-use crate::lexer::Kind;
+use crate::error::{Expected, ParseError, Result};
 
-/// Type alias for our error extra type
-pub type Extra<'a> = extra::Err<Rich<'a, Kind, Span>>;
-
-/// The mapper function type for converting token slices to the expected input format
-type TokenMapper = fn(&(Kind, Span)) -> (&Kind, &Span);
-
-/// Concrete input type for the parser - a mapped slice of tokens
-pub type TokenInput<'a> = MappedInput<'a, Kind, Span, &'a [(Kind, Span)], TokenMapper>;
-
-/// The mapper function that extracts references from token tuples
-fn token_mapper(t: &(Kind, Span)) -> (&Kind, &Span) {
-    (&t.0, &t.1)
+/// A checkpoint that can be used to rewind the parser state.
+#[derive(Clone)]
+pub struct Checkpoint {
+    pos: usize,
+    prev_span: Span,
+    pending_annotations: Vec<AnnotationAppl>,
 }
 
-/// Creates a `TokenInput` from a slice of tokens and an end-of-input span
-#[must_use]
-pub fn make_input(tokens: &[(Kind, Span)], eoi: Span) -> TokenInput<'_> {
-    tokens.map(eoi, token_mapper as TokenMapper)
+/// A recursive descent parser for IDL.
+pub struct Parser<'a> {
+    /// The token stream.
+    tokens: Vec<Token>,
+
+    /// Current position in the token stream.
+    pos: usize,
+
+    /// Annotations accumulated during trivia skimming.
+    pub pending_annotations: Vec<AnnotationAppl>,
+
+    /// Span of the previously consumed token.
+    pub prev_span: Span,
+
+    /// Source map for looking up token text.
+    source: &'a SourceMap,
+
+    /// Orphaned annotations that couldn't be attached to any construct.
+    orphaned_annotations: Vec<AnnotationAppl>,
+
+    /// Errors that occurred while parsing annotations.
+    annotation_errors: Vec<ParseError>,
 }
 
-/// Extension trait for parsers in the IDL grammar providing method-style combinators
-pub trait IdlParser<'a, T>:
-    chumsky::Parser<'a, TokenInput<'a>, T, Extra<'a>> + Clone + Sized
-{
-    fn parenthesized(self) -> impl IdlParser<'a, T> {
-        self.delimited_by(just(Kind::LParen), just(Kind::RParen))
+impl<'a> Parser<'a> {
+    /// Creates a new parser from a token stream.
+    pub fn new(tokens: Vec<Token>, source: &'a SourceMap) -> Self {
+        Self {
+            tokens,
+            pos: 0,
+            pending_annotations: Vec::new(),
+            prev_span: Span::default(),
+            source,
+            orphaned_annotations: Vec::new(),
+            annotation_errors: Vec::new(),
+        }
     }
 
-    fn braced(self) -> impl IdlParser<'a, T> {
-        just(Kind::LBrace)
-            .ignore_then(self)
-            .then_ignore(just(Kind::RBrace))
+    /// Creates a checkpoint that can be used to rewind the parser.
+    pub fn checkpoint(&self) -> Checkpoint {
+        Checkpoint {
+            pos: self.pos,
+            prev_span: self.prev_span,
+            pending_annotations: self.pending_annotations.clone(),
+        }
     }
 
-    fn annotated(self) -> impl IdlParser<'a, (Vec<AnnotationAppl>, T)> {
-        annotation_appl().repeated().collect().then(self)
+    /// Rewinds the parser to a previous checkpoint.
+    pub fn rewind(&mut self, checkpoint: Checkpoint) {
+        self.pos = checkpoint.pos;
+        self.prev_span = checkpoint.prev_span;
+        self.pending_annotations = checkpoint.pending_annotations;
     }
-}
 
-impl<'a, T, P> IdlParser<'a, T> for P where
-    P: chumsky::Parser<'a, TokenInput<'a>, T, Extra<'a>> + Clone
-{
-}
+    /// Returns the kind of the current token without skimming annotations.
+    #[inline]
+    pub fn peek_raw(&self) -> Kind {
+        self.tokens.get(self.pos).map_or(Kind::Eoi, |tok| tok.kind)
+    }
 
-fn ident<'a>() -> impl IdlParser<'a, Ident> {
-    let ident = select! { Kind::Ident(v) => v };
-    ident
-        .map_with(|name, e| Ident {
-            name,
-            span: e.span(),
+    /// Returns the current token without skimming annotations.
+    #[inline]
+    pub fn current_raw(&self) -> Token {
+        self.tokens.get(self.pos).copied().unwrap_or(Token {
+            kind: Kind::Eoi,
+            span: self.prev_span,
         })
-        .labelled("identifier")
-}
+    }
 
-fn keyword<'a>(kw: Kw) -> impl IdlParser<'a, Kind> {
-    just(Kind::Keyword(kw))
-}
+    /// Advances to the next token without skimming annotations.
+    /// Returns the consumed token.
+    #[inline]
+    pub fn advance_raw(&mut self) -> Token {
+        let tok = self.current_raw();
+        self.prev_span = tok.span;
+        if self.pos < self.tokens.len() {
+            self.pos += 1;
+        }
+        tok
+    }
 
-fn integer_literal<'a>() -> impl IdlParser<'a, Literal> {
-    let lit = select! {
-        Kind::Octal(v) => v,
-        Kind::Decimal(v) => v,
-        Kind::Hex(v) => v,
-    };
-    lit.map_with(|v, e| Literal {
-        span: e.span(),
-        value: LiteralValue::Int(v),
-    })
-}
+    /// Checks if the current token matches the given kind (without skimming).
+    #[inline]
+    pub fn at_raw(&self, kind: Kind) -> bool {
+        self.peek_raw() == kind
+    }
 
-fn floating_pt_literal<'a>() -> impl IdlParser<'a, Literal> {
-    let lit = select! { Kind::Float(v) => v };
-    lit.map_with(|v, e| Literal {
-        span: e.span(),
-        value: LiteralValue::Float(v),
-    })
-}
+    /// Returns the kind of the current token, skimming any annotations first.
+    #[inline]
+    pub fn peek(&mut self) -> Kind {
+        self.skim_annotations();
+        self.peek_raw()
+    }
 
-fn character_literal<'a>() -> impl IdlParser<'a, Literal> {
-    let lit = select! { Kind::Char(v) => v };
-    lit.map_with(|v, e| Literal {
-        span: e.span(),
-        value: LiteralValue::Char(v),
-    })
-}
+    /// Advances to the next token, skimming any annotations first.
+    /// Returns the consumed token.
+    #[inline]
+    pub fn advance(&mut self) -> Token {
+        self.skim_annotations();
+        self.advance_raw()
+    }
 
-fn string_literal<'a>() -> impl IdlParser<'a, Literal> {
-    let lit = select! { Kind::StringLit(v) => v };
-    lit.repeated()
-        .at_least(1)
-        .collect::<Vec<_>>()
-        .map_with(|strings, e| {
-            let value = strings.concat();
-            Literal {
-                span: e.span(),
-                value: LiteralValue::String(value),
+    /// Checks if the current token matches the given kind.
+    #[inline]
+    pub fn at(&mut self, kind: Kind) -> bool {
+        self.peek() == kind
+    }
+
+    /// Checks if the current token is a specific keyword.
+    #[inline]
+    pub fn at_keyword(&mut self, kw: Kw) -> bool {
+        self.peek() == Kind::Keyword(kw)
+    }
+
+    /// Consumes the current token if it matches the given kind.
+    /// Returns `true` if a token was consumed.
+    pub fn eat(&mut self, kind: Kind) -> bool {
+        if self.at(kind) {
+            self.advance();
+            true
+        } else {
+            false
+        }
+    }
+
+    /// Consumes the current token if it's a specific keyword.
+    /// Returns the span if consumed.
+    pub fn eat_keyword(&mut self, kw: Kw) -> Option<Span> {
+        if self.at_keyword(kw) {
+            Some(self.advance().span)
+        } else {
+            None
+        }
+    }
+
+    /// Expects the current token to be of the given kind.
+    /// Returns an error if it doesn't match.
+    /// Also collects orphaned annotations before terminals (`;`, `)`, `}`, `]`, `>`).
+    pub fn expect(&mut self, kind: Kind) -> Result<Token> {
+        // Collect orphaned annotations before terminals
+        if matches!(
+            kind,
+            Kind::Semi | Kind::RParen | Kind::RBrace | Kind::RBracket | Kind::Gt
+        ) {
+            self.collect_orphaned_annotations();
+        }
+
+        if self.at(kind) {
+            Ok(self.advance())
+        } else {
+            Err(self.error_expected(kind))
+        }
+    }
+
+    /// Expects the current token to be a specific keyword.
+    pub fn expect_keyword(&mut self, kw: Kw) -> Result<Token> {
+        if self.at_keyword(kw) {
+            Ok(self.advance())
+        } else {
+            Err(self.error_expected(kw))
+        }
+    }
+
+    /// Expects a semicolon and returns any trailing comments that follow it.
+    /// This is used for constructs that end with `;` and should capture trailing doc comments.
+    pub fn expect_semi(&mut self) -> Result<Vec<AnnotationAppl>> {
+        self.expect(Kind::Semi)?;
+        Ok(self.take_trailing_comments())
+    }
+
+    /// Skims annotations and comments from the token stream into the pending buffer.
+    /// Skims annotations and comments from the token stream into the pending buffer.
+    /// All comments (both leading and trailing) are collected here.
+    #[inline]
+    pub fn skim_annotations(&mut self) {
+        loop {
+            match self.peek_raw() {
+                Kind::At => match self.annotation_appl() {
+                    Ok(ann) => self.pending_annotations.push(ann),
+                    Err(e) => {
+                        self.annotation_errors.push(e);
+                        break;
+                    }
+                },
+                Kind::Comment { .. } => {
+                    let ann = self.comment_to_doc_annotation();
+                    self.pending_annotations.push(ann);
+                }
+                _ => break,
             }
-        })
-}
-
-fn lshift<'a>() -> impl IdlParser<'a, Op> {
-    just([Kind::Less, Kind::Less])
-        .labelled("<<")
-        .map_with(|_, e| Op {
-            span: e.span(),
-            kind: OpKind::Lshift,
-        })
-}
-
-fn rshift<'a>() -> impl IdlParser<'a, Op> {
-    just([Kind::Greater, Kind::Greater])
-        .labelled(">>")
-        .map_with(|_, e| Op {
-            span: e.span(),
-            kind: OpKind::Rshift,
-        })
-}
-
-fn primitive_path(name: &str, span: Span) -> Path {
-    Path {
-        leading_colons: None,
-        segments: vec![Ident {
-            name: name.to_string(),
-            span,
-        }],
+        }
     }
-}
 
-fn primitive_type(name: &str, span: Span) -> Type {
-    Type::Path(primitive_path(name, span))
-}
+    /// Collects and returns any trailing comments at the current position.
+    /// This should be called after consuming boundary tokens like `;`, `,`, or `{`.
+    pub fn take_trailing_comments(&mut self) -> Vec<AnnotationAppl> {
+        let mut comments = Vec::new();
+        while let Kind::Comment { trailing: true } = self.peek_raw() {
+            comments.push(self.comment_to_doc_annotation());
+        }
+        comments
+    }
 
-// Handles bounds for collections types
-fn bound<'a>() -> impl IdlParser<'a, Option<Expr>> {
-    just(Kind::Comma).ignore_then(bound_expr()).or_not()
-}
+    /// Converts the current comment token to a `@doc` annotation.
+    fn comment_to_doc_annotation(&mut self) -> AnnotationAppl {
+        let token = self.advance_raw();
+        let text = self.clean_comment_text(token.span);
 
-// Expression parser for bounds that allows shifts inside parentheses but not at top level
-fn bound_expr<'a>() -> impl IdlParser<'a, Expr> {
-    expr_with_ops(false)
-}
+        AnnotationAppl {
+            ident: Path {
+                leading_colons: None,
+                segments: vec![Ident {
+                    name: "doc".to_string(),
+                    span: token.span,
+                }],
+            },
+            span: token.span,
+            args: vec![AnnotationArg {
+                ident: None,
+                span: token.span,
+                value: Expr::Literal(Literal {
+                    span: token.span,
+                    value: LiteralValue::String(text),
+                }),
+            }],
+        }
+    }
 
-// Due to the recursive nature of expressions, these are implemented in a
-// single function to avoid propagating the state everywhere.
-fn expr_with_ops<'a>(include_shift: bool) -> impl IdlParser<'a, Expr> {
-    recursive(move |primary| {
-        // Rule 16: Parenthesized expressions always allow full syntax including shifts
-        let nested = if include_shift {
-            primary
-                .clone()
-                .parenthesized()
-                .map_with(|expr, e| {
-                    Expr::Group(Box::new(Group {
-                        expr,
-                        span: e.span(),
-                    }))
-                })
-                .boxed()
+    /// Extracts and cleans the text content from a comment.
+    fn clean_comment_text(&self, span: Span) -> String {
+        let text = self.text(span);
+        let trimmed = if text.starts_with("///<") || text.starts_with("//!<") {
+            &text[4..]
+        } else if text.starts_with("///") || text.starts_with("//!") {
+            &text[3..]
+        } else if let Some(stripped) = text.strip_prefix("//") {
+            stripped
+        } else if text.starts_with("/**<") || text.starts_with("/*!<") {
+            &text[4..text.len() - 2]
+        } else if text.starts_with("/**") || text.starts_with("/*!") {
+            &text[3..text.len() - 2]
+        } else if text.starts_with("/*") {
+            &text[2..text.len() - 2]
         } else {
-            const_expr()
-                .parenthesized()
-                .map_with(|expr, e| {
-                    Expr::Group(Box::new(Group {
-                        expr,
-                        span: e.span(),
-                    }))
+            text
+        };
+        trimmed.trim().to_string()
+    }
+
+    /// Takes accumulated annotations, clearing the buffer.
+    /// This skims any pending annotations/comments first.
+    pub fn take_annotations(&mut self) -> Vec<AnnotationAppl> {
+        self.skim_annotations();
+        std::mem::take(&mut self.pending_annotations)
+    }
+
+    /// Returns the span of the current token.
+    pub fn span(&self) -> Span {
+        self.current_raw().span
+    }
+
+    /// Creates a span from a start span to an end span.
+    pub fn make_span(&self, start: Span, end: Span) -> Span {
+        let _ = self; // Keep &self for consistency with other parser methods
+        Span {
+            start: start.start,
+            end: end.end,
+        }
+    }
+
+    /// Creates a parse error for the current position.
+    pub fn error(&self, expected: Vec<Expected>) -> ParseError {
+        let tok = self.current_raw();
+        let found = if tok.kind == Kind::Eoi {
+            None
+        } else {
+            Some(tok.kind)
+        };
+        ParseError::new(tok.span, found, expected)
+    }
+
+    /// Creates a parse error expecting a single item.
+    pub fn error_expected(&self, expected: impl Into<Expected>) -> ParseError {
+        self.error(vec![expected.into()])
+    }
+
+    /// Creates a parse error with a custom message at a specific span.
+    pub fn error_message(&self, span: Span, message: &'static str) -> ParseError {
+        let _ = self; // Keep &self for consistency with other parser methods
+        ParseError::new(span, None, vec![Expected::Message(message)])
+    }
+
+    /// Collects any pending annotations that have no construct to attach to.
+    pub fn collect_orphaned_annotations(&mut self) {
+        self.orphaned_annotations
+            .extend(std::mem::take(&mut self.pending_annotations));
+    }
+
+    /// Returns the source text for a span.
+    pub fn text(&self, span: Span) -> &str {
+        let src = self.source.source_str(span.start.file_id);
+        &src[span.range()]
+    }
+
+    /// Peeks at the nth token ahead (0 = current token) without skimming.
+    #[inline]
+    pub(super) fn peek_nth_raw(&self, n: usize) -> Kind {
+        self.tokens
+            .get(self.pos + n)
+            .map_or(Kind::Eoi, |tok| tok.kind)
+    }
+
+    /// Parses an identifier.
+    pub fn ident(&mut self) -> Result<Ident> {
+        self.skim_annotations();
+        let tok = self.current_raw();
+        if tok.kind == Kind::Ident {
+            self.advance_raw();
+            Ok(Ident {
+                name: self.text(tok.span).to_owned(),
+                span: tok.span,
+            })
+        } else {
+            Err(self.error_expected("identifier"))
+        }
+    }
+
+    /// Parses an identifier, allowing keywords (for annotation names).
+    pub fn ident_or_keyword(&mut self) -> Result<Ident> {
+        self.skim_annotations();
+        let tok = self.current_raw();
+        match tok.kind {
+            Kind::Ident | Kind::Keyword(_) => {
+                self.advance_raw();
+                Ok(Ident {
+                    name: self.text(tok.span).to_owned(),
+                    span: tok.span,
                 })
-                .boxed()
+            }
+            _ => Err(self.error_expected("identifier")),
+        }
+    }
+
+    /// Parses a scoped name (e.g., `Foo`, `::Foo::Bar`).
+    pub fn scoped_name(&mut self) -> Result<Path> {
+        let leading_colons = if self.eat(Kind::DColon) {
+            Some(self.prev_span)
+        } else {
+            None
         };
 
-        let lit = literal().map(Expr::Literal);
-        let scoped = scoped_name().map(Expr::Path);
-        let expr = choice((scoped, lit, nested));
+        let mut segments = vec![self.ident()?];
+        while self.eat(Kind::DColon) {
+            segments.push(self.ident()?);
+        }
 
-        // Rule 14: Unary expressions
-        let expr = unary_operator().or_not().then(expr).map(to_unary);
-
-        // Rule 13: Multiplication, division and modulus all have the same precedence
-        let expr = binary_op(
-            expr,
-            choice((
-                operator(Kind::Star, OpKind::Multiply),
-                operator(Kind::Slash, OpKind::Divide),
-                operator(Kind::Modulo, OpKind::Modulo),
-            )),
-        );
-
-        // Rule 12: Addition and subtraction have equal precedence
-        let expr = binary_op(
-            expr,
-            choice((
-                operator(Kind::Plus, OpKind::Add),
-                operator(Kind::Minus, OpKind::Sub),
-            )),
-        );
-
-        // Rule 11: Bitwise shift operations have equal precedence
-        let expr = if include_shift {
-            binary_op(expr, choice((lshift(), rshift()))).boxed()
-        } else {
-            expr.boxed()
-        };
-
-        // Rule 10: Bitwise AND
-        let expr = binary_op(expr, operator(Kind::BitAnd, OpKind::And));
-        // Rule 9: Bitwise XOR
-        let expr = binary_op(expr, operator(Kind::BitXor, OpKind::Xor));
-        // Rule 8: Bitwise OR
-        binary_op(expr, operator(Kind::BitOr, OpKind::Or))
-    })
-}
-
-// Rule 1
-#[must_use]
-pub fn specification<'a>() -> impl IdlParser<'a, Vec<Item>> {
-    definition()
-        .repeated()
-        .collect()
-        .then_ignore(just(Kind::Eoi).then(end()))
-}
-
-// Rule 2 with the rule 71 and 218 extensions
-fn definition<'a>() -> impl IdlParser<'a, Item> {
-    // Semicolons are not checked here. This is a PEG parser, so it picks the
-    // first rule that matches. To prevent "struct Foo {};" from matching with
-    // `struct_forward_dcl`, we need to include the terminator in the rule.
-    recursive(|defs| {
-        let def = choice((
-            module_dcl(defs),
-            const_dcl(),
-            type_dcl(),
-            except_dcl(),
-            interface_dcl(),
-            annotation_dcl(),
-            value_dcl(),
-        ));
-
-        def.annotated().map(|(ann, item)| item.annotate(ann))
-    })
-}
-
-// Rule 3
-fn module_dcl<'a>(state: impl IdlParser<'a, Item>) -> impl IdlParser<'a, Item> {
-    let items = state.repeated().collect().braced();
-    let module_def = keyword(Kw::Module)
-        .ignore_then(ident())
-        .then(items)
-        .then_ignore(just(Kind::Semi));
-
-    module_def.map_with(|(ident, defs), e| Item::def_module(ident, defs, e.span()))
-}
-
-// Rule 4
-fn scoped_name<'a>() -> impl IdlParser<'a, Path> {
-    let leading = just(Kind::DColon).map_with(|_, e| e.span()).or_not();
-    let path = leading
-        .then(
-            ident()
-                .separated_by(just(Kind::DColon))
-                .at_least(1)
-                .collect(),
-        )
-        .boxed();
-
-    path.map(|(leading_colons, segments)| Path {
-        leading_colons,
-        segments,
-    })
-}
-
-// Parser that accepts either an identifier or a keyword which is subsequently
-// converted to an identifier.
-fn ident_or_kw<'a>() -> impl IdlParser<'a, Ident> {
-    let keyword = select! { Kind::Keyword(v) => v.to_string() }.map_with(|name, e| Ident {
-        name,
-        span: e.span(),
-    });
-
-    choice((ident(), keyword))
-}
-
-// Similar to scoped_name, but for applied annotations. This converts any
-// keywords into identifiers to handle things like "@default" and "@::default"
-fn annotation_ident<'a>() -> impl IdlParser<'a, Path> {
-    let ident = ident_or_kw();
-    let leading = just(Kind::DColon).map_with(|_, e| e.span()).or_not();
-    let path = leading
-        .then(ident.separated_by(just(Kind::DColon)).at_least(1).collect())
-        .boxed();
-
-    just(Kind::At)
-        .ignore_then(path)
-        .map(|(leading_colons, segments)| Path {
+        Ok(Path {
             leading_colons,
             segments,
         })
-}
-
-// Rule 5
-fn const_dcl<'a>() -> impl IdlParser<'a, Item> {
-    let def = keyword(Kw::Const)
-        .ignore_then(const_type())
-        .then(declarator())
-        .then_ignore(just(Kind::Eq))
-        .then(complex_const_expr())
-        .then_ignore(just(Kind::Semi))
-        .boxed();
-
-    def.map_with(|((ty, decl), val), e| Item::def_const(decl, ty, val, e.span()))
-}
-
-// InterCOM extension for complex constants
-fn complex_const_expr<'a>() -> impl IdlParser<'a, Expr> {
-    recursive(|state| {
-        let basic = const_expr();
-        let null = keyword(Kw::Null).map_with(|_, e| {
-            Expr::Literal(Literal {
-                span: e.span(),
-                value: LiteralValue::Null,
-            })
-        });
-
-        let named = just(Kind::Period)
-            .or_not()
-            .then(ident())
-            .then(just(Kind::Eq))
-            .ignore_then(state.clone());
-
-        let complex = state
-            .separated_by(just(Kind::Comma))
-            .collect::<Vec<_>>()
-            .delimited_by(just(Kind::LBrace), just(Kind::RBrace))
-            .map_with(|iter, e| {
-                Expr::InitList(InitList {
-                    values: iter
-                        .into_iter()
-                        .map(|value| NamedExpr { ident: None, value })
-                        .collect(),
-                    span: e.span(),
-                })
-            });
-
-        choice((named, null, complex, basic))
-    })
-}
-
-// Rule 6
-fn const_type<'a>() -> impl IdlParser<'a, Type> {
-    choice((
-        floating_pt_type(),
-        integer_type(),
-        template_type_spec(),
-        scoped_name().map(Type::Path),
-        fixed_pt_const_type(),
-    ))
-}
-
-// Rule 7-14, 16
-fn const_expr<'a>() -> impl IdlParser<'a, Expr> {
-    expr_with_ops(true)
-}
-
-fn to_unary((op, expr): (Option<Op>, Expr)) -> Expr {
-    if let Some(op) = op {
-        Expr::Unary(Box::new(Unary { op, expr }))
-    } else {
-        expr
     }
-}
 
-fn operator<'a>(from: Kind, to: OpKind) -> impl IdlParser<'a, Op> {
-    just(from).map_with(move |_, e| Op {
-        span: e.span(),
-        kind: to,
-    })
-}
+    /// Parses `{ ... }`, returning content and annotations before/after braces.
+    pub fn braced<T>(
+        &mut self,
+        parse_content: impl FnOnce(&mut Self) -> Result<T>,
+    ) -> Result<(T, Vec<AnnotationAppl>)> {
+        let mut annotations = self.take_annotations();
+        self.expect(Kind::LBrace)?;
+        annotations.extend(self.take_trailing_comments());
+        let content = parse_content(self)?;
+        self.expect(Kind::RBrace)?;
+        annotations.extend(self.take_annotations());
+        Ok((content, annotations))
+    }
 
-fn binary_op<'a>(
-    expr: impl IdlParser<'a, Expr> + 'a,
-    op: impl IdlParser<'a, Op> + 'a,
-) -> impl IdlParser<'a, Expr> {
-    let expr = expr.boxed();
-    expr.clone()
-        .foldl(op.then(expr).repeated(), |lhs, (op, rhs)| {
-            Expr::Binary(Box::new(Binary { lhs, op, rhs }))
-        })
-}
+    /// Parses `( ... )`, returning content and annotations before/after parens.
+    #[allow(dead_code)]
+    pub fn parenthesized<T>(
+        &mut self,
+        parse_content: impl FnOnce(&mut Self) -> Result<T>,
+    ) -> Result<(T, Vec<AnnotationAppl>)> {
+        let mut annotations = self.take_annotations();
+        self.expect(Kind::LParen)?;
+        let content = parse_content(self)?;
+        self.expect(Kind::RParen)?;
+        annotations.extend(self.take_annotations());
+        Ok((content, annotations))
+    }
 
-// Rule 15
-fn unary_operator<'a>() -> impl IdlParser<'a, Op> {
-    choice((
-        operator(Kind::Minus, OpKind::Sub),
-        operator(Kind::Plus, OpKind::Add),
-        operator(Kind::BitNot, OpKind::Not),
-    ))
-}
+    /// Parses `< ... >`, returning content and annotations before/after brackets.
+    #[allow(dead_code)]
+    pub fn angle_bracketed<T>(
+        &mut self,
+        parse_content: impl FnOnce(&mut Self) -> Result<T>,
+    ) -> Result<(T, Vec<AnnotationAppl>)> {
+        let mut annotations = self.take_annotations();
+        self.expect(Kind::Lt)?;
+        let content = parse_content(self)?;
+        self.expect(Kind::Gt)?;
+        annotations.extend(self.take_annotations());
+        Ok((content, annotations))
+    }
 
-// Rule 17
-fn literal<'a>() -> impl IdlParser<'a, Literal> {
-    choice((
-        integer_literal(),
-        floating_pt_literal(),
-        character_literal(),
-        boolean_literal(),
-        string_literal(),
-    ))
-}
+    // Rule 1
+    // <specification> ::= <definition>+
+    /// Parses the entire specification.
+    /// Returns the parsed items, errors, and orphaned annotations.
+    pub fn parse(mut self) -> (Vec<Item>, Vec<ParseError>, Vec<AnnotationAppl>) {
+        let mut items = Vec::new();
+        let mut errors = Vec::new();
 
-// Rule 18
-fn boolean_literal<'a>() -> impl IdlParser<'a, Literal> {
-    let val = select! {
-        Kind::Keyword(Kw::True) => true,
-        Kind::Keyword(Kw::False) => false,
-    };
-
-    val.map_with(|value, e| Literal {
-        span: e.span(),
-        value: LiteralValue::Bool(value),
-    })
-}
-
-// Rule 19
-fn positive_int_const<'a>() -> impl IdlParser<'a, Expr> {
-    const_expr()
-}
-
-// Rule 20
-fn type_dcl<'a>() -> impl IdlParser<'a, Item> {
-    choice((
-        constr_type_dcl(),
-        typedef_dcl(),
-        native_dcl(),
-        bitset_dcl(),
-        bitmask_dcl(),
-    ))
-    .boxed()
-}
-
-// Rule 21 with the rule 216 extension
-fn type_spec<'a>() -> impl IdlParser<'a, Type> {
-    choice((simple_type_spec(), template_type_spec()))
-}
-
-// Rule 22
-fn simple_type_spec<'a>() -> impl IdlParser<'a, Type> {
-    choice((base_type_spec(), scoped_name().map(Type::Path)))
-}
-
-// Rule 23 with the rule 69 extension
-// Does not include `any_type` because we treat it as an ordinary identifier
-fn base_type_spec<'a>() -> impl IdlParser<'a, Type> {
-    choice((
-        floating_pt_type(),
-        integer_type(),
-        scoped_name().map(Type::Path),
-    ))
-}
-
-// Rule 24
-fn floating_pt_type<'a>() -> impl IdlParser<'a, Type> {
-    choice((
-        keyword(Kw::Float).map_with(|_, e| primitive_type("float", e.span())),
-        keyword(Kw::Double).map_with(|_, e| primitive_type("double", e.span())),
-        keyword(Kw::Long)
-            .then(keyword(Kw::Double))
-            .map_with(|_, e| primitive_type("long double", e.span())),
-    ))
-}
-
-// Rule 25
-fn integer_type<'a>() -> impl IdlParser<'a, Type> {
-    choice((signed_int(), unsigned_int()))
-}
-
-// Rule 26
-fn signed_int<'a>() -> impl IdlParser<'a, Type> {
-    choice((signed_long_int(), signed_short_int()))
-}
-
-// Rule 27
-fn signed_short_int<'a>() -> impl IdlParser<'a, Type> {
-    keyword(Kw::Short).map_with(|_, e| primitive_type("int16", e.span()))
-}
-
-// Rule 28, 29
-//
-// Merged to provide better error messages.
-fn signed_long_int<'a>() -> impl IdlParser<'a, Type> {
-    keyword(Kw::Long)
-        .ignore_then(keyword(Kw::Long).or_not())
-        .map_with(|v, e| {
-            if v.is_some() {
-                primitive_type("int64", e.span())
-            } else {
-                primitive_type("int32", e.span())
-            }
-        })
-}
-
-// Rule 30, 31, 32, 33
-//
-// Merged to provide better error messages.
-fn unsigned_int<'a>() -> impl IdlParser<'a, Type> {
-    keyword(Kw::Unsigned).ignore_then(choice((
-        keyword(Kw::Long)
-            .ignore_then(keyword(Kw::Long).or_not())
-            .map_with(|v, e| {
-                if v.is_some() {
-                    primitive_type("uint64", e.span())
-                } else {
-                    primitive_type("uint32", e.span())
+        while !self.at(Kind::Eoi) {
+            match self.definition() {
+                Ok(item) => items.push(item),
+                Err(e) => {
+                    errors.push(e);
+                    self.recover_to_next_definition();
                 }
-            }),
-        keyword(Kw::Short).map_with(|_, e| primitive_type("uint16", e.span())),
-    )))
-}
-
-// Rule 38 with the rule 197 extension
-fn template_type_spec<'a>() -> impl IdlParser<'a, Type> {
-    recursive(|state| {
-        choice((
-            string_type(),
-            wide_string_type(),
-            fixed_pt_type(),
-            sequence_type(state.clone()),
-            map_type(state),
-        ))
-    })
-}
-
-// Not standard, but we need this rule here since `type_spec` is recursive.
-// Without it, `sequence_type` will call `type_spec` without propagating the
-// recursive state and we'll end up with a stack overflow.
-fn sequence_element_type<'a>(state: impl IdlParser<'a, Type>) -> impl IdlParser<'a, Type> {
-    choice((state, simple_type_spec()))
-}
-
-// Rule 39
-fn sequence_type<'a>(state: impl IdlParser<'a, Type>) -> impl IdlParser<'a, Type> {
-    let inner = sequence_element_type(state)
-        .annotated()
-        .then(bound())
-        .delimited_by(just(Kind::Less), just(Kind::Greater));
-
-    let seq = keyword(Kw::Sequence).ignore_then(inner);
-    seq.map_with(|((annotations, elem), bound), e| {
-        Type::Sequence(SequenceType {
-            ty: Box::new(elem),
-            bound,
-            span: e.span(),
-            annotations,
-        })
-    })
-}
-
-// Rule 40
-fn string_type<'a>() -> impl IdlParser<'a, Type> {
-    let bound = positive_int_const()
-        .delimited_by(just(Kind::Less), just(Kind::Greater))
-        .or_not();
-
-    keyword(Kw::String).ignore_then(bound).map_with(|bound, e| {
-        Type::String(StringType {
-            wide: false,
-            bound,
-            span: e.span(),
-        })
-    })
-}
-
-// Rule 41
-fn wide_string_type<'a>() -> impl IdlParser<'a, Type> {
-    let bound = positive_int_const()
-        .delimited_by(just(Kind::Less), just(Kind::Greater))
-        .or_not();
-
-    keyword(Kw::WString)
-        .ignore_then(bound)
-        .map_with(|bound, e| {
-            Type::String(StringType {
-                wide: true,
-                bound,
-                span: e.span(),
-            })
-        })
-}
-
-// Rule 42
-fn fixed_pt_type<'a>() -> impl IdlParser<'a, Type> {
-    let body = positive_int_const()
-        .then_ignore(just(Kind::Comma))
-        .then(positive_int_const())
-        .delimited_by(just(Kind::Less), just(Kind::Greater));
-
-    keyword(Kw::Fixed)
-        .ignore_then(body)
-        .map_with(|(tot, frac), e| {
-            Type::Fixed(FixedType {
-                span: e.span(),
-                bounds: Some(Fixed {
-                    total: tot,
-                    fractional: frac,
-                }),
-            })
-        })
-}
-
-// Rule 43
-fn fixed_pt_const_type<'a>() -> impl IdlParser<'a, Type> {
-    keyword(Kw::Fixed).map_with(|_, e| {
-        Type::Fixed(FixedType {
-            span: e.span(),
-            bounds: None,
-        })
-    })
-}
-
-// Rule 44
-fn constr_type_dcl<'a>() -> impl IdlParser<'a, Item> {
-    choice((struct_dcl(), union_dcl(), enum_dcl()))
-}
-
-// Rule 45
-fn struct_dcl<'a>() -> impl IdlParser<'a, Item> {
-    choice((struct_forward_dcl(), struct_def()))
-}
-
-// Rule 46
-fn struct_def<'a>() -> impl IdlParser<'a, Item> {
-    let fields = member().repeated().collect().braced();
-    let parent = just(Kind::Colon).ignore_then(scoped_name());
-    let struct_def = keyword(Kw::Struct)
-        .ignore_then(ident())
-        .then(parent.or_not())
-        .then(fields)
-        .then_ignore(just(Kind::Semi));
-
-    struct_def.map_with(|((ident, parent), members), e| {
-        Item::def_struct(ident, members, parent, e.span())
-    })
-}
-
-// Rule 47
-fn member<'a>() -> impl IdlParser<'a, Field> {
-    let field = type_spec()
-        .then(declarators())
-        .then_ignore(just(Kind::Semi))
-        .annotated();
-
-    field.map_with(|(annotations, (ty, names)), e| Field {
-        span: e.span(),
-        annotations,
-        names,
-        ty,
-    })
-}
-
-// Rule 48
-fn struct_forward_dcl<'a>() -> impl IdlParser<'a, Item> {
-    let decl = keyword(Kw::Struct)
-        .ignore_then(ident())
-        .then_ignore(just(Kind::Semi));
-
-    decl.map_with(|name, e| Item::decl(name, DeclKind::Struct, e.span()))
-}
-
-// Rule 49
-fn union_dcl<'a>() -> impl IdlParser<'a, Item> {
-    choice((union_def(), union_forward_dcl()))
-}
-
-// Rule 50
-fn union_def<'a>() -> impl IdlParser<'a, Item> {
-    // `switch(foo)`
-    let disc = keyword(Kw::Switch)
-        .ignore_then(switch_type_spec().annotated().parenthesized())
-        .map(|(annotations, ty)| Discriminator { annotations, ty });
-
-    // Case labels + members
-    let body = switch_body().braced();
-
-    let def = keyword(Kw::Union)
-        .ignore_then(ident())
-        .then(disc)
-        .then(body)
-        .then_ignore(just(Kind::Semi));
-
-    def.map_with(|((ident, disc), cases), e| Item::def_union(ident, disc, cases, e.span()))
-}
-
-// Rule 51
-fn switch_type_spec<'a>() -> impl IdlParser<'a, Type> {
-    // Minor deviation: we don't treat `boolean` or `char` as keywords, so we
-    // instead rely on `scoped_name` to resolve to said types. We restrict what
-    // types are allowed as a discriminator during linting.
-    choice((integer_type(), scoped_name().map(Type::Path)))
-}
-
-// Rule 52
-fn switch_body<'a>() -> impl IdlParser<'a, Vec<UnionField>> {
-    case().repeated().collect()
-}
-
-// Rule 53
-fn case<'a>() -> impl IdlParser<'a, UnionField> {
-    let def = case_label()
-        .repeated()
-        .at_least(1)
-        .collect()
-        .then(element_spec().annotated());
-
-    def.map_with(|(labels, (annotations, field)), e| UnionField {
-        span: e.span(),
-        annotations,
-        labels,
-        field,
-    })
-}
-
-// Rule 54
-fn case_label<'a>() -> impl IdlParser<'a, Label> {
-    let case = keyword(Kw::Case)
-        .ignore_then(const_expr())
-        .map(Label::Case)
-        .then_ignore(just(Kind::Colon));
-
-    let default = keyword(Kw::Default)
-        .to(Label::Default(Empty {}))
-        .then_ignore(just(Kind::Colon));
-
-    choice((case, default))
-}
-
-// Rule 55
-fn element_spec<'a>() -> impl IdlParser<'a, UnionElement> {
-    // InterCOM extension that lets you define an "empty" member.
-    let null = keyword(Kw::Null)
-        .then_ignore(just(Kind::Semi))
-        .map_with(|_, e| UnionElement::Null(UnionNull { span: e.span() }));
-
-    let ty = type_spec()
-        .then(declarator())
-        .then_ignore(just(Kind::Semi))
-        .map(|(ty, decl)| {
-            UnionElement::Member(UnionMember {
-                ty: Box::new(ty),
-                decl,
-            })
-        });
-
-    choice((ty, null))
-}
-
-// Rule 56
-fn union_forward_dcl<'a>() -> impl IdlParser<'a, Item> {
-    let decl = keyword(Kw::Union)
-        .ignore_then(ident())
-        .then_ignore(just(Kind::Semi));
-
-    decl.map_with(|name, e| Item::decl(name, DeclKind::Union, e.span()))
-}
-
-// Rule 57
-fn enum_dcl<'a>() -> impl IdlParser<'a, Item> {
-    let enumerators = enumerator()
-        .separated_by(just(Kind::Comma))
-        .collect()
-        .braced();
-    let def = keyword(Kw::Enum)
-        .ignore_then(ident())
-        .then(enumerators)
-        .then_ignore(just(Kind::Semi));
-
-    def.map_with(|(name, fields), e| Item::def_enum(name, fields, e.span()))
-}
-
-// Rule 58
-fn enumerator<'a>() -> impl IdlParser<'a, Enumerator> {
-    // Grammar extension for `MY_ENUMERATOR = 1`
-    let value = just(Kind::Eq).ignore_then(const_expr()).or_not();
-    let def = ident().then(value).annotated();
-
-    def.map(|(annotations, (ident, value))| Enumerator {
-        ident,
-        annotations,
-        value,
-    })
-}
-
-// Rule 59
-fn array_declarator<'a>() -> impl IdlParser<'a, Declarator> {
-    let bounds = fixed_array_size().repeated().at_least(1).collect();
-    ident()
-        .then(bounds)
-        .map(|(ident, bounds)| Declarator::Array(ArrayDeclarator { ident, bounds }))
-}
-
-// Rule 60
-fn fixed_array_size<'a>() -> impl IdlParser<'a, Expr> {
-    positive_int_const().delimited_by(just(Kind::LBracket), just(Kind::RBracket))
-}
-
-// Rule 61
-fn native_dcl<'a>() -> impl IdlParser<'a, Item> {
-    keyword(Kw::Native)
-        .ignore_then(ident())
-        .then_ignore(just(Kind::Semi))
-        .map_with(|name, e| Item::decl(name, DeclKind::Native, e.span()))
-}
-
-// Rule 62
-fn simple_declarator<'a>() -> impl IdlParser<'a, Declarator> {
-    ident().map(Declarator::Simple)
-}
-
-// Rule 63
-fn typedef_dcl<'a>() -> impl IdlParser<'a, Item> {
-    let def = keyword(Kw::Typedef)
-        .ignore_then(type_declarator())
-        .then_ignore(just(Kind::Semi));
-
-    def.map_with(|(ty, decls), e| Item::typedef(decls, ty, e.span()))
-}
-
-// Rule 64
-fn type_declarator<'a>() -> impl IdlParser<'a, (Type, Vec<Declarator>)> {
-    // `constr_type_dcl` is deliberately omitted as anonymous structs, unions,
-    // enums and bitmasks are not supported.
-    let ty = choice((simple_type_spec(), template_type_spec()));
-    ty.then(any_declarators())
-}
-
-// Rule 65
-fn any_declarators<'a>() -> impl IdlParser<'a, Vec<Declarator>> {
-    any_declarator()
-        .separated_by(just(Kind::Comma))
-        .at_least(1)
-        .collect()
-}
-
-// Rule 66
-fn any_declarator<'a>() -> impl IdlParser<'a, Declarator> {
-    choice((array_declarator(), simple_declarator()))
-}
-
-// Rule 67
-fn declarators<'a>() -> impl IdlParser<'a, Vec<Declarator>> {
-    declarator()
-        .separated_by(just(Kind::Comma))
-        .at_least(1)
-        .collect()
-}
-
-// Rule 68 with the rule 217 extension
-fn declarator<'a>() -> impl IdlParser<'a, Declarator> {
-    choice((array_declarator(), simple_declarator()))
-}
-
-// Rule 72
-fn except_dcl<'a>() -> impl IdlParser<'a, Item> {
-    let body = member().repeated().collect().braced();
-    keyword(Kw::Exception)
-        .ignore_then(ident())
-        .then(body)
-        .then_ignore(just(Kind::Semi))
-        .map_with(|(i, mem), e| Item::def_exception(i, mem, e.span()))
-}
-
-// Rule 73
-fn interface_dcl<'a>() -> impl IdlParser<'a, Item> {
-    choice((interface_def(), interface_forward_dcl()))
-}
-
-// Rule 74
-fn interface_def<'a>() -> impl IdlParser<'a, Item> {
-    let body = interface_body().braced();
-    interface_header()
-        .then(body)
-        .then_ignore(just(Kind::Semi))
-        .map_with(|(((local, name), inherits), protos), e| {
-            Item::interface(name, local, inherits, protos, e.span())
-        })
-}
-
-// Rule 75
-fn interface_forward_dcl<'a>() -> impl IdlParser<'a, Item> {
-    let def = interface_kind()
-        .ignore_then(ident())
-        .then_ignore(just(Kind::Semi));
-
-    def.map_with(|ident, e| Item::decl(ident, DeclKind::Interface, e.span()))
-}
-
-// Rule 76
-fn interface_header<'a>() -> impl IdlParser<'a, ((Option<Span>, Ident), Vec<Path>)> {
-    interface_kind().then(ident()).then(
-        interface_inheritance_spec()
-            .or_not()
-            .map(Option::unwrap_or_default),
-    )
-}
-
-// Rule 77 with the rule 121 extension
-fn interface_kind<'a>() -> impl IdlParser<'a, Option<Span>> {
-    keyword(Kw::Local)
-        .map_with(|_, e| e.span())
-        .or_not()
-        .then_ignore(keyword(Kw::Interface))
-}
-
-// Rule 78
-fn interface_inheritance_spec<'a>() -> impl IdlParser<'a, Vec<Path>> {
-    just(Kind::Colon).ignore_then(interface_name().separated_by(just(Kind::Comma)).collect())
-}
-
-// Rule 79
-fn interface_name<'a>() -> impl IdlParser<'a, Path> {
-    scoped_name()
-}
-
-// Rule 80
-fn interface_body<'a>() -> impl IdlParser<'a, Vec<InterfaceMember>> {
-    export().repeated().collect()
-}
-
-// Rule 81 with the rule 97 extension
-fn export<'a>() -> impl IdlParser<'a, InterfaceMember> {
-    choice((
-        op_dcl().map(InterfaceMember::Proto),
-        attr_dcl().map(InterfaceMember::Attr),
-        type_dcl().map(InterfaceMember::Item),
-        const_dcl().map(InterfaceMember::Item),
-        except_dcl().map(InterfaceMember::Item),
-        op_oneway_dcl().map(InterfaceMember::Proto),
-    ))
-    .boxed()
-}
-
-// Rule 82
-fn op_dcl<'a>() -> impl IdlParser<'a, Prototype> {
-    let params = parameter_dcls().parenthesized();
-    let proto = op_type_spec()
-        .then(ident())
-        .then(params)
-        .then(raises_expr().or_not())
-        .annotated()
-        .then_ignore(just(Kind::Semi));
-
-    proto.map(
-        |(_annotations, (((ret, ident), params), raises))| Prototype {
-            ident,
-            params,
-            raises: raises.unwrap_or_default(),
-            oneway: None,
-            ret,
-        },
-    )
-}
-
-// Rule 83
-fn op_type_spec<'a>() -> impl IdlParser<'a, Type> {
-    // Minor deviation: we do not treat `void` as a keyword, so we only use
-    // `type_spec` here.
-    type_spec()
-}
-
-// Rule 84
-fn parameter_dcls<'a>() -> impl IdlParser<'a, Vec<Param>> {
-    param_dcl().separated_by(just(Kind::Comma)).collect()
-}
-
-// Rule 85
-fn param_dcl<'a>() -> impl IdlParser<'a, Param> {
-    // Minor deviation: we allow arrays as parameters. The standard doesn't
-    // specify this, but it's likely an oversight.
-    let param = param_attribute()
-        .or_not()
-        .then(type_spec())
-        .then(any_declarator());
-
-    param.map(|((kind, ty), decl)| Param { decl, ty, kind })
-}
-
-// Rule 86
-fn param_attribute<'a>() -> impl IdlParser<'a, ParamKind> {
-    choice((
-        keyword(Kw::In).to(ParamKind::In),
-        keyword(Kw::Out).to(ParamKind::Out),
-        keyword(Kw::InOut).to(ParamKind::Inout),
-    ))
-}
-
-// Rule 87
-fn raises_expr<'a>() -> impl IdlParser<'a, Vec<Path>> {
-    let exceptions = scoped_name()
-        .separated_by(just(Kind::Comma))
-        .at_least(1)
-        .collect()
-        .parenthesized();
-
-    keyword(Kw::Raises).ignore_then(exceptions)
-}
-
-// Rule 88
-fn attr_dcl<'a>() -> impl IdlParser<'a, Attribute> {
-    choice((readonly_attr_spec(), attr_spec()))
-}
-
-// Rule 89
-fn readonly_attr_spec<'a>() -> impl IdlParser<'a, Attribute> {
-    let def = keyword(Kw::ReadOnly)
-        .map_with(|_, e| e.span())
-        .then_ignore(keyword(Kw::Attribute))
-        .then(type_spec())
-        .then(readonly_attr_declarator())
-        .then_ignore(just(Kind::Semi));
-
-    def.map(|((readonly, ty), (decl, getraises))| Attribute {
-        decl,
-        ty,
-        readonly: Some(readonly),
-        getraises,
-        setraises: vec![],
-    })
-}
-
-// Rule 90
-fn readonly_attr_declarator<'a>() -> impl IdlParser<'a, (Vec<Declarator>, Vec<Path>)> {
-    choice((
-        simple_declarator()
-            .then(raises_expr())
-            .map(|(decl, raises)| (vec![decl], raises)),
-        simple_declarator()
-            .separated_by(just(Kind::Comma))
-            .at_least(1)
-            .collect()
-            .map(|v| (v, vec![])),
-    ))
-}
-
-// Rule 91
-fn attr_spec<'a>() -> impl IdlParser<'a, Attribute> {
-    let def = keyword(Kw::Attribute)
-        .ignore_then(type_spec())
-        .then(attr_declarator())
-        .then_ignore(just(Kind::Semi));
-
-    def.map(|(ty, (decl, raises))| Attribute {
-        decl,
-        getraises: raises.get,
-        setraises: raises.set,
-        ty,
-        readonly: None,
-    })
-}
-
-#[derive(Default)]
-struct Raises {
-    set: Vec<Path>,
-    get: Vec<Path>,
-}
-
-// Rule 92
-fn attr_declarator<'a>() -> impl IdlParser<'a, (Vec<Declarator>, Raises)> {
-    choice((
-        simple_declarator()
-            .then(attr_raises_expr())
-            .map(|(decl, raises)| (vec![decl], raises)),
-        simple_declarator()
-            .separated_by(just(Kind::Comma))
-            .at_least(1)
-            .collect()
-            .map(|decl| (decl, Raises::default())),
-    ))
-}
-
-// Rule 93
-fn attr_raises_expr<'a>() -> impl IdlParser<'a, Raises> {
-    choice((
-        get_excep_expr()
-            .then(set_excep_expr().or_not())
-            .map(|(get, set)| Raises {
-                get,
-                set: set.unwrap_or_default(),
-            }),
-        set_excep_expr().map(|setraises| Raises {
-            get: vec![],
-            set: setraises,
-        }),
-    ))
-}
-
-// Rule 94
-fn get_excep_expr<'a>() -> impl IdlParser<'a, Vec<Path>> {
-    keyword(Kw::GetRaises).ignore_then(exception_list())
-}
-
-// Rule 95
-fn set_excep_expr<'a>() -> impl IdlParser<'a, Vec<Path>> {
-    keyword(Kw::SetRaises).ignore_then(exception_list())
-}
-
-// Rule 96
-fn exception_list<'a>() -> impl IdlParser<'a, Vec<Path>> {
-    scoped_name()
-        .separated_by(just(Kind::Comma))
-        .at_least(1)
-        .collect()
-        .parenthesized()
-}
-
-// Rule 99
-fn value_dcl<'a>() -> impl IdlParser<'a, Item> {
-    choice((value_forward_dcl(), value_def()))
-}
-
-// Rule 100
-fn value_def<'a>() -> impl IdlParser<'a, Item> {
-    let fields = value_element().repeated().collect().braced();
-    let def = value_header().then(fields).then_ignore(just(Kind::Semi));
-    def.map_with(|((ident, (inherits, supports)), elements), e| {
-        Item::valuetype(ident, elements, inherits, supports, e.span())
-    })
-}
-
-// Rule 101
-fn value_header<'a>() -> impl IdlParser<'a, (Ident, (Option<Path>, Option<Path>))> {
-    value_kind()
-        .ignore_then(ident())
-        .then(value_inheritance_spec())
-}
-
-// Rule 102
-fn value_kind<'a>() -> impl IdlParser<'a, Kind> {
-    keyword(Kw::Valuetype)
-}
-
-// Rule 103
-fn value_inheritance_spec<'a>() -> impl IdlParser<'a, (Option<Path>, Option<Path>)> {
-    let inherit = just(Kind::Colon).ignore_then(value_name()).or_not();
-    let supports = keyword(Kw::Supports).ignore_then(interface_name()).or_not();
-    inherit.then(supports)
-}
-
-// Rule 104
-fn value_name<'a>() -> impl IdlParser<'a, Path> {
-    scoped_name()
-}
-
-// Rule 105
-fn value_element<'a>() -> impl IdlParser<'a, ValueElement> {
-    choice((
-        export().map(|export| match export {
-            InterfaceMember::Proto(proto) => ValueElement::Proto(proto),
-            InterfaceMember::Item(item) => ValueElement::Item(item),
-            InterfaceMember::Attr(attr) => ValueElement::Attr(attr),
-        }),
-        state_member().map(ValueElement::State),
-    ))
-}
-
-// Rule 106
-fn state_member<'a>() -> impl IdlParser<'a, ValueMember> {
-    let visibility = choice((keyword(Kw::Public).to(true), keyword(Kw::Private).to(false)))
-        .map_with(|is_public, e| (is_public, e.span()));
-
-    visibility
-        .then(type_spec())
-        .then(declarators())
-        .then_ignore(just(Kind::Semi))
-        .map(|(((is_public, visibility), ty), decl)| ValueMember {
-            decl,
-            ty,
-            visibility,
-            is_public,
-        })
-}
-
-// Rule 110
-fn value_forward_dcl<'a>() -> impl IdlParser<'a, Item> {
-    let def = value_kind()
-        .ignore_then(ident())
-        .then_ignore(just(Kind::Semi));
-
-    def.map_with(|ident, e| Item::decl(ident, DeclKind::Valuetype, e.span()))
-}
-
-// Rule 119, 120, 121
-//
-// We reuse `op_dcl` here and instead perform some additional validation in
-// later stages. There's a `@oneway` annotation that poses the same
-// restrictions, so there's really no need for the parser to enforce them.
-fn op_oneway_dcl<'a>() -> impl IdlParser<'a, Prototype> {
-    keyword(Kw::Oneway)
-        .map_with(|_, e| e.span())
-        .then(op_dcl())
-        .map(|(span, mut proto)| {
-            proto.oneway = Some(span);
-            proto
-        })
-}
-
-// Rule 199
-fn map_type<'a>(state: impl IdlParser<'a, Type>) -> impl IdlParser<'a, Type> {
-    let key = map_type_spec(state.clone()).annotated();
-    let value = map_type_spec(state).annotated();
-    let inner = key.then_ignore(just(Kind::Comma)).then(value).then(bound());
-    let def =
-        keyword(Kw::Map).ignore_then(inner.delimited_by(just(Kind::Less), just(Kind::Greater)));
-
-    def.map_with(
-        |(((key_annotations, key), (value_annotations, value)), bound), e| {
-            Type::Map(MapType {
-                key: Box::new(key),
-                value: Box::new(value),
-                bound,
-                span: e.span(),
-                key_annotations,
-                value_annotations,
-            })
-        },
-    )
-}
-
-// Types that can appear in maps as either the key or element type.
-// We can't use `type_spec` directly because we need to propagate the state.
-fn map_type_spec<'a>(state: impl IdlParser<'a, Type>) -> impl IdlParser<'a, Type> {
-    choice((state, simple_type_spec()))
-}
-
-// Rule 200
-fn bitset_dcl<'a>() -> impl IdlParser<'a, Item> {
-    let inherit = just(Kind::Colon).ignore_then(value_name()).or_not();
-    let body = bitfield().repeated().collect().braced();
-    let def = keyword(Kw::Bitset)
-        .ignore_then(ident())
-        .then(inherit)
-        .then(body)
-        .then_ignore(just(Kind::Semi));
-
-    def.map_with(|((ident, parent), fields), e| Item::bitset(ident, parent, fields, e.span()))
-}
-
-// Rule 201
-fn bitfield<'a>() -> impl IdlParser<'a, Bitfield> {
-    let def = bitfield_spec()
-        .then(ident())
-        .then_ignore(just(Kind::Semi))
-        .annotated();
-
-    def.map_with(|(annotations, ((size, ty), ident)), e| Bitfield {
-        span: e.span(),
-        annotations,
-        ident,
-        size,
-        ty,
-    })
-}
-
-// Rule 202
-fn bitfield_spec<'a>() -> impl IdlParser<'a, (Expr, Option<Type>)> {
-    keyword(Kw::Bitfield).ignore_then(
-        positive_int_const()
-            .then(just(Kind::Comma).ignore_then(destination_type()).or_not())
-            .delimited_by(just(Kind::Less), just(Kind::Greater)),
-    )
-}
-
-// Rule 203
-fn destination_type<'a>() -> impl IdlParser<'a, Type> {
-    // Minor deviation: we don't treat all primitive types as keywords, so we
-    // instead rely on `scoped_name` and instead restrict the types later
-    // during linting.
-    choice((integer_type(), scoped_name().map(Type::Path)))
-}
-
-// Rule 204
-fn bitmask_dcl<'a>() -> impl IdlParser<'a, Item> {
-    let body = bit_value()
-        .separated_by(just(Kind::Comma))
-        .collect()
-        .braced();
-    let def = keyword(Kw::Bitmask)
-        .ignore_then(ident())
-        .then(body)
-        .then_ignore(just(Kind::Semi));
-
-    def.map_with(|(name, flags), e| Item::bitmask(name, flags, e.span()))
-}
-
-// Rule 205
-fn bit_value<'a>() -> impl IdlParser<'a, Bit> {
-    let def = ident()
-        .then(just(Kind::Eq).ignore_then(const_expr()).or_not())
-        .annotated();
-
-    def.map_with(|(annotations, (ident, value)), e| Bit {
-        span: e.span(),
-        annotations,
-        ident,
-        value,
-    })
-}
-
-// Rule 219
-fn annotation_dcl<'a>() -> impl IdlParser<'a, Item> {
-    let params = annotation_body().braced();
-    let def = annotation_header()
-        .then(params)
-        .then_ignore(just(Kind::Semi));
-
-    def.map_with(|(ident, members), e| Item::def_annotation(ident, members, e.span()))
-}
-
-// Rule 220
-fn annotation_header<'a>() -> impl IdlParser<'a, Ident> {
-    // Annotation names are exempt from keywords
-    keyword(Kw::Annotation).ignore_then(ident_or_kw())
-}
-
-// Rule 221
-fn annotation_body<'a>() -> impl IdlParser<'a, Vec<AnnotationField>> {
-    // Slight deviation: we accept all kinds of definitions here and instead
-    // check it later during linting to provide better error messages.
-    let defs = choice((const_dcl(), type_dcl()))
-        .annotated()
-        .map(|(ann, item)| item.annotate(ann));
-
-    choice((
-        annotation_member().map(|v| AnnotationField::Member(Box::new(v))),
-        defs.map(|v| AnnotationField::Item(Box::new(v))),
-    ))
-    .repeated()
-    .collect()
-}
-
-// Rule 222
-fn annotation_member<'a>() -> impl IdlParser<'a, AnnotationMember> {
-    let param = annotation_member_type().then(simple_declarator());
-    let default = keyword(Kw::Default).ignore_then(const_expr());
-    let def = param
-        .then(default.or_not())
-        .then_ignore(just(Kind::Semi))
-        .annotated();
-
-    def.map_with(|(annotations, ((ty, decl), default)), e| AnnotationMember {
-        ty,
-        span: e.span(),
-        decl,
-        default,
-        annotations,
-    })
-}
-
-// Rule 223
-fn annotation_member_type<'a>() -> impl IdlParser<'a, Type> {
-    // `scoped_name` is omitted because it's already included in `const_type`,
-    // and `any_const_type` is dropped because we treat `any` as an ordinary
-    // identifier.
-    const_type()
-}
-
-// Rule 225
-fn annotation_appl<'a>() -> impl IdlParser<'a, AnnotationAppl> {
-    let members = annotation_appl_params()
-        .parenthesized()
-        .or_not()
-        .map(Option::unwrap_or_default);
-
-    annotation_ident()
-        .then(members)
-        .map_with(|(ident, args), e| AnnotationAppl {
-            ident,
-            span: e.span(),
-            args,
-        })
-}
-
-// Rule 226
-fn annotation_appl_params<'a>() -> impl IdlParser<'a, Vec<AnnotationArg>> {
-    let unnamed = complex_const_expr().map_with(|value, e| AnnotationArg {
-        ident: None,
-        span: e.span(),
-        value,
-    });
-
-    // Minor deviation: we allow multiple unnamed arguments here. This is
-    // later checked in a lint. Enforcing this restriction through the grammar
-    // will produce errors that are somewhat unclear.
-    choice((annotation_appl_param(), unnamed))
-        .separated_by(just(Kind::Comma))
-        .collect()
-}
-
-// Rule 227
-fn annotation_appl_param<'a>() -> impl IdlParser<'a, AnnotationArg> {
-    ident()
-        .then_ignore(just(Kind::Eq))
-        .then(complex_const_expr())
-        .map_with(|(ident, value), e| AnnotationArg {
-            ident: Some(ident),
-            span: e.span(),
-            value,
-        })
+            }
+        }
+
+        // Collect any trailing orphaned annotations (e.g., at end of file)
+        self.collect_orphaned_annotations();
+
+        // Include any annotation parsing errors
+        errors.extend(std::mem::take(&mut self.annotation_errors));
+
+        (items, errors, self.orphaned_annotations)
+    }
+
+    /// Attempts to recover from an error by skipping to the next definition.
+    ///
+    /// Skips tokens until we find:
+    /// - A semicolon at brace depth 0 (end of a definition)
+    /// - A keyword that starts a definition (module, struct, enum, etc.)
+    /// - End of input
+    pub fn recover_to_next_definition(&mut self) {
+        let mut brace_depth = 0;
+
+        loop {
+            match self.peek_raw() {
+                Kind::Eoi => break,
+
+                Kind::LBrace => {
+                    brace_depth += 1;
+                    self.advance_raw();
+                }
+                Kind::RBrace => {
+                    if brace_depth > 0 {
+                        brace_depth -= 1;
+                    }
+                    self.advance_raw();
+                    // If we closed back to depth 0, check if next is `;`
+                    if brace_depth == 0 && self.peek_raw() == Kind::Semi {
+                        self.advance_raw();
+                        break;
+                    }
+                }
+                Kind::Semi if brace_depth == 0 => {
+                    self.advance_raw();
+                    break;
+                }
+
+                // Definition-starting keywords at depth 0 - stop before them
+                Kind::Keyword(
+                    Kw::Module
+                    | Kw::Struct
+                    | Kw::Union
+                    | Kw::Enum
+                    | Kw::Const
+                    | Kw::Typedef
+                    | Kw::Interface
+                    | Kw::Valuetype
+                    | Kw::Exception
+                    | Kw::Native
+                    | Kw::Bitmask
+                    | Kw::Bitset
+                    | Kw::Annotation,
+                ) if brace_depth == 0 => break,
+
+                // Skip annotations during recovery
+                Kind::At => {
+                    self.advance_raw();
+                    // Skip the annotation name and any arguments
+                    while !matches!(
+                        self.peek_raw(),
+                        Kind::Eoi | Kind::Semi | Kind::LBrace | Kind::RBrace | Kind::Keyword(_)
+                    ) {
+                        if self.peek_raw() == Kind::LParen {
+                            self.skip_balanced(Kind::LParen, Kind::RParen);
+                        } else {
+                            self.advance_raw();
+                        }
+                    }
+                }
+
+                _ => {
+                    self.advance_raw();
+                }
+            }
+        }
+
+        // Clear any pending annotations accumulated during recovery
+        self.pending_annotations.clear();
+    }
+
+    /// Skip balanced delimiters (e.g., parentheses).
+    pub fn skip_balanced(&mut self, open: Kind, close: Kind) {
+        if !self.at_raw(open) {
+            return;
+        }
+        self.advance_raw();
+
+        let mut depth = 1;
+        while depth > 0 && !self.at_raw(Kind::Eoi) {
+            if self.at_raw(open) {
+                depth += 1;
+            } else if self.at_raw(close) {
+                depth -= 1;
+            }
+            self.advance_raw();
+        }
+    }
 }

@@ -27,7 +27,7 @@
 
 mod common;
 
-use common::lint_hir;
+use common::{lint_hir, test_lint_hir};
 use insta::assert_snapshot;
 
 use crate::common::test_lint;
@@ -96,7 +96,7 @@ interface Service {
 #[test]
 fn duplicate_qualified_annotation() {
     let source = r"
-annotation MyAnn {
+@annotation MyAnn {
     long value;
 };
 
@@ -107,7 +107,5 @@ struct Foo {
 };
 ";
 
-    let report = lint_hir(source);
-    assert!(report.errors.is_empty());
-    assert!(report.warnings.is_empty());
+    assert_snapshot!(test_lint_hir(source));
 }

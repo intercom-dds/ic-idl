@@ -447,11 +447,18 @@ impl Compiler {
             return Err(CompileError::Diagnostics(diagnostics));
         }
 
+        // Convert orphaned annotations to warnings
+        for ann in &ast.orphaned_annotations {
+            diagnostics
+                .warnings
+                .push(pretty::orphaned_annotation_warning(ann));
+        }
+
         // Collect preprocessor warnings if enabled
         if self.options.warn.preprocessor_enabled() {
             diagnostics
                 .warnings
-                .extend(ast.warnings.iter().map(pretty::to_warning));
+                .extend(ast.preproc_warnings.iter().map(pretty::to_warning));
         }
 
         // Convert to HIR without built-in annotations
@@ -618,9 +625,14 @@ fn try_compile_to_ast(
         // Collect parse errors
         all_errors.extend(ast.errors.iter().cloned().map(Into::into));
 
+        // Convert orphaned annotations to warnings
+        for ann in &ast.orphaned_annotations {
+            all_warnings.push(pretty::orphaned_annotation_warning(ann));
+        }
+
         // Collect preprocessor warnings if enabled
         if options.warn.preprocessor_enabled() {
-            all_warnings.extend(ast.warnings.iter().map(pretty::to_warning));
+            all_warnings.extend(ast.preproc_warnings.iter().map(pretty::to_warning));
         }
 
         all_expansion_info.extend(ast.expansion_info);

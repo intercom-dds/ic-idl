@@ -150,21 +150,6 @@ fn test_span_ordering() {
 }
 
 #[test]
-fn test_span_chumsky_trait() {
-    use chumsky::span::Span as ChumskySpan;
-
-    let mut map = SourceMap::default();
-    let id = map.embed("test content");
-
-    let start = Location::new(10, id);
-    let end = Location::new(20, id);
-
-    let span = <Span as ChumskySpan>::new((), start..end);
-    assert_eq!(ChumskySpan::start(&span), start);
-    assert_eq!(ChumskySpan::end(&span), end);
-}
-
-#[test]
 fn test_location_default() {
     // Default location should have offset 0
     let loc = Location::default();

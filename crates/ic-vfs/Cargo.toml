@@ -38,6 +38,4 @@ workspace = true
 
 [dependencies]
 ic-alloc = { path = "../ic-alloc" }
-
-chumsky.workspace = true
 intercom-cts.workspace = true

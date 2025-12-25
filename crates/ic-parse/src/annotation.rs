@@ -1,0 +1,212 @@
+// Copyright 2024 KONGSBERG
+//
+// Redistribution and use in source and binary forms, with or without
+// modification, are permitted provided that the following conditions are met:
+//
+// 1. Redistributions of source code must retain the above copyright notice,
+//    this list of conditions and the following disclaimer.
+//
+// 2. Redistributions in binary form must reproduce the above copyright notice,
+//    this list of conditions and the following disclaimer in the documentation
+//    and/or other materials provided with the distribution.
+//
+// 3. Neither the name of the copyright holder nor the names of its contributors
+//    may be used to endorse or promote products derived from this software
+//    without specific prior written permission.
+//
+// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
+// ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+// WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+// DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
+// FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+// DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+// SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+// CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+// OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+// OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+//! Annotation parsing.
+//!
+//! This module uses `advance_raw` and `peek_raw` exclusively to avoid
+//! infinite recursion when skimming annotations.
+
+use ic_lexer::token::Kind;
+use ic_syntax::{AnnotationAppl, AnnotationArg, Ident, Path};
+
+use super::Parser;
+use crate::error::Result;
+
+impl Parser<'_> {
+    // Rule 225
+    // <annotation_appl> ::= "@" <scoped_name> [ "(" <annotation_appl_params> ")" ]
+    //
+    /// This method uses raw token access to avoid re-entering annotation skimming.
+    #[allow(clippy::result_large_err)]
+    pub(super) fn annotation_appl(&mut self) -> Result<AnnotationAppl> {
+        let start = self.span();
+
+        // Consume '@'
+        debug_assert!(self.at_raw(Kind::At));
+        self.advance_raw();
+
+        // Parse the annotation path (allows keywords as identifiers)
+        let path = self.parse_annotation_path()?;
+
+        // Parse optional arguments
+        let args = if self.at_raw(Kind::LParen) {
+            self.advance_raw();
+            let pending_before = self.pending_annotations.len();
+            let args = self.annotation_appl_params()?;
+            // Check for nested annotations that were skimmed during argument parsing
+            if self.pending_annotations.len() > pending_before {
+                let nested = &self.pending_annotations[pending_before];
+                return Err(self
+                    .error_message(nested.span, "nested annotations are not allowed")
+                    .with_label("annotation not allowed here"));
+            }
+            if !self.at_raw(Kind::RParen) {
+                return Err(self.error_expected(Kind::RParen));
+            }
+            self.advance_raw();
+            args
+        } else {
+            Vec::new()
+        };
+
+        Ok(AnnotationAppl {
+            ident: path,
+            span: self.make_span(start, self.prev_span),
+            args,
+        })
+    }
+
+    /// Parses an annotation path, which can include keywords as identifiers.
+    ///
+    /// For example: `@default`, `@foo::bar`, `@key`
+    fn parse_annotation_path(&mut self) -> Result<Path> {
+        // Check for leading `::`
+        let leading_colons = if self.at_raw(Kind::DColon) {
+            let span = self.span();
+            self.advance_raw();
+            Some(span)
+        } else {
+            None
+        };
+
+        // Parse first segment (can be identifier or keyword)
+        let first = self.parse_annotation_ident()?;
+        let mut segments = vec![first];
+
+        // Parse remaining segments
+        while self.at_raw(Kind::DColon) {
+            self.advance_raw();
+            segments.push(self.parse_annotation_ident()?);
+        }
+
+        Ok(Path {
+            leading_colons,
+            segments,
+        })
+    }
+
+    /// Parses an identifier in annotation context, which allows keywords.
+    fn parse_annotation_ident(&mut self) -> Result<Ident> {
+        let tok = self.current_raw();
+        match tok.kind {
+            Kind::Ident => {
+                self.advance_raw();
+                Ok(Ident {
+                    name: self.text(tok.span).to_owned(),
+                    span: tok.span,
+                })
+            }
+            Kind::Keyword(kw) => {
+                // Keywords are valid annotation names (e.g., @default, @key)
+                self.advance_raw();
+                Ok(Ident {
+                    name: kw.to_string(),
+                    span: tok.span,
+                })
+            }
+            _ => Err(self.error_expected("identifier")),
+        }
+    }
+
+    // Rule 226
+    // <annotation_appl_params> ::= <const_expr>
+    //                            | <annotation_appl_param> { "," <annotation_appl_param> }
+    fn annotation_appl_params(&mut self) -> Result<Vec<AnnotationArg>> {
+        let mut args = Vec::new();
+
+        // Empty argument list
+        if self.at_raw(Kind::RParen) {
+            return Ok(args);
+        }
+
+        loop {
+            let arg = self.annotation_appl_param()?;
+            args.push(arg);
+
+            if self.at_raw(Kind::Comma) {
+                self.advance_raw();
+            } else {
+                break;
+            }
+        }
+
+        Ok(args)
+    }
+
+    // Rule 227
+    // <annotation_appl_param> ::= <identifier> "=" <const_expr>
+    fn annotation_appl_param(&mut self) -> Result<AnnotationArg> {
+        let start = self.span();
+
+        // Try to parse as named argument: `name = expr`
+        if let Some((ident, value)) = self.try_named_arg()? {
+            return Ok(AnnotationArg {
+                ident: Some(ident),
+                span: self.make_span(start, self.prev_span),
+                value,
+            });
+        }
+
+        // Otherwise, parse as positional argument (just an expression)
+        let value = self.const_expr()?;
+        Ok(AnnotationArg {
+            ident: None,
+            span: self.make_span(start, self.prev_span),
+            value,
+        })
+    }
+
+    /// Tries to parse a named argument `name = expr`.
+    /// Returns None if this doesn't look like a named argument.
+    fn try_named_arg(&mut self) -> Result<Option<(Ident, ic_syntax::Expr)>> {
+        // Must start with an identifier
+        if !self.at_raw(Kind::Ident) {
+            return Ok(None);
+        }
+
+        // Speculatively consume the identifier
+        let checkpoint = self.checkpoint();
+        let id_tok = self.advance_raw();
+
+        // Check for `=`
+        if !self.at_raw(Kind::Eq) {
+            // Not a named argument - rewind and let caller parse as expression
+            self.rewind(checkpoint);
+            return Ok(None);
+        }
+
+        // It's a named argument - consume `=` and parse value
+        self.advance_raw();
+        let ident = Ident {
+            name: self.text(id_tok.span).to_owned(),
+            span: id_tok.span,
+        };
+        let value = self.const_expr()?;
+
+        Ok(Some((ident, value)))
+    }
+}

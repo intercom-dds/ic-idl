@@ -28,7 +28,6 @@
 use std::fmt;
 use std::sync::OnceLock;
 
-use ic_expr::Op;
 use ic_vfs::Span;
 use rustc_hash::{FxBuildHasher, FxHashMap};
 
@@ -37,6 +36,7 @@ use rustc_hash::{FxBuildHasher, FxHashMap};
 pub struct Token {
     /// The type of token.
     pub kind: Kind,
+
     /// The source location of the token.
     pub span: Span,
 }
@@ -46,8 +46,10 @@ pub struct Token {
 pub enum Base {
     /// Base 8 (octal) numbers, e.g., 0777
     Octal = 8,
+
     /// Base 10 (decimal) numbers, e.g., 123
     Decimal = 10,
+
     /// Base 16 (hexadecimal) numbers, e.g., 0xFF
     Hexadecimal = 16,
 }
@@ -106,9 +108,6 @@ pub enum Kw {
 pub enum Kind {
     /// An IDL keyword
     Keyword(Kw),
-
-    /// An arithmetic or bitwise operator
-    Op(Op),
 
     /// Any valid UTF-8 identifier
     Ident,
@@ -244,11 +243,61 @@ pub enum Kind {
     Eoi,
 }
 
-/// Static keyword map for efficient lookup.
-static KEYWORD_MAP: OnceLock<FxHashMap<&'static str, Kw>> = OnceLock::new();
+impl fmt::Display for Kind {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Kind::Keyword(v) => write!(f, "{v}"),
+            Kind::Colon => write!(f, "`:`"),
+            Kind::DColon => write!(f, "`::`"),
+            Kind::Eq => write!(f, "`=`"),
+            Kind::Semi => write!(f, "`;`"),
+            Kind::Comma => write!(f, "`,`"),
+            Kind::Period => write!(f, "`.`"),
+            Kind::Lt => write!(f, "`<`"),
+            Kind::Gt => write!(f, "`>`"),
+            Kind::LtEq => write!(f, "`<=`"),
+            Kind::GtEq => write!(f, "`>=`"),
+            Kind::LBrace => write!(f, "`{{`"),
+            Kind::RBrace => write!(f, "`}}`"),
+            Kind::LParen => write!(f, "`(`"),
+            Kind::RParen => write!(f, "`)`"),
+            Kind::LBracket => write!(f, "`[`"),
+            Kind::RBracket => write!(f, "`]`"),
+            Kind::BitNot => write!(f, "`~`"),
+            Kind::BitAnd => write!(f, "`&`"),
+            Kind::BitOr => write!(f, "`|`"),
+            Kind::BitXor => write!(f, "`^`"),
+            Kind::Plus => write!(f, "`+`"),
+            Kind::Minus => write!(f, "`-`"),
+            Kind::Star => write!(f, "`*`"),
+            Kind::Slash => write!(f, "`/`"),
+            Kind::Modulo => write!(f, "`%`"),
+            Kind::Hash => write!(f, "`#`"),
+            Kind::EqEq => write!(f, "`==`"),
+            Kind::NotEq => write!(f, "`!=`"),
+            Kind::And => write!(f, "`&&`"),
+            Kind::Not => write!(f, "`!`"),
+            Kind::Or => write!(f, "`||`"),
+            Kind::Question => write!(f, "`?`"),
+            Kind::Backslash => write!(f, "`\\`"),
+            Kind::Newline => write!(f, "newline"),
+            Kind::Char => write!(f, "char"),
+            Kind::Number { .. } => write!(f, "number"),
+            Kind::Ident => write!(f, "identifier"),
+            Kind::At => write!(f, "annotation"),
+            Kind::Float => write!(f, "floating-point number"),
+            Kind::String { .. } => write!(f, "string"),
+            Kind::Comment { .. } => write!(f, "comment"),
+            Kind::Eoi => write!(f, "end of input"),
+            Kind::Unknown => write!(f, "unknown"),
+        }
+    }
+}
 
 /// Returns the keyword map, initializing it on first use.
 fn keyword_map() -> &'static FxHashMap<&'static str, Kw> {
+    static KEYWORD_MAP: OnceLock<FxHashMap<&'static str, Kw>> = OnceLock::new();
+
     KEYWORD_MAP.get_or_init(|| {
         let mut map = FxHashMap::with_capacity_and_hasher(45, FxBuildHasher);
         map.insert("@annotation", Kw::Annotation);

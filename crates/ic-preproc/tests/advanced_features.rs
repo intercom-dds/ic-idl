@@ -25,13 +25,8 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-//! Tests for advanced preprocessor features including expression evaluation,
-//! macro expansion, and complex directive handling.
-
 use ic_preproc::{ProcArgs, State, with_state};
 use ic_vfs::SourceMap;
-
-// ==================== Expression Evaluation ====================
 
 #[test]
 fn parentheses_in_expressions() {
@@ -260,8 +255,6 @@ fn defined_operator_complex() {
     assert!(state.is_defined("DEFINED_AND_VALUE_CHECK"));
 }
 
-// ==================== Macro Features ====================
-
 #[test]
 fn function_like_macros() {
     let mut vfs = SourceMap::default();
@@ -285,7 +278,6 @@ fn function_like_macros() {
     assert!(state.is_defined("MAX"));
     assert!(state.is_defined("MIN"));
     assert!(state.is_defined("SQUARE"));
-    // Should expand to proper expressions
 }
 
 #[test]
@@ -380,8 +372,6 @@ fn va_opt_macro() {
     assert!(state.errors().is_empty());
 }
 
-// ==================== Directive Features ====================
-
 #[test]
 fn line_directive_basic() {
     let mut vfs = SourceMap::default();
@@ -475,8 +465,6 @@ fn pragma_operator() {
     assert!(state.errors().is_empty());
 }
 
-// ==================== Advanced Expression Features ====================
-
 #[test]
 fn operator_precedence() {
     let mut vfs = SourceMap::default();
@@ -510,8 +498,6 @@ fn operator_precedence() {
     assert!(state.is_defined("SHIFT_AFTER_ADD"));
     assert!(state.is_defined("COMPARISON_RETURNS_ONE"));
 }
-
-// ==================== Error Handling ====================
 
 #[test]
 fn expression_error_messages() {

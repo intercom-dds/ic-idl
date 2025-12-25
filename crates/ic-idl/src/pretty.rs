@@ -34,8 +34,8 @@ use std::path::{Path, PathBuf};
 
 use ic_cli::color::Colorize as _;
 use ic_diagnostic::{Diag, Label, error_span, warn_span};
+use ic_lexer::token::Kind;
 use ic_parse::Reason;
-use ic_parse::lexer::Kind;
 use ic_vfs::{SourceMap, Span};
 
 use crate::util::Error;
@@ -51,13 +51,13 @@ fn format_slice<T: std::fmt::Display>(kind: &[T]) -> String {
         Some((last, rest)) if !rest.is_empty() => {
             let body = rest
                 .iter()
-                .map(|v| v.to_string().yellow().to_string())
+                .map(|v| format!("{v}").yellow().to_string())
                 .collect::<Vec<_>>()
                 .join(", ");
 
-            format!("{body} or {}", last.yellow())
+            format!("{body} or {}", format!("{last}").yellow())
         }
-        Some((last, _)) => last.yellow().to_string(),
+        Some((last, _)) => format!("{last}").yellow().to_string(),
         _ => String::new(),
     }
 }
@@ -98,12 +98,13 @@ fn to_diag_with_expansion(
         }
 
         Reason::Custom(message) => {
+            let label_text = error.label.unwrap_or("unexpected token");
             // Check if this error occurred in a macro expansion
             if let Some(info) = expansion_info.get(&error.span) {
                 // Primary error points to macro invocation
                 let mut diag = diag_fn(
                     message.clone(),
-                    Label::new(info.invocation_span).message("unexpected token"),
+                    Label::new(info.invocation_span).message(label_text),
                 );
                 // Secondary label shows where in the macro definition
                 diag = diag.label(
@@ -113,16 +114,13 @@ fn to_diag_with_expansion(
                 );
                 diag
             } else {
-                diag_fn(
-                    message.clone(),
-                    Label::new(error.span).message("unexpected token"),
-                )
+                diag_fn(message.clone(), Label::new(error.span).message(label_text))
             }
         }
 
         Reason::Unexpected => {
             let cause = if let Some(e) = &error.found {
-                format!("unexpected {}", e.to_string().red())
+                format!("unexpected {}", e.red())
             } else {
                 "unexpected end of input".to_string()
             };
@@ -220,4 +218,13 @@ pub fn fmt_warnings(warnings: &[Diag], vfs: &SourceMap) -> String {
 
 pub fn to_warning(error: &ic_parse::Error) -> Diag {
     to_diag(error, true)
+}
+
+/// Creates a warning for an orphaned annotation.
+pub fn orphaned_annotation_warning(ann: &ic_syntax::AnnotationAppl) -> Diag {
+    warn_span(
+        "annotation has no effect in this context",
+        Label::new(ann.span).message("misplaced annotation"),
+    )
+    .note("annotation is not attached to any declaration")
 }

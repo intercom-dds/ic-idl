@@ -8,7 +8,7 @@ error[duplicate-name]: duplicate method `method` in method 'Test'
  2 │ interface Test {
  3 │     void method();
    ·          ^^^^^^ first defined here
- 4 │     long method();  // Should be caught by validate.rs, not this lint
+ 4 │     long method();
    ·          ^^^^^^ duplicate method
  5 │ };
    └──

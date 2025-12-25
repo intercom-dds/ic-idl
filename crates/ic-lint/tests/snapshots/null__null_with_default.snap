@@ -8,7 +8,7 @@ warning[null-variant]: `null` variants are non-standard
  3 │             case 1: string name;
  4 │             case 2: long count;
  5 │             default: null;
-   ·                      ^^^^^ `null` is not standard
+   ·                      ^^^^ `null` is not standard
  6 │         };
    └──
  note: all case labels must map to a value

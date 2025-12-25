@@ -25,14 +25,26 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+#![allow(
+    clippy::result_large_err,
+    clippy::unnecessary_wraps,
+    clippy::missing_errors_doc
+)]
+
 //! # ic-parse
 //!
 //! An IDL 4.2-compliant parser.
 //!
-//! This crate contains the code for the lexer and parser. The parser produces
-//! an AST which is a pure transcription of the source code. For a higher-level
-//! parse tree where types have been resolved, see [`ic-hir`], which can be
-//! constructed from the syntax tree.
+//! This is a hand-written recursive descent parser with first-class annotation support.
+
+//! # ic-parse
+//!
+//! An IDL 4.2-compliant parser.
+//!
+//! This crate contains the code for hand-written recursive descent parser. The
+//! parser produces an AST which is a pure transcription of the source code.
+//! For a higher-level parse tree where types have been resolved, see
+//! [`ic-hir`], which can be constructed from the syntax tree.
 //!
 //! The output of the parser is not guaranteed to be valid IDL, neither
 //! syntactically nor semantically. The parser follows a relaxed version of the IDL
@@ -49,10 +61,10 @@
 //!  - Interfaces - Full
 //!  - Value Types
 //!  - Extended Data Types
-//!  - Anonymous Types<sup>[1]</sup>
+//!  - Anonymous Types<sup>\[1\]</sup>
 //!  - Annotations
 //!
-//! <sup>[1]</sup> Anonymous structs, unions and enumerators are not supported.
+//! <sup>\[1\]</sup> Anonymous structs, unions and enumerators are not supported.
 //!
 //! ### Extensions
 //!
@@ -75,145 +87,114 @@
 //! [`ic-lint`]: ../ic_lint/index.html
 //! [`ic-hir`]: ../ic_hir/index.html
 
-use std::ops::Deref;
+mod annotation;
+mod decl;
+mod error;
+mod expr;
+mod parser;
+mod types;
+
+use std::collections::HashMap;
 use std::path::Path;
 
-use chumsky::error::Rich;
-use chumsky::prelude::*;
+pub use error::{Error, Expected, Reason};
+pub use ic_lexer as lexer;
+use ic_lexer::token::Kind;
 use ic_preproc::ProcArgs;
-use ic_syntax::{Item, Span};
+use ic_syntax::{AnnotationAppl, Item, Span};
 pub use ic_vfs::SourceMap;
 use ic_vfs::{FileId, Include};
-use lexer::{Kind, Token};
+use parser::Parser;
 
-pub mod lexer;
-
-mod comment_attacher;
-mod parser;
-
+/// Result of parsing an IDL file.
 #[derive(Debug)]
 pub struct ParseResult {
     pub tree: Vec<Item>,
     pub errors: Vec<Error>,
-    pub warnings: Vec<Error>,
+    /// Annotations that couldn't be attached to any construct.
+    pub orphaned_annotations: Vec<AnnotationAppl>,
+    /// Warnings from the preprocessor
+    pub preproc_warnings: Vec<Error>,
+
     /// Map of spans to their macro expansion context
-    pub expansion_info: std::collections::HashMap<Span, ic_preproc::ExpansionInfo>,
-}
-
-#[derive(Clone, Debug)]
-pub enum Reason {
-    /// An unexpected input was found.
-    Unexpected,
-
-    /// An unclosed delimiter was found.
-    Unclosed {
-        /// The span of the unclosed delimiter.
-        span: Span,
-
-        /// The unclosed delimiter.
-        delimiter: Kind,
-    },
-
-    /// An error with a custom message occurred.
-    Custom(String),
-}
-
-impl std::fmt::Display for Reason {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Self::Unexpected => write!(f, "unexpected input"),
-            Self::Unclosed { delimiter, .. } => write!(f, "unclosed delimiter {delimiter:?}"),
-            Self::Custom(msg) => write!(f, "{msg}"),
-        }
-    }
-}
-
-#[derive(Clone, Debug)]
-pub struct Error {
-    pub found: Option<Kind>,
-    pub expected: Option<Vec<Kind>>,
-    pub reason: Reason,
-    pub label: Option<&'static str>,
-    pub span: Span,
-}
-
-impl Error {
-    fn from_rich(value: Rich<'_, Kind, Span>) -> Self {
-        let found = value.found().cloned();
-        let span = *value.span();
-
-        // Extract expected tokens from the error
-        let expected: Vec<Kind> = value
-            .expected()
-            .filter_map(|e| match e {
-                chumsky::error::RichPattern::Token(t) => Some(t.deref().clone()),
-                _ => None,
-            })
-            .collect();
-
-        let expected = if expected.is_empty() {
-            None
-        } else {
-            Some(expected)
-        };
-
-        // Determine the reason
-        let reason = match value.into_reason() {
-            chumsky::error::RichReason::ExpectedFound { .. } => Reason::Unexpected,
-            chumsky::error::RichReason::Custom(msg) => Reason::Custom(msg),
-        };
-
-        Self {
-            found,
-            expected,
-            reason,
-            label: None,
-            span,
-        }
-    }
-}
-
-impl std::error::Error for Error {}
-
-impl std::fmt::Display for Error {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(
-            f,
-            "{:?}: syntax error: expected {:?}, found {:?}",
-            self.span, self.found, self.expected,
-        )
-    }
+    pub expansion_info: HashMap<Span, ic_preproc::ExpansionInfo>,
 }
 
 /// Constructs an AST from the given source code.
-///
-/// # Errors
-///
-/// # Panics
 #[must_use]
 pub fn from_str(input: &str) -> ParseResult {
     let mut vfs = SourceMap::default();
     let file_id = vfs.embed(input);
-    let args = ProcArgs::default();
-    from_file(file_id, args, &mut vfs)
+    from_file(file_id, ProcArgs::default(), &mut vfs)
 }
 
-/// Parses the specified file and constructs an AST.
-///
-/// # Errors
-///
-/// # Panics
+/// Parses the specified file path and constructs an AST.
 pub fn from_path(path: &Path, args: ProcArgs, vfs: &mut SourceMap) -> std::io::Result<ParseResult> {
     let (file_id, _) = vfs.open(path, Include::Static)?;
     Ok(from_file(file_id, args, vfs))
 }
 
 /// Parses the specified file and constructs an AST.
-///
-/// # Errors
-///
-/// # Panics
 #[must_use]
+pub fn from_file(file_id: FileId, args: ProcArgs, vfs: &mut SourceMap) -> ParseResult {
+    use ic_preproc::Token;
+
+    // Run preprocessor and collect tokens
+    let mut state = ic_preproc::State::new();
+    let iter = ic_preproc::with_state(file_id, args, &mut state, vfs);
+
+    let tokens: Vec<Token> = iter
+        .filter(|t| !matches!(t.kind, Kind::Newline))
+        .collect();
+
+    // Parse
+    let parser = Parser::new(tokens, vfs);
+    let (tree, parse_errors, orphaned_annotations) = parser.parse();
+
+    // Convert internal errors to public Error type
+    let mut errors: Vec<Error> = parse_errors;
+
+    // Process preprocessor errors
+    errors.extend(process_preprocessor_errors(state.errors(), vfs));
+
+    // Convert preprocessor warnings
+    let preproc_warnings = process_preprocessor_warnings(state.warnings(), vfs);
+
+    ParseResult {
+        tree,
+        errors,
+        orphaned_annotations,
+        preproc_warnings,
+        expansion_info: state
+            .expansion_info
+            .iter()
+            .map(|(k, v)| (*k, v.clone()))
+            .collect(),
+    }
+}
+
+/// Constructs an AST from the given token iterator.
+pub fn from_iter<I>(iter: I) -> ParseResult
+where
+    I: IntoIterator<Item = ic_lexer::token::Token>,
+{
+    // Create a minimal source map for parsing
+    let vfs = SourceMap::default();
+
+    let tokens: Vec<_> = iter.into_iter().collect();
+
+    let parser = Parser::new(tokens, &vfs);
+    let (tree, errors, orphaned_annotations) = parser.parse();
+
+    ParseResult {
+        tree,
+        errors,
+        orphaned_annotations,
+        preproc_warnings: Vec::new(),
+        expansion_info: HashMap::default(),
+    }
+}
+
 fn process_preprocessor_errors(errors: &[ic_preproc::Error], vfs: &SourceMap) -> Vec<Error> {
     let mut result = Vec::new();
 
@@ -304,83 +285,4 @@ fn process_preprocessor_warnings(warnings: &[ic_preproc::Error], vfs: &SourceMap
     }
 
     result
-}
-
-pub fn from_file(file_id: FileId, args: ProcArgs, vfs: &mut SourceMap) -> ParseResult {
-    let mut state = ic_preproc::State::new();
-    let iter = ic_preproc::with_state(file_id, args, &mut state, vfs);
-
-    // Create token iterator using the existing function in lexer.rs
-    let token_iter = lexer::create_token_iterator(iter, false);
-
-    // Collect comments while filtering them out of the token stream
-    let mut comments = Vec::new();
-    let tokens: Vec<(Kind, Span)> = token_iter
-        .filter_map(|tok| match &tok.kind {
-            Kind::Comment(text, trailing) => {
-                // Store comment and filter it out
-                comments.push(comment_attacher::Comment {
-                    span: tok.span,
-                    text: text.clone(),
-                    is_trailing: *trailing,
-                });
-                None
-            }
-            _ => Some((tok.kind, tok.span)),
-        })
-        .collect();
-
-    // Parse with recovery
-    let eoi_span = tokens.last().map_or(Span::default(), |(_, s)| *s);
-    let input = parser::make_input(tokens.as_slice(), eoi_span);
-    let (tree, parse_errors) = parser::specification().parse(input).into_output_errors();
-
-    let mut tree = tree.unwrap_or_default();
-
-    // Attach collected comments to the AST
-    let mut attacher = comment_attacher::CommentAttacher::new(comments);
-    tree = attacher.attach(tree);
-
-    // Collect parser errors
-    let mut errors: Vec<Error> = parse_errors.into_iter().map(Error::from_rich).collect();
-
-    // Process preprocessor errors and warnings
-    errors.extend(process_preprocessor_errors(state.errors(), vfs));
-    let warnings = process_preprocessor_warnings(state.warnings(), vfs);
-
-    ParseResult {
-        tree,
-        errors,
-        warnings,
-        expansion_info: state
-            .expansion_info
-            .iter()
-            .map(|(k, v)| (*k, v.clone()))
-            .collect(),
-    }
-}
-
-/// Constructs an AST from the given token iterator.
-///
-/// # Errors
-///
-/// If the given input contains IDL that is not syntactically valid, a
-/// non-exhausitve list of parse errors will be returned that contains the
-/// cause of each error and its span.
-pub fn from_iter<I>(iter: I) -> ParseResult
-where
-    I: IntoIterator<Item = Token>,
-{
-    let tokens: Vec<(Kind, Span)> = iter.into_iter().map(|tok| (tok.kind, tok.span)).collect();
-
-    let eoi_span = tokens.last().map_or(Span::default(), |(_, s)| *s);
-    let input = parser::make_input(tokens.as_slice(), eoi_span);
-    let (tree, parse_errors) = parser::specification().parse(input).into_output_errors();
-
-    ParseResult {
-        tree: tree.unwrap_or_default(),
-        errors: parse_errors.into_iter().map(Error::from_rich).collect(),
-        warnings: Vec::new(),
-        expansion_info: std::collections::HashMap::default(),
-    }
 }

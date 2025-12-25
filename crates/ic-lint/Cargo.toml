@@ -46,6 +46,6 @@ ic-vfs = { path = "../ic-vfs" }
 
 [dev-dependencies]
 insta = "1.45"
-ic-parse = { path = "../ic-parse" }
+ic-parse = { path = "../ic-parse", package = "ic-parse" }
 ic-preproc = { path = "../ic-preproc" }
 ic-ptree-lower = { path = "../ic-ptree-lower" }

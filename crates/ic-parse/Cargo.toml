@@ -37,14 +37,10 @@ version.workspace = true
 workspace = true
 
 [dependencies]
-ic-macros = { path = "../ic-macros" }
 ic-lexer = { path = "../ic-lexer" }
 ic-syntax = { path = "../ic-syntax" }
 ic-vfs = { path = "../ic-vfs" }
 ic-preproc = { path = "../ic-preproc" }
-ic-expr = { path = "../ic-expr" }
-
-chumsky.workspace = true
 
 [dev-dependencies]
-insta = "1.43.1"
+ic-diagnostic = { path = "../ic-diagnostic" }

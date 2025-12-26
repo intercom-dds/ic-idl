@@ -912,10 +912,12 @@ impl Parser<'_> {
     }
 
     fn definitions(&mut self) -> Result<Vec<Item>> {
+        self.enter_nested()?;
         let mut items = Vec::new();
         while !self.at(Kind::RBrace) && !self.at(Kind::Eoi) {
             items.push(self.definition()?);
         }
+        self.leave_nested();
         Ok(items)
     }
 

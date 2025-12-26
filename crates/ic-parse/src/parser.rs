@@ -41,6 +41,10 @@ pub struct Checkpoint {
     pending_annotations: Vec<AnnotationAppl>,
 }
 
+/// Maximum nesting depth for recursive constructs (modules, interfaces, etc.).
+/// This prevents stack overflow on maliciously nested input.
+pub const MAX_DEPTH: usize = 1024;
+
 /// A recursive descent parser for IDL.
 pub struct Parser<'a> {
     /// The token stream.
@@ -63,6 +67,9 @@ pub struct Parser<'a> {
 
     /// Errors that occurred while parsing annotations.
     annotation_errors: Vec<ParseError>,
+
+    /// Current recursion depth for nested constructs.
+    depth: usize,
 }
 
 impl<'a> Parser<'a> {
@@ -76,6 +83,7 @@ impl<'a> Parser<'a> {
             source,
             orphaned_annotations: Vec::new(),
             annotation_errors: Vec::new(),
+            depth: 0,
         }
     }
 
@@ -331,6 +339,23 @@ impl<'a> Parser<'a> {
     pub fn error_message(&self, span: Span, message: &'static str) -> ParseError {
         let _ = self; // Keep &self for consistency with other parser methods
         ParseError::new(span, None, vec![Expected::Message(message)])
+    }
+
+    /// Increments recursion depth and returns an error if max depth exceeded.
+    #[inline]
+    pub fn enter_nested(&mut self) -> Result<()> {
+        self.depth += 1;
+        if self.depth > MAX_DEPTH {
+            Err(self.error_message(self.span(), "maximum nesting depth exceeded"))
+        } else {
+            Ok(())
+        }
+    }
+
+    /// Decrements recursion depth.
+    #[inline]
+    pub fn leave_nested(&mut self) {
+        self.depth = self.depth.saturating_sub(1);
     }
 
     /// Collects any pending annotations that have no construct to attach to.

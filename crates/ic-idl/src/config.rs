@@ -274,6 +274,10 @@ pub struct Unstable {
     #[option(long)]
     pub ptree_dump: bool,
 
+    /// Only parse, skip type checking and code generation
+    #[option(long)]
+    pub parse_only: bool,
+
     /// Show help for unstable options
     pub help: bool,
 }
@@ -286,6 +290,7 @@ impl convert::Convert for Unstable {
                 "ast-dump" => this.ast_dump = true,
                 "hir-dump" => this.hir_dump = true,
                 "ptree-dump" => this.ptree_dump = true,
+                "parse-only" => this.parse_only = true,
                 "help" => {
                     this.help = true;
                     return Ok(this);

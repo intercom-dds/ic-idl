@@ -120,6 +120,31 @@ fn try_compile(options: CompilerOptions) {
     // Create and run the compiler
     let mut compiler = Compiler::new(options);
 
+    // Handle parse-only mode
+    if compiler.options().unstable.parse_only {
+        match compiler.compile() {
+            Ok(result) => {
+                if !result.diagnostics.warnings.is_empty() {
+                    emit_diagnostics(&compiler, &result.diagnostics);
+                }
+                if compiler.options().unstable.ast_dump {
+                    for item in &result.items {
+                        println!("{item:#?}");
+                    }
+                }
+            }
+            Err(CompileError::Io(e)) => {
+                error!("{e}");
+                std::process::exit(1);
+            }
+            Err(CompileError::Diagnostics(diagnostics)) => {
+                emit_diagnostics(&compiler, &diagnostics);
+                std::process::exit(1);
+            }
+        }
+        return;
+    }
+
     // Use the new compile_hir method which handles merging
     let (hir, diagnostics) = match compiler.compile_hir() {
         Ok((hir, diag)) => (hir, diag),

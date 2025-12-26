@@ -143,9 +143,7 @@ pub fn from_file(file_id: FileId, args: ProcArgs, vfs: &mut SourceMap) -> ParseR
     let mut state = ic_preproc::State::new();
     let iter = ic_preproc::with_state(file_id, args, &mut state, vfs);
 
-    let tokens: Vec<Token> = iter
-        .filter(|t| !matches!(t.kind, Kind::Newline))
-        .collect();
+    let tokens: Vec<Token> = iter.filter(|t| !matches!(t.kind, Kind::Newline)).collect();
 
     // Parse
     let parser = Parser::new(tokens, vfs);

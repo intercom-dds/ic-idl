@@ -183,10 +183,17 @@ interface Test {
     );
 
     // Should have one warning
-    assert_eq!(result.preproc_warnings.len(), 1, "Expected exactly one warning");
+    assert_eq!(
+        result.preproc_warnings.len(),
+        1,
+        "Expected exactly one warning"
+    );
 
     assert!(
-        matches!(result.preproc_warnings[0].label, Some("preprocessor warning")),
+        matches!(
+            result.preproc_warnings[0].label,
+            Some("preprocessor warning")
+        ),
         "Expected preprocessor warning label, got {:?}",
         result.preproc_warnings[0].label
     );

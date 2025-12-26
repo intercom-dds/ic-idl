@@ -27,56 +27,44 @@
 
 #[test]
 fn test_malformed_string_no_panic() {
-    // Test case from the bug report - missing opening quote
     let input =
         r#"const map<string, string> my_map = {{"abc", "abc"}, {"def", "def"}, {"ghi", ghi"}};"#;
 
-    // Should not panic, but will have parse errors
     let result = ic_parse::from_str(input);
     assert!(!result.errors.is_empty());
-
-    // The parser will report an error about the unterminated string token
-    // We just verify that we get an error (no panic) and parsing fails
 }
 
 #[test]
 fn test_unterminated_string() {
-    // String without closing quote
     let input = r#"const string s = "hello world;"#;
-
-    // Should not panic
     let result = ic_parse::from_str(input);
     assert!(!result.errors.is_empty());
-
-    // The parser will report an error about the unterminated string token
 }
 
 #[test]
 fn test_string_with_only_opening_quote() {
-    // String with only opening quote
     let input = r#"const string s = ";"#;
-
-    // Should not panic
     let result = ic_parse::from_str(input);
     assert!(!result.errors.is_empty());
 }
 
 #[test]
 fn test_normal_string() {
-    // Normal string for comparison
     let input = r#"const string s = "hello";"#;
-
     let result = ic_parse::from_str(input);
     assert!(result.errors.is_empty());
 }
 
 #[test]
 fn test_string_with_newline() {
-    // String with newline (mentioned in the issue)
     let input = "const string value = \"foo\n;";
-
     let result = ic_parse::from_str(input);
     assert!(!result.errors.is_empty());
+}
 
-    // The parser will report an error about the unterminated string token
+#[test]
+fn test_string_concat_unterminated() {
+    let input = "const string value = \"foo\" \"bar\n\";";
+    let result = ic_parse::from_str(input);
+    assert!(!result.errors.is_empty());
 }

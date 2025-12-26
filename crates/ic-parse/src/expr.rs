@@ -244,8 +244,16 @@ impl Parser<'_> {
         let start = self.span();
         let mut value = String::new();
 
-        // Collect all adjacent string literals (concatenation)
-        while let Kind::String { .. } = self.peek() {
+        // Collect all adjacent string literals
+        while let Kind::String { terminated } = self.peek() {
+            if !terminated {
+                // consume the bad token
+                let tok = self.advance();
+                return Err(self
+                    .error_message(tok.span, "unterminated string literal")
+                    .with_label("unterminated string"));
+            }
+
             let tok = self.advance();
             let text = self.text(tok.span);
             value.push_str(&parse_string_literal(text));

@@ -459,7 +459,9 @@ impl Parser<'_> {
         Ok(members)
     }
 
-    // Rule 81: export (interface member)
+    // Rule 81 + 97
+    // <export> ::= <op_dcl> ";" | <attr_dcl> ";"
+    //            | <type_dcl> ";" | <const_dcl> ";" | <except_dcl> ";"
     fn export(&mut self) -> Result<InterfaceMember> {
         // Handle annotations before checking what comes next
         let _annotations = self.take_annotations();
@@ -477,13 +479,16 @@ impl Parser<'_> {
             Kind::Keyword(Kw::ReadOnly | Kw::Attribute) => {
                 Ok(InterfaceMember::Attr(self.attr_dcl()?))
             }
-            // Type definitions nested in interface
+            // Rule 97: type declarations nested in interface
             Kind::Keyword(Kw::Typedef) => Ok(InterfaceMember::Item(self.typedef_dcl()?)),
             Kind::Keyword(Kw::Const) => Ok(InterfaceMember::Item(self.const_dcl()?)),
             Kind::Keyword(Kw::Exception) => Ok(InterfaceMember::Item(self.except_dcl()?)),
             Kind::Keyword(Kw::Struct) => Ok(InterfaceMember::Item(self.struct_dcl()?)),
             Kind::Keyword(Kw::Enum) => Ok(InterfaceMember::Item(self.enum_dcl()?)),
             Kind::Keyword(Kw::Union) => Ok(InterfaceMember::Item(self.union_dcl()?)),
+            Kind::Keyword(Kw::Bitset) => Ok(InterfaceMember::Item(self.bitset_dcl()?)),
+            Kind::Keyword(Kw::Bitmask) => Ok(InterfaceMember::Item(self.bitmask_dcl()?)),
+            Kind::Keyword(Kw::Native) => Ok(InterfaceMember::Item(self.native_dcl()?)),
             // Rule 82: operation declaration (default - starts with return type)
             _ => Ok(InterfaceMember::Proto(self.op_dcl()?)),
         }
@@ -782,6 +787,9 @@ impl Parser<'_> {
             Kind::Keyword(Kw::Struct) => Ok(ValueElement::Item(self.struct_dcl()?)),
             Kind::Keyword(Kw::Enum) => Ok(ValueElement::Item(self.enum_dcl()?)),
             Kind::Keyword(Kw::Union) => Ok(ValueElement::Item(self.union_dcl()?)),
+            Kind::Keyword(Kw::Bitset) => Ok(ValueElement::Item(self.bitset_dcl()?)),
+            Kind::Keyword(Kw::Bitmask) => Ok(ValueElement::Item(self.bitmask_dcl()?)),
+            Kind::Keyword(Kw::Native) => Ok(ValueElement::Item(self.native_dcl()?)),
             // Default: operation
             _ => Ok(ValueElement::Proto(self.op_dcl()?)),
         }

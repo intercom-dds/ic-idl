@@ -1203,13 +1203,20 @@ impl Parser<'_> {
         };
 
         self.expect(Kind::Gt)?;
-        let ident = self.ident()?;
+
+        // Parse comma-separated declarators
+        let names = if self.at(Kind::Ident) {
+            self.declarators()?
+        } else {
+            Vec::new()
+        };
+
         annotations.extend(self.expect_semi()?);
 
         Ok(Bitfield {
             span: self.make_span(start, self.prev_span),
             annotations,
-            ident,
+            names,
             size,
             ty,
         })

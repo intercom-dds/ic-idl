@@ -508,7 +508,9 @@ where
     for ann in &def.annotations {
         visitor.visit_annotation_appl(ann);
     }
-    visitor.visit_ident(&def.ident);
+    for name in &def.names {
+        visitor.visit_declarator(name);
+    }
     visitor.visit_expr(&def.size);
     if let Some(ty) = &def.ty {
         visitor.visit_type(ty);

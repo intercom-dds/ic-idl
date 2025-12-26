@@ -525,7 +525,7 @@ struct BitmaskDef : IDef {
 };
 
 @nested
-struct Bitfield : IDef {
+struct Bitfield : IDecl {
     Expr size;
     @optional Type ty;
 };

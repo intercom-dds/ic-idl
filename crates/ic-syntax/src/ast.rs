@@ -5024,8 +5024,8 @@ pub struct Bitfield {
     pub span: crate::ast::Span,
     /// Annotations that were applied to this item.
     pub annotations: Vec<crate::ast::AnnotationAppl>,
-    /// Name of the item.
-    pub ident: crate::ast::Ident,
+    /// Names of the bitfield members.
+    pub names: Vec<crate::ast::Declarator>,
     pub size: crate::ast::Expr,
     pub ty: Option<crate::ast::Type>,
 }
@@ -5036,7 +5036,7 @@ impl Bitfield {
         Self {
             span: <crate::ast::Span>::default(),
             annotations: <Vec<crate::ast::AnnotationAppl>>::default(),
-            ident: <crate::ast::Ident>::default(),
+            names: <Vec<crate::ast::Declarator>>::default(),
             size: <crate::ast::Expr>::default(),
             ty: None,
         }
@@ -5070,7 +5070,7 @@ const _: () = {
             flags: ::intercom_cts::MemberFlag::nil(),
         },
         ::intercom_cts::MemberInfo {
-            name: "ident",
+            name: "names",
             member_id: 2,
             flags: ::intercom_cts::MemberFlag::nil(),
         },
@@ -5096,7 +5096,7 @@ const _: () = {
             let mut state = ar.encode_struct(&TYPE_INFO)?;
             state.encode_field(&MEMBER_INFO[0], &self.span)?;
             state.encode_field(&MEMBER_INFO[1], &self.annotations)?;
-            state.encode_field(&MEMBER_INFO[2], &self.ident)?;
+            state.encode_field(&MEMBER_INFO[2], &self.names)?;
             state.encode_field(&MEMBER_INFO[3], &self.size)?;
             state.encode_optional(&MEMBER_INFO[4], &self.ty)?;
             state.end()
@@ -5113,7 +5113,7 @@ const _: () = {
             let mut state = ar.decode_struct(&TYPE_INFO)?;
             state.decode_field(&MEMBER_INFO[0], &mut self.span)?;
             state.decode_field(&MEMBER_INFO[1], &mut self.annotations)?;
-            state.decode_field(&MEMBER_INFO[2], &mut self.ident)?;
+            state.decode_field(&MEMBER_INFO[2], &mut self.names)?;
             state.decode_field(&MEMBER_INFO[3], &mut self.size)?;
             state.decode_field(&MEMBER_INFO[4], &mut self.ty)?;
             state.end()?;

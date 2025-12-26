@@ -551,7 +551,7 @@ impl<'ctx> ValueItemProcessor<'ctx> {
                     PrimitiveTy::UInt64
                 };
                 Ty {
-                    span: field.ident.span,
+                    span: field.span,
                     kind: TyKind::Primitive(prim_ty),
                 }
             };
@@ -560,12 +560,19 @@ impl<'ctx> ValueItemProcessor<'ctx> {
             let field_annotations =
                 convert_annotations(self.ctx, &field.annotations, self.current_scope);
 
-            fields.push(BitsetField {
-                ident: field.ident.clone(),
-                size,
-                ty,
-                annotations: field_annotations,
-            });
+            // Create a BitsetField for each name in the declaration
+            for name in &field.names {
+                let ident = match name {
+                    ic_syntax::Declarator::Simple(ident) => ident.clone(),
+                    ic_syntax::Declarator::Array(arr) => arr.ident.clone(),
+                };
+                fields.push(BitsetField {
+                    ident,
+                    size,
+                    ty: ty.clone(),
+                    annotations: field_annotations.clone(),
+                });
+            }
         }
 
         // Create the bitset definition

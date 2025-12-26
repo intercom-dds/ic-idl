@@ -83,9 +83,15 @@ impl Parser<'_> {
     /// Parses an annotation path, which can include keywords as identifiers.
     ///
     /// For example: `@default`, `@foo::bar`, `@key`
+    ///
+    /// We only consume `::` if it is immediately adjacent to the previous token
+    /// (no whitespace before `::`). This disambiguates:
+    /// - `@foo::bar` → annotation with qualified name `foo::bar`
+    /// - `@foo:: bar` → annotation with qualified name `foo::bar` (space after `::` is ok)
+    /// - `@foo ::bar` → annotation `foo` followed by type `::bar`
     fn parse_annotation_path(&mut self) -> Result<Path> {
-        // Check for leading `::`
-        let leading_colons = if self.at_raw(Kind::DColon) {
+        // Check for leading `::` - only if adjacent to `@`
+        let leading_colons = if self.at_raw(Kind::DColon) && self.is_adjacent() {
             let span = self.span();
             self.advance_raw();
             Some(span)
@@ -97,8 +103,9 @@ impl Parser<'_> {
         let first = self.parse_annotation_ident()?;
         let mut segments = vec![first];
 
-        // Parse remaining segments
-        while self.at_raw(Kind::DColon) {
+        // Parse remaining `::ident` segments, but only if `::` is adjacent
+        // (no whitespace before `::`). Space after `::` is fine.
+        while self.at_raw(Kind::DColon) && self.is_adjacent() {
             self.advance_raw();
             segments.push(self.parse_annotation_ident()?);
         }
@@ -107,6 +114,11 @@ impl Parser<'_> {
             leading_colons,
             segments,
         })
+    }
+
+    /// Checks if the current token is immediately adjacent to the previous token.
+    fn is_adjacent(&self) -> bool {
+        self.prev_span.end.offset == self.span().start.offset
     }
 
     /// Parses an identifier in annotation context, which allows keywords.

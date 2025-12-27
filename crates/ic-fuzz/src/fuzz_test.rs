@@ -48,6 +48,9 @@ use ic_preproc::ProcArgs;
 use ic_vfs::SourceMap;
 use indicatif::{MultiProgress, ProgressBar, ProgressState, ProgressStyle};
 
+#[global_allocator]
+static GLOBAL: mimalloc::MiMalloc = mimalloc::MiMalloc;
+
 const UPDATE_INTERVAL: Duration = Duration::from_millis(120);
 
 /// Fuzz test the IDL parser

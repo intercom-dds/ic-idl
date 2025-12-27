@@ -30,7 +30,7 @@
 use std::sync::Arc;
 
 use ic_emit::printer::{Twine, w};
-use rand::rngs::StdRng;
+use rand::rngs::SmallRng;
 use rand::{Rng, SeedableRng};
 
 use crate::grammar::{Grammar, Repetition, Rule, RuleElement};
@@ -85,15 +85,15 @@ pub struct Fuzzer {
     max_tokens: usize,
     token_count: usize,
     at_line_start: bool,
-    rng: StdRng,
+    rng: SmallRng,
 }
 
 impl Fuzzer {
     #[must_use]
     pub fn new(grammar: Arc<Grammar>, config: FuzzerConfig) -> Self {
         let rng = match config.seed {
-            Some(seed) => StdRng::seed_from_u64(seed),
-            None => StdRng::from_entropy(),
+            Some(seed) => SmallRng::seed_from_u64(seed),
+            None => SmallRng::from_entropy(),
         };
         let max_tokens = config.effective_max_tokens();
         Self {

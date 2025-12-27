@@ -216,10 +216,9 @@ impl Parser<'_> {
         let annotations = self.take_annotations();
         let elem = self.type_spec()?;
 
-        // Optional bound: sequence<T, N>
-        // Use bound_expr() instead of const_expr() to avoid consuming ">>" as right-shift
+        // Optional bound: sequence<T, N> - last arg, so allow_comma=false
         let bound = if self.eat(Kind::Comma) {
-            Some(self.bound_expr()?)
+            Some(self.bound_expr(false)?)
         } else {
             None
         };
@@ -240,10 +239,9 @@ impl Parser<'_> {
         let start = self.span();
         self.expect_keyword(Kw::String)?;
 
-        // Optional bound: string<N>
-        // Use bound_expr() instead of const_expr() to avoid consuming ">>" as right-shift
+        // Optional bound: string<N> - last arg, so allow_comma=false
         let bound = if self.eat(Kind::Lt) {
-            let expr = self.bound_expr()?;
+            let expr = self.bound_expr(false)?;
             self.expect(Kind::Gt)?;
             Some(expr)
         } else {
@@ -263,10 +261,9 @@ impl Parser<'_> {
         let start = self.span();
         self.expect_keyword(Kw::WString)?;
 
-        // Optional bound: wstring<N>
-        // Use bound_expr() instead of const_expr() to avoid consuming ">>" as right-shift
+        // Optional bound: wstring<N> - last arg, so allow_comma=false
         let bound = if self.eat(Kind::Lt) {
-            let expr = self.bound_expr()?;
+            let expr = self.bound_expr(false)?;
             self.expect(Kind::Gt)?;
             Some(expr)
         } else {
@@ -287,11 +284,12 @@ impl Parser<'_> {
         self.expect_keyword(Kw::Fixed)?;
 
         // Bounds are optional (Rule 43: `fixed` without bounds is valid in const context)
-        // Use bound_expr() instead of const_expr() to avoid consuming ">>" as right-shift
         let bounds = if self.eat(Kind::Lt) {
-            let total = self.bound_expr()?;
+            // First arg: more args follow, so allow_comma=true
+            let total = self.bound_expr(true)?;
             self.expect(Kind::Comma)?;
-            let fractional = self.bound_expr()?;
+            // Second arg: last arg, so allow_comma=false
+            let fractional = self.bound_expr(false)?;
             self.expect(Kind::Gt)?;
             Some(Fixed { total, fractional })
         } else {
@@ -335,10 +333,9 @@ impl Parser<'_> {
         let value_annotations = self.take_annotations();
         let value = self.type_spec()?;
 
-        // Optional bound: map<K, V, N>
-        // Use bound_expr() instead of const_expr() to avoid consuming ">>" as right-shift
+        // Optional bound: map<K, V, N> - last arg, so allow_comma=false
         let bound = if self.eat(Kind::Comma) {
-            Some(self.bound_expr()?)
+            Some(self.bound_expr(false)?)
         } else {
             None
         };

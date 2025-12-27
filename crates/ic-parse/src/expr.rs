@@ -60,41 +60,49 @@ impl Precedence {
     const UNARY: Self = Self(7); // Rule 14: unary +, -, ~
 }
 
+/// Controls how shift operators (`<<`, `>>`) are handled during parsing.
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum ShiftMode {
+    /// Shift operators are always recognized (normal expression context).
+    Allow,
+    /// Template argument context: `>>` uses lookahead to disambiguate.
+    /// `allow_comma`: if true, `>> ident ,` is shift (more args follow);
+    /// if false, `>> ident ,` is closers (last arg, comma = declarator list).
+    Template { allow_comma: bool },
+}
+
 impl Parser<'_> {
     // Rule 7
     // <const_expr> ::= <or_expr>
     // Parses a full constant expression including shift operators.
     pub fn const_expr(&mut self) -> Result<Expr> {
-        self.expr_bp_with_shifts(Precedence::NONE, true)
+        self.expr_bp(Precedence::NONE, ShiftMode::Allow)
     }
 
-    // Expression parser for bounds inside templates (sequence<T, N>, map<K, V, N>).
-    // Does NOT parse shift operators at the top level to avoid consuming `>>`
-    // as a right-shift when it's actually two closing angle brackets.
-    // Shift operators ARE allowed inside parenthesized expressions.
-    pub(super) fn bound_expr(&mut self) -> Result<Expr> {
-        self.expr_bp_with_shifts(Precedence::NONE, false)
-    }
-
-    // Rule 8
-    // <or_expr> ::= <xor_expr> | <or_expr> "|" <xor_expr>
-    #[allow(dead_code)]
-    fn or_expr(&mut self) -> Result<Expr> {
-        self.expr_bp_with_shifts(Precedence::NONE, true)
+    /// Expression parser for template bounds.
+    /// `allow_comma`: if true, `>> ident ,` is shift (more args follow);
+    /// if false, `>> ident ,` is closers (last arg, comma = declarator list).
+    pub(super) fn bound_expr(&mut self, allow_comma: bool) -> Result<Expr> {
+        self.expr_bp(Precedence::NONE, ShiftMode::Template { allow_comma })
     }
 
     /// Pratt parser: parse expression with minimum binding power.
     /// Implements Rules 8-13 via precedence climbing.
-    ///
-    /// `allow_shifts`: if false, shift operators (`<<`, `>>`) are not recognized
-    /// at the top level. This is used when parsing bounds inside template types
-    /// like `sequence<T, N>` to avoid consuming `>>` as a shift operator.
-    fn expr_bp_with_shifts(&mut self, min_prec: Precedence, allow_shifts: bool) -> Result<Expr> {
+    fn expr_bp(&mut self, min_prec: Precedence, shift_mode: ShiftMode) -> Result<Expr> {
         // Rule 14: Parse prefix (unary operators or primary expression)
-        let mut lhs = self.unary_expr_with_shifts(allow_shifts)?;
+        let mut lhs = self.unary_expr(shift_mode)?;
 
-        // Parse infix operators (Rules 8-13)
-        while let Some((op_kind, prec)) = self.infix_op_with_shifts(allow_shifts) {
+        loop {
+            // In template mode, comma is a hard terminator (expression ends at comma)
+            if matches!(shift_mode, ShiftMode::Template { .. }) && self.peek() == Kind::Comma {
+                break;
+            }
+
+            // Try to get an infix operator
+            let Some((op_kind, prec)) = self.infix_op(shift_mode) else {
+                break;
+            };
+
             if prec <= min_prec {
                 break;
             }
@@ -103,7 +111,7 @@ impl Parser<'_> {
             let op_span = self.consume_infix_op(op_kind);
 
             // Parse right-hand side with higher precedence (left-associative)
-            let rhs = self.expr_bp_with_shifts(prec, allow_shifts)?;
+            let rhs = self.expr_bp(prec, shift_mode)?;
 
             lhs = Expr::Binary(Box::new(Binary {
                 lhs,
@@ -120,12 +128,12 @@ impl Parser<'_> {
 
     // Rule 14
     // <unary_expr> ::= <unary_operator> <primary_expr> | <primary_expr>
-    fn unary_expr_with_shifts(&mut self, allow_shifts: bool) -> Result<Expr> {
+    fn unary_expr(&mut self, shift_mode: ShiftMode) -> Result<Expr> {
         if let Some(op) = self.unary_operator() {
-            let expr = self.unary_expr_with_shifts(allow_shifts)?;
+            let expr = self.unary_expr(shift_mode)?;
             Ok(Expr::Unary(Box::new(Unary { op, expr })))
         } else {
-            self.primary_expr_with_shifts(allow_shifts)
+            self.primary_expr(shift_mode)
         }
     }
 
@@ -160,7 +168,7 @@ impl Parser<'_> {
 
     // Rule 16
     // <primary_expr> ::= <scoped_name> | <literal> | "(" <const_expr> ")"
-    fn primary_expr_with_shifts(&mut self, allow_shifts: bool) -> Result<Expr> {
+    fn primary_expr(&mut self, shift_mode: ShiftMode) -> Result<Expr> {
         let kind = self.peek();
 
         match kind {
@@ -195,7 +203,7 @@ impl Parser<'_> {
             }
 
             // Init list (DDS-XTypes extension for struct/array initialization)
-            Kind::LBrace => self.init_list_with_shifts(allow_shifts),
+            Kind::LBrace => self.init_list(shift_mode),
 
             _ => Err(self.error_expected("expression")),
         }
@@ -292,8 +300,7 @@ impl Parser<'_> {
     }
 
     /// Check if current token starts an infix operator; return its kind and precedence.
-    /// If `allow_shifts` is false, shift operators are not recognized.
-    fn infix_op_with_shifts(&mut self, allow_shifts: bool) -> Option<(OpKind, Precedence)> {
+    fn infix_op(&mut self, shift_mode: ShiftMode) -> Option<(OpKind, Precedence)> {
         match self.peek() {
             // Rule 8: or_expr
             Kind::BitOr => Some((OpKind::Or, Precedence::OR)),
@@ -308,23 +315,113 @@ impl Parser<'_> {
             Kind::Star => Some((OpKind::Multiply, Precedence::MUL)),
             Kind::Slash => Some((OpKind::Divide, Precedence::MUL)),
             Kind::Modulo => Some((OpKind::Modulo, Precedence::MUL)),
+
             // Rule 11: shift_expr - << and >> are parsed as two consecutive tokens
-            // Only recognize these if allow_shifts is true
-            Kind::Lt if allow_shifts => {
-                if self.peek_nth_raw(1) == Kind::Lt {
-                    Some((OpKind::Lshift, Precedence::SHIFT))
-                } else {
-                    None
-                }
+            Kind::Lt if self.peek_nth_raw(1) == Kind::Lt => {
+                Some((OpKind::Lshift, Precedence::SHIFT))
             }
-            Kind::Gt if allow_shifts => {
-                if self.peek_nth_raw(1) == Kind::Gt {
-                    Some((OpKind::Rshift, Precedence::SHIFT))
-                } else {
-                    None
-                }
-            }
+
+            Kind::Gt if self.peek_nth_raw(1) == Kind::Gt => match shift_mode {
+                ShiftMode::Allow => Some((OpKind::Rshift, Precedence::SHIFT)),
+                ShiftMode::Template { allow_comma } => self.rshift_in_template(allow_comma),
+            },
+
             _ => None,
+        }
+    }
+
+    /// Disambiguate `>>` in template argument context using lookahead.
+    /// `allow_comma`: if true, `>> ident ,` is treated as shift (more args follow).
+    fn rshift_in_template(&self, allow_comma: bool) -> Option<(OpKind, Precedence)> {
+        let after_shift = self.peek_nth_raw(2);
+
+        // Literals, unary ops, parens → definitely shift
+        if self.is_definite_expr_continuation(after_shift) {
+            return Some((OpKind::Rshift, Precedence::SHIFT));
+        }
+
+        // For identifiers, check what follows the scoped name
+        if matches!(after_shift, Kind::Ident | Kind::DColon)
+            && self.identifier_continues_expression(2, allow_comma)
+        {
+            return Some((OpKind::Rshift, Precedence::SHIFT));
+        }
+
+        None
+    }
+
+    /// Returns true if the given token definitely continues an expression.
+    /// These are unambiguous - they can't be anything else in this context.
+    fn is_definite_expr_continuation(&self, kind: Kind) -> bool {
+        matches!(
+            kind,
+            // Literals - definitely part of expression
+            Kind::Number { .. }
+                | Kind::Float
+                | Kind::String { .. }
+                | Kind::Char
+                // Boolean/null literals
+                | Kind::Keyword(Kw::True | Kw::False | Kw::Null)
+                // Unary operators - definitely starting a sub-expression
+                | Kind::Minus
+                | Kind::Plus
+                | Kind::BitNot
+                // Grouping - definitely a sub-expression
+                | Kind::LParen
+                // Init list
+                | Kind::LBrace
+        )
+    }
+
+    /// Skip over a scoped name starting at `offset`, return new offset after the name.
+    fn skip_scoped_name(&self, start_offset: usize) -> usize {
+        let mut offset = start_offset;
+
+        // Handle leading ::
+        if self.peek_nth_raw(offset) == Kind::DColon {
+            offset += 1;
+        }
+
+        // Skip identifier
+        if self.peek_nth_raw(offset) == Kind::Ident {
+            offset += 1;
+        } else {
+            return offset;
+        }
+
+        // Skip additional scope segments
+        while self.peek_nth_raw(offset) == Kind::DColon {
+            offset += 1;
+            if self.peek_nth_raw(offset) == Kind::Ident {
+                offset += 1;
+            } else {
+                break;
+            }
+        }
+
+        offset
+    }
+
+    /// Check if an identifier at `start_offset` is part of the current expression.
+    /// `allow_comma`: if true, comma after identifier means expression continues.
+    fn identifier_continues_expression(&self, start_offset: usize, allow_comma: bool) -> bool {
+        let offset = self.skip_scoped_name(start_offset);
+        let after_ident = self.peek_nth_raw(offset);
+
+        match after_ident {
+            // Binary operators - identifier is definitely operand
+            Kind::Plus
+            | Kind::Minus
+            | Kind::Star
+            | Kind::Slash
+            | Kind::Modulo
+            | Kind::BitOr
+            | Kind::BitXor
+            | Kind::BitAnd
+            | Kind::Lt // could be <<
+            | Kind::Gt => true, // could be >> or template closer
+            Kind::Comma => allow_comma,
+            _ => false,
         }
     }
 
@@ -345,7 +442,7 @@ impl Parser<'_> {
     }
 
     // DDS-XTypes extension: initializer list
-    fn init_list_with_shifts(&mut self, allow_shifts: bool) -> Result<Expr> {
+    fn init_list(&mut self, shift_mode: ShiftMode) -> Result<Expr> {
         let start = self.span();
         self.expect(Kind::LBrace)?;
 
@@ -353,7 +450,7 @@ impl Parser<'_> {
 
         if !self.at(Kind::RBrace) {
             // Parse first element
-            values.push(self.init_list_element_with_shifts(allow_shifts)?);
+            values.push(self.init_list_element(shift_mode)?);
 
             // Parse remaining elements
             while self.at(Kind::Comma) {
@@ -361,7 +458,7 @@ impl Parser<'_> {
                 if self.at(Kind::RBrace) {
                     return Err(self.error_message(comma_span, "trailing comma is not allowed"));
                 }
-                values.push(self.init_list_element_with_shifts(allow_shifts)?);
+                values.push(self.init_list_element(shift_mode)?);
             }
         }
 
@@ -374,10 +471,7 @@ impl Parser<'_> {
     }
 
     /// Parses a single init list element: `expr`, `.field = expr`, or `field = expr`
-    fn init_list_element_with_shifts(
-        &mut self,
-        allow_shifts: bool,
-    ) -> Result<ic_syntax::NamedExpr> {
+    fn init_list_element(&mut self, shift_mode: ShiftMode) -> Result<ic_syntax::NamedExpr> {
         // Check for `.field = expr` or `field = expr` syntax
         let ident = if self.eat(Kind::Period) {
             // `.field = expr` - period is required before identifier
@@ -393,7 +487,7 @@ impl Parser<'_> {
             None
         };
 
-        let value = self.expr_bp_with_shifts(Precedence::NONE, allow_shifts)?;
+        let value = self.expr_bp(Precedence::NONE, shift_mode)?;
         Ok(ic_syntax::NamedExpr { ident, value })
     }
 }

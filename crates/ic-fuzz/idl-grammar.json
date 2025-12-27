@@ -1,0 +1,808 @@
+{
+  "terminals": {
+    "identifier": { "type": "identifier" },
+    "integer_literal": { "type": "integer", "bases": ["decimal", "hex", "octal"] },
+    "floating_pt_literal": { "type": "float" },
+    "string_literal": { "type": "string" },
+    "wide_string_literal": { "type": "string" },
+    "character_literal": { "type": "char" },
+    "wide_character_literal": { "type": "char" },
+    "fixed_pt_literal": { "type": "float" }
+  },
+
+  "rules": {
+    "specification": {
+      "seq": ["definition+"]
+    },
+
+    "definition": {
+      "choice": [
+        { "seq": ["module_dcl", "';'"] },
+        { "seq": ["const_dcl", "';'"] },
+        { "seq": ["type_dcl", "';'"] },
+        { "seq": ["except_dcl", "';'"] },
+        { "seq": ["interface_dcl", "';'"] },
+        { "seq": ["value_dcl", "';'"] },
+        { "seq": ["annotation_dcl", "';'"] }
+      ],
+      "repetition_bias": 1.5
+    },
+
+    "module_dcl": {
+      "seq": ["'module'", "identifier", "'{'", "definition+", "'}'"],
+      "bias": 3.0
+    },
+
+    "scoped_name": {
+      "choice": [
+        "identifier",
+        { "seq": ["'::'", "identifier"] },
+        { "seq": ["identifier", "scoped_name_tail*"] }
+      ]
+    },
+
+    "scoped_name_tail": {
+      "seq": ["'::'", "identifier"]
+    },
+
+    "const_dcl": {
+      "seq": ["'const'", "const_type", "identifier", "'='", "const_expr"],
+      "bias": 0.3
+    },
+
+    "const_type": {
+      "choice": [
+        "integer_type",
+        "floating_pt_type",
+        "fixed_pt_const_type",
+        "char_type",
+        "wide_char_type",
+        "boolean_type",
+        "octet_type",
+        "string_type",
+        "wide_string_type",
+        "scoped_name"
+      ]
+    },
+
+    "const_expr": {
+      "seq": ["xor_expr", "or_expr_tail*"],
+      "bias": 0.1
+    },
+
+    "or_expr_tail": {
+      "seq": ["'|'", "xor_expr"]
+    },
+
+    "xor_expr": {
+      "seq": ["and_expr", "xor_expr_tail*"],
+      "bias": 0.1
+    },
+
+    "xor_expr_tail": {
+      "seq": ["'^'", "and_expr"]
+    },
+
+    "and_expr": {
+      "seq": ["shift_expr", "and_expr_tail*"],
+      "bias": 0.1
+    },
+
+    "and_expr_tail": {
+      "seq": ["'&'", "shift_expr"]
+    },
+
+    "shift_expr": {
+      "seq": ["add_expr", "shift_expr_tail*"],
+      "bias": 0.1
+    },
+
+    "shift_expr_tail": {
+      "choice": [
+        { "seq": ["'>>'", "add_expr"] },
+        { "seq": ["'<<'", "add_expr"] }
+      ]
+    },
+
+    "add_expr": {
+      "seq": ["mult_expr", "add_expr_tail*"],
+      "bias": 0.1
+    },
+
+    "add_expr_tail": {
+      "choice": [
+        { "seq": ["'+'", "mult_expr"] },
+        { "seq": ["'-'", "mult_expr"] }
+      ]
+    },
+
+    "mult_expr": {
+      "seq": ["unary_expr", "mult_expr_tail*"],
+      "bias": 0.1
+    },
+
+    "mult_expr_tail": {
+      "choice": [
+        { "seq": ["'*'", "unary_expr"] },
+        { "seq": ["'/'", "unary_expr"] },
+        { "seq": ["'%'", "unary_expr"] }
+      ]
+    },
+
+    "unary_expr": {
+      "choice": [
+        { "seq": ["unary_operator", "primary_expr"] },
+        "primary_expr"
+      ]
+    },
+
+    "unary_operator": {
+      "choice": ["'-'", "'+'", "'~'"]
+    },
+
+    "primary_expr": {
+      "choice": [
+        "scoped_name",
+        "literal",
+        { "seq": ["'('", "const_expr", "')'"] }
+      ]
+    },
+
+    "literal": {
+      "choice": [
+        "integer_literal",
+        "floating_pt_literal",
+        "fixed_pt_literal",
+        "character_literal",
+        "wide_character_literal",
+        "boolean_literal",
+        "string_literal",
+        "wide_string_literal"
+      ]
+    },
+
+    "boolean_literal": {
+      "choice": ["'TRUE'", "'FALSE'"]
+    },
+
+    "positive_int_const": {
+      "seq": ["const_expr"]
+    },
+
+    "type_dcl": {
+      "choice": [
+        "constr_type_dcl",
+        "native_dcl",
+        "typedef_dcl"
+      ]
+    },
+
+    "type_spec": {
+      "choice": [
+        "simple_type_spec",
+        "template_type_spec"
+      ]
+    },
+
+    "simple_type_spec": {
+      "choice": [
+        "base_type_spec",
+        "scoped_name"
+      ]
+    },
+
+    "base_type_spec": {
+      "choice": [
+        "integer_type",
+        "floating_pt_type",
+        "char_type",
+        "wide_char_type",
+        "boolean_type",
+        "octet_type",
+        "any_type"
+      ]
+    },
+
+    "floating_pt_type": {
+      "choice": [
+        "'float'",
+        "'double'",
+        { "seq": ["'long'", "'double'"] }
+      ]
+    },
+
+    "integer_type": {
+      "choice": ["signed_int", "unsigned_int"]
+    },
+
+    "signed_int": {
+      "choice": [
+        "signed_short_int",
+        "signed_long_int",
+        "signed_longlong_int",
+        "signed_tiny_int"
+      ]
+    },
+
+    "signed_short_int": {
+      "choice": ["'short'", "'int16'"]
+    },
+
+    "signed_long_int": {
+      "choice": ["'long'", "'int32'"]
+    },
+
+    "signed_longlong_int": {
+      "choice": [
+        { "seq": ["'long'", "'long'"] },
+        "'int64'"
+      ]
+    },
+
+    "signed_tiny_int": {
+      "seq": ["'int8'"]
+    },
+
+    "unsigned_int": {
+      "choice": [
+        "unsigned_short_int",
+        "unsigned_long_int",
+        "unsigned_longlong_int",
+        "unsigned_tiny_int"
+      ]
+    },
+
+    "unsigned_short_int": {
+      "choice": [
+        { "seq": ["'unsigned'", "'short'"] },
+        "'uint16'"
+      ]
+    },
+
+    "unsigned_long_int": {
+      "choice": [
+        { "seq": ["'unsigned'", "'long'"] },
+        "'uint32'"
+      ]
+    },
+
+    "unsigned_longlong_int": {
+      "choice": [
+        { "seq": ["'unsigned'", "'long'", "'long'"] },
+        "'uint64'"
+      ]
+    },
+
+    "unsigned_tiny_int": {
+      "seq": ["'uint8'"]
+    },
+
+    "char_type": {
+      "seq": ["'char'"]
+    },
+
+    "wide_char_type": {
+      "seq": ["'wchar'"]
+    },
+
+    "boolean_type": {
+      "seq": ["'boolean'"]
+    },
+
+    "octet_type": {
+      "seq": ["'octet'"]
+    },
+
+    "any_type": {
+      "seq": ["'any'"]
+    },
+
+    "template_type_spec": {
+      "choice": [
+        "sequence_type",
+        "string_type",
+        "wide_string_type",
+        "fixed_pt_type",
+        "map_type"
+      ],
+      "bias": 0.3
+    },
+
+    "sequence_type": {
+      "choice": [
+        { "seq": ["'sequence'", "'<'", "type_spec", "','", "positive_int_const", "'>'"] },
+        { "seq": ["'sequence'", "'<'", "type_spec", "'>'"] }
+      ],
+      "bias": 0.3
+    },
+
+    "string_type": {
+      "choice": [
+        { "seq": ["'string'", "'<'", "positive_int_const", "'>'"] },
+        "'string'"
+      ]
+    },
+
+    "wide_string_type": {
+      "choice": [
+        { "seq": ["'wstring'", "'<'", "positive_int_const", "'>'"] },
+        "'wstring'"
+      ]
+    },
+
+    "fixed_pt_type": {
+      "seq": ["'fixed'", "'<'", "positive_int_const", "','", "positive_int_const", "'>'"],
+      "bias": 0.2
+    },
+
+    "fixed_pt_const_type": {
+      "seq": ["'fixed'"]
+    },
+
+    "map_type": {
+      "choice": [
+        { "seq": ["'map'", "'<'", "type_spec", "','", "type_spec", "','", "positive_int_const", "'>'"] },
+        { "seq": ["'map'", "'<'", "type_spec", "','", "type_spec", "'>'"] }
+      ],
+      "bias": 0.2
+    },
+
+    "constr_type_dcl": {
+      "choice": [
+        "struct_dcl",
+        "union_dcl",
+        "enum_dcl",
+        "bitset_dcl",
+        "bitmask_dcl"
+      ]
+    },
+
+    "struct_dcl": {
+      "choice": ["struct_def", "struct_forward_dcl"],
+      "bias": 2.0
+    },
+
+    "struct_def": {
+      "choice": [
+        { "seq": ["'struct'", "identifier", "'{'", "member+", "'}'"] },
+        { "seq": ["'struct'", "identifier", "':'", "scoped_name", "'{'", "member*", "'}'"] },
+        { "seq": ["'struct'", "identifier", "'{'", "'}'"] }
+      ],
+      "bias": 2.0
+    },
+
+    "member": {
+      "seq": ["type_spec", "declarators", "';'"],
+      "repetition_bias": 2.0
+    },
+
+    "struct_forward_dcl": {
+      "seq": ["'struct'", "identifier"]
+    },
+
+    "union_dcl": {
+      "choice": ["union_def", "union_forward_dcl"]
+    },
+
+    "union_def": {
+      "seq": ["'union'", "identifier", "'switch'", "'('", "switch_type_spec", "')'", "'{'", "switch_body", "'}'"]
+    },
+
+    "switch_type_spec": {
+      "choice": [
+        "integer_type",
+        "char_type",
+        "wide_char_type",
+        "boolean_type",
+        "octet_type",
+        "scoped_name"
+      ]
+    },
+
+    "switch_body": {
+      "seq": ["case+"]
+    },
+
+    "case": {
+      "seq": ["case_label+", "element_spec", "';'"]
+    },
+
+    "case_label": {
+      "choice": [
+        { "seq": ["'case'", "const_expr", "':'"] },
+        { "seq": ["'default'", "':'"] }
+      ]
+    },
+
+    "element_spec": {
+      "seq": ["type_spec", "declarator"]
+    },
+
+    "union_forward_dcl": {
+      "seq": ["'union'", "identifier"]
+    },
+
+    "enum_dcl": {
+      "seq": ["'enum'", "identifier", "'{'", "enumerator", "more_enumerators*", "'}'"]
+    },
+
+    "enumerator": {
+      "seq": ["identifier"]
+    },
+
+    "more_enumerators": {
+      "seq": ["','", "enumerator"]
+    },
+
+    "array_declarator": {
+      "seq": ["identifier", "fixed_array_size+"],
+      "bias": 0.1
+    },
+
+    "fixed_array_size": {
+      "seq": ["'['", "positive_int_const", "']'"]
+    },
+
+    "native_dcl": {
+      "seq": ["'native'", "simple_declarator"]
+    },
+
+    "simple_declarator": {
+      "seq": ["identifier"]
+    },
+
+    "typedef_dcl": {
+      "seq": ["'typedef'", "type_declarator"]
+    },
+
+    "type_declarator": {
+      "seq": ["typedef_type", "any_declarators"]
+    },
+
+    "typedef_type": {
+      "choice": [
+        "simple_type_spec",
+        "template_type_spec"
+      ]
+    },
+
+    "any_declarators": {
+      "seq": ["any_declarator", "more_any_declarators*"]
+    },
+
+    "more_any_declarators": {
+      "seq": ["','", "any_declarator"]
+    },
+
+    "any_declarator": {
+      "choice": ["simple_declarator", "array_declarator"]
+    },
+
+    "declarators": {
+      "seq": ["declarator", "more_declarators*"]
+    },
+
+    "more_declarators": {
+      "seq": ["','", "declarator"]
+    },
+
+    "declarator": {
+      "choice": ["simple_declarator", "array_declarator"]
+    },
+
+    "except_dcl": {
+      "seq": ["'exception'", "identifier", "'{'", "member*", "'}'"]
+    },
+
+    "interface_dcl": {
+      "choice": ["interface_def", "interface_forward_dcl"]
+    },
+
+    "interface_def": {
+      "seq": ["interface_header", "'{'", "interface_body", "'}'"]
+    },
+
+    "interface_forward_dcl": {
+      "seq": ["interface_kind", "identifier"]
+    },
+
+    "interface_header": {
+      "seq": ["interface_kind", "identifier", "interface_inheritance_spec?"]
+    },
+
+    "interface_kind": {
+      "seq": ["'interface'"]
+    },
+
+    "interface_inheritance_spec": {
+      "seq": ["':'", "interface_name", "more_interface_names*"]
+    },
+
+    "more_interface_names": {
+      "seq": ["','", "interface_name"]
+    },
+
+    "interface_name": {
+      "seq": ["scoped_name"]
+    },
+
+    "interface_body": {
+      "seq": ["export*"]
+    },
+
+    "export": {
+      "choice": [
+        { "seq": ["op_dcl", "';'"] },
+        { "seq": ["attr_dcl", "';'"] },
+        { "seq": ["type_dcl", "';'"] },
+        { "seq": ["const_dcl", "';'"] },
+        { "seq": ["except_dcl", "';'"] }
+      ],
+      "repetition_bias": 1.5
+    },
+
+    "op_dcl": {
+      "seq": ["op_type_spec", "identifier", "'('", "parameter_dcls?", "')'", "raises_expr?"]
+    },
+
+    "op_type_spec": {
+      "choice": ["type_spec", "'void'"]
+    },
+
+    "parameter_dcls": {
+      "seq": ["param_dcl", "more_param_dcls*"]
+    },
+
+    "more_param_dcls": {
+      "seq": ["','", "param_dcl"]
+    },
+
+    "param_dcl": {
+      "seq": ["param_attribute", "type_spec", "simple_declarator"]
+    },
+
+    "param_attribute": {
+      "choice": ["'in'", "'out'", "'inout'"]
+    },
+
+    "raises_expr": {
+      "seq": ["'raises'", "'('", "scoped_name", "more_scoped_names*", "')'"]
+    },
+
+    "more_scoped_names": {
+      "seq": ["','", "scoped_name"]
+    },
+
+    "attr_dcl": {
+      "choice": ["readonly_attr_spec", "attr_spec"]
+    },
+
+    "readonly_attr_spec": {
+      "seq": ["'readonly'", "'attribute'", "type_spec", "readonly_attr_declarator"]
+    },
+
+    "readonly_attr_declarator": {
+      "choice": [
+        { "seq": ["simple_declarator", "raises_expr"] },
+        { "seq": ["simple_declarator", "more_simple_declarators*"] }
+      ]
+    },
+
+    "more_simple_declarators": {
+      "seq": ["','", "simple_declarator"]
+    },
+
+    "attr_spec": {
+      "seq": ["'attribute'", "type_spec", "attr_declarator"]
+    },
+
+    "attr_declarator": {
+      "choice": [
+        { "seq": ["simple_declarator", "attr_raises_expr"] },
+        { "seq": ["simple_declarator", "more_simple_declarators*"] }
+      ]
+    },
+
+    "attr_raises_expr": {
+      "choice": [
+        { "seq": ["get_excep_expr", "set_excep_expr?"] },
+        "set_excep_expr"
+      ]
+    },
+
+    "get_excep_expr": {
+      "seq": ["'getraises'", "exception_list"]
+    },
+
+    "set_excep_expr": {
+      "seq": ["'setraises'", "exception_list"]
+    },
+
+    "exception_list": {
+      "seq": ["'('", "scoped_name", "more_scoped_names*", "')'"]
+    },
+
+    "value_dcl": {
+      "choice": ["value_def", "value_forward_dcl"]
+    },
+
+    "value_def": {
+      "seq": ["value_header", "'{'", "value_element*", "'}'"]
+    },
+
+    "value_header": {
+      "seq": ["value_kind", "identifier", "value_inheritance_spec?"]
+    },
+
+    "value_kind": {
+      "seq": ["'valuetype'"]
+    },
+
+    "value_inheritance_spec": {
+      "choice": [
+        { "seq": ["':'", "value_name", "supports_spec?"] },
+        "supports_spec"
+      ]
+    },
+
+    "supports_spec": {
+      "seq": ["'supports'", "interface_name"]
+    },
+
+    "value_name": {
+      "seq": ["scoped_name"]
+    },
+
+    "value_element": {
+      "choice": [
+        "export",
+        "state_member"
+      ]
+    },
+
+    "state_member": {
+      "seq": ["state_member_visibility", "type_spec", "declarators", "';'"]
+    },
+
+    "state_member_visibility": {
+      "choice": ["'public'", "'private'"]
+    },
+
+    "value_forward_dcl": {
+      "seq": ["value_kind", "identifier"]
+    },
+
+    "bitset_dcl": {
+      "seq": ["'bitset'", "identifier", "bitset_inheritance?", "'{'", "bitfield*", "'}'"]
+    },
+
+    "bitset_inheritance": {
+      "seq": ["':'", "scoped_name"]
+    },
+
+    "bitfield": {
+      "seq": ["bitfield_spec", "bitfield_identifiers?", "';'"]
+    },
+
+    "bitfield_identifiers": {
+      "seq": ["identifier", "more_bitfield_identifiers*"]
+    },
+
+    "more_bitfield_identifiers": {
+      "seq": ["','", "identifier"]
+    },
+
+    "bitfield_spec": {
+      "choice": [
+        { "seq": ["'bitfield'", "'<'", "positive_int_const", "'>'"] },
+        { "seq": ["'bitfield'", "'<'", "positive_int_const", "','", "destination_type", "'>'"] }
+      ]
+    },
+
+    "destination_type": {
+      "choice": ["boolean_type", "octet_type", "integer_type"]
+    },
+
+    "bitmask_dcl": {
+      "seq": ["'bitmask'", "identifier", "'{'", "bit_value", "more_bit_values*", "'}'"]
+    },
+
+    "bit_value": {
+      "seq": ["identifier"]
+    },
+
+    "more_bit_values": {
+      "seq": ["','", "bit_value"]
+    },
+
+    "annotation_dcl": {
+      "seq": ["annotation_header", "'{'", "annotation_body", "'}'"]
+    },
+
+    "annotation_header": {
+      "seq": ["'@annotation'", "identifier"]
+    },
+
+    "annotation_body": {
+      "seq": ["annotation_body_element*"]
+    },
+
+    "annotation_body_element": {
+      "choice": [
+        "annotation_member",
+        { "seq": ["enum_dcl", "';'"] },
+        { "seq": ["const_dcl", "';'"] },
+        { "seq": ["typedef_dcl", "';'"] }
+      ]
+    },
+
+    "annotation_member": {
+      "seq": ["annotation_member_type", "simple_declarator", "annotation_member_default?", "';'"]
+    },
+
+    "annotation_member_type": {
+      "choice": ["const_type", "any_const_type", "scoped_name"]
+    },
+
+    "any_const_type": {
+      "seq": ["'any'"]
+    },
+
+    "annotation_member_default": {
+      "seq": ["'default'", "const_expr"]
+    },
+
+    "annotation_appl": {
+      "seq": ["'@'", "scoped_name", "annotation_appl_args?"]
+    },
+
+    "annotation_appl_args": {
+      "seq": ["'('", "annotation_appl_params", "')'"]
+    },
+
+    "annotation_appl_params": {
+      "choice": [
+        "const_expr",
+        { "seq": ["annotation_appl_param", "more_annotation_appl_params*"] }
+      ]
+    },
+
+    "more_annotation_appl_params": {
+      "seq": ["','", "annotation_appl_param"]
+    },
+
+    "annotation_appl_param": {
+      "seq": ["identifier", "'='", "const_expr"]
+    }
+  },
+
+  "annotations": {
+    "probability": 0.1,
+    "names": [
+      "key",
+      "id",
+      "optional",
+      "must_understand",
+      "nested",
+      "hashid",
+      "default",
+      "range",
+      "min",
+      "max",
+      "unit",
+      "bit_bound",
+      "external",
+      "verbatim",
+      "autoid",
+      "extensibility",
+      "final",
+      "appendable",
+      "mutable",
+      "topic",
+      "data_representation"
+    ],
+    "args_probability": 0.4
+  },
+
+  "start": "specification"
+}

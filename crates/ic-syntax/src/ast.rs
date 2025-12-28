@@ -5234,6 +5234,10 @@ const _: () = {
 
 #[derive(Clone, Debug, PartialEq, PartialOrd)]
 pub struct Attribute {
+    /// Span of the attribute declaration.
+    pub span: crate::ast::Span,
+    /// Annotations applied to this attribute.
+    pub annotations: Vec<crate::ast::AnnotationAppl>,
     /// Name of the attribute.
     pub decl: Vec<crate::ast::Declarator>,
     /// ///
@@ -5251,6 +5255,8 @@ impl Attribute {
     #[must_use]
     pub fn new() -> Self {
         Self {
+            span: <crate::ast::Span>::default(),
+            annotations: <Vec<crate::ast::AnnotationAppl>>::default(),
             decl: <Vec<crate::ast::Declarator>>::default(),
             setraises: <Vec<crate::ast::Path>>::default(),
             getraises: <Vec<crate::ast::Path>>::default(),
@@ -5277,28 +5283,38 @@ const _: () = {
 
     const MEMBER_INFO: &[::intercom_cts::MemberInfo<'static>] = &[
         ::intercom_cts::MemberInfo {
-            name: "decl",
+            name: "span",
             member_id: 0,
             flags: ::intercom_cts::MemberFlag::nil(),
         },
         ::intercom_cts::MemberInfo {
-            name: "setraises",
+            name: "annotations",
             member_id: 1,
             flags: ::intercom_cts::MemberFlag::nil(),
         },
         ::intercom_cts::MemberInfo {
-            name: "getraises",
+            name: "decl",
             member_id: 2,
             flags: ::intercom_cts::MemberFlag::nil(),
         },
         ::intercom_cts::MemberInfo {
-            name: "ty",
+            name: "setraises",
             member_id: 3,
             flags: ::intercom_cts::MemberFlag::nil(),
         },
         ::intercom_cts::MemberInfo {
-            name: "readonly",
+            name: "getraises",
             member_id: 4,
+            flags: ::intercom_cts::MemberFlag::nil(),
+        },
+        ::intercom_cts::MemberInfo {
+            name: "ty",
+            member_id: 5,
+            flags: ::intercom_cts::MemberFlag::nil(),
+        },
+        ::intercom_cts::MemberInfo {
+            name: "readonly",
+            member_id: 6,
             flags: ::intercom_cts::MemberFlag::IS_OPTIONAL,
         },
     ];
@@ -5311,11 +5327,13 @@ const _: () = {
             use ::intercom_cts::encode::StructSerializer as _;
 
             let mut state = ar.encode_struct(&TYPE_INFO)?;
-            state.encode_field(&MEMBER_INFO[0], &self.decl)?;
-            state.encode_field(&MEMBER_INFO[1], &self.setraises)?;
-            state.encode_field(&MEMBER_INFO[2], &self.getraises)?;
-            state.encode_field(&MEMBER_INFO[3], &self.ty)?;
-            state.encode_optional(&MEMBER_INFO[4], &self.readonly)?;
+            state.encode_field(&MEMBER_INFO[0], &self.span)?;
+            state.encode_field(&MEMBER_INFO[1], &self.annotations)?;
+            state.encode_field(&MEMBER_INFO[2], &self.decl)?;
+            state.encode_field(&MEMBER_INFO[3], &self.setraises)?;
+            state.encode_field(&MEMBER_INFO[4], &self.getraises)?;
+            state.encode_field(&MEMBER_INFO[5], &self.ty)?;
+            state.encode_optional(&MEMBER_INFO[6], &self.readonly)?;
             state.end()
         }
     }
@@ -5328,11 +5346,13 @@ const _: () = {
             use ::intercom_cts::decode::StructDeserializer as _;
 
             let mut state = ar.decode_struct(&TYPE_INFO)?;
-            state.decode_field(&MEMBER_INFO[0], &mut self.decl)?;
-            state.decode_field(&MEMBER_INFO[1], &mut self.setraises)?;
-            state.decode_field(&MEMBER_INFO[2], &mut self.getraises)?;
-            state.decode_field(&MEMBER_INFO[3], &mut self.ty)?;
-            state.decode_field(&MEMBER_INFO[4], &mut self.readonly)?;
+            state.decode_field(&MEMBER_INFO[0], &mut self.span)?;
+            state.decode_field(&MEMBER_INFO[1], &mut self.annotations)?;
+            state.decode_field(&MEMBER_INFO[2], &mut self.decl)?;
+            state.decode_field(&MEMBER_INFO[3], &mut self.setraises)?;
+            state.decode_field(&MEMBER_INFO[4], &mut self.getraises)?;
+            state.decode_field(&MEMBER_INFO[5], &mut self.ty)?;
+            state.decode_field(&MEMBER_INFO[6], &mut self.readonly)?;
             state.end()?;
             Ok(())
         }
@@ -5552,6 +5572,10 @@ const _: () = {
 
 #[derive(Clone, Debug, PartialEq, PartialOrd)]
 pub struct Prototype {
+    /// Span of the prototype declaration.
+    pub span: crate::ast::Span,
+    /// Annotations applied to this prototype.
+    pub annotations: Vec<crate::ast::AnnotationAppl>,
     /// Name of the prototype.
     pub ident: crate::ast::Ident,
     /// Return type.
@@ -5567,6 +5591,8 @@ impl Prototype {
     #[must_use]
     pub fn new() -> Self {
         Self {
+            span: <crate::ast::Span>::default(),
+            annotations: <Vec<crate::ast::AnnotationAppl>>::default(),
             ident: <crate::ast::Ident>::default(),
             ret: <crate::ast::Type>::default(),
             params: <Vec<crate::ast::Param>>::default(),
@@ -5593,28 +5619,38 @@ const _: () = {
 
     const MEMBER_INFO: &[::intercom_cts::MemberInfo<'static>] = &[
         ::intercom_cts::MemberInfo {
-            name: "ident",
+            name: "span",
             member_id: 0,
             flags: ::intercom_cts::MemberFlag::nil(),
         },
         ::intercom_cts::MemberInfo {
-            name: "ret",
+            name: "annotations",
             member_id: 1,
             flags: ::intercom_cts::MemberFlag::nil(),
         },
         ::intercom_cts::MemberInfo {
-            name: "params",
+            name: "ident",
             member_id: 2,
             flags: ::intercom_cts::MemberFlag::nil(),
         },
         ::intercom_cts::MemberInfo {
-            name: "raises",
+            name: "ret",
             member_id: 3,
             flags: ::intercom_cts::MemberFlag::nil(),
         },
         ::intercom_cts::MemberInfo {
-            name: "oneway",
+            name: "params",
             member_id: 4,
+            flags: ::intercom_cts::MemberFlag::nil(),
+        },
+        ::intercom_cts::MemberInfo {
+            name: "raises",
+            member_id: 5,
+            flags: ::intercom_cts::MemberFlag::nil(),
+        },
+        ::intercom_cts::MemberInfo {
+            name: "oneway",
+            member_id: 6,
             flags: ::intercom_cts::MemberFlag::IS_OPTIONAL,
         },
     ];
@@ -5627,11 +5663,13 @@ const _: () = {
             use ::intercom_cts::encode::StructSerializer as _;
 
             let mut state = ar.encode_struct(&TYPE_INFO)?;
-            state.encode_field(&MEMBER_INFO[0], &self.ident)?;
-            state.encode_field(&MEMBER_INFO[1], &self.ret)?;
-            state.encode_field(&MEMBER_INFO[2], &self.params)?;
-            state.encode_field(&MEMBER_INFO[3], &self.raises)?;
-            state.encode_optional(&MEMBER_INFO[4], &self.oneway)?;
+            state.encode_field(&MEMBER_INFO[0], &self.span)?;
+            state.encode_field(&MEMBER_INFO[1], &self.annotations)?;
+            state.encode_field(&MEMBER_INFO[2], &self.ident)?;
+            state.encode_field(&MEMBER_INFO[3], &self.ret)?;
+            state.encode_field(&MEMBER_INFO[4], &self.params)?;
+            state.encode_field(&MEMBER_INFO[5], &self.raises)?;
+            state.encode_optional(&MEMBER_INFO[6], &self.oneway)?;
             state.end()
         }
     }
@@ -5644,11 +5682,13 @@ const _: () = {
             use ::intercom_cts::decode::StructDeserializer as _;
 
             let mut state = ar.decode_struct(&TYPE_INFO)?;
-            state.decode_field(&MEMBER_INFO[0], &mut self.ident)?;
-            state.decode_field(&MEMBER_INFO[1], &mut self.ret)?;
-            state.decode_field(&MEMBER_INFO[2], &mut self.params)?;
-            state.decode_field(&MEMBER_INFO[3], &mut self.raises)?;
-            state.decode_field(&MEMBER_INFO[4], &mut self.oneway)?;
+            state.decode_field(&MEMBER_INFO[0], &mut self.span)?;
+            state.decode_field(&MEMBER_INFO[1], &mut self.annotations)?;
+            state.decode_field(&MEMBER_INFO[2], &mut self.ident)?;
+            state.decode_field(&MEMBER_INFO[3], &mut self.ret)?;
+            state.decode_field(&MEMBER_INFO[4], &mut self.params)?;
+            state.decode_field(&MEMBER_INFO[5], &mut self.raises)?;
+            state.decode_field(&MEMBER_INFO[6], &mut self.oneway)?;
             state.end()?;
             Ok(())
         }

@@ -260,7 +260,7 @@ struct MapType {
 };
 
 @nested
-struct Fixed {
+struct _Fixed {
     Expr total;
     Expr fractional;
 };
@@ -268,7 +268,7 @@ struct Fixed {
 @nested
 struct FixedType {
     Span span;
-    @optional Fixed bounds;
+    @optional _Fixed bounds;
 };
 
 enum TypeKind {
@@ -525,7 +525,7 @@ struct BitmaskDef : IDef {
 };
 
 @nested
-struct Bitfield : IDecl {
+struct _Bitfield : IDecl {
     Expr size;
     @optional Type ty;
 };
@@ -533,11 +533,11 @@ struct Bitfield : IDecl {
 @nested
 struct BitsetDef : IDef {
     @optional Path parent;
-    sequence<Bitfield> fields;
+    sequence<_Bitfield> fields;
 };
 
 @nested
-struct Attribute {
+struct _Attribute {
     /// Name of the attribute.
     sequence<Declarator> decl;
 
@@ -621,7 +621,7 @@ union ValueElement switch(ValueElementKind) {
 case VALUE_MEMBER:
     ValueMember state;
 case VALUE_ATTR:
-    Attribute attr;
+    _Attribute attr;
 case VALUE_PROTO:
     Prototype proto;
 case VALUE_ITEM:
@@ -759,7 +759,7 @@ enum InterfaceMemberKind {
 union InterfaceMember switch(InterfaceMemberKind) {
 case INTERFACE_ATTRIBUTE:
     /// An interface attribute.
-    Attribute attr;
+    _Attribute attr;
 
 case INTERFACE_PROTOTYPE:
     /// Function definition.

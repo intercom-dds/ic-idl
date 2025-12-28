@@ -144,7 +144,6 @@ impl<'a> Parser<'a> {
     }
 
     /// Advances to the next token, skimming any annotations first.
-    /// Returns the consumed token.
     #[inline]
     pub fn advance(&mut self) -> Token {
         self.skim_annotations();
@@ -452,18 +451,19 @@ impl<'a> Parser<'a> {
         Ok((content, annotations))
     }
 
-    /// Parses `< ... >`, returning content and annotations before/after brackets.
-    #[allow(dead_code)]
-    pub fn angle_bracketed<T>(
+    /// Parses `< ... >` for template arguments, isolating annotations inside from outside.
+    pub fn template_args<T>(
         &mut self,
         parse_content: impl FnOnce(&mut Self) -> Result<T>,
-    ) -> Result<(T, Vec<AnnotationAppl>)> {
-        let mut annotations = self.take_annotations();
+    ) -> Result<T> {
         self.expect(Kind::Lt)?;
+        let saved = std::mem::take(&mut self.pending_annotations);
         let content = parse_content(self)?;
+        self.orphaned_annotations
+            .extend(std::mem::take(&mut self.pending_annotations));
         self.expect(Kind::Gt)?;
-        annotations.extend(self.take_annotations());
-        Ok((content, annotations))
+        self.pending_annotations = saved;
+        Ok(content)
     }
 
     // Rule 1

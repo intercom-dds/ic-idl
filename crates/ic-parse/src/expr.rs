@@ -72,16 +72,13 @@ impl Parser<'_> {
     /// Pratt parser: parse expression with minimum binding power.
     /// Implements Rules 8-13 via precedence climbing.
     fn expr_bp(&mut self, min_prec: Precedence, shift_mode: ShiftMode) -> Result<Expr> {
-        // Rule 14: Parse prefix (unary operators or primary expression)
         let mut lhs = self.unary_expr(shift_mode)?;
-
         loop {
             // In template mode, comma is a hard terminator (expression ends at comma)
             if matches!(shift_mode, ShiftMode::Template { .. }) && self.peek() == Kind::Comma {
                 break;
             }
 
-            // Try to get an infix operator
             let Some((op_kind, prec)) = self.infix_op(shift_mode) else {
                 break;
             };
@@ -90,12 +87,8 @@ impl Parser<'_> {
                 break;
             }
 
-            // Consume the operator
             let op_span = self.consume_infix_op(op_kind);
-
-            // Parse right-hand side with higher precedence (left-associative)
             let rhs = self.expr_bp(prec, shift_mode)?;
-
             lhs = Expr::Binary(Box::new(Binary {
                 lhs,
                 op: Op {
@@ -208,7 +201,14 @@ impl Parser<'_> {
     fn integer_literal(&mut self, base: Base) -> Result<Expr> {
         let tok = self.advance();
         let text = self.text(tok.span);
-        let value = parse_integer(text, base);
+        let value = match parse_integer(text, base) {
+            Some(v) => v,
+            None => {
+                return Err(self
+                    .error_message(tok.span, "invalid integer literal")
+                    .with_label("invalid integer"));
+            }
+        };
         Ok(Expr::Literal(Literal {
             span: tok.span,
             value: LiteralValue::Int(value),
@@ -219,7 +219,14 @@ impl Parser<'_> {
     fn floating_pt_literal(&mut self) -> Result<Expr> {
         let tok = self.advance();
         let text = self.text(tok.span);
-        let value: f64 = text.parse().unwrap_or(0.0);
+        let value: f64 = match text.parse() {
+            Ok(v) => v,
+            Err(_) => {
+                return Err(self
+                    .error_message(tok.span, "invalid floating point literal")
+                    .with_label("invalid float"));
+            }
+        };
         Ok(Expr::Literal(Literal {
             span: tok.span,
             value: LiteralValue::Float(value),
@@ -459,14 +466,25 @@ impl Parser<'_> {
 }
 
 // Rule 18
-fn parse_integer(text: &str, base: Base) -> u64 {
+fn parse_integer(text: &str, base: Base) -> Option<u64> {
     let text = text.replace('_', "");
     let (text, radix) = match base {
         Base::Octal => (text.trim_start_matches('0'), 8),
         Base::Decimal => (text.as_str(), 10),
-        Base::Hexadecimal => (text.trim_start_matches("0x").trim_start_matches("0X"), 16),
+        Base::Hexadecimal => {
+            let stripped = text.trim_start_matches("0x").trim_start_matches("0X");
+            // "0x" with no digits is invalid
+            if stripped.is_empty() {
+                return None;
+            }
+            (stripped, 16)
+        }
     };
-    u64::from_str_radix(text, radix).unwrap_or(0)
+    // For octal, empty string after stripping leading zeros means "0"
+    if text.is_empty() {
+        return Some(0);
+    }
+    u64::from_str_radix(text, radix).ok()
 }
 
 // Rule 19

@@ -207,18 +207,16 @@ impl Parser<'_> {
         let start = self.span();
         self.expect_keyword(Kw::Sequence)?;
 
-        self.expect(Kind::Lt)?;
-
-        let annotations = self.take_annotations();
-        let elem = self.type_spec()?;
-
-        let bound = if self.eat(Kind::Comma) {
-            Some(self.bound_expr(false)?)
-        } else {
-            None
-        };
-
-        self.expect(Kind::Gt)?;
+        let (elem, bound, annotations) = self.template_args(|p| {
+            let elem = p.type_spec()?;
+            let bound = if p.eat(Kind::Comma) {
+                Some(p.bound_expr(false)?)
+            } else {
+                None
+            };
+            let annotations = p.take_annotations();
+            Ok((elem, bound, annotations))
+        })?;
 
         Ok(Type::Sequence(SequenceType {
             ty: Box::new(elem),
@@ -234,10 +232,8 @@ impl Parser<'_> {
         let start = self.span();
         self.expect_keyword(Kw::String)?;
 
-        let bound = if self.eat(Kind::Lt) {
-            let expr = self.bound_expr(false)?;
-            self.expect(Kind::Gt)?;
-            Some(expr)
+        let bound = if self.at(Kind::Lt) {
+            Some(self.template_args(|p| p.bound_expr(false))?)
         } else {
             None
         };
@@ -255,10 +251,8 @@ impl Parser<'_> {
         let start = self.span();
         self.expect_keyword(Kw::WString)?;
 
-        let bound = if self.eat(Kind::Lt) {
-            let expr = self.bound_expr(false)?;
-            self.expect(Kind::Gt)?;
-            Some(expr)
+        let bound = if self.at(Kind::Lt) {
+            Some(self.template_args(|p| p.bound_expr(false))?)
         } else {
             None
         };
@@ -276,12 +270,13 @@ impl Parser<'_> {
         let start = self.span();
         self.expect_keyword(Kw::Fixed)?;
 
-        let bounds = if self.eat(Kind::Lt) {
-            let total = self.bound_expr(true)?;
-            self.expect(Kind::Comma)?;
-            let fractional = self.bound_expr(false)?;
-            self.expect(Kind::Gt)?;
-            Some(Fixed { total, fractional })
+        let bounds = if self.at(Kind::Lt) {
+            Some(self.template_args(|p| {
+                let total = p.bound_expr(true)?;
+                p.expect(Kind::Comma)?;
+                let fractional = p.bound_expr(false)?;
+                Ok(Fixed { total, fractional })
+            })?)
         } else {
             None
         };
@@ -311,23 +306,19 @@ impl Parser<'_> {
         let start = self.span();
         self.expect_keyword(Kw::Map)?;
 
-        self.expect(Kind::Lt)?;
-
-        let key_annotations = self.take_annotations();
-        let key = self.type_spec()?;
-
-        self.expect(Kind::Comma)?;
-
-        let value_annotations = self.take_annotations();
-        let value = self.type_spec()?;
-
-        let bound = if self.eat(Kind::Comma) {
-            Some(self.bound_expr(false)?)
-        } else {
-            None
-        };
-
-        self.expect(Kind::Gt)?;
+        let (key, key_annotations, value, value_annotations, bound) = self.template_args(|p| {
+            let key = p.type_spec()?;
+            let key_annotations = p.take_annotations();
+            p.expect(Kind::Comma)?;
+            let value = p.type_spec()?;
+            let bound = if p.eat(Kind::Comma) {
+                Some(p.bound_expr(false)?)
+            } else {
+                None
+            };
+            let value_annotations = p.take_annotations();
+            Ok((key, key_annotations, value, value_annotations, bound))
+        })?;
 
         Ok(Type::Map(MapType {
             key: Box::new(key),

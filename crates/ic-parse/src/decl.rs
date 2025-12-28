@@ -95,11 +95,12 @@ impl Parser<'_> {
         let start = self.span();
         self.expect_keyword(Kw::Native)?;
         let ident = self.ident()?;
-        self.expect(Kind::Semi)?;
+        let mut annotations = self.take_annotations();
+        annotations.extend(self.expect_semi()?);
 
         Ok(Item::DeclValue(Decl {
             span: self.make_span(start, self.prev_span),
-            annotations: Vec::new(),
+            annotations,
             ident,
             kind: DeclKind::Native,
         }))
@@ -109,14 +110,12 @@ impl Parser<'_> {
     fn const_dcl(&mut self) -> Result<Item> {
         let start = self.span();
         self.expect_keyword(Kw::Const)?;
-
-        // Rule 6: const_type
         let ty = self.type_spec()?;
         let decl = self.declarator()?;
-
         self.expect(Kind::Eq)?;
         let value = self.const_expr()?;
-        let annotations = self.expect_semi()?;
+        let mut annotations = self.take_annotations();
+        annotations.extend(self.expect_semi()?);
 
         Ok(Item::ConstValue(ConstDef {
             span: self.make_span(start, self.prev_span),
@@ -408,14 +407,10 @@ impl Parser<'_> {
     fn typedef_dcl(&mut self) -> Result<Item> {
         let start = self.span();
         self.expect_keyword(Kw::Typedef)?;
-
-        // Rule 64: type_declarator
         let ty = self.type_spec()?;
-
-        // Rule 65: any_declarators
         let decl = self.any_declarators()?;
-
-        let annotations = self.expect_semi()?;
+        let mut annotations = self.take_annotations();
+        annotations.extend(self.expect_semi()?);
 
         Ok(Item::AliasValue(AliasDef {
             span: self.make_span(start, self.prev_span),
@@ -499,10 +494,10 @@ impl Parser<'_> {
         _local: Option<ic_vfs::Span>,
         ident: ic_syntax::Ident,
     ) -> Result<Item> {
-        self.expect(Kind::Semi)?;
+        let annotations = self.expect_semi()?;
         Ok(Item::DeclValue(Decl {
             span: self.make_span(start, self.prev_span),
-            annotations: Vec::new(),
+            annotations,
             ident,
             kind: DeclKind::Interface,
         }))
@@ -575,22 +570,22 @@ impl Parser<'_> {
     // <export> ::= <op_dcl> ";" | <attr_dcl> ";"
     //            | <type_dcl> ";" | <const_dcl> ";" | <except_dcl> ";"
     fn export(&mut self) -> Result<InterfaceMember> {
-        let _annotations = self.take_annotations();
-
         match self.peek() {
             // Rule 119: oneway operation
             Kind::Keyword(Kw::Oneway) => {
-                let oneway_span = self.span();
+                let annotations = self.take_annotations();
+                let start = self.span();
                 self.advance();
-                let mut proto = self.op_dcl()?;
-                proto.oneway = Some(oneway_span);
+                let mut proto = self.op_dcl(start, annotations)?;
+                proto.oneway = Some(start);
                 Ok(InterfaceMember::Proto(proto))
             }
             // Rule 88-92: attribute
             Kind::Keyword(Kw::ReadOnly | Kw::Attribute) => {
-                Ok(InterfaceMember::Attr(self.attr_dcl()?))
+                let annotations = self.take_annotations();
+                Ok(InterfaceMember::Attr(self.attr_dcl(annotations)?))
             }
-            // Rule 97: type declarations nested in interface
+            // Rule 97
             Kind::Keyword(Kw::Typedef) => Ok(InterfaceMember::Item(self.typedef_dcl()?)),
             Kind::Keyword(Kw::Const) => Ok(InterfaceMember::Item(self.const_dcl()?)),
             Kind::Keyword(Kw::Exception) => Ok(InterfaceMember::Item(self.except_dcl()?)),
@@ -601,12 +596,20 @@ impl Parser<'_> {
             Kind::Keyword(Kw::Bitmask) => Ok(InterfaceMember::Item(self.bitmask_dcl()?)),
             Kind::Keyword(Kw::Native) => Ok(InterfaceMember::Item(self.native_dcl()?)),
             // Rule 82: operation declaration
-            _ => Ok(InterfaceMember::Proto(self.op_dcl()?)),
+            _ => {
+                let annotations = self.take_annotations();
+                let start = self.span();
+                Ok(InterfaceMember::Proto(self.op_dcl(start, annotations)?))
+            }
         }
     }
 
     // Rule 82
-    fn op_dcl(&mut self) -> Result<Prototype> {
+    fn op_dcl(
+        &mut self,
+        start: ic_vfs::Span,
+        mut annotations: Vec<ic_syntax::AnnotationAppl>,
+    ) -> Result<Prototype> {
         // Rule 83: op_type_spec
         let ret = self.type_spec()?;
         let ident = self.ident()?;
@@ -624,8 +627,11 @@ impl Parser<'_> {
         };
 
         self.expect(Kind::Semi)?;
+        annotations.extend(self.take_trailing_comments());
 
         Ok(Prototype {
+            span: self.make_span(start, self.prev_span),
+            annotations,
             ident,
             ret,
             params,
@@ -672,11 +678,14 @@ impl Parser<'_> {
     }
 
     // Rule 88
-    fn attr_dcl(&mut self) -> Result<Attribute> {
+    fn attr_dcl(&mut self, mut annotations: Vec<ic_syntax::AnnotationAppl>) -> Result<Attribute> {
+        let start = self.span();
+
         // Rule 89: readonly_attr_spec
         if self.eat_keyword(Kw::ReadOnly).is_some() {
             let readonly = Some(self.prev_span);
             self.expect_keyword(Kw::Attribute)?;
+            annotations.extend(self.take_annotations());
             let ty = self.type_spec()?;
 
             // Rule 90: readonly_attr_declarator
@@ -695,8 +704,11 @@ impl Parser<'_> {
             };
 
             self.expect(Kind::Semi)?;
+            annotations.extend(self.take_trailing_comments());
 
             return Ok(Attribute {
+                span: self.make_span(start, self.prev_span),
+                annotations,
                 decl,
                 ty,
                 readonly,
@@ -707,6 +719,7 @@ impl Parser<'_> {
 
         // Rule 91: attr_spec
         self.expect_keyword(Kw::Attribute)?;
+        annotations.extend(self.take_annotations());
         let ty = self.type_spec()?;
 
         // Rule 92: attr_declarator
@@ -725,8 +738,11 @@ impl Parser<'_> {
             };
 
         self.expect(Kind::Semi)?;
+        annotations.extend(self.take_trailing_comments());
 
         Ok(Attribute {
+            span: self.make_span(start, self.prev_span),
+            annotations,
             decl,
             ty,
             readonly: None,
@@ -842,19 +858,23 @@ impl Parser<'_> {
 
     // Rule 105
     fn value_element(&mut self) -> Result<ValueElement> {
+        let annotations = self.take_annotations();
+
         match self.peek() {
             // Rule 106: state_member
             Kind::Keyword(Kw::Public | Kw::Private) => {
                 Ok(ValueElement::State(self.state_member()?))
             }
             Kind::Keyword(Kw::Oneway) => {
-                let oneway_span = self.span();
+                let start = self.span();
                 self.advance();
-                let mut proto = self.op_dcl()?;
-                proto.oneway = Some(oneway_span);
+                let mut proto = self.op_dcl(start, annotations)?;
+                proto.oneway = Some(start);
                 Ok(ValueElement::Proto(proto))
             }
-            Kind::Keyword(Kw::ReadOnly | Kw::Attribute) => Ok(ValueElement::Attr(self.attr_dcl()?)),
+            Kind::Keyword(Kw::ReadOnly | Kw::Attribute) => {
+                Ok(ValueElement::Attr(self.attr_dcl(annotations)?))
+            }
             Kind::Keyword(Kw::Typedef) => Ok(ValueElement::Item(self.typedef_dcl()?)),
             Kind::Keyword(Kw::Const) => Ok(ValueElement::Item(self.const_dcl()?)),
             Kind::Keyword(Kw::Exception) => Ok(ValueElement::Item(self.except_dcl()?)),
@@ -864,7 +884,10 @@ impl Parser<'_> {
             Kind::Keyword(Kw::Bitset) => Ok(ValueElement::Item(self.bitset_dcl()?)),
             Kind::Keyword(Kw::Bitmask) => Ok(ValueElement::Item(self.bitmask_dcl()?)),
             Kind::Keyword(Kw::Native) => Ok(ValueElement::Item(self.native_dcl()?)),
-            _ => Ok(ValueElement::Proto(self.op_dcl()?)),
+            _ => {
+                let start = self.span();
+                Ok(ValueElement::Proto(self.op_dcl(start, annotations)?))
+            }
         }
     }
 
@@ -904,10 +927,10 @@ impl Parser<'_> {
     // Rule 110
     // <value_forward_dcl> ::= <value_kind> <identifier>
     fn value_forward_dcl(&mut self, start: ic_vfs::Span, ident: ic_syntax::Ident) -> Result<Item> {
-        self.expect(Kind::Semi)?;
+        let annotations = self.expect_semi()?;
         Ok(Item::DeclValue(Decl {
             span: self.make_span(start, self.prev_span),
-            annotations: Vec::new(),
+            annotations,
             ident,
             kind: DeclKind::Valuetype,
         }))
@@ -948,17 +971,16 @@ impl Parser<'_> {
 
         // Rule 202: bitfield_spec
         self.expect_keyword(Kw::Bitfield)?;
-        self.expect(Kind::Lt)?;
-        let size = self.const_expr()?;
-
-        // Rule 203: optional destination_type
-        let ty = if self.eat(Kind::Comma) {
-            Some(self.type_spec()?)
-        } else {
-            None
-        };
-
-        self.expect(Kind::Gt)?;
+        let (size, ty) = self.template_args(|p| {
+            let size = p.const_expr()?;
+            // Rule 203: optional destination_type
+            let ty = if p.eat(Kind::Comma) {
+                Some(p.type_spec()?)
+            } else {
+                None
+            };
+            Ok((size, ty))
+        })?;
 
         let names = if self.at(Kind::Ident) {
             self.declarators()?

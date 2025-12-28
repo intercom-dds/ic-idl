@@ -35,13 +35,7 @@
 //!
 //! An IDL 4.2-compliant parser.
 //!
-//! This is a hand-written recursive descent parser with first-class annotation support.
-
-//! # ic-parse
-//!
-//! An IDL 4.2-compliant parser.
-//!
-//! This crate contains the code for hand-written recursive descent parser. The
+//! This crate contains the code for a hand-written recursive descent parser. The
 //! parser produces an AST which is a pure transcription of the source code.
 //! For a higher-level parse tree where types have been resolved, see
 //! [`ic-hir`], which can be constructed from the syntax tree.
@@ -139,23 +133,16 @@ pub fn from_path(path: &Path, args: ProcArgs, vfs: &mut SourceMap) -> std::io::R
 pub fn from_file(file_id: FileId, args: ProcArgs, vfs: &mut SourceMap) -> ParseResult {
     use ic_preproc::Token;
 
-    // Run preprocessor and collect tokens
     let mut state = ic_preproc::State::new();
     let iter = ic_preproc::with_state(file_id, args, &mut state, vfs);
 
     let tokens: Vec<Token> = iter.filter(|t| !matches!(t.kind, Kind::Newline)).collect();
 
-    // Parse
     let parser = Parser::new(tokens, vfs);
     let (tree, parse_errors, orphaned_annotations) = parser.parse();
 
-    // Convert internal errors to public Error type
     let mut errors: Vec<Error> = parse_errors;
-
-    // Process preprocessor errors
     errors.extend(process_preprocessor_errors(state.errors(), vfs));
-
-    // Convert preprocessor warnings
     let preproc_warnings = process_preprocessor_warnings(state.warnings(), vfs);
 
     ParseResult {
@@ -176,7 +163,6 @@ pub fn from_iter<I>(iter: I) -> ParseResult
 where
     I: IntoIterator<Item = ic_lexer::token::Token>,
 {
-    // Create a minimal source map for parsing
     let vfs = SourceMap::default();
 
     let tokens: Vec<_> = iter.into_iter().collect();

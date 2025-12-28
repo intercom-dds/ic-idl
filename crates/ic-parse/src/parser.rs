@@ -220,8 +220,6 @@ impl<'a> Parser<'a> {
     }
 
     /// Skims annotations and comments from the token stream into the pending buffer.
-    /// Skims annotations and comments from the token stream into the pending buffer.
-    /// All comments (both leading and trailing) are collected here.
     #[inline]
     pub fn skim_annotations(&mut self) {
         loop {
@@ -312,7 +310,6 @@ impl<'a> Parser<'a> {
 
     /// Creates a span from a start span to an end span.
     pub fn make_span(&self, start: Span, end: Span) -> Span {
-        let _ = self; // Keep &self for consistency with other parser methods
         Span {
             start: start.start,
             end: end.end,
@@ -337,7 +334,6 @@ impl<'a> Parser<'a> {
 
     /// Creates a parse error with a custom message at a specific span.
     pub fn error_message(&self, span: Span, message: &'static str) -> ParseError {
-        let _ = self; // Keep &self for consistency with other parser methods
         ParseError::new(span, None, vec![Expected::Message(message)])
     }
 

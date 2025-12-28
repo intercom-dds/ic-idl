@@ -25,18 +25,6 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-//! Expression parsing using Pratt parsing (precedence climbing).
-//!
-//! IDL expression precedence (lowest to highest):
-//!   Rule 8:  Bitwise OR (`|`)
-//!   Rule 9:  Bitwise XOR (`^`)
-//!   Rule 10: Bitwise AND (`&`)
-//!   Rule 11: Shift (`<<`, `>>`)
-//!   Rule 12: Add/Sub (`+`, `-`)
-//!   Rule 13: Mul/Div/Mod (`*`, `/`, `%`)
-//!   Rule 14: Unary (`+`, `-`, `~`)
-//!   Rule 16: Primary (literals, paths, parenthesized)
-
 use ic_lexer::token::{Base, Kind, Kw};
 use ic_syntax::{Binary, Expr, Group, Literal, LiteralValue, Op, OpKind, Unary};
 use ic_vfs::Span;
@@ -50,24 +38,21 @@ struct Precedence(u8);
 
 impl Precedence {
     const NONE: Self = Self(0);
-    const OR: Self = Self(1); // Rule 8: |
-    const XOR: Self = Self(2); // Rule 9: ^
-    const AND: Self = Self(3); // Rule 10: &
-    const SHIFT: Self = Self(4); // Rule 11: <<, >>
-    const ADD: Self = Self(5); // Rule 12: +, -
-    const MUL: Self = Self(6); // Rule 13: *, /, %
-    #[allow(dead_code)]
-    const UNARY: Self = Self(7); // Rule 14: unary +, -, ~
+    const OR: Self = Self(1);
+    const XOR: Self = Self(2);
+    const AND: Self = Self(3);
+    const SHIFT: Self = Self(4);
+    const ADD: Self = Self(5);
+    const MUL: Self = Self(6);
 }
 
 /// Controls how shift operators (`<<`, `>>`) are handled during parsing.
 #[derive(Clone, Copy, PartialEq, Eq)]
 enum ShiftMode {
-    /// Shift operators are always recognized (normal expression context).
+    /// Shift operators are always recognized.
     Allow,
+
     /// Template argument context: `>>` uses lookahead to disambiguate.
-    /// `allow_comma`: if true, `>> ident ,` is shift (more args follow);
-    /// if false, `>> ident ,` is closers (last arg, comma = declarator list).
     Template { allow_comma: bool },
 }
 
@@ -80,8 +65,6 @@ impl Parser<'_> {
     }
 
     /// Expression parser for template bounds.
-    /// `allow_comma`: if true, `>> ident ,` is shift (more args follow);
-    /// if false, `>> ident ,` is closers (last arg, comma = declarator list).
     pub(super) fn bound_expr(&mut self, allow_comma: bool) -> Result<Expr> {
         self.expr_bp(Precedence::NONE, ShiftMode::Template { allow_comma })
     }
@@ -189,11 +172,9 @@ impl Parser<'_> {
                 Ok(Expr::Path(path))
             }
 
-            // Parenthesized expression - always allow shifts inside parens
             Kind::LParen => {
                 let start = self.span();
-                self.advance(); // consume '('
-                // Inside parentheses, we always allow shift operators
+                self.advance();
                 let inner = self.const_expr()?;
                 self.expect(Kind::RParen)?;
                 Ok(Expr::Group(Box::new(Group {
@@ -202,7 +183,6 @@ impl Parser<'_> {
                 })))
             }
 
-            // Init list (DDS-XTypes extension for struct/array initialization)
             Kind::LBrace => self.init_list(shift_mode),
 
             _ => Err(self.error_expected("expression")),
@@ -255,7 +235,7 @@ impl Parser<'_> {
         // Collect all adjacent string literals
         while let Kind::String { terminated } = self.peek() {
             if !terminated {
-                // consume the bad token
+                // Consume the bad token
                 let tok = self.advance();
                 return Err(self
                     .error_message(tok.span, "unterminated string literal")
@@ -285,7 +265,7 @@ impl Parser<'_> {
         }))
     }
 
-    // Rule 17 (boolean literal variant)
+    // Rule 17
     fn boolean_literal(&mut self) -> Result<Expr> {
         let tok = self.advance();
         let value = match tok.kind {
@@ -304,13 +284,17 @@ impl Parser<'_> {
         match self.peek() {
             // Rule 8: or_expr
             Kind::BitOr => Some((OpKind::Or, Precedence::OR)),
+
             // Rule 9: xor_expr
             Kind::BitXor => Some((OpKind::Xor, Precedence::XOR)),
+
             // Rule 10: and_expr
             Kind::BitAnd => Some((OpKind::And, Precedence::AND)),
+
             // Rule 12: add_expr
             Kind::Plus => Some((OpKind::Add, Precedence::ADD)),
             Kind::Minus => Some((OpKind::Sub, Precedence::ADD)),
+
             // Rule 13: mult_expr
             Kind::Star => Some((OpKind::Multiply, Precedence::MUL)),
             Kind::Slash => Some((OpKind::Divide, Precedence::MUL)),
@@ -331,11 +315,9 @@ impl Parser<'_> {
     }
 
     /// Disambiguate `>>` in template argument context using lookahead.
-    /// `allow_comma`: if true, `>> ident ,` is treated as shift (more args follow).
     fn rshift_in_template(&self, allow_comma: bool) -> Option<(OpKind, Precedence)> {
         let after_shift = self.peek_nth_raw(2);
 
-        // Literals, unary ops, parens → definitely shift
         if self.is_definite_expr_continuation(after_shift) {
             return Some((OpKind::Rshift, Precedence::SHIFT));
         }
@@ -351,24 +333,18 @@ impl Parser<'_> {
     }
 
     /// Returns true if the given token definitely continues an expression.
-    /// These are unambiguous - they can't be anything else in this context.
     fn is_definite_expr_continuation(&self, kind: Kind) -> bool {
         matches!(
             kind,
-            // Literals - definitely part of expression
             Kind::Number { .. }
                 | Kind::Float
                 | Kind::String { .. }
                 | Kind::Char
-                // Boolean/null literals
                 | Kind::Keyword(Kw::True | Kw::False | Kw::Null)
-                // Unary operators - definitely starting a sub-expression
                 | Kind::Minus
                 | Kind::Plus
                 | Kind::BitNot
-                // Grouping - definitely a sub-expression
                 | Kind::LParen
-                // Init list
                 | Kind::LBrace
         )
     }
@@ -403,13 +379,11 @@ impl Parser<'_> {
     }
 
     /// Check if an identifier at `start_offset` is part of the current expression.
-    /// `allow_comma`: if true, comma after identifier means expression continues.
     fn identifier_continues_expression(&self, start_offset: usize, allow_comma: bool) -> bool {
         let offset = self.skip_scoped_name(start_offset);
         let after_ident = self.peek_nth_raw(offset);
 
         match after_ident {
-            // Binary operators - identifier is definitely operand
             Kind::Plus
             | Kind::Minus
             | Kind::Star
@@ -418,30 +392,24 @@ impl Parser<'_> {
             | Kind::BitOr
             | Kind::BitXor
             | Kind::BitAnd
-            | Kind::Lt // could be <<
-            | Kind::Gt => true, // could be >> or template closer
+            | Kind::Lt
+            | Kind::Gt => true,
             Kind::Comma => allow_comma,
             _ => false,
         }
     }
 
-    /// Consume the infix operator token(s) and return the combined span.
     fn consume_infix_op(&mut self, op_kind: OpKind) -> Span {
         match op_kind {
             OpKind::Lshift | OpKind::Rshift => {
-                // Consume two tokens for shift operators
                 let start = self.advance().span;
                 let end = self.advance().span;
                 self.make_span(start, end)
             }
-            _ => {
-                // Single token operators
-                self.advance().span
-            }
+            _ => self.advance().span,
         }
     }
 
-    // DDS-XTypes extension: initializer list
     fn init_list(&mut self, shift_mode: ShiftMode) -> Result<Expr> {
         let start = self.span();
         self.expect(Kind::LBrace)?;
@@ -449,10 +417,7 @@ impl Parser<'_> {
         let mut values = Vec::new();
 
         if !self.at(Kind::RBrace) {
-            // Parse first element
             values.push(self.init_list_element(shift_mode)?);
-
-            // Parse remaining elements
             while self.at(Kind::Comma) {
                 let comma_span = self.advance().span;
                 if self.at(Kind::RBrace) {
@@ -481,7 +446,8 @@ impl Parser<'_> {
         } else if self.peek() == Kind::Ident && self.peek_nth_raw(1) == Kind::Eq {
             // `field = expr` - identifier followed by equals
             let id = self.ident()?;
-            self.advance(); // consume '='
+            // consume '='
+            self.advance();
             Some(id)
         } else {
             None
@@ -492,9 +458,9 @@ impl Parser<'_> {
     }
 }
 
-// Rule 18: Parse integer literal
+// Rule 18
 fn parse_integer(text: &str, base: Base) -> u64 {
-    let text = text.replace('_', ""); // Remove underscores
+    let text = text.replace('_', "");
     let (text, radix) = match base {
         Base::Octal => (text.trim_start_matches('0'), 8),
         Base::Decimal => (text.as_str(), 10),
@@ -503,11 +469,8 @@ fn parse_integer(text: &str, base: Base) -> u64 {
     u64::from_str_radix(text, radix).unwrap_or(0)
 }
 
-// Rule 19: Parse string literal
-// NOTE: Escape sequences are NOT processed here - they're stored raw.
-// Processing happens at a later stage (evaluation/codegen).
+// Rule 19
 fn parse_string_literal(text: &str) -> String {
-    // Remove surrounding quotes only
     if text.starts_with('"') && text.ends_with('"') && text.len() >= 2 {
         text[1..text.len() - 1].to_string()
     } else {
@@ -515,9 +478,8 @@ fn parse_string_literal(text: &str) -> String {
     }
 }
 
-// Rule 20: Parse character literal
+// Rule 20
 fn parse_char_literal(text: &str) -> char {
-    // Remove surrounding quotes
     let inner = if text.starts_with('\'') && text.ends_with('\'') && text.len() >= 2 {
         &text[1..text.len() - 1]
     } else {
@@ -528,7 +490,6 @@ fn parse_char_literal(text: &str) -> char {
         return '\0';
     }
 
-    // Handle escape sequences
     if inner.starts_with('\\') && inner.len() > 1 {
         match inner.chars().nth(1) {
             Some('n') => '\n',
@@ -538,11 +499,10 @@ fn parse_char_literal(text: &str) -> char {
             Some('\\') => '\\',
             Some('\'') => '\'',
             Some('"') => '"',
-            Some('b') => '\u{0008}', // backspace
-            Some('f') => '\u{000C}', // form feed
-            Some('v') => '\u{000B}', // vertical tab
+            Some('b') => '\u{0008}',
+            Some('f') => '\u{000C}',
+            Some('v') => '\u{000B}',
             Some('x') => {
-                // Handle hex escape sequences like \x41
                 if inner.len() >= 4 {
                     let hex_str = &inner[2..4];
                     u8::from_str_radix(hex_str, 16)
@@ -552,12 +512,9 @@ fn parse_char_literal(text: &str) -> char {
                     '\0'
                 }
             }
-            Some(c) => c, // Unknown escape - return the character itself
+            Some(c) => c,
         }
-    } else if inner.len() == 1 {
-        inner.chars().next().unwrap_or('\0')
     } else {
-        // Multiple characters - just take the first one
         inner.chars().next().unwrap_or('\0')
     }
 }

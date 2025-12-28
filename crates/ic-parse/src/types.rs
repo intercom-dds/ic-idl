@@ -26,9 +26,6 @@
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 //! Type parsing.
-//!
-//! This module handles parsing of IDL type specifications following the
-//! grammar rules from the OMG IDL specification.
 
 use ic_lexer::token::{Kind, Kw};
 use ic_syntax::{Fixed, FixedType, Ident, MapType, Path, SequenceType, StringType, Type};
@@ -212,11 +209,9 @@ impl Parser<'_> {
 
         self.expect(Kind::Lt)?;
 
-        // Element type with optional annotations
         let annotations = self.take_annotations();
         let elem = self.type_spec()?;
 
-        // Optional bound: sequence<T, N> - last arg, so allow_comma=false
         let bound = if self.eat(Kind::Comma) {
             Some(self.bound_expr(false)?)
         } else {
@@ -239,7 +234,6 @@ impl Parser<'_> {
         let start = self.span();
         self.expect_keyword(Kw::String)?;
 
-        // Optional bound: string<N> - last arg, so allow_comma=false
         let bound = if self.eat(Kind::Lt) {
             let expr = self.bound_expr(false)?;
             self.expect(Kind::Gt)?;
@@ -261,7 +255,6 @@ impl Parser<'_> {
         let start = self.span();
         self.expect_keyword(Kw::WString)?;
 
-        // Optional bound: wstring<N> - last arg, so allow_comma=false
         let bound = if self.eat(Kind::Lt) {
             let expr = self.bound_expr(false)?;
             self.expect(Kind::Gt)?;
@@ -283,12 +276,9 @@ impl Parser<'_> {
         let start = self.span();
         self.expect_keyword(Kw::Fixed)?;
 
-        // Bounds are optional (Rule 43: `fixed` without bounds is valid in const context)
         let bounds = if self.eat(Kind::Lt) {
-            // First arg: more args follow, so allow_comma=true
             let total = self.bound_expr(true)?;
             self.expect(Kind::Comma)?;
-            // Second arg: last arg, so allow_comma=false
             let fractional = self.bound_expr(false)?;
             self.expect(Kind::Gt)?;
             Some(Fixed { total, fractional })
@@ -323,17 +313,14 @@ impl Parser<'_> {
 
         self.expect(Kind::Lt)?;
 
-        // Key type with optional annotations
         let key_annotations = self.take_annotations();
         let key = self.type_spec()?;
 
         self.expect(Kind::Comma)?;
 
-        // Value type with optional annotations
         let value_annotations = self.take_annotations();
         let value = self.type_spec()?;
 
-        // Optional bound: map<K, V, N> - last arg, so allow_comma=false
         let bound = if self.eat(Kind::Comma) {
             Some(self.bound_expr(false)?)
         } else {

@@ -45,14 +45,11 @@ impl Parser<'_> {
     pub(super) fn annotation_appl(&mut self) -> Result<AnnotationAppl> {
         let start = self.span();
 
-        // Consume '@'
         debug_assert!(self.at_raw(Kind::At));
         self.advance_raw();
 
-        // Parse the annotation path (allows keywords as identifiers)
         let path = self.parse_annotation_path()?;
 
-        // Parse optional arguments
         let args = if self.at_raw(Kind::LParen) {
             self.advance_raw();
             let pending_before = self.pending_annotations.len();
@@ -90,7 +87,6 @@ impl Parser<'_> {
     /// - `@foo:: bar` → annotation with qualified name `foo::bar` (space after `::` is ok)
     /// - `@foo ::bar` → annotation `foo` followed by type `::bar`
     fn parse_annotation_path(&mut self) -> Result<Path> {
-        // Check for leading `::` - only if adjacent to `@`
         let leading_colons = if self.at_raw(Kind::DColon) && self.is_adjacent() {
             let span = self.span();
             self.advance_raw();
@@ -99,12 +95,9 @@ impl Parser<'_> {
             None
         };
 
-        // Parse first segment (can be identifier or keyword)
         let first = self.parse_annotation_ident()?;
         let mut segments = vec![first];
 
-        // Parse remaining `::ident` segments, but only if `::` is adjacent
-        // (no whitespace before `::`). Space after `::` is fine.
         while self.at_raw(Kind::DColon) && self.is_adjacent() {
             self.advance_raw();
             segments.push(self.parse_annotation_ident()?);
@@ -133,7 +126,6 @@ impl Parser<'_> {
                 })
             }
             Kind::Keyword(kw) => {
-                // Keywords are valid annotation names (e.g., @default, @key)
                 self.advance_raw();
                 Ok(Ident {
                     name: kw.to_string(),
@@ -150,7 +142,6 @@ impl Parser<'_> {
     fn annotation_appl_params(&mut self) -> Result<Vec<AnnotationArg>> {
         let mut args = Vec::new();
 
-        // Empty argument list
         if self.at_raw(Kind::RParen) {
             return Ok(args);
         }
@@ -174,7 +165,6 @@ impl Parser<'_> {
     fn annotation_appl_param(&mut self) -> Result<AnnotationArg> {
         let start = self.span();
 
-        // Try to parse as named argument: `name = expr`
         if let Some((ident, value)) = self.try_named_arg()? {
             return Ok(AnnotationArg {
                 ident: Some(ident),
@@ -183,7 +173,6 @@ impl Parser<'_> {
             });
         }
 
-        // Otherwise, parse as positional argument (just an expression)
         let value = self.const_expr()?;
         Ok(AnnotationArg {
             ident: None,
@@ -195,23 +184,18 @@ impl Parser<'_> {
     /// Tries to parse a named argument `name = expr`.
     /// Returns None if this doesn't look like a named argument.
     fn try_named_arg(&mut self) -> Result<Option<(Ident, ic_syntax::Expr)>> {
-        // Must start with an identifier
         if !self.at_raw(Kind::Ident) {
             return Ok(None);
         }
 
-        // Speculatively consume the identifier
         let checkpoint = self.checkpoint();
         let id_tok = self.advance_raw();
 
-        // Check for `=`
         if !self.at_raw(Kind::Eq) {
-            // Not a named argument - rewind and let caller parse as expression
             self.rewind(checkpoint);
             return Ok(None);
         }
 
-        // It's a named argument - consume `=` and parse value
         self.advance_raw();
         let ident = Ident {
             name: self.text(id_tok.span).to_owned(),

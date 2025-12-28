@@ -25,8 +25,6 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-//! Declaration parsing.
-
 use ic_lexer::token::{Kind, Kw};
 use ic_syntax::{
     AliasDef, AnnotationDef, AnnotationField, AnnotationMember, ArrayDeclarator, Attribute, Bit,
@@ -65,146 +63,31 @@ impl Parser<'_> {
         Ok(self.with_annotations(item, annotations))
     }
 
-    // Rule 44
-    // <constr_type_dcl> ::= <struct_dcl> | <union_dcl> | <enum_dcl>
-    fn constr_type_dcl(&mut self) -> Result<Item> {
-        match self.peek() {
-            Kind::Keyword(Kw::Struct) => self.struct_dcl(),
-            Kind::Keyword(Kw::Union) => self.union_dcl(),
-            Kind::Keyword(Kw::Enum) => self.enum_dcl(),
-            _ => Err(self.error_expected("struct, union, or enum")),
-        }
-    }
-
-    fn with_annotations(
-        &self,
-        item: Item,
-        mut annotations: Vec<ic_syntax::AnnotationAppl>,
-    ) -> Item {
-        let _ = self; // Keep &self for consistency with other parser methods
-        if annotations.is_empty() {
-            return item;
-        }
-
-        match item {
-            Item::ModuleValue(mut def) => {
-                annotations.extend(def.annotations);
-                def.annotations = annotations;
-                Item::ModuleValue(def)
-            }
-            Item::StructValue(mut def) => {
-                annotations.extend(def.annotations);
-                def.annotations = annotations;
-                Item::StructValue(def)
-            }
-            Item::DeclValue(mut decl) => {
-                annotations.extend(decl.annotations);
-                decl.annotations = annotations;
-                Item::DeclValue(decl)
-            }
-            Item::EnumValue(mut def) => {
-                annotations.extend(def.annotations);
-                def.annotations = annotations;
-                Item::EnumValue(def)
-            }
-            Item::BitmaskValue(mut def) => {
-                annotations.extend(def.annotations);
-                def.annotations = annotations;
-                Item::BitmaskValue(def)
-            }
-            Item::ConstValue(mut def) => {
-                annotations.extend(def.annotations);
-                def.annotations = annotations;
-                Item::ConstValue(def)
-            }
-            Item::AliasValue(mut def) => {
-                annotations.extend(def.annotations);
-                def.annotations = annotations;
-                Item::AliasValue(def)
-            }
-            Item::ExceptionValue(mut def) => {
-                annotations.extend(def.annotations);
-                def.annotations = annotations;
-                Item::ExceptionValue(def)
-            }
-            Item::UnionValue(mut def) => {
-                annotations.extend(def.annotations);
-                def.annotations = annotations;
-                Item::UnionValue(def)
-            }
-            Item::BitsetValue(mut def) => {
-                annotations.extend(def.annotations);
-                def.annotations = annotations;
-                Item::BitsetValue(def)
-            }
-            Item::InterfaceValue(mut def) => {
-                annotations.extend(def.annotations);
-                def.annotations = annotations;
-                Item::InterfaceValue(def)
-            }
-            Item::ValuetypeValue(mut def) => {
-                annotations.extend(def.annotations);
-                def.annotations = annotations;
-                Item::ValuetypeValue(def)
-            }
-            Item::AnnotationValue(mut def) => {
-                annotations.extend(def.annotations);
-                def.annotations = annotations;
-                Item::AnnotationValue(def)
-            }
-        }
-    }
-
-    // Rule 5
-    fn const_dcl(&mut self) -> Result<Item> {
+    // Rule 3
+    fn module_dcl(&mut self) -> Result<Item> {
         let start = self.span();
-        self.expect_keyword(Kw::Const)?;
+        self.expect_keyword(Kw::Module)?;
+        let ident = self.ident()?;
 
-        // Rule 6: const_type (same as type_spec for our purposes)
-        let ty = self.type_spec()?;
-        let decl = self.declarator()?;
+        let (definitions, mut annotations) = self.braced(super::Parser::definitions)?;
+        annotations.extend(self.expect_semi()?);
 
-        self.expect(Kind::Eq)?;
-        let value = self.const_expr()?;
-        let annotations = self.expect_semi()?;
-
-        Ok(Item::ConstValue(ConstDef {
+        Ok(Item::ModuleValue(ModuleDef {
             span: self.make_span(start, self.prev_span),
             annotations,
-            decl,
-            ty,
-            value,
+            ident,
+            definitions,
         }))
     }
 
-    // Rule 63
-    fn typedef_dcl(&mut self) -> Result<Item> {
-        let start = self.span();
-        self.expect_keyword(Kw::Typedef)?;
-
-        // Rule 64: type_declarator
-        // Note: `constr_type_dcl` is deliberately omitted as anonymous structs, unions,
-        // enums and bitmasks are not supported (matching ic-parse behavior).
-        let ty = self.type_spec()?;
-
-        // Rule 65: any_declarators (comma-separated list)
-        let decl = self.any_declarators()?;
-
-        let annotations = self.expect_semi()?;
-
-        Ok(Item::AliasValue(AliasDef {
-            span: self.make_span(start, self.prev_span),
-            annotations,
-            decl,
-            ty,
-        }))
-    }
-
-    // Rule 65
-    fn any_declarators(&mut self) -> Result<Vec<Declarator>> {
-        // any_declarators is the same as declarators for our implementation
-        // (both support simple and array declarators)
-        self.declarators()
+    fn definitions(&mut self) -> Result<Vec<Item>> {
+        self.enter_nested()?;
+        let mut items = Vec::new();
+        while !self.at(Kind::RBrace) && !self.at(Kind::Eoi) {
+            items.push(self.definition()?);
+        }
+        self.leave_nested();
+        Ok(items)
     }
 
     // Rule 4
@@ -222,21 +105,100 @@ impl Parser<'_> {
         }))
     }
 
-    // Rule 72
-    fn except_dcl(&mut self) -> Result<Item> {
+    // Rule 5
+    fn const_dcl(&mut self) -> Result<Item> {
         let start = self.span();
-        self.expect_keyword(Kw::Exception)?;
+        self.expect_keyword(Kw::Const)?;
+
+        // Rule 6: const_type
+        let ty = self.type_spec()?;
+        let decl = self.declarator()?;
+
+        self.expect(Kind::Eq)?;
+        let value = self.const_expr()?;
+        let annotations = self.expect_semi()?;
+
+        Ok(Item::ConstValue(ConstDef {
+            span: self.make_span(start, self.prev_span),
+            annotations,
+            decl,
+            ty,
+            value,
+        }))
+    }
+
+    // Rule 44
+    // <constr_type_dcl> ::= <struct_dcl> | <union_dcl> | <enum_dcl>
+    fn constr_type_dcl(&mut self) -> Result<Item> {
+        match self.peek() {
+            Kind::Keyword(Kw::Struct) => self.struct_dcl(),
+            Kind::Keyword(Kw::Union) => self.union_dcl(),
+            Kind::Keyword(Kw::Enum) => self.enum_dcl(),
+            _ => Err(self.error_expected("struct, union, or enum")),
+        }
+    }
+
+    // Rule 45
+    fn struct_dcl(&mut self) -> Result<Item> {
+        let start = self.span();
+        self.expect_keyword(Kw::Struct)?;
         let ident = self.ident()?;
 
-        let (members, mut annotations) = self.braced(super::Parser::members)?;
+        let mut annotations = self.take_annotations();
+
+        // Rule 48: forward declaration
+        if self.eat(Kind::Semi) {
+            annotations.extend(self.take_annotations());
+            return Ok(Item::DeclValue(Decl {
+                span: self.make_span(start, self.prev_span),
+                annotations,
+                ident,
+                kind: DeclKind::Struct,
+            }));
+        }
+
+        // Rule 46: struct definition
+        let parent = if self.eat(Kind::Colon) {
+            Some(self.scoped_name()?)
+        } else {
+            None
+        };
+
+        let (members, body_annotations) = self.braced(super::Parser::members)?;
+        annotations.extend(body_annotations);
         annotations.extend(self.expect_semi()?);
 
-        Ok(Item::ExceptionValue(ExceptDef {
+        Ok(Item::StructValue(StructDef {
             span: self.make_span(start, self.prev_span),
             annotations,
             ident,
             members,
+            parent,
         }))
+    }
+
+    // Rule 47
+    fn member(&mut self) -> Result<Field> {
+        let start = self.span();
+        let ty = self.type_spec()?;
+        let names = self.declarators()?;
+        let mut annotations = self.take_annotations();
+        annotations.extend(self.expect_semi()?);
+
+        Ok(Field {
+            span: self.make_span(start, self.prev_span),
+            annotations,
+            names,
+            ty,
+        })
+    }
+
+    fn members(&mut self) -> Result<Vec<Field>> {
+        let mut fields = Vec::new();
+        while !self.at(Kind::RBrace) && !self.at(Kind::Eoi) {
+            fields.push(self.member()?);
+        }
+        Ok(fields)
     }
 
     // Rule 49
@@ -259,11 +221,10 @@ impl Parser<'_> {
         }
 
         // Rule 50: union definition
-        // switch ( <switch_type_spec> )
         self.expect_keyword(Kw::Switch)?;
         self.expect(Kind::LParen)?;
 
-        // Discriminator type with optional annotations (Rule 51)
+        // Rule 51: switch_type_spec
         let disc_annotations = self.take_annotations();
         let disc_ty = self.switch_type_spec()?;
 
@@ -316,7 +277,6 @@ impl Parser<'_> {
         // Rule 55: element_spec
         let mut annotations = self.take_annotations();
         let field = self.element_spec()?;
-        // Collect trailing comments after the semicolon (but not leading comments for next case)
         annotations.extend(self.take_trailing_comments());
 
         Ok(UnionField {
@@ -350,7 +310,6 @@ impl Parser<'_> {
             return Ok(UnionElement::Null(UnionNull { span }));
         }
 
-        // Normal case: type + declarator
         let ty = self.type_spec()?;
         let decl = self.declarator()?;
         self.expect(Kind::Semi)?;
@@ -358,6 +317,159 @@ impl Parser<'_> {
         Ok(UnionElement::Member(UnionMember {
             ty: Box::new(ty),
             decl,
+        }))
+    }
+
+    // Rule 57
+    fn enum_dcl(&mut self) -> Result<Item> {
+        let start = self.span();
+        self.expect_keyword(Kw::Enum)?;
+        let ident = self.ident()?;
+
+        let mut annotations = self.take_annotations();
+
+        let (fields, body_annotations) = self.braced(super::Parser::enumerators)?;
+        annotations.extend(body_annotations);
+        annotations.extend(self.expect_semi()?);
+
+        Ok(Item::EnumValue(EnumDef {
+            span: self.make_span(start, self.prev_span),
+            annotations,
+            ident,
+            fields,
+        }))
+    }
+
+    // Rule 58
+    fn enumerator(&mut self) -> Result<Enumerator> {
+        let mut annotations = self.take_annotations();
+        let ident = self.ident()?;
+
+        // Grammar extension: `MY_ENUMERATOR = 1`
+        let value = if self.eat(Kind::Eq) {
+            Some(self.const_expr()?)
+        } else {
+            None
+        };
+
+        annotations.extend(self.take_annotations());
+
+        Ok(Enumerator {
+            ident,
+            annotations,
+            value,
+        })
+    }
+
+    fn enumerators(&mut self) -> Result<Vec<Enumerator>> {
+        let mut enumerators = Vec::new();
+        if !self.at(Kind::RBrace) {
+            enumerators.push(self.enumerator()?);
+            while self.at(Kind::Comma) {
+                let comma_span = self.advance().span;
+                if let Some(last) = enumerators.last_mut() {
+                    last.annotations.extend(self.take_trailing_comments());
+                }
+                if self.at(Kind::RBrace) {
+                    return Err(self.error_message(comma_span, "trailing comma is not allowed"));
+                }
+                enumerators.push(self.enumerator()?);
+            }
+        }
+        Ok(enumerators)
+    }
+
+    // Rule 59
+    // <array_declarator> ::= <identifier> <fixed_array_size>+
+    fn array_declarator(&mut self, ident: ic_syntax::Ident) -> Result<Declarator> {
+        let mut bounds = Vec::new();
+        while self.at(Kind::LBracket) {
+            bounds.push(self.fixed_array_size()?);
+        }
+        Ok(Declarator::Array(ArrayDeclarator { ident, bounds }))
+    }
+
+    // Rule 60
+    // <fixed_array_size> ::= "[" <positive_int_const> "]"
+    fn fixed_array_size(&mut self) -> Result<ic_syntax::Expr> {
+        self.expect(Kind::LBracket)?;
+        let expr = self.positive_int_const()?;
+        self.expect(Kind::RBracket)?;
+        Ok(expr)
+    }
+
+    // Rule 61
+    // <positive_int_const> ::= <const_expr>
+    pub(super) fn positive_int_const(&mut self) -> Result<ic_syntax::Expr> {
+        self.const_expr()
+    }
+
+    // Rule 63
+    fn typedef_dcl(&mut self) -> Result<Item> {
+        let start = self.span();
+        self.expect_keyword(Kw::Typedef)?;
+
+        // Rule 64: type_declarator
+        let ty = self.type_spec()?;
+
+        // Rule 65: any_declarators
+        let decl = self.any_declarators()?;
+
+        let annotations = self.expect_semi()?;
+
+        Ok(Item::AliasValue(AliasDef {
+            span: self.make_span(start, self.prev_span),
+            annotations,
+            decl,
+            ty,
+        }))
+    }
+
+    // Rule 65
+    fn any_declarators(&mut self) -> Result<Vec<Declarator>> {
+        self.declarators()
+    }
+
+    // Rule 67
+    fn declarators(&mut self) -> Result<Vec<Declarator>> {
+        let mut decls = vec![self.declarator()?];
+        while self.eat(Kind::Comma) {
+            decls.push(self.declarator()?);
+        }
+        Ok(decls)
+    }
+
+    // Rule 68
+    // <declarator> ::= <simple_declarator> | <array_declarator>
+    fn declarator(&mut self) -> Result<Declarator> {
+        let ident = self.ident()?;
+
+        if self.at(Kind::LBracket) {
+            self.array_declarator(ident)
+        } else {
+            Ok(Declarator::Simple(ident))
+        }
+    }
+
+    fn simple_declarator(&mut self) -> Result<Declarator> {
+        let ident = self.ident()?;
+        Ok(Declarator::Simple(ident))
+    }
+
+    // Rule 72
+    fn except_dcl(&mut self) -> Result<Item> {
+        let start = self.span();
+        self.expect_keyword(Kw::Exception)?;
+        let ident = self.ident()?;
+
+        let (members, mut annotations) = self.braced(super::Parser::members)?;
+        annotations.extend(self.expect_semi()?);
+
+        Ok(Item::ExceptionValue(ExceptDef {
+            span: self.make_span(start, self.prev_span),
+            annotations,
+            ident,
+            members,
         }))
     }
 
@@ -441,7 +553,7 @@ impl Parser<'_> {
         }
     }
 
-    // Rule 79: interface_name list
+    // Rule 79
     fn interface_names(&mut self) -> Result<Vec<ic_syntax::Path>> {
         let mut names = vec![self.scoped_name()?];
         while self.eat(Kind::Comma) {
@@ -463,7 +575,6 @@ impl Parser<'_> {
     // <export> ::= <op_dcl> ";" | <attr_dcl> ";"
     //            | <type_dcl> ";" | <const_dcl> ";" | <except_dcl> ";"
     fn export(&mut self) -> Result<InterfaceMember> {
-        // Handle annotations before checking what comes next
         let _annotations = self.take_annotations();
 
         match self.peek() {
@@ -489,14 +600,14 @@ impl Parser<'_> {
             Kind::Keyword(Kw::Bitset) => Ok(InterfaceMember::Item(self.bitset_dcl()?)),
             Kind::Keyword(Kw::Bitmask) => Ok(InterfaceMember::Item(self.bitmask_dcl()?)),
             Kind::Keyword(Kw::Native) => Ok(InterfaceMember::Item(self.native_dcl()?)),
-            // Rule 82: operation declaration (default - starts with return type)
+            // Rule 82: operation declaration
             _ => Ok(InterfaceMember::Proto(self.op_dcl()?)),
         }
     }
 
     // Rule 82
     fn op_dcl(&mut self) -> Result<Prototype> {
-        // Rule 83: op_type_spec (same as type_spec, void is a valid type name)
+        // Rule 83: op_type_spec
         let ret = self.type_spec()?;
         let ident = self.ident()?;
 
@@ -555,21 +666,9 @@ impl Parser<'_> {
         };
 
         let ty = self.type_spec()?;
-        // Rule 66: any_declarator (supports array declarators)
         let decl = self.declarator()?;
 
         Ok(Param { decl, ty, kind })
-    }
-
-    // Rule 96: exception_list
-    fn exception_list(&mut self) -> Result<Vec<ic_syntax::Path>> {
-        self.expect(Kind::LParen)?;
-        let mut exceptions = vec![self.scoped_name()?];
-        while self.eat(Kind::Comma) {
-            exceptions.push(self.scoped_name()?);
-        }
-        self.expect(Kind::RParen)?;
-        Ok(exceptions)
     }
 
     // Rule 88
@@ -583,7 +682,6 @@ impl Parser<'_> {
             // Rule 90: readonly_attr_declarator
             let first_decl = self.simple_declarator()?;
 
-            // Check for raises expression or more declarators
             let (decl, getraises) = if self.at(Kind::Keyword(Kw::Raises)) {
                 self.advance();
                 let raises = self.exception_list()?;
@@ -614,7 +712,6 @@ impl Parser<'_> {
         // Rule 92: attr_declarator
         let first_decl = self.simple_declarator()?;
 
-        // Check for raises expressions or more declarators
         let (decl, getraises, setraises) =
             if self.at(Kind::Keyword(Kw::GetRaises)) || self.at(Kind::Keyword(Kw::SetRaises)) {
                 let (get, set) = self.attr_raises_expr()?;
@@ -653,7 +750,6 @@ impl Parser<'_> {
             setraises = self.exception_list()?;
         }
 
-        // If we only got setraises first, we need to check for getraises
         if getraises.is_empty() && setraises.is_empty() && self.eat_keyword(Kw::SetRaises).is_some()
         {
             setraises = self.exception_list()?;
@@ -662,9 +758,15 @@ impl Parser<'_> {
         Ok((getraises, setraises))
     }
 
-    fn simple_declarator(&mut self) -> Result<Declarator> {
-        let ident = self.ident()?;
-        Ok(Declarator::Simple(ident))
+    // Rule 96
+    fn exception_list(&mut self) -> Result<Vec<ic_syntax::Path>> {
+        self.expect(Kind::LParen)?;
+        let mut exceptions = vec![self.scoped_name()?];
+        while self.eat(Kind::Comma) {
+            exceptions.push(self.scoped_name()?);
+        }
+        self.expect(Kind::RParen)?;
+        Ok(exceptions)
     }
 
     // Rule 99
@@ -689,7 +791,6 @@ impl Parser<'_> {
         // Rule 103: value_inheritance_spec
         let (inherits, supports) = self.value_inheritance_spec()?;
 
-        // Value body
         let (elements, mut annotations) = self.braced(super::Parser::value_elements)?;
         annotations.extend(self.expect_semi()?);
 
@@ -705,7 +806,6 @@ impl Parser<'_> {
 
     // Rule 101
     // <value_header> ::= <value_kind> <identifier> [ <value_inheritance_spec> ]
-    // Note: We split this across valuetype_dcl and value_def
 
     // Rule 102
     // <value_kind> ::= "valuetype"
@@ -740,39 +840,13 @@ impl Parser<'_> {
         self.scoped_name()
     }
 
-    // Rule 110
-    // <value_forward_dcl> ::= <value_kind> <identifier>
-    fn value_forward_dcl(&mut self, start: ic_vfs::Span, ident: ic_syntax::Ident) -> Result<Item> {
-        self.expect(Kind::Semi)?;
-        Ok(Item::DeclValue(Decl {
-            span: self.make_span(start, self.prev_span),
-            annotations: Vec::new(),
-            ident,
-            kind: DeclKind::Valuetype,
-        }))
-    }
-
-    // Helper: interface_name is just scoped_name
-    fn interface_name(&mut self) -> Result<ic_syntax::Path> {
-        self.scoped_name()
-    }
-
-    fn value_elements(&mut self) -> Result<Vec<ValueElement>> {
-        let mut elements = Vec::new();
-        while !self.at(Kind::RBrace) && !self.at(Kind::Eoi) {
-            elements.push(self.value_element()?);
-        }
-        Ok(elements)
-    }
-
     // Rule 105
     fn value_element(&mut self) -> Result<ValueElement> {
         match self.peek() {
-            // Rule 106: state_member (public/private)
+            // Rule 106: state_member
             Kind::Keyword(Kw::Public | Kw::Private) => {
                 Ok(ValueElement::State(self.state_member()?))
             }
-            // Reuse interface export for everything else
             Kind::Keyword(Kw::Oneway) => {
                 let oneway_span = self.span();
                 self.advance();
@@ -790,9 +864,16 @@ impl Parser<'_> {
             Kind::Keyword(Kw::Bitset) => Ok(ValueElement::Item(self.bitset_dcl()?)),
             Kind::Keyword(Kw::Bitmask) => Ok(ValueElement::Item(self.bitmask_dcl()?)),
             Kind::Keyword(Kw::Native) => Ok(ValueElement::Item(self.native_dcl()?)),
-            // Default: operation
             _ => Ok(ValueElement::Proto(self.op_dcl()?)),
         }
+    }
+
+    fn value_elements(&mut self) -> Result<Vec<ValueElement>> {
+        let mut elements = Vec::new();
+        while !self.at(Kind::RBrace) && !self.at(Kind::Eoi) {
+            elements.push(self.value_element()?);
+        }
+        Ok(elements)
     }
 
     // Rule 106
@@ -810,7 +891,6 @@ impl Parser<'_> {
         let ty = self.type_spec()?;
         let decl = self.declarators()?;
         self.expect(Kind::Semi)?;
-        // Discard trailing comments since ValueMember doesn't have annotations
         let _ = self.take_trailing_comments();
 
         Ok(ValueMember {
@@ -821,12 +901,154 @@ impl Parser<'_> {
         })
     }
 
+    // Rule 110
+    // <value_forward_dcl> ::= <value_kind> <identifier>
+    fn value_forward_dcl(&mut self, start: ic_vfs::Span, ident: ic_syntax::Ident) -> Result<Item> {
+        self.expect(Kind::Semi)?;
+        Ok(Item::DeclValue(Decl {
+            span: self.make_span(start, self.prev_span),
+            annotations: Vec::new(),
+            ident,
+            kind: DeclKind::Valuetype,
+        }))
+    }
+
+    fn interface_name(&mut self) -> Result<ic_syntax::Path> {
+        self.scoped_name()
+    }
+
+    // Rule 200
+    fn bitset_dcl(&mut self) -> Result<Item> {
+        let start = self.span();
+        self.expect_keyword(Kw::Bitset)?;
+        let ident = self.ident()?;
+
+        let parent = if self.eat(Kind::Colon) {
+            Some(self.scoped_name()?)
+        } else {
+            None
+        };
+
+        let (fields, mut annotations) = self.braced(super::Parser::bitfields)?;
+        annotations.extend(self.expect_semi()?);
+
+        Ok(Item::BitsetValue(BitsetDef {
+            span: self.make_span(start, self.prev_span),
+            annotations,
+            ident,
+            parent,
+            fields,
+        }))
+    }
+
+    // Rule 201
+    fn bitfield(&mut self) -> Result<Bitfield> {
+        let start = self.span();
+        let mut annotations = self.take_annotations();
+
+        // Rule 202: bitfield_spec
+        self.expect_keyword(Kw::Bitfield)?;
+        self.expect(Kind::Lt)?;
+        let size = self.const_expr()?;
+
+        // Rule 203: optional destination_type
+        let ty = if self.eat(Kind::Comma) {
+            Some(self.type_spec()?)
+        } else {
+            None
+        };
+
+        self.expect(Kind::Gt)?;
+
+        let names = if self.at(Kind::Ident) {
+            self.declarators()?
+        } else {
+            Vec::new()
+        };
+
+        annotations.extend(self.expect_semi()?);
+
+        Ok(Bitfield {
+            span: self.make_span(start, self.prev_span),
+            annotations,
+            names,
+            size,
+            ty,
+        })
+    }
+
+    fn bitfields(&mut self) -> Result<Vec<Bitfield>> {
+        let mut fields = Vec::new();
+        while !self.at(Kind::RBrace) && !self.at(Kind::Eoi) {
+            fields.push(self.bitfield()?);
+        }
+        Ok(fields)
+    }
+
+    // Rule 204
+    fn bitmask_dcl(&mut self) -> Result<Item> {
+        let start = self.span();
+        self.expect_keyword(Kw::Bitmask)?;
+        let ident = self.ident()?;
+
+        let (bits, mut annotations) = self.braced(super::Parser::bit_values)?;
+        annotations.extend(self.expect_semi()?);
+
+        Ok(Item::BitmaskValue(BitmaskDef {
+            span: self.make_span(start, self.prev_span),
+            annotations,
+            ident,
+            bits,
+        }))
+    }
+
+    // Rule 205
+    fn bit_value(&mut self) -> Result<Bit> {
+        let start = self.span();
+        let annotations = self.take_annotations();
+        let ident = self.ident()?;
+
+        let value = if self.eat(Kind::Eq) {
+            Some(self.const_expr()?)
+        } else {
+            None
+        };
+
+        let mut all_annotations = annotations;
+        all_annotations.extend(self.take_annotations());
+
+        Ok(Bit {
+            span: self.make_span(start, self.prev_span),
+            annotations: all_annotations,
+            ident,
+            value,
+        })
+    }
+
+    fn bit_values(&mut self) -> Result<Vec<Bit>> {
+        let mut bits = Vec::new();
+        if !self.at(Kind::RBrace) {
+            bits.push(self.bit_value()?);
+            while self.at(Kind::Comma) {
+                let comma_span = self.advance().span;
+                if let Some(last) = bits.last_mut() {
+                    last.annotations.extend(self.take_trailing_comments());
+                }
+                if self.at(Kind::RBrace) {
+                    return Err(self.error_message(comma_span, "trailing comma is not allowed"));
+                }
+                bits.push(self.bit_value()?);
+            }
+        }
+        Ok(bits)
+    }
+
     // Rule 219
     fn annotation_dcl(&mut self) -> Result<Item> {
         let start = self.span();
         self.expect_keyword(Kw::Annotation)?;
 
-        // Rule 220: annotation_header - annotation names are exempt from keywords
+        // Rule 220: annotation_header
         let ident = self.ident_or_keyword()?;
 
         // Rule 221: annotation_body
@@ -850,33 +1072,15 @@ impl Parser<'_> {
         Ok(fields)
     }
 
-    fn annotation_field(&mut self) -> Result<AnnotationField> {
-        // Try to distinguish between annotation_member and type definitions
-        // Annotation members look like: type declarator [default value];
-        // Type definitions are: typedef, const, enum, struct, bitmask, etc.
-
-        match self.peek() {
-            Kind::Keyword(Kw::Typedef) => Ok(AnnotationField::Item(Box::new(self.typedef_dcl()?))),
-            Kind::Keyword(Kw::Const) => Ok(AnnotationField::Item(Box::new(self.const_dcl()?))),
-            Kind::Keyword(Kw::Enum) => Ok(AnnotationField::Item(Box::new(self.enum_dcl()?))),
-            Kind::Keyword(Kw::Struct) => Ok(AnnotationField::Item(Box::new(self.struct_dcl()?))),
-            Kind::Keyword(Kw::Bitmask) => Ok(AnnotationField::Item(Box::new(self.bitmask_dcl()?))),
-            Kind::Keyword(Kw::Union) => Ok(AnnotationField::Item(Box::new(self.union_dcl()?))),
-            // Rule 222: annotation_member
-            _ => Ok(AnnotationField::Member(Box::new(self.annotation_member()?))),
-        }
-    }
-
     // Rule 222
     fn annotation_member(&mut self) -> Result<AnnotationMember> {
         let start = self.span();
         let mut annotations = self.take_annotations();
 
-        // Rule 223: annotation_member_type (same as type_spec)
+        // Rule 223: annotation_member_type
         let ty = self.type_spec()?;
         let decl = self.simple_declarator()?;
 
-        // Optional default value
         let default = if self.eat_keyword(Kw::Default).is_some() {
             Some(self.const_expr()?)
         } else {
@@ -894,333 +1098,94 @@ impl Parser<'_> {
         })
     }
 
-    // Rule 3
-    fn module_dcl(&mut self) -> Result<Item> {
-        let start = self.span();
-        self.expect_keyword(Kw::Module)?;
-        let ident = self.ident()?;
-
-        let (definitions, mut annotations) = self.braced(super::Parser::definitions)?;
-        annotations.extend(self.expect_semi()?);
-
-        Ok(Item::ModuleValue(ModuleDef {
-            span: self.make_span(start, self.prev_span),
-            annotations,
-            ident,
-            definitions,
-        }))
-    }
-
-    fn definitions(&mut self) -> Result<Vec<Item>> {
-        self.enter_nested()?;
-        let mut items = Vec::new();
-        while !self.at(Kind::RBrace) && !self.at(Kind::Eoi) {
-            items.push(self.definition()?);
-        }
-        self.leave_nested();
-        Ok(items)
-    }
-
-    // Rule 45
-    fn struct_dcl(&mut self) -> Result<Item> {
-        let start = self.span();
-        self.expect_keyword(Kw::Struct)?;
-        let ident = self.ident()?;
-
-        let mut annotations = self.take_annotations();
-
-        // Rule 48: forward declaration
-        if self.eat(Kind::Semi) {
-            annotations.extend(self.take_annotations());
-            return Ok(Item::DeclValue(Decl {
-                span: self.make_span(start, self.prev_span),
-                annotations,
-                ident,
-                kind: DeclKind::Struct,
-            }));
-        }
-
-        // Rule 46: struct definition
-        let parent = if self.eat(Kind::Colon) {
-            Some(self.scoped_name()?)
-        } else {
-            None
-        };
-
-        let (members, body_annotations) = self.braced(super::Parser::members)?;
-        annotations.extend(body_annotations);
-        annotations.extend(self.expect_semi()?);
-
-        Ok(Item::StructValue(StructDef {
-            span: self.make_span(start, self.prev_span),
-            annotations,
-            ident,
-            members,
-            parent,
-        }))
-    }
-
-    fn members(&mut self) -> Result<Vec<Field>> {
-        let mut fields = Vec::new();
-        while !self.at(Kind::RBrace) && !self.at(Kind::Eoi) {
-            fields.push(self.member()?);
-        }
-        Ok(fields)
-    }
-
-    // Rule 47
-    fn member(&mut self) -> Result<Field> {
-        let start = self.span();
-        let ty = self.type_spec()?;
-        let names = self.declarators()?;
-        let mut annotations = self.take_annotations();
-        annotations.extend(self.expect_semi()?);
-
-        Ok(Field {
-            span: self.make_span(start, self.prev_span),
-            annotations,
-            names,
-            ty,
-        })
-    }
-
-    // Rule 67
-    fn declarators(&mut self) -> Result<Vec<Declarator>> {
-        let mut decls = vec![self.declarator()?];
-        while self.eat(Kind::Comma) {
-            decls.push(self.declarator()?);
-        }
-        Ok(decls)
-    }
-
-    // Rule 68
-    // <declarator> ::= <simple_declarator> | <array_declarator>
-    fn declarator(&mut self) -> Result<Declarator> {
-        let ident = self.ident()?;
-
-        // Check for array declarator
-        if self.at(Kind::LBracket) {
-            self.array_declarator(ident)
-        } else {
-            // Rule 62: simple declarator
-            Ok(Declarator::Simple(ident))
+    fn annotation_field(&mut self) -> Result<AnnotationField> {
+        match self.peek() {
+            Kind::Keyword(Kw::Typedef) => Ok(AnnotationField::Item(Box::new(self.typedef_dcl()?))),
+            Kind::Keyword(Kw::Const) => Ok(AnnotationField::Item(Box::new(self.const_dcl()?))),
+            Kind::Keyword(Kw::Enum) => Ok(AnnotationField::Item(Box::new(self.enum_dcl()?))),
+            Kind::Keyword(Kw::Struct) => Ok(AnnotationField::Item(Box::new(self.struct_dcl()?))),
+            Kind::Keyword(Kw::Bitmask) => Ok(AnnotationField::Item(Box::new(self.bitmask_dcl()?))),
+            Kind::Keyword(Kw::Union) => Ok(AnnotationField::Item(Box::new(self.union_dcl()?))),
+            // Rule 222: annotation_member
+            _ => Ok(AnnotationField::Member(Box::new(self.annotation_member()?))),
         }
     }
 
-    // Rule 59
-    // <array_declarator> ::= <identifier> <fixed_array_size>+
-    fn array_declarator(&mut self, ident: ic_syntax::Ident) -> Result<Declarator> {
-        let mut bounds = Vec::new();
-        while self.at(Kind::LBracket) {
-            bounds.push(self.fixed_array_size()?);
+    fn with_annotations(
+        &self,
+        item: Item,
+        mut annotations: Vec<ic_syntax::AnnotationAppl>,
+    ) -> Item {
+        if annotations.is_empty() {
+            return item;
         }
-        Ok(Declarator::Array(ArrayDeclarator { ident, bounds }))
-    }
 
-    // Rule 60
-    // <fixed_array_size> ::= "[" <positive_int_const> "]"
-    fn fixed_array_size(&mut self) -> Result<ic_syntax::Expr> {
-        self.expect(Kind::LBracket)?;
-        let expr = self.positive_int_const()?;
-        self.expect(Kind::RBracket)?;
-        Ok(expr)
-    }
-
-    // Rule 61
-    // <positive_int_const> ::= <const_expr>
-    pub(super) fn positive_int_const(&mut self) -> Result<ic_syntax::Expr> {
-        self.const_expr()
-    }
-
-    // Rule 57
-    fn enum_dcl(&mut self) -> Result<Item> {
-        let start = self.span();
-        self.expect_keyword(Kw::Enum)?;
-        let ident = self.ident()?;
-
-        let mut annotations = self.take_annotations();
-
-        let (fields, body_annotations) = self.braced(super::Parser::enumerators)?;
-        annotations.extend(body_annotations);
-        annotations.extend(self.expect_semi()?);
-
-        Ok(Item::EnumValue(EnumDef {
-            span: self.make_span(start, self.prev_span),
-            annotations,
-            ident,
-            fields,
-        }))
-    }
-
-    fn enumerators(&mut self) -> Result<Vec<Enumerator>> {
-        let mut enumerators = Vec::new();
-        if !self.at(Kind::RBrace) {
-            enumerators.push(self.enumerator()?);
-            while self.at(Kind::Comma) {
-                let comma_span = self.advance().span;
-                // Trailing comments after comma belong to the previous enumerator
-                if let Some(last) = enumerators.last_mut() {
-                    last.annotations.extend(self.take_trailing_comments());
-                }
-                if self.at(Kind::RBrace) {
-                    return Err(self.error_message(comma_span, "trailing comma is not allowed"));
-                }
-                enumerators.push(self.enumerator()?);
+        match item {
+            Item::ModuleValue(mut def) => {
+                annotations.extend(def.annotations);
+                def.annotations = annotations;
+                Item::ModuleValue(def)
+            }
+            Item::StructValue(mut def) => {
+                annotations.extend(def.annotations);
+                def.annotations = annotations;
+                Item::StructValue(def)
+            }
+            Item::DeclValue(mut decl) => {
+                annotations.extend(decl.annotations);
+                decl.annotations = annotations;
+                Item::DeclValue(decl)
+            }
+            Item::EnumValue(mut def) => {
+                annotations.extend(def.annotations);
+                def.annotations = annotations;
+                Item::EnumValue(def)
+            }
+            Item::BitmaskValue(mut def) => {
+                annotations.extend(def.annotations);
+                def.annotations = annotations;
+                Item::BitmaskValue(def)
+            }
+            Item::ConstValue(mut def) => {
+                annotations.extend(def.annotations);
+                def.annotations = annotations;
+                Item::ConstValue(def)
+            }
+            Item::AliasValue(mut def) => {
+                annotations.extend(def.annotations);
+                def.annotations = annotations;
+                Item::AliasValue(def)
+            }
+            Item::ExceptionValue(mut def) => {
+                annotations.extend(def.annotations);
+                def.annotations = annotations;
+                Item::ExceptionValue(def)
+            }
+            Item::UnionValue(mut def) => {
+                annotations.extend(def.annotations);
+                def.annotations = annotations;
+                Item::UnionValue(def)
+            }
+            Item::BitsetValue(mut def) => {
+                annotations.extend(def.annotations);
+                def.annotations = annotations;
+                Item::BitsetValue(def)
+            }
+            Item::InterfaceValue(mut def) => {
+                annotations.extend(def.annotations);
+                def.annotations = annotations;
+                Item::InterfaceValue(def)
+            }
+            Item::ValuetypeValue(mut def) => {
+                annotations.extend(def.annotations);
+                def.annotations = annotations;
+                Item::ValuetypeValue(def)
+            }
+            Item::AnnotationValue(mut def) => {
+                annotations.extend(def.annotations);
+                def.annotations = annotations;
+                Item::AnnotationValue(def)
             }
         }
-        Ok(enumerators)
-    }
-
-    // Rule 58
-    fn enumerator(&mut self) -> Result<Enumerator> {
-        let mut annotations = self.take_annotations();
-        let ident = self.ident()?;
-
-        // Grammar extension: `MY_ENUMERATOR = 1`
-        let value = if self.eat(Kind::Eq) {
-            Some(self.const_expr()?)
-        } else {
-            None
-        };
-
-        // Collect any trailing annotations (but not trailing comments - those come after comma)
-        annotations.extend(self.take_annotations());
-
-        Ok(Enumerator {
-            ident,
-            annotations,
-            value,
-        })
-    }
-
-    // Rule 204
-    fn bitmask_dcl(&mut self) -> Result<Item> {
-        let start = self.span();
-        self.expect_keyword(Kw::Bitmask)?;
-        let ident = self.ident()?;
-
-        let (bits, mut annotations) = self.braced(super::Parser::bit_values)?;
-        annotations.extend(self.expect_semi()?);
-
-        Ok(Item::BitmaskValue(BitmaskDef {
-            span: self.make_span(start, self.prev_span),
-            annotations,
-            ident,
-            bits,
-        }))
-    }
-
-    fn bit_values(&mut self) -> Result<Vec<Bit>> {
-        let mut bits = Vec::new();
-        if !self.at(Kind::RBrace) {
-            bits.push(self.bit_value()?);
-            while self.at(Kind::Comma) {
-                let comma_span = self.advance().span;
-                // Trailing comments after comma belong to the previous bit
-                if let Some(last) = bits.last_mut() {
-                    last.annotations.extend(self.take_trailing_comments());
-                }
-                if self.at(Kind::RBrace) {
-                    return Err(self.error_message(comma_span, "trailing comma is not allowed"));
-                }
-                bits.push(self.bit_value()?);
-            }
-        }
-        Ok(bits)
-    }
-
-    // Rule 205
-    fn bit_value(&mut self) -> Result<Bit> {
-        let start = self.span();
-        let annotations = self.take_annotations();
-        let ident = self.ident()?;
-
-        // Optional explicit value: `FLAG = 1`
-        let value = if self.eat(Kind::Eq) {
-            Some(self.const_expr()?)
-        } else {
-            None
-        };
-
-        // Collect trailing annotations
-        let mut all_annotations = annotations;
-        all_annotations.extend(self.take_annotations());
-
-        Ok(Bit {
-            span: self.make_span(start, self.prev_span),
-            annotations: all_annotations,
-            ident,
-            value,
-        })
-    }
-
-    // Rule 200
-    fn bitset_dcl(&mut self) -> Result<Item> {
-        let start = self.span();
-        self.expect_keyword(Kw::Bitset)?;
-        let ident = self.ident()?;
-
-        // Optional inheritance: bitset MyBitset : ParentBitset { ... }
-        let parent = if self.eat(Kind::Colon) {
-            Some(self.scoped_name()?)
-        } else {
-            None
-        };
-
-        let (fields, mut annotations) = self.braced(super::Parser::bitfields)?;
-        annotations.extend(self.expect_semi()?);
-
-        Ok(Item::BitsetValue(BitsetDef {
-            span: self.make_span(start, self.prev_span),
-            annotations,
-            ident,
-            parent,
-            fields,
-        }))
-    }
-
-    fn bitfields(&mut self) -> Result<Vec<Bitfield>> {
-        let mut fields = Vec::new();
-        while !self.at(Kind::RBrace) && !self.at(Kind::Eoi) {
-            fields.push(self.bitfield()?);
-        }
-        Ok(fields)
-    }
-
-    // Rule 201
-    fn bitfield(&mut self) -> Result<Bitfield> {
-        let start = self.span();
-        let mut annotations = self.take_annotations();
-
-        // Rule 202: bitfield_spec - bitfield<SIZE> or bitfield<SIZE, TYPE>
-        self.expect_keyword(Kw::Bitfield)?;
-        self.expect(Kind::Lt)?;
-        let size = self.const_expr()?;
-
-        // Rule 203: optional destination_type
-        let ty = if self.eat(Kind::Comma) {
-            Some(self.type_spec()?)
-        } else {
-            None
-        };
-
-        self.expect(Kind::Gt)?;
-
-        // Parse comma-separated declarators
-        let names = if self.at(Kind::Ident) {
-            self.declarators()?
-        } else {
-            Vec::new()
-        };
-
-        annotations.extend(self.expect_semi()?);
-
-        Ok(Bitfield {
-            span: self.make_span(start, self.prev_span),
-            annotations,
-            names,
-            size,
-            ty,
-        })
     }
 }

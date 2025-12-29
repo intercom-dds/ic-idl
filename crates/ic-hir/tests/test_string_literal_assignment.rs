@@ -80,7 +80,7 @@ fn test_string_literal_with_escapes() {
     if let DefKind::Const(const_ty) = &def.kind
         && let Numeric::String(s) = &const_ty.value
     {
-        assert_eq!(s, "hello\\nworld\\ttab");
+        assert_eq!(s, "hello\nworld\ttab");
     } else {
         panic!("Expected const with string value");
     }
@@ -156,7 +156,7 @@ fn test_string_literal_concatenation_with_escapes() {
     if let DefKind::Const(const_ty) = &def.kind
         && let Numeric::String(s) = &const_ty.value
     {
-        assert_eq!(s, "hello\\nworld\\t!");
+        assert_eq!(s, "hello\nworld\t!");
     } else {
         panic!("Expected const with string value");
     }

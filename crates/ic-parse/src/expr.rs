@@ -247,7 +247,12 @@ impl Parser<'_> {
 
             let tok = self.advance();
             let text = self.text(tok.span);
-            value.push_str(&parse_string_literal(text));
+            let Some(parsed) = parse_string_literal(text) else {
+                return Err(self
+                    .error_message(tok.span, "invalid escape sequence in string literal")
+                    .with_label("invalid escape sequence"));
+            };
+            value.push_str(&parsed);
         }
 
         Ok(Expr::Literal(Literal {
@@ -319,21 +324,30 @@ impl Parser<'_> {
     }
 
     /// Disambiguate `>>` in template argument context using lookahead.
-    fn rshift_in_template(&self, allow_comma: bool) -> Option<(OpKind, Precedence)> {
-        let after_shift = self.peek_nth_raw(2);
+    ///
+    /// Uses lookahead to properly skim annotations (with correct adjacency rules)
+    /// and determine what follows the `>>`.
+    fn rshift_in_template(&mut self, allow_comma: bool) -> Option<(OpKind, Precedence)> {
+        let is_rshift = self.lookahead(|p| {
+            // Consume the two `>` tokens
+            p.advance_raw();
+            p.advance_raw();
 
-        if self.is_definite_expr_continuation(after_shift) {
-            return Some((OpKind::Rshift, Precedence::SHIFT));
+            // Skim annotations using the real annotation parser
+            p.skim_annotations();
+
+            // Check what follows
+            let after_shift = p.peek_raw();
+            p.is_definite_expr_continuation(after_shift)
+                || (matches!(after_shift, Kind::Ident | Kind::DColon)
+                    && p.identifier_continues_expression(allow_comma))
+        });
+
+        if is_rshift {
+            Some((OpKind::Rshift, Precedence::SHIFT))
+        } else {
+            None
         }
-
-        // For identifiers, check what follows the scoped name
-        if matches!(after_shift, Kind::Ident | Kind::DColon)
-            && self.identifier_continues_expression(2, allow_comma)
-        {
-            return Some((OpKind::Rshift, Precedence::SHIFT));
-        }
-
-        None
     }
 
     /// Returns true if the given token definitely continues an expression.
@@ -353,53 +367,54 @@ impl Parser<'_> {
         )
     }
 
-    /// Skip over a scoped name starting at `offset`, return new offset after the name.
-    fn skip_scoped_name(&self, start_offset: usize) -> usize {
-        let mut offset = start_offset;
+    /// Check if the current identifier continues an expression (for `>>` disambiguation).
+    fn identifier_continues_expression(&mut self, allow_comma: bool) -> bool {
+        self.lookahead(|p| {
+            // Skip over the scoped name
+            p.skip_scoped_name_tokens();
 
+            // Skim any annotations after the identifier
+            p.skim_annotations();
+
+            let after_ident = p.peek_raw();
+            matches!(
+                after_ident,
+                Kind::Plus
+                    | Kind::Minus
+                    | Kind::Star
+                    | Kind::Slash
+                    | Kind::Modulo
+                    | Kind::BitOr
+                    | Kind::BitXor
+                    | Kind::BitAnd
+                    | Kind::Lt
+                    | Kind::Gt
+            ) || (allow_comma && after_ident == Kind::Comma)
+        })
+    }
+
+    /// Consumes tokens that form a scoped name (e.g., `foo`, `::foo`, `foo::bar::baz`).
+    fn skip_scoped_name_tokens(&mut self) {
         // Handle leading ::
-        if self.peek_nth_raw(offset) == Kind::DColon {
-            offset += 1;
+        if self.peek_raw() == Kind::DColon {
+            self.advance_raw();
         }
 
-        // Skip identifier
-        if self.peek_nth_raw(offset) == Kind::Ident {
-            offset += 1;
+        // Must have at least one identifier
+        if self.peek_raw() == Kind::Ident {
+            self.advance_raw();
         } else {
-            return offset;
+            return;
         }
 
-        // Skip additional scope segments
-        while self.peek_nth_raw(offset) == Kind::DColon {
-            offset += 1;
-            if self.peek_nth_raw(offset) == Kind::Ident {
-                offset += 1;
+        // Skip additional ::ident segments
+        while self.peek_raw() == Kind::DColon {
+            self.advance_raw();
+            if self.peek_raw() == Kind::Ident {
+                self.advance_raw();
             } else {
                 break;
             }
-        }
-
-        offset
-    }
-
-    /// Check if an identifier at `start_offset` is part of the current expression.
-    fn identifier_continues_expression(&self, start_offset: usize, allow_comma: bool) -> bool {
-        let offset = self.skip_scoped_name(start_offset);
-        let after_ident = self.peek_nth_raw(offset);
-
-        match after_ident {
-            Kind::Plus
-            | Kind::Minus
-            | Kind::Star
-            | Kind::Slash
-            | Kind::Modulo
-            | Kind::BitOr
-            | Kind::BitXor
-            | Kind::BitAnd
-            | Kind::Lt
-            | Kind::Gt => true,
-            Kind::Comma => allow_comma,
-            _ => false,
         }
     }
 
@@ -484,12 +499,45 @@ fn parse_integer(text: &str, base: Base) -> Option<u64> {
 }
 
 // Rule 19
-fn parse_string_literal(text: &str) -> String {
-    if text.starts_with('"') && text.ends_with('"') && text.len() >= 2 {
-        text[1..text.len() - 1].to_string()
-    } else {
-        text.to_string()
+fn parse_string_literal(text: &str) -> Option<String> {
+    let inner = text.strip_prefix('"')?.strip_suffix('"')?;
+    let mut result = String::with_capacity(inner.len());
+    let mut chars = inner.chars().peekable();
+
+    while let Some(c) = chars.next() {
+        if c == '\\' {
+            let escaped = match chars.next()? {
+                'n' => '\n',
+                'r' => '\r',
+                't' => '\t',
+                '\\' => '\\',
+                '\'' => '\'',
+                '"' => '"',
+                'x' => {
+                    let hex: String = [chars.next()?, chars.next()?].into_iter().collect();
+                    u8::from_str_radix(&hex, 16).ok()? as char
+                }
+                'u' => {
+                    let hex: String = (0..4).map(|_| chars.next()).collect::<Option<_>>()?;
+                    char::from_u32(u32::from_str_radix(&hex, 16).ok()?)?
+                }
+                c @ '0'..='7' => {
+                    let mut octal = String::from(c);
+                    while octal.len() < 3 && chars.peek().is_some_and(|&c| ('0'..='7').contains(&c))
+                    {
+                        octal.push(chars.next().unwrap());
+                    }
+                    u8::from_str_radix(&octal, 8).ok()? as char
+                }
+                _ => return None,
+            };
+            result.push(escaped);
+        } else {
+            result.push(c);
+        }
     }
+
+    Some(result)
 }
 
 // Rule 20

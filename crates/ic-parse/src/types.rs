@@ -25,8 +25,6 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-//! Type parsing.
-
 use ic_lexer::token::{Kind, Kw};
 use ic_syntax::{Fixed, FixedType, Ident, MapType, Path, SequenceType, StringType, Type};
 

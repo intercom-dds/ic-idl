@@ -401,3 +401,167 @@ fn annotation_between_unsigned_long_and_long() {
     };
     assert_eq!(p.segments[0].name, "uint64"); // unsigned long long
 }
+
+#[test]
+fn annotation_before_closing_template_bracket_with_rshift() {
+    // Annotation between expression and closing > in template with >> operator
+    // The >> should be recognized as right-shift, not two closing brackets
+    let result = from_str("typedef wstring<1 >> 2 @foo> MyString;");
+    assert!(result.errors.is_empty(), "errors: {:?}", result.errors);
+
+    let Item::AliasValue(a) = &result.tree[0] else {
+        panic!("expected typedef");
+    };
+    let Type::String(s) = &a.ty else {
+        panic!("expected string type");
+    };
+    assert!(s.bound.is_some(), "expected bounded string");
+}
+
+#[test]
+fn annotation_in_rshift_expression_with_identifier() {
+    // Annotation after identifier in >> expression inside template
+    let result = from_str("typedef wstring<x >> y @foo> MyString;");
+    assert!(result.errors.is_empty(), "errors: {:?}", result.errors);
+}
+
+#[test]
+fn annotation_before_rhs_in_rshift_expression() {
+    // Annotation before RHS operand in >> expression inside template
+    // e.g., `1 >> @foo 2` - the @foo is before the 2
+    let result = from_str("typedef wstring<1 >> @foo 2> MyString;");
+    assert!(result.errors.is_empty(), "errors: {:?}", result.errors);
+
+    let Item::AliasValue(a) = &result.tree[0] else {
+        panic!("expected typedef");
+    };
+    let Type::String(s) = &a.ty else {
+        panic!("expected string type");
+    };
+    assert!(s.bound.is_some(), "expected bounded string");
+}
+
+#[test]
+fn annotation_qualified_before_rhs_in_rshift_expression() {
+    // Qualified annotation before RHS operand in >> expression
+    let result = from_str("typedef wstring<1 >> @foo::bar 2> MyString;");
+    assert!(result.errors.is_empty(), "errors: {:?}", result.errors);
+}
+
+#[test]
+fn annotation_global_qualified_before_rhs_in_rshift_expression() {
+    // Globally qualified annotation before RHS operand in >> expression
+    let result = from_str("typedef wstring<1 >> @::foo 2> MyString;");
+    assert!(result.errors.is_empty(), "errors: {:?}", result.errors);
+}
+
+#[test]
+fn annotation_with_space_before_scoped_name_in_rshift() {
+    // Space before :: means ::bar is a separate scoped name, not part of @foo
+    // Input: `1 >> @foo ::bar` where ::bar is the RHS expression
+    let result = from_str("typedef wstring<1 >> @foo ::bar> MyString;");
+    assert!(result.errors.is_empty(), "errors: {:?}", result.errors);
+}
+
+#[test]
+fn string_literal_escape_sequences() {
+    // Test that escape sequences in strings are properly unescaped
+    let result = from_str(r#"const string x = "hello\nworld";"#);
+    assert!(result.errors.is_empty(), "errors: {:?}", result.errors);
+
+    let Item::ConstValue(c) = &result.tree[0] else {
+        panic!("expected const");
+    };
+    // The value should contain an actual newline, not backslash-n
+    match &c.value {
+        ic_syntax::Expr::Literal(lit) => match &lit.value {
+            ic_syntax::LiteralValue::String(s) => {
+                assert_eq!(s, "hello\nworld", "expected unescaped newline");
+            }
+            _ => panic!("expected string literal"),
+        },
+        _ => panic!("expected literal expression"),
+    }
+}
+
+#[test]
+fn string_literal_hex_escape() {
+    let result = from_str(r#"const string x = "\x41\x42\x43";"#);
+    assert!(result.errors.is_empty(), "errors: {:?}", result.errors);
+
+    let Item::ConstValue(c) = &result.tree[0] else {
+        panic!("expected const");
+    };
+    match &c.value {
+        ic_syntax::Expr::Literal(lit) => match &lit.value {
+            ic_syntax::LiteralValue::String(s) => {
+                assert_eq!(s, "ABC", "expected hex-escaped ABC");
+            }
+            _ => panic!("expected string literal"),
+        },
+        _ => panic!("expected literal expression"),
+    }
+}
+
+#[test]
+fn string_literal_invalid_escape_reports_error() {
+    // \z is not a valid escape sequence
+    let result = from_str(r#"const string x = "hello\zworld";"#);
+    assert!(
+        !result.errors.is_empty(),
+        "expected error for invalid escape"
+    );
+}
+
+#[test]
+fn string_literal_escaped_quotes() {
+    let result = from_str(r#"const string x = "say \"hello\"";"#);
+    assert!(result.errors.is_empty(), "errors: {:?}", result.errors);
+
+    let Item::ConstValue(c) = &result.tree[0] else {
+        panic!("expected const");
+    };
+    match &c.value {
+        ic_syntax::Expr::Literal(lit) => match &lit.value {
+            ic_syntax::LiteralValue::String(s) => {
+                assert_eq!(s, r#"say "hello""#);
+            }
+            _ => panic!("expected string literal"),
+        },
+        _ => panic!("expected literal expression"),
+    }
+}
+
+#[test]
+fn unterminated_block_comment_reports_error() {
+    // Unterminated block comments should report an error, not panic
+    let result = from_str("/*!<!");
+    assert!(
+        !result.errors.is_empty(),
+        "expected error for unterminated comment"
+    );
+
+    let result = from_str("/**<");
+    assert!(
+        !result.errors.is_empty(),
+        "expected error for unterminated comment"
+    );
+
+    let result = from_str("/*!");
+    assert!(
+        !result.errors.is_empty(),
+        "expected error for unterminated comment"
+    );
+
+    let result = from_str("/**");
+    assert!(
+        !result.errors.is_empty(),
+        "expected error for unterminated comment"
+    );
+
+    let result = from_str("/*");
+    assert!(
+        !result.errors.is_empty(),
+        "expected error for unterminated comment"
+    );
+}

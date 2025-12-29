@@ -25,13 +25,11 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-//! Annotation parsing.
-//!
-//! This module uses `advance_raw` and `peek_raw` exclusively to avoid
-//! infinite recursion when skimming annotations.
-
-use ic_lexer::token::Kind;
-use ic_syntax::{AnnotationAppl, AnnotationArg, Ident, Path};
+use ic_lexer::token::{Kind, Kw};
+use ic_syntax::{
+    AnnotationAppl, AnnotationArg, AnnotationDef, AnnotationField, AnnotationMember, Ident, Item,
+    Path,
+};
 
 use super::Parser;
 use crate::error::Result;
@@ -204,5 +202,68 @@ impl Parser<'_> {
         let value = self.const_expr()?;
 
         Ok(Some((ident, value)))
+    }
+
+    // Rule 219
+    pub(super) fn annotation_dcl(&mut self) -> Result<Item> {
+        let start = self.span();
+        self.expect_keyword(Kw::Annotation)?;
+
+        // Rule 220: annotation_header
+        let ident = self.ident_or_keyword()?;
+
+        // Rule 221: annotation_body
+        let (params, mut annotations) = self.braced(Parser::annotation_body)?;
+        annotations.extend(self.expect_semi()?);
+
+        Ok(Item::AnnotationValue(AnnotationDef {
+            span: self.make_span(start, self.prev_span),
+            annotations,
+            ident,
+            params,
+        }))
+    }
+
+    // Rule 221
+    fn annotation_body(&mut self) -> Result<Vec<AnnotationField>> {
+        let mut fields = Vec::new();
+        while !self.at(Kind::RBrace) && !self.at(Kind::Eoi) {
+            let field = match self.peek() {
+                Kind::Keyword(Kw::Typedef) => AnnotationField::Item(Box::new(self.typedef_dcl()?)),
+                Kind::Keyword(Kw::Const) => AnnotationField::Item(Box::new(self.const_dcl()?)),
+                Kind::Keyword(Kw::Enum) => AnnotationField::Item(Box::new(self.enum_dcl()?)),
+                Kind::Keyword(Kw::Struct) => AnnotationField::Item(Box::new(self.struct_dcl()?)),
+                Kind::Keyword(Kw::Bitmask) => AnnotationField::Item(Box::new(self.bitmask_dcl()?)),
+                Kind::Keyword(Kw::Union) => AnnotationField::Item(Box::new(self.union_dcl()?)),
+                _ => AnnotationField::Member(Box::new(self.annotation_member()?)),
+            };
+            fields.push(field);
+        }
+        Ok(fields)
+    }
+
+    // Rule 222
+    fn annotation_member(&mut self) -> Result<AnnotationMember> {
+        let start = self.span();
+        let mut annotations = self.take_annotations();
+
+        let ty = self.type_spec()?;
+        let decl = self.simple_declarator()?;
+
+        let default = if self.eat_keyword(Kw::Default).is_some() {
+            Some(self.const_expr()?)
+        } else {
+            None
+        };
+
+        annotations.extend(self.expect_semi()?);
+
+        Ok(AnnotationMember {
+            span: self.make_span(start, self.prev_span),
+            annotations,
+            decl,
+            ty,
+            default,
+        })
     }
 }

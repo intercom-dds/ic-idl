@@ -39,6 +39,7 @@ pub struct Checkpoint {
     pos: usize,
     prev_span: Span,
     pending_annotations: Vec<AnnotationAppl>,
+    annotation_errors_len: usize,
 }
 
 /// Maximum nesting depth for recursive constructs (modules, interfaces, etc.).
@@ -93,6 +94,7 @@ impl<'a> Parser<'a> {
             pos: self.pos,
             prev_span: self.prev_span,
             pending_annotations: self.pending_annotations.clone(),
+            annotation_errors_len: self.annotation_errors.len(),
         }
     }
 
@@ -101,6 +103,17 @@ impl<'a> Parser<'a> {
         self.pos = checkpoint.pos;
         self.prev_span = checkpoint.prev_span;
         self.pending_annotations = checkpoint.pending_annotations;
+        self.annotation_errors
+            .truncate(checkpoint.annotation_errors_len);
+    }
+
+    /// Executes a closure for lookahead, then rewinds to the original state.
+    /// Returns the result of the closure without committing any parser state changes.
+    pub fn lookahead<T>(&mut self, f: impl FnOnce(&mut Self) -> T) -> T {
+        let checkpoint = self.checkpoint();
+        let result = f(self);
+        self.rewind(checkpoint);
+        result
     }
 
     /// Returns the kind of the current token without skimming annotations.
@@ -230,6 +243,16 @@ impl<'a> Parser<'a> {
                         break;
                     }
                 },
+                Kind::Comment {
+                    terminated: false, ..
+                } => {
+                    let tok = self.advance_raw();
+                    self.annotation_errors.push(
+                        self.error_message(tok.span, "unterminated block comment")
+                            .with_label("missing closing */"),
+                    );
+                    break;
+                }
                 Kind::Comment { .. } => {
                     let ann = self.comment_to_doc_annotation();
                     self.pending_annotations.push(ann);
@@ -240,11 +263,22 @@ impl<'a> Parser<'a> {
     }
 
     /// Collects and returns any trailing comments at the current position.
-    /// This should be called after consuming boundary tokens like `;`, `,`, or `{`.
     pub fn take_trailing_comments(&mut self) -> Vec<AnnotationAppl> {
         let mut comments = Vec::new();
-        while let Kind::Comment { trailing: true } = self.peek_raw() {
-            comments.push(self.comment_to_doc_annotation());
+        while let Kind::Comment {
+            trailing: true,
+            terminated,
+        } = self.peek_raw()
+        {
+            if terminated {
+                comments.push(self.comment_to_doc_annotation());
+            } else {
+                let tok = self.advance_raw();
+                self.annotation_errors.push(
+                    self.error_message(tok.span, "unterminated block comment")
+                        .with_label("missing closing */"),
+                );
+            }
         }
         comments
     }
@@ -284,11 +318,11 @@ impl<'a> Parser<'a> {
         } else if let Some(stripped) = text.strip_prefix("//") {
             stripped
         } else if text.starts_with("/**<") || text.starts_with("/*!<") {
-            &text[4..text.len() - 2]
+            strip_block_comment(text, 4)
         } else if text.starts_with("/**") || text.starts_with("/*!") {
-            &text[3..text.len() - 2]
+            strip_block_comment(text, 3)
         } else if text.starts_with("/*") {
-            &text[2..text.len() - 2]
+            strip_block_comment(text, 2)
         } else {
             text
         };
@@ -614,5 +648,19 @@ impl<'a> Parser<'a> {
             }
             self.advance_raw();
         }
+    }
+}
+
+fn strip_block_comment(text: &str, prefix_len: usize) -> &str {
+    let end = if text.ends_with("*/") {
+        text.len() - 2
+    } else {
+        text.len()
+    };
+
+    if prefix_len <= end {
+        &text[prefix_len..end]
+    } else {
+        ""
     }
 }

@@ -27,11 +27,11 @@
 
 use ic_lexer::token::{Kind, Kw};
 use ic_syntax::{
-    AliasDef, AnnotationDef, AnnotationField, AnnotationMember, ArrayDeclarator, Attribute, Bit,
-    Bitfield, BitmaskDef, BitsetDef, ConstDef, Decl, DeclKind, Declarator, Discriminator, Empty,
-    EnumDef, Enumerator, ExceptDef, Field, InterfaceDef, InterfaceMember, Item, Label, ModuleDef,
-    Param, ParamKind, Prototype, StructDef, UnionDef, UnionElement, UnionField, UnionMember,
-    UnionNull, ValueElement, ValueMember, ValuetypeDef,
+    AliasDef, ArrayDeclarator, Attribute, Bit, Bitfield, BitmaskDef, BitsetDef, ConstDef, Decl,
+    DeclKind, Declarator, Discriminator, Empty, EnumDef, Enumerator, ExceptDef, Field,
+    InterfaceDef, InterfaceMember, Item, Label, ModuleDef, Param, ParamKind, Prototype, StructDef,
+    UnionDef, UnionElement, UnionField, UnionMember, UnionNull, ValueElement, ValueMember,
+    ValuetypeDef,
 };
 
 use super::Parser;
@@ -102,7 +102,7 @@ impl Parser<'_> {
     }
 
     // Rule 5
-    fn const_dcl(&mut self) -> Result<Item> {
+    pub(super) fn const_dcl(&mut self) -> Result<Item> {
         let start = self.span();
         self.expect_keyword(Kw::Const)?;
         let ty = self.type_spec()?;
@@ -133,7 +133,7 @@ impl Parser<'_> {
     }
 
     // Rule 45
-    fn struct_dcl(&mut self) -> Result<Item> {
+    pub(super) fn struct_dcl(&mut self) -> Result<Item> {
         let start = self.span();
         self.expect_keyword(Kw::Struct)?;
         let ident = self.ident()?;
@@ -196,7 +196,7 @@ impl Parser<'_> {
     }
 
     // Rule 49
-    fn union_dcl(&mut self) -> Result<Item> {
+    pub(super) fn union_dcl(&mut self) -> Result<Item> {
         let start = self.span();
         self.expect_keyword(Kw::Union)?;
         let ident = self.ident()?;
@@ -315,7 +315,7 @@ impl Parser<'_> {
     }
 
     // Rule 57
-    fn enum_dcl(&mut self) -> Result<Item> {
+    pub(super) fn enum_dcl(&mut self) -> Result<Item> {
         let start = self.span();
         self.expect_keyword(Kw::Enum)?;
         let ident = self.ident()?;
@@ -399,7 +399,7 @@ impl Parser<'_> {
     }
 
     // Rule 63
-    fn typedef_dcl(&mut self) -> Result<Item> {
+    pub(super) fn typedef_dcl(&mut self) -> Result<Item> {
         let start = self.span();
         self.expect_keyword(Kw::Typedef)?;
         let ty = self.type_spec()?;
@@ -441,7 +441,7 @@ impl Parser<'_> {
         }
     }
 
-    fn simple_declarator(&mut self) -> Result<Declarator> {
+    pub(super) fn simple_declarator(&mut self) -> Result<Declarator> {
         let ident = self.ident()?;
         Ok(Declarator::Simple(ident))
     }
@@ -1003,7 +1003,7 @@ impl Parser<'_> {
     }
 
     // Rule 204
-    fn bitmask_dcl(&mut self) -> Result<Item> {
+    pub(super) fn bitmask_dcl(&mut self) -> Result<Item> {
         let start = self.span();
         self.expect_keyword(Kw::Bitmask)?;
         let ident = self.ident()?;
@@ -1058,68 +1058,5 @@ impl Parser<'_> {
             }
         }
         Ok(bits)
-    }
-
-    // Rule 219
-    fn annotation_dcl(&mut self) -> Result<Item> {
-        let start = self.span();
-        self.expect_keyword(Kw::Annotation)?;
-
-        // Rule 220: annotation_header
-        let ident = self.ident_or_keyword()?;
-
-        // Rule 221: annotation_body
-        let (params, mut annotations) = self.braced(super::Parser::annotation_body)?;
-        annotations.extend(self.expect_semi()?);
-
-        Ok(Item::AnnotationValue(AnnotationDef {
-            span: self.make_span(start, self.prev_span),
-            annotations,
-            ident,
-            params,
-        }))
-    }
-
-    // Rule 221
-    fn annotation_body(&mut self) -> Result<Vec<AnnotationField>> {
-        let mut fields = Vec::new();
-        while !self.at(Kind::RBrace) && !self.at(Kind::Eoi) {
-            let field = match self.peek() {
-                Kind::Keyword(Kw::Typedef) => AnnotationField::Item(Box::new(self.typedef_dcl()?)),
-                Kind::Keyword(Kw::Const) => AnnotationField::Item(Box::new(self.const_dcl()?)),
-                Kind::Keyword(Kw::Enum) => AnnotationField::Item(Box::new(self.enum_dcl()?)),
-                Kind::Keyword(Kw::Struct) => AnnotationField::Item(Box::new(self.struct_dcl()?)),
-                Kind::Keyword(Kw::Bitmask) => AnnotationField::Item(Box::new(self.bitmask_dcl()?)),
-                Kind::Keyword(Kw::Union) => AnnotationField::Item(Box::new(self.union_dcl()?)),
-                _ => AnnotationField::Member(Box::new(self.annotation_member()?)),
-            };
-            fields.push(field);
-        }
-        Ok(fields)
-    }
-
-    // Rule 222
-    fn annotation_member(&mut self) -> Result<AnnotationMember> {
-        let start = self.span();
-        let mut annotations = self.take_annotations();
-
-        let ty = self.type_spec()?;
-        let decl = self.simple_declarator()?;
-
-        let default = if self.eat_keyword(Kw::Default).is_some() {
-            Some(self.const_expr()?)
-        } else {
-            None
-        };
-
-        annotations.extend(self.expect_semi()?);
-
-        Ok(AnnotationMember {
-            span: self.make_span(start, self.prev_span),
-            annotations,
-            decl,
-            ty,
-            default,
-        })
     }
 }

@@ -313,7 +313,15 @@ impl Cursor {
             false
         };
 
-        _ = self.until_peek(Kind::Newline);
+        // Consume the rest of the line directly
+        loop {
+            match self.chars.peek() {
+                '\n' | EOF => break,
+                _ => {
+                    self.chars.next();
+                }
+            }
+        }
         (is_doc, is_trailing)
     }
 

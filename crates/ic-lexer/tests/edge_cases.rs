@@ -253,3 +253,25 @@ fn test_special_float_cases() {
     assert_eq!(kinds("1e+"), vec![Kind::Float]);
     assert_eq!(kinds("1e-"), vec![Kind::Float]);
 }
+
+#[test]
+fn test_many_slashes_in_comment() {
+    // Regression test: many slashes in a line comment should not cause infinite loop.
+    // The comment body contains characters that look like comment starters.
+    let input = "///////////////////////////////////////////////";
+    let tokens = kinds(input);
+    assert_eq!(tokens.len(), 1);
+    assert_eq!(tokens[0], Kind::Comment { trailing: false });
+
+    // Even more slashes
+    let input = "//".to_string() + &"/".repeat(1000);
+    let tokens = kinds(&input);
+    assert_eq!(tokens.len(), 1);
+    assert_eq!(tokens[0], Kind::Comment { trailing: false });
+
+    // Mixed content after slashes
+    let input = "/// some text /// more slashes /// end";
+    let tokens = kinds(input);
+    assert_eq!(tokens.len(), 1);
+    assert_eq!(tokens[0], Kind::Comment { trailing: false });
+}

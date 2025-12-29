@@ -27,8 +27,8 @@
 
 #![allow(
     clippy::result_large_err,
-    clippy::unnecessary_wraps,
-    clippy::missing_errors_doc
+    clippy::missing_errors_doc,
+    clippy::unused_self
 )]
 
 //! # ic-parse

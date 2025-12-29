@@ -42,25 +42,20 @@ impl Parser<'_> {
     // <definition> ::= <type_dcl> | <const_dcl> | <except_dcl> | <interface_dcl>
     //                | <module> | <value_dcl> | <annotation_dcl>
     pub fn definition(&mut self) -> Result<Item> {
-        let annotations = self.take_annotations();
-
-        let item = match self.peek() {
-            Kind::Keyword(Kw::Module) => self.module_dcl()?,
-            Kind::Keyword(Kw::Struct | Kw::Union | Kw::Enum) => self.constr_type_dcl()?,
-            Kind::Keyword(Kw::Const) => self.const_dcl()?,
-            Kind::Keyword(Kw::Typedef) => self.typedef_dcl()?,
-            Kind::Keyword(Kw::Interface | Kw::Local) => self.interface_dcl()?,
-            Kind::Keyword(Kw::Valuetype) => self.valuetype_dcl()?,
-            Kind::Keyword(Kw::Annotation) => self.annotation_dcl()?,
-            Kind::Keyword(Kw::Exception) => self.except_dcl()?,
-            Kind::Keyword(Kw::Native) => self.native_dcl()?,
-            Kind::Keyword(Kw::Bitmask) => self.bitmask_dcl()?,
-            Kind::Keyword(Kw::Bitset) => self.bitset_dcl()?,
-
-            _ => return Err(self.error_expected("definition")),
-        };
-
-        Ok(self.with_annotations(item, annotations))
+        match self.peek() {
+            Kind::Keyword(Kw::Module) => self.module_dcl(),
+            Kind::Keyword(Kw::Struct | Kw::Union | Kw::Enum) => self.constr_type_dcl(),
+            Kind::Keyword(Kw::Const) => self.const_dcl(),
+            Kind::Keyword(Kw::Typedef) => self.typedef_dcl(),
+            Kind::Keyword(Kw::Interface | Kw::Local) => self.interface_dcl(),
+            Kind::Keyword(Kw::Valuetype) => self.valuetype_dcl(),
+            Kind::Keyword(Kw::Annotation) => self.annotation_dcl(),
+            Kind::Keyword(Kw::Exception) => self.except_dcl(),
+            Kind::Keyword(Kw::Native) => self.native_dcl(),
+            Kind::Keyword(Kw::Bitmask) => self.bitmask_dcl(),
+            Kind::Keyword(Kw::Bitset) => self.bitset_dcl(),
+            _ => Err(self.error_expected("definition")),
+        }
     }
 
     // Rule 3
@@ -1089,7 +1084,16 @@ impl Parser<'_> {
     fn annotation_body(&mut self) -> Result<Vec<AnnotationField>> {
         let mut fields = Vec::new();
         while !self.at(Kind::RBrace) && !self.at(Kind::Eoi) {
-            fields.push(self.annotation_field()?);
+            let field = match self.peek() {
+                Kind::Keyword(Kw::Typedef) => AnnotationField::Item(Box::new(self.typedef_dcl()?)),
+                Kind::Keyword(Kw::Const) => AnnotationField::Item(Box::new(self.const_dcl()?)),
+                Kind::Keyword(Kw::Enum) => AnnotationField::Item(Box::new(self.enum_dcl()?)),
+                Kind::Keyword(Kw::Struct) => AnnotationField::Item(Box::new(self.struct_dcl()?)),
+                Kind::Keyword(Kw::Bitmask) => AnnotationField::Item(Box::new(self.bitmask_dcl()?)),
+                Kind::Keyword(Kw::Union) => AnnotationField::Item(Box::new(self.union_dcl()?)),
+                _ => AnnotationField::Member(Box::new(self.annotation_member()?)),
+            };
+            fields.push(field);
         }
         Ok(fields)
     }
@@ -1099,7 +1103,6 @@ impl Parser<'_> {
         let start = self.span();
         let mut annotations = self.take_annotations();
 
-        // Rule 223: annotation_member_type
         let ty = self.type_spec()?;
         let decl = self.simple_declarator()?;
 
@@ -1118,96 +1121,5 @@ impl Parser<'_> {
             ty,
             default,
         })
-    }
-
-    fn annotation_field(&mut self) -> Result<AnnotationField> {
-        match self.peek() {
-            Kind::Keyword(Kw::Typedef) => Ok(AnnotationField::Item(Box::new(self.typedef_dcl()?))),
-            Kind::Keyword(Kw::Const) => Ok(AnnotationField::Item(Box::new(self.const_dcl()?))),
-            Kind::Keyword(Kw::Enum) => Ok(AnnotationField::Item(Box::new(self.enum_dcl()?))),
-            Kind::Keyword(Kw::Struct) => Ok(AnnotationField::Item(Box::new(self.struct_dcl()?))),
-            Kind::Keyword(Kw::Bitmask) => Ok(AnnotationField::Item(Box::new(self.bitmask_dcl()?))),
-            Kind::Keyword(Kw::Union) => Ok(AnnotationField::Item(Box::new(self.union_dcl()?))),
-            // Rule 222: annotation_member
-            _ => Ok(AnnotationField::Member(Box::new(self.annotation_member()?))),
-        }
-    }
-
-    fn with_annotations(
-        &self,
-        item: Item,
-        mut annotations: Vec<ic_syntax::AnnotationAppl>,
-    ) -> Item {
-        if annotations.is_empty() {
-            return item;
-        }
-
-        match item {
-            Item::ModuleValue(mut def) => {
-                annotations.extend(def.annotations);
-                def.annotations = annotations;
-                Item::ModuleValue(def)
-            }
-            Item::StructValue(mut def) => {
-                annotations.extend(def.annotations);
-                def.annotations = annotations;
-                Item::StructValue(def)
-            }
-            Item::DeclValue(mut decl) => {
-                annotations.extend(decl.annotations);
-                decl.annotations = annotations;
-                Item::DeclValue(decl)
-            }
-            Item::EnumValue(mut def) => {
-                annotations.extend(def.annotations);
-                def.annotations = annotations;
-                Item::EnumValue(def)
-            }
-            Item::BitmaskValue(mut def) => {
-                annotations.extend(def.annotations);
-                def.annotations = annotations;
-                Item::BitmaskValue(def)
-            }
-            Item::ConstValue(mut def) => {
-                annotations.extend(def.annotations);
-                def.annotations = annotations;
-                Item::ConstValue(def)
-            }
-            Item::AliasValue(mut def) => {
-                annotations.extend(def.annotations);
-                def.annotations = annotations;
-                Item::AliasValue(def)
-            }
-            Item::ExceptionValue(mut def) => {
-                annotations.extend(def.annotations);
-                def.annotations = annotations;
-                Item::ExceptionValue(def)
-            }
-            Item::UnionValue(mut def) => {
-                annotations.extend(def.annotations);
-                def.annotations = annotations;
-                Item::UnionValue(def)
-            }
-            Item::BitsetValue(mut def) => {
-                annotations.extend(def.annotations);
-                def.annotations = annotations;
-                Item::BitsetValue(def)
-            }
-            Item::InterfaceValue(mut def) => {
-                annotations.extend(def.annotations);
-                def.annotations = annotations;
-                Item::InterfaceValue(def)
-            }
-            Item::ValuetypeValue(mut def) => {
-                annotations.extend(def.annotations);
-                def.annotations = annotations;
-                Item::ValuetypeValue(def)
-            }
-            Item::AnnotationValue(mut def) => {
-                annotations.extend(def.annotations);
-                def.annotations = annotations;
-                Item::AnnotationValue(def)
-            }
-        }
     }
 }

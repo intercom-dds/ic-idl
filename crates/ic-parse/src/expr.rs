@@ -150,7 +150,7 @@ impl Parser<'_> {
         match kind {
             // Literal (Rule 17)
             Kind::Number { .. } | Kind::Float | Kind::String { .. } | Kind::Char => self.literal(),
-            Kind::Keyword(Kw::True | Kw::False) => self.boolean_literal(),
+            Kind::Keyword(Kw::True | Kw::False) => Ok(self.boolean_literal()),
             Kind::Keyword(Kw::Null) => {
                 let tok = self.advance();
                 Ok(Expr::Literal(Literal {
@@ -191,7 +191,7 @@ impl Parser<'_> {
             Kind::Float => self.floating_pt_literal(),
             Kind::String { .. } => self.string_literal(),
             Kind::Char => self.character_literal(),
-            Kind::Keyword(Kw::True | Kw::False) => self.boolean_literal(),
+            Kind::Keyword(Kw::True | Kw::False) => Ok(self.boolean_literal()),
             _ => Err(self.error_expected("literal")),
         }
     }
@@ -201,14 +201,12 @@ impl Parser<'_> {
     fn integer_literal(&mut self, base: Base) -> Result<Expr> {
         let tok = self.advance();
         let text = self.text(tok.span);
-        let value = match parse_integer(text, base) {
-            Some(v) => v,
-            None => {
-                return Err(self
-                    .error_message(tok.span, "invalid integer literal")
-                    .with_label("invalid integer"));
-            }
+        let Some(value) = parse_integer(text, base) else {
+            return Err(self
+                .error_message(tok.span, "invalid integer literal")
+                .with_label("invalid integer"));
         };
+
         Ok(Expr::Literal(Literal {
             span: tok.span,
             value: LiteralValue::Int(value),
@@ -219,14 +217,12 @@ impl Parser<'_> {
     fn floating_pt_literal(&mut self) -> Result<Expr> {
         let tok = self.advance();
         let text = self.text(tok.span);
-        let value: f64 = match text.parse() {
-            Ok(v) => v,
-            Err(_) => {
-                return Err(self
-                    .error_message(tok.span, "invalid floating point literal")
-                    .with_label("invalid float"));
-            }
+        let Ok(value) = text.parse() else {
+            return Err(self
+                .error_message(tok.span, "invalid floating point literal")
+                .with_label("invalid float"));
         };
+
         Ok(Expr::Literal(Literal {
             span: tok.span,
             value: LiteralValue::Float(value),
@@ -265,7 +261,12 @@ impl Parser<'_> {
     fn character_literal(&mut self) -> Result<Expr> {
         let tok = self.advance();
         let text = self.text(tok.span);
-        let value = parse_char_literal(text);
+        let Some(value) = parse_char_literal(text) else {
+            return Err(self
+                .error_message(tok.span, "invalid character literal")
+                .with_label("invalid character"));
+        };
+
         Ok(Expr::Literal(Literal {
             span: tok.span,
             value: LiteralValue::Char(value),
@@ -273,17 +274,13 @@ impl Parser<'_> {
     }
 
     // Rule 17
-    fn boolean_literal(&mut self) -> Result<Expr> {
+    fn boolean_literal(&mut self) -> Expr {
         let tok = self.advance();
-        let value = match tok.kind {
-            Kind::Keyword(Kw::True) => true,
-            Kind::Keyword(Kw::False) => false,
-            _ => unreachable!(),
-        };
-        Ok(Expr::Literal(Literal {
+        let value = matches!(tok.kind, Kind::Keyword(Kw::True));
+        Expr::Literal(Literal {
             span: tok.span,
             value: LiteralValue::Bool(value),
-        }))
+        })
     }
 
     /// Check if current token starts an infix operator; return its kind and precedence.
@@ -307,7 +304,7 @@ impl Parser<'_> {
             Kind::Slash => Some((OpKind::Divide, Precedence::MUL)),
             Kind::Modulo => Some((OpKind::Modulo, Precedence::MUL)),
 
-            // Rule 11: shift_expr - << and >> are parsed as two consecutive tokens
+            // Rule 11: shift_expr
             Kind::Lt if self.peek_nth_raw(1) == Kind::Lt => {
                 Some((OpKind::Lshift, Precedence::SHIFT))
             }
@@ -444,14 +441,13 @@ impl Parser<'_> {
 
     /// Parses a single init list element: `expr`, `.field = expr`, or `field = expr`
     fn init_list_element(&mut self, shift_mode: ShiftMode) -> Result<ic_syntax::NamedExpr> {
-        // Check for `.field = expr` or `field = expr` syntax
         let ident = if self.eat(Kind::Period) {
-            // `.field = expr` - period is required before identifier
+            // `.field = expr`
             let id = self.ident()?;
             self.expect(Kind::Eq)?;
             Some(id)
         } else if self.peek() == Kind::Ident && self.peek_nth_raw(1) == Kind::Eq {
-            // `field = expr` - identifier followed by equals
+            // `field = expr`
             let id = self.ident()?;
             // consume '='
             self.advance();
@@ -497,23 +493,23 @@ fn parse_string_literal(text: &str) -> String {
 }
 
 // Rule 20
-fn parse_char_literal(text: &str) -> char {
+fn parse_char_literal(text: &str) -> Option<char> {
     let inner = if text.starts_with('\'') && text.ends_with('\'') && text.len() >= 2 {
         &text[1..text.len() - 1]
     } else {
-        text
+        return None;
     };
 
     if inner.is_empty() {
-        return '\0';
+        return None;
     }
 
     if inner.starts_with('\\') && inner.len() > 1 {
-        match inner.chars().nth(1) {
+        let c = match inner.chars().nth(1) {
             Some('n') => '\n',
             Some('r') => '\r',
             Some('t') => '\t',
-            Some('0') | None => '\0',
+            Some('0') => '\0',
             Some('\\') => '\\',
             Some('\'') => '\'',
             Some('"') => '"',
@@ -523,16 +519,24 @@ fn parse_char_literal(text: &str) -> char {
             Some('x') => {
                 if inner.len() >= 4 {
                     let hex_str = &inner[2..4];
-                    u8::from_str_radix(hex_str, 16)
-                        .map(|v| v as char)
-                        .unwrap_or('\0')
+                    u8::from_str_radix(hex_str, 16).ok().map(|v| v as char)?
                 } else {
-                    '\0'
+                    return None;
                 }
             }
-            Some(c) => c,
-        }
+            // unknown escape sequence
+            _ => return None,
+        };
+        Some(c)
     } else {
-        inner.chars().next().unwrap_or('\0')
+        // for non-escape sequences, must be exactly one character
+        let mut chars = inner.chars();
+        let first = chars.next()?;
+
+        // ff there's a second character, it's invalid
+        if chars.next().is_some() {
+            return None;
+        }
+        Some(first)
     }
 }

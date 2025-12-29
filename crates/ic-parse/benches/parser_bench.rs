@@ -34,7 +34,7 @@ use ic_parse::from_str;
 use test::Bencher;
 
 /// A small but representative IDL sample with common constructs
-const SMALL_IDL: &str = r#"
+const SMALL_IDL: &str = r"
 module Example {
     struct Point {
         float x;
@@ -60,10 +60,10 @@ module Example {
     typedef sequence<Point> PointList;
     typedef map<string, Point> PointMap;
 };
-"#;
+";
 
 /// A medium-sized IDL with more complex types and nesting
-const MEDIUM_IDL: &str = r#"
+const MEDIUM_IDL: &str = r"
 module DDS {
     module XTypes {
         @extensibility(FINAL) @nested
@@ -162,7 +162,7 @@ module DDS {
         const octet TI_PLAIN_MAP_LARGE = 0xA1;
     };
 };
-"#;
+";
 
 /// A large IDL with many definitions to stress test the parser
 fn generate_large_idl() -> String {
@@ -172,7 +172,7 @@ fn generate_large_idl() -> String {
     // Generate many struct definitions
     for i in 0..100 {
         idl.push_str(&format!(
-            r#"
+            r"
     @extensibility(APPENDABLE)
     struct TestStruct{i} {{
         long field1;
@@ -184,14 +184,14 @@ fn generate_large_idl() -> String {
         sequence<long> field7;
         sequence<string, 10> field8;
     }};
-"#
+"
         ));
     }
 
     // Generate enum definitions
     for i in 0..20 {
         idl.push_str(&format!(
-            r#"
+            r"
     enum TestEnum{i} {{
         VALUE_A_{i},
         VALUE_B_{i},
@@ -199,28 +199,28 @@ fn generate_large_idl() -> String {
         VALUE_D_{i},
         VALUE_E_{i}
     }};
-"#
+"
         ));
     }
 
     // Generate union definitions
     for i in 0..20 {
         idl.push_str(&format!(
-            r#"
+            r"
     union TestUnion{i} switch (long) {{
         case 0: long int_val;
         case 1: float float_val;
         case 2: string string_val;
         default: octet default_val;
     }};
-"#
+"
         ));
     }
 
     // Generate interface definitions
     for i in 0..10 {
         idl.push_str(&format!(
-            r#"
+            r"
     interface TestInterface{i} {{
         void operation1(in long param1, in string param2);
         long operation2(in float param1, out string param2);
@@ -228,7 +228,7 @@ fn generate_large_idl() -> String {
         readonly attribute long attr1;
         attribute string attr2;
     }};
-"#
+"
         ));
     }
 

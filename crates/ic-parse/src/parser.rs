@@ -437,20 +437,6 @@ impl<'a> Parser<'a> {
         Ok((content, annotations))
     }
 
-    /// Parses `( ... )`, returning content and annotations before/after parens.
-    #[allow(dead_code)]
-    pub fn parenthesized<T>(
-        &mut self,
-        parse_content: impl FnOnce(&mut Self) -> Result<T>,
-    ) -> Result<(T, Vec<AnnotationAppl>)> {
-        let mut annotations = self.take_annotations();
-        self.expect(Kind::LParen)?;
-        let content = parse_content(self)?;
-        self.expect(Kind::RParen)?;
-        annotations.extend(self.take_annotations());
-        Ok((content, annotations))
-    }
-
     /// Parses `< ... >` for template arguments, isolating annotations inside from outside.
     pub fn template_args<T>(
         &mut self,

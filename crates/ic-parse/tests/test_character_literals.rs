@@ -83,8 +83,8 @@ fn test_hex_escape_sequences() {
 
 #[test]
 fn test_empty_char_literal() {
-    // Empty char literal is parsed as '\0' (default char value)
-    assert_eq!(parse_char_literal("''"), Some('\0'));
+    // Empty char literal is invalid
+    assert_eq!(parse_char_literal("''"), None);
 }
 
 #[test]

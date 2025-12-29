@@ -129,21 +129,21 @@ dependencies = [
 
 [[package]]
 name = "ic-alloc"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "intercom-cts",
 ]
 
 [[package]]
 name = "ic-cc"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "cc",
 ]
 
 [[package]]
 name = "ic-cli"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "ic-alloc",
  "ic-cli-derive",
@@ -151,7 +151,7 @@ dependencies = [
 
 [[package]]
 name = "ic-cli-derive"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "ic-emit",
  "proc-macro2",
@@ -161,7 +161,7 @@ dependencies = [
 
 [[package]]
 name = "ic-codegen-csharp"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "ic-cli",
  "ic-emit",
@@ -172,7 +172,7 @@ dependencies = [
 
 [[package]]
 name = "ic-codegen-cxx"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "ic-cc",
  "ic-cli",
@@ -185,7 +185,7 @@ dependencies = [
 
 [[package]]
 name = "ic-codegen-idl"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "ic-cli",
  "ic-emit",
@@ -196,7 +196,7 @@ dependencies = [
 
 [[package]]
 name = "ic-codegen-java"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "ic-cli",
  "ic-emit",
@@ -207,7 +207,7 @@ dependencies = [
 
 [[package]]
 name = "ic-codegen-json"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "ic-emit",
  "ic-hir",
@@ -217,7 +217,7 @@ dependencies = [
 
 [[package]]
 name = "ic-codegen-json-schema"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "ic-cli",
  "ic-emit",
@@ -228,7 +228,7 @@ dependencies = [
 
 [[package]]
 name = "ic-codegen-protobuf"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "ic-alloc",
  "ic-emit",
@@ -239,7 +239,7 @@ dependencies = [
 
 [[package]]
 name = "ic-codegen-python"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "ic-cc",
  "ic-cli",
@@ -252,7 +252,7 @@ dependencies = [
 
 [[package]]
 name = "ic-codegen-rust"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "ic-cc",
  "ic-cli",
@@ -266,7 +266,7 @@ dependencies = [
 
 [[package]]
 name = "ic-codegen-typescript"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "ic-cli",
  "ic-emit",
@@ -277,7 +277,7 @@ dependencies = [
 
 [[package]]
 name = "ic-codegen-xml"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "ic-emit",
  "ic-hir",
@@ -286,7 +286,7 @@ dependencies = [
 
 [[package]]
 name = "ic-diagnostic"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "ic-cli",
  "ic-vfs",
@@ -295,18 +295,18 @@ dependencies = [
 
 [[package]]
 name = "ic-emit"
-version = "0.1.0"
+version = "0.2.0"
 
 [[package]]
 name = "ic-expr"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "ic-syntax",
 ]
 
 [[package]]
 name = "ic-hir"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "ic-alloc",
  "ic-cli",
@@ -323,7 +323,7 @@ dependencies = [
 
 [[package]]
 name = "ic-hir-tree"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "ic-cli",
  "ic-hir",
@@ -332,7 +332,7 @@ dependencies = [
 
 [[package]]
 name = "ic-hir-xform"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "ic-diagnostic",
  "ic-emit",
@@ -346,7 +346,7 @@ dependencies = [
 
 [[package]]
 name = "ic-idl"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "ic-cli",
  "ic-codegen-csharp",
@@ -378,7 +378,7 @@ dependencies = [
 
 [[package]]
 name = "ic-lexer"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "ic-expr",
  "ic-vfs",
@@ -387,7 +387,7 @@ dependencies = [
 
 [[package]]
 name = "ic-lint"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "ic-alloc",
  "ic-cli",
@@ -403,7 +403,7 @@ dependencies = [
 
 [[package]]
 name = "ic-macros"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -412,7 +412,7 @@ dependencies = [
 
 [[package]]
 name = "ic-parse"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "chumsky",
  "ic-expr",
@@ -426,7 +426,7 @@ dependencies = [
 
 [[package]]
 name = "ic-preproc"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "ic-alloc",
  "ic-expr",
@@ -437,14 +437,14 @@ dependencies = [
 
 [[package]]
 name = "ic-ptree"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "ic-cc",
 ]
 
 [[package]]
 name = "ic-ptree-dump"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "ic-cc",
  "ic-ptree",
@@ -452,7 +452,7 @@ dependencies = [
 
 [[package]]
 name = "ic-ptree-lower"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "ic-hir",
  "ic-parse",
@@ -464,7 +464,7 @@ dependencies = [
 
 [[package]]
 name = "ic-syntax"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "ic-alloc",
  "ic-vfs",
@@ -473,7 +473,7 @@ dependencies = [
 
 [[package]]
 name = "ic-vfs"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "chumsky",
  "ic-alloc",

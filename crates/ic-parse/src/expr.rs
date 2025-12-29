@@ -491,6 +491,7 @@ fn parse_integer(text: &str, base: Base) -> Option<u64> {
             (stripped, 16)
         }
     };
+
     // For octal, empty string after stripping leading zeros means "0"
     if text.is_empty() {
         return Some(0);
@@ -505,36 +506,46 @@ fn parse_string_literal(text: &str) -> Option<String> {
     let mut chars = inner.chars().peekable();
 
     while let Some(c) = chars.next() {
-        if c == '\\' {
-            let escaped = match chars.next()? {
-                'n' => '\n',
-                'r' => '\r',
-                't' => '\t',
-                '\\' => '\\',
-                '\'' => '\'',
-                '"' => '"',
-                'x' => {
-                    let hex: String = [chars.next()?, chars.next()?].into_iter().collect();
-                    u8::from_str_radix(&hex, 16).ok()? as char
-                }
-                'u' => {
-                    let hex: String = (0..4).map(|_| chars.next()).collect::<Option<_>>()?;
-                    char::from_u32(u32::from_str_radix(&hex, 16).ok()?)?
-                }
-                c @ '0'..='7' => {
-                    let mut octal = String::from(c);
-                    while octal.len() < 3 && chars.peek().is_some_and(|&c| ('0'..='7').contains(&c))
-                    {
-                        octal.push(chars.next().unwrap());
-                    }
-                    u8::from_str_radix(&octal, 8).ok()? as char
-                }
-                _ => return None,
-            };
-            result.push(escaped);
-        } else {
+        if c != '\\' {
             result.push(c);
+            continue;
         }
+
+        let escaped = match chars.next()? {
+            'n' => '\n',
+            'r' => '\r',
+            't' => '\t',
+            '\\' => '\\',
+            '\'' => '\'',
+            '"' => '"',
+            'a' => '\u{07}',
+            'b' => '\u{08}',
+            'f' => '\u{0C}',
+            'v' => '\u{0B}',
+            '?' => '?',
+            'x' => {
+                let hex: String = [chars.next()?, chars.next()?].into_iter().collect();
+                u8::from_str_radix(&hex, 16).ok()? as char
+            }
+            'u' => {
+                let hex: String = [chars.next()?, chars.next()?, chars.next()?, chars.next()?]
+                    .into_iter()
+                    .collect();
+                char::from_u32(u32::from_str_radix(&hex, 16).ok()?)?
+            }
+            c @ '0'..='7' => {
+                let mut octal = String::from(c);
+                while octal.len() < 3
+                    && let Some(c) = chars.peek()
+                    && ('0'..='7').contains(c)
+                {
+                    octal.push(chars.next()?);
+                }
+                u8::from_str_radix(&octal, 8).ok()? as char
+            }
+            _ => return None,
+        };
+        result.push(escaped);
     }
 
     Some(result)

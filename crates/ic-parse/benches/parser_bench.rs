@@ -313,6 +313,3 @@ fn bench_preproc_only(b: &mut Bencher) {
         black_box(tokens)
     });
 }
-
-// Benchmark parsing only (with pre-collected tokens) - disabled due to arena issues
-// in repeated iterations

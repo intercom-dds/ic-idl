@@ -53,7 +53,7 @@ ic-hir = { path = "../ic-hir" }
 ic-hir-tree = { path = "../ic-hir-tree" }
 ic-hir-xform = { path = "../ic-hir-xform" }
 ic-lint = { path = "../ic-lint" }
-ic-parse = { path = "../ic-parse", package = "ic-parse" }
+ic-parse = { path = "../ic-parse" }
 ic-preproc = { path = "../ic-preproc" }
 ic-ptree = { path = "../ic-ptree" }
 ic-syntax = { path = "../ic-syntax" }

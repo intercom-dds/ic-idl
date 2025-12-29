@@ -52,7 +52,7 @@ fn test_trailing_comments_in_tokens() {
     assert_eq!(comment_tokens.len(), 1);
 
     // Verify the comment is marked as trailing
-    if let ic_lexer::token::Kind::Comment { trailing } = comment_tokens[0].kind {
+    if let ic_lexer::token::Kind::Comment { trailing, .. } = comment_tokens[0].kind {
         assert!(trailing, "Comment should be marked as trailing");
     } else {
         panic!("Expected Comment token");
@@ -80,7 +80,7 @@ int c;";
     let comments: Vec<bool> = tokens
         .into_iter()
         .filter_map(|t| match t.kind {
-            ic_lexer::token::Kind::Comment { trailing } => Some(trailing),
+            ic_lexer::token::Kind::Comment { trailing, .. } => Some(trailing),
             _ => None,
         })
         .collect();

@@ -79,13 +79,26 @@ fn test_unclosed_constructs() {
         vec![Kind::Unknown, Kind::Ident, Kind::Unknown]
     ); // 'a is unknown, b is ident, ' is unknown
 
-    // Unclosed block comment
+    // Unclosed block comments are emitted for error reporting
     let tokens = scan("/* comment");
-    assert_eq!(tokens.len(), 0); // Regular comment, consumed
+    assert_eq!(tokens.len(), 1);
+    assert_eq!(
+        tokens[0].kind,
+        Kind::Comment {
+            trailing: false,
+            terminated: false
+        }
+    );
 
     let tokens = scan("/** doc comment");
-    assert_eq!(tokens.len(), 1); // Doc comment, preserved
-    assert_eq!(tokens[0].kind, Kind::Comment { trailing: false });
+    assert_eq!(tokens.len(), 1);
+    assert_eq!(
+        tokens[0].kind,
+        Kind::Comment {
+            trailing: false,
+            terminated: false
+        }
+    );
 }
 
 #[test]

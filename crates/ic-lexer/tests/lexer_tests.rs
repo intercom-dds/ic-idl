@@ -234,14 +234,26 @@ fn test_comments() {
     // Doc comments are preserved
     let tokens = scan("/// doc comment\nfoo");
     assert_eq!(tokens.len(), 3);
-    assert_eq!(tokens[0].kind, Kind::Comment { trailing: false });
+    assert_eq!(
+        tokens[0].kind,
+        Kind::Comment {
+            trailing: false,
+            terminated: true
+        }
+    );
     assert_eq!(tokens[1].kind, Kind::Newline);
     assert_eq!(tokens[2].kind, Kind::Ident);
 
     // Alternative doc comment style
     let tokens = scan("//! module doc\nfoo");
     assert_eq!(tokens.len(), 3);
-    assert_eq!(tokens[0].kind, Kind::Comment { trailing: false });
+    assert_eq!(
+        tokens[0].kind,
+        Kind::Comment {
+            trailing: false,
+            terminated: true
+        }
+    );
 }
 
 #[test]
@@ -254,13 +266,25 @@ fn test_block_comments() {
     // Doc block comments are preserved
     let tokens = scan("/** doc comment */ foo");
     assert_eq!(tokens.len(), 2);
-    assert_eq!(tokens[0].kind, Kind::Comment { trailing: false });
+    assert_eq!(
+        tokens[0].kind,
+        Kind::Comment {
+            trailing: false,
+            terminated: true
+        }
+    );
     assert_eq!(tokens[1].kind, Kind::Ident);
 
     // Alternative doc block comment style
     let tokens = scan("/*! doc comment */ foo");
     assert_eq!(tokens.len(), 2);
-    assert_eq!(tokens[0].kind, Kind::Comment { trailing: false });
+    assert_eq!(
+        tokens[0].kind,
+        Kind::Comment {
+            trailing: false,
+            terminated: true
+        }
+    );
 }
 
 #[test]
@@ -367,12 +391,24 @@ fn test_trailing_comments() {
     assert_eq!(tokens[0].kind, Kind::Ident); // int
     assert_eq!(tokens[1].kind, Kind::Ident); // value
     assert_eq!(tokens[2].kind, Kind::Semi);
-    assert_eq!(tokens[3].kind, Kind::Comment { trailing: true }); // Trailing comment
+    assert_eq!(
+        tokens[3].kind,
+        Kind::Comment {
+            trailing: true,
+            terminated: true
+        }
+    ); // Trailing comment
 
     // Test leading comment (not trailing)
     let tokens = scan("/// leading doc comment\nint value;");
     assert_eq!(tokens.len(), 5);
-    assert_eq!(tokens[0].kind, Kind::Comment { trailing: false }); // Leading comment
+    assert_eq!(
+        tokens[0].kind,
+        Kind::Comment {
+            trailing: false,
+            terminated: true
+        }
+    ); // Leading comment
     assert_eq!(tokens[1].kind, Kind::Newline);
     assert_eq!(tokens[2].kind, Kind::Ident); // int
     assert_eq!(tokens[3].kind, Kind::Ident); // value
@@ -384,16 +420,40 @@ fn test_trailing_comments() {
     assert_eq!(tokens[0].kind, Kind::Ident); // int
     assert_eq!(tokens[1].kind, Kind::Ident); // value
     assert_eq!(tokens[2].kind, Kind::Semi);
-    assert_eq!(tokens[3].kind, Kind::Comment { trailing: true }); // Trailing block comment
+    assert_eq!(
+        tokens[3].kind,
+        Kind::Comment {
+            trailing: true,
+            terminated: true
+        }
+    ); // Trailing block comment
 
     // Test multiple items with trailing comments
     let tokens = scan("int a; /// comment a\nint b; /// comment b");
     assert_eq!(tokens.len(), 9); // No newline at end
-    assert_eq!(tokens[3].kind, Kind::Comment { trailing: true }); // First trailing comment
+    assert_eq!(
+        tokens[3].kind,
+        Kind::Comment {
+            trailing: true,
+            terminated: true
+        }
+    ); // First trailing comment
     assert_eq!(tokens[4].kind, Kind::Newline);
-    assert_eq!(tokens[8].kind, Kind::Comment { trailing: true }); // Second trailing comment
+    assert_eq!(
+        tokens[8].kind,
+        Kind::Comment {
+            trailing: true,
+            terminated: true
+        }
+    ); // Second trailing comment
 
     // Test comment at beginning of line (not trailing)
     let tokens = scan("    /// indented comment\n    int value;");
-    assert_eq!(tokens[0].kind, Kind::Comment { trailing: false });
+    assert_eq!(
+        tokens[0].kind,
+        Kind::Comment {
+            trailing: false,
+            terminated: true
+        }
+    );
 }

@@ -201,7 +201,7 @@ impl From<ic_preproc::Token> for Token {
         let kind = match value.kind {
             ic_preproc::Kind::Keyword(v) => Kind::Keyword(v),
             ic_preproc::Kind::Ident => Kind::Ident(String::new()),
-            ic_preproc::Kind::Comment { trailing } => Kind::Comment(String::new(), trailing),
+            ic_preproc::Kind::Comment { trailing, .. } => Kind::Comment(String::new(), trailing),
             ic_preproc::Kind::String { .. } => Kind::StringLit(String::new()),
             ic_preproc::Kind::Char => Kind::Char('\0'),
             ic_preproc::Kind::At => Kind::At,
@@ -299,13 +299,22 @@ where
                         span: next.span,
                     });
                 }
-                ic_preproc::Kind::Comment { trailing } => {
+                ic_preproc::Kind::Comment {
+                    trailing,
+                    terminated,
+                } => {
                     if ignore_comments {
                         continue;
                     }
-                    let comment = iter.source_of(next.span).to_string();
+                    let kind = if terminated {
+                        let comment = iter.source_of(next.span).to_string();
+                        Kind::Comment(comment, trailing)
+                    } else {
+                        Kind::UnterminatedString
+                    };
+
                     break Some(Token {
-                        kind: Kind::Comment(comment, trailing),
+                        kind,
                         span: next.span,
                     });
                 }

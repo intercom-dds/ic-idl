@@ -134,13 +134,26 @@ fn test_string_escape_sequences() {
 
 #[test]
 fn test_unterminated_block_comment() {
-    // Should not panic on unterminated block comment
+    // Unterminated block comments are emitted for error reporting
     let tokens = kinds("/* unterminated block comment");
-    assert_eq!(tokens.len(), 0); // Comment is consumed but not emitted
+    assert_eq!(tokens.len(), 1);
+    assert_eq!(
+        tokens[0],
+        Kind::Comment {
+            trailing: false,
+            terminated: false
+        }
+    );
 
     let tokens = kinds("/** unterminated doc comment");
     assert_eq!(tokens.len(), 1);
-    assert_eq!(tokens[0], Kind::Comment { trailing: false });
+    assert_eq!(
+        tokens[0],
+        Kind::Comment {
+            trailing: false,
+            terminated: false
+        }
+    );
 }
 
 #[test]
@@ -183,8 +196,20 @@ fn test_consecutive_operators() {
     assert_eq!(kinds("++"), vec![Kind::Plus, Kind::Plus]);
     assert_eq!(kinds("--"), vec![Kind::Minus, Kind::Minus]);
     assert_eq!(kinds("**"), vec![Kind::Star, Kind::Star]);
-    assert_eq!(kinds("///"), vec![Kind::Comment { trailing: false }]); // Doc comment
-    assert_eq!(kinds("////"), vec![Kind::Comment { trailing: false }]); // Still doc comment
+    assert_eq!(
+        kinds("///"),
+        vec![Kind::Comment {
+            trailing: false,
+            terminated: true
+        }]
+    ); // Doc comment
+    assert_eq!(
+        kinds("////"),
+        vec![Kind::Comment {
+            trailing: false,
+            terminated: true
+        }]
+    ); // Still doc comment
 }
 
 #[test]
@@ -261,17 +286,35 @@ fn test_many_slashes_in_comment() {
     let input = "///////////////////////////////////////////////";
     let tokens = kinds(input);
     assert_eq!(tokens.len(), 1);
-    assert_eq!(tokens[0], Kind::Comment { trailing: false });
+    assert_eq!(
+        tokens[0],
+        Kind::Comment {
+            trailing: false,
+            terminated: true
+        }
+    );
 
     // Even more slashes
     let input = "//".to_string() + &"/".repeat(1000);
     let tokens = kinds(&input);
     assert_eq!(tokens.len(), 1);
-    assert_eq!(tokens[0], Kind::Comment { trailing: false });
+    assert_eq!(
+        tokens[0],
+        Kind::Comment {
+            trailing: false,
+            terminated: true
+        }
+    );
 
     // Mixed content after slashes
     let input = "/// some text /// more slashes /// end";
     let tokens = kinds(input);
     assert_eq!(tokens.len(), 1);
-    assert_eq!(tokens[0], Kind::Comment { trailing: false });
+    assert_eq!(
+        tokens[0],
+        Kind::Comment {
+            trailing: false,
+            terminated: true
+        }
+    );
 }

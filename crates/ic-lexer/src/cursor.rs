@@ -65,6 +65,13 @@ const ASCII_HEX_DIGIT: [bool; 128] = {
     table
 };
 
+/// Result of parsing a comment.
+struct CommentResult {
+    is_doc: bool,
+    trailing: bool,
+    terminated: bool,
+}
+
 /// A lexical cursor that tokenizes IDL source code.
 ///
 /// The cursor maintains the current position in the source and provides
@@ -295,17 +302,15 @@ impl Cursor {
 
     // Code comments (`//`) are stripped from the output, but documentation
     // comments (`///`) are not.
-    //
-    // Returns (is_doc, is_trailing) tuple
     #[inline]
-    fn comment(&mut self) -> (bool, bool) {
+    fn comment(&mut self) -> CommentResult {
         // Consume the leading '/'
         _ = self.chars.next();
 
         // Check for documentation comment markers
         let next_char = self.chars.peek();
         let is_doc = matches!(next_char, '/' | '!');
-        let is_trailing = if is_doc {
+        let trailing = if is_doc {
             // consume the / or !
             _ = self.chars.next();
             self.chars.peek() == '<' || self.has_content_on_line
@@ -322,18 +327,23 @@ impl Cursor {
                 }
             }
         }
-        (is_doc, is_trailing)
+        // Line comments are always "terminated" (by newline or EOF)
+        CommentResult {
+            is_doc,
+            trailing,
+            terminated: true,
+        }
     }
 
     #[inline]
-    fn block_comment(&mut self) -> (bool, bool) {
-        // Consume the leading '/'
+    fn block_comment(&mut self) -> CommentResult {
+        // Consume the leading '*'
         _ = self.chars.next();
 
         // Check if this might be a doc comment
         let first_char = self.chars.peek();
         let mut is_doc = false;
-        let mut is_trailing = false;
+        let mut trailing = false;
 
         if first_char == '!' {
             // /*! style doc comment
@@ -342,7 +352,7 @@ impl Cursor {
             // consume the !
             _ = self.chars.next();
             // Check for trailing marker or if there's content on the line
-            is_trailing = self.chars.peek() == '<' || self.has_content_on_line;
+            trailing = self.chars.peek() == '<' || self.has_content_on_line;
         } else if first_char == '*' {
             // Could be /** style doc comment
             // We need to check if there's actual content after /**
@@ -359,27 +369,29 @@ impl Cursor {
             if next_char == '<' {
                 // /**< style trailing comment
                 is_doc = true;
-                is_trailing = true;
+                trailing = true;
             } else if next_char != '/' && next_char != EOF {
                 // /** text */ style doc comment
                 is_doc = true;
                 // Check if it's trailing based on content on line
-                is_trailing = self.has_content_on_line;
+                trailing = self.has_content_on_line;
             }
         }
 
         let mut prev_was_star = false;
-        loop {
+        let terminated = loop {
             match self.chars.next() {
-                Some('/') if prev_was_star => break,
+                Some('/') if prev_was_star => break true,
                 Some('*') => prev_was_star = true,
                 Some(_) => prev_was_star = false,
-
-                // Unterminated block comment
-                None => break,
+                None => break false,
             }
+        };
+        CommentResult {
+            is_doc,
+            trailing,
+            terminated,
         }
-        (is_doc, is_trailing)
     }
 
     #[inline]
@@ -519,24 +531,27 @@ impl Cursor {
                     '@' => self.annotation(),
                     '/' => match self.chars.peek() {
                         '/' => {
-                            let (is_doc, is_trailing) = self.comment();
-                            if is_doc {
+                            let c = self.comment();
+                            if c.is_doc {
                                 Kind::Comment {
-                                    trailing: is_trailing,
+                                    trailing: c.trailing,
+                                    terminated: c.terminated,
                                 }
                             } else {
-                                // Skip regular comments
+                                // Skip regular line comments
                                 continue;
                             }
                         }
                         '*' => {
-                            let (is_doc, is_trailing) = self.block_comment();
-                            if is_doc {
+                            let c = self.block_comment();
+                            if c.is_doc || !c.terminated {
+                                // Emit doc comments and unterminated comments (for error reporting)
                                 Kind::Comment {
-                                    trailing: is_trailing,
+                                    trailing: c.trailing,
+                                    terminated: c.terminated,
                                 }
                             } else {
-                                // Skip regular comments
+                                // Skip regular terminated block comments
                                 continue;
                             }
                         }

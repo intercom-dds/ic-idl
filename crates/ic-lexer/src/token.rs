@@ -115,7 +115,8 @@ pub enum Kind {
 
     /// A documentation-style comment
     /// If `trailing` is true, this comment appears on the same line as code
-    Comment { trailing: bool },
+    /// If `terminated` is false, this is an unterminated block comment
+    Comment { trailing: bool, terminated: bool },
 
     /// Octal, decimal or hexadecimal number
     Number { base: Base },

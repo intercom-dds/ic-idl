@@ -340,3 +340,64 @@ fn annotation_after_declarator_on_member() {
     assert_eq!(field.annotations.len(), 1, "annotation should be on field");
     assert_eq!(field.annotations[0].ident.segments[0].name, "optional");
 }
+
+#[test]
+fn annotation_between_long_and_double() {
+    // Annotations can appear anywhere, including between multi-token types like "long double"
+    let result = from_str("const long @optional double my82 = 1;");
+    assert!(result.errors.is_empty(), "errors: {:?}", result.errors);
+
+    let Item::ConstValue(c) = &result.tree[0] else {
+        panic!("expected const");
+    };
+    // The type should be "long double", not "long"
+    let Type::Path(p) = &c.ty else {
+        panic!("expected path type");
+    };
+    assert_eq!(p.segments[0].name, "long double");
+}
+
+#[test]
+fn annotation_between_long_and_long() {
+    // Annotations between "long" and "long" for "long long" type
+    let result = from_str("const long @foo long x = 1;");
+    assert!(result.errors.is_empty(), "errors: {:?}", result.errors);
+
+    let Item::ConstValue(c) = &result.tree[0] else {
+        panic!("expected const");
+    };
+    let Type::Path(p) = &c.ty else {
+        panic!("expected path type");
+    };
+    assert_eq!(p.segments[0].name, "int64"); // long long is represented as int64
+}
+
+#[test]
+fn annotation_between_unsigned_and_long() {
+    // Annotations between "unsigned" and "long"
+    let result = from_str("const unsigned @foo long x = 1;");
+    assert!(result.errors.is_empty(), "errors: {:?}", result.errors);
+
+    let Item::ConstValue(c) = &result.tree[0] else {
+        panic!("expected const");
+    };
+    let Type::Path(p) = &c.ty else {
+        panic!("expected path type");
+    };
+    assert_eq!(p.segments[0].name, "uint32");
+}
+
+#[test]
+fn annotation_between_unsigned_long_and_long() {
+    // Annotations between "unsigned long" and second "long"
+    let result = from_str("const unsigned long @foo long x = 1;");
+    assert!(result.errors.is_empty(), "errors: {:?}", result.errors);
+
+    let Item::ConstValue(c) = &result.tree[0] else {
+        panic!("expected const");
+    };
+    let Type::Path(p) = &c.ty else {
+        panic!("expected path type");
+    };
+    assert_eq!(p.segments[0].name, "uint64"); // unsigned long long
+}

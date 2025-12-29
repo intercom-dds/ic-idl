@@ -373,6 +373,49 @@ impl<'a> Parser<'a> {
             .map_or(Kind::Eoi, |tok| tok.kind)
     }
 
+    /// Peeks at the next token after `n` tokens, skipping over annotations.
+    /// This is useful for lookahead disambiguation when annotations can appear.
+    pub(super) fn peek_nth_skip_annotations(&self, n: usize) -> Kind {
+        let mut pos = self.pos;
+        let mut count = 0;
+        while pos < self.tokens.len() {
+            let kind = self.tokens[pos].kind;
+            // Skip annotations and comments
+            if matches!(kind, Kind::At | Kind::Comment { .. }) {
+                // For annotations, we need to skip the entire annotation including args
+                if kind == Kind::At {
+                    pos += 1;
+                    // Skip the annotation name (identifier or keyword)
+                    if pos < self.tokens.len() {
+                        pos += 1;
+                    }
+                    // Skip annotation arguments if present: ( ... )
+                    if pos < self.tokens.len() && self.tokens[pos].kind == Kind::LParen {
+                        let mut depth = 1;
+                        pos += 1;
+                        while pos < self.tokens.len() && depth > 0 {
+                            match self.tokens[pos].kind {
+                                Kind::LParen => depth += 1,
+                                Kind::RParen => depth -= 1,
+                                _ => {}
+                            }
+                            pos += 1;
+                        }
+                    }
+                } else {
+                    pos += 1;
+                }
+            } else {
+                if count == n {
+                    return kind;
+                }
+                count += 1;
+                pos += 1;
+            }
+        }
+        Kind::Eoi
+    }
+
     /// Parses an identifier.
     pub fn ident(&mut self) -> Result<Ident> {
         self.skim_annotations();

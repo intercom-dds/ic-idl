@@ -74,8 +74,8 @@ impl Parser<'_> {
             Kind::Keyword(Kw::Float | Kw::Double) => self.floating_pt_type(),
             Kind::Keyword(Kw::Long) => {
                 // Could be integer (long, long long) or floating (long double)
-                // Peek ahead to disambiguate
-                if self.peek_nth_raw(1) == Kind::Keyword(Kw::Double) {
+                // Peek ahead to disambiguate, skipping any annotations
+                if self.peek_nth_skip_annotations(1) == Kind::Keyword(Kw::Double) {
                     self.floating_pt_type()
                 } else {
                     self.integer_type()

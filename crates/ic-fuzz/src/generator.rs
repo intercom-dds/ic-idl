@@ -27,8 +27,6 @@
 
 //! IDL source code generator from grammar.
 
-use std::sync::Arc;
-
 use ic_emit::printer::{Twine, w};
 use rand::rngs::SmallRng;
 use rand::{Rng, SeedableRng};
@@ -79,8 +77,8 @@ impl FuzzerConfig {
     }
 }
 
-pub struct Fuzzer {
-    grammar: Arc<Grammar>,
+pub struct Fuzzer<'g> {
+    grammar: &'g Grammar,
     config: FuzzerConfig,
     max_tokens: usize,
     token_count: usize,
@@ -88,9 +86,9 @@ pub struct Fuzzer {
     rng: SmallRng,
 }
 
-impl Fuzzer {
+impl<'g> Fuzzer<'g> {
     #[must_use]
-    pub fn new(grammar: Arc<Grammar>, config: FuzzerConfig) -> Self {
+    pub fn new(grammar: &'g Grammar, config: FuzzerConfig) -> Self {
         let rng = match config.seed {
             Some(seed) => SmallRng::seed_from_u64(seed),
             None => SmallRng::from_entropy(),
@@ -106,23 +104,12 @@ impl Fuzzer {
         }
     }
 
-    /// # Errors
-    ///
-    /// Returns an error if the grammar JSON is invalid.
-    pub fn from_json(
-        json: &str,
-        config: FuzzerConfig,
-    ) -> Result<Self, crate::grammar::GrammarError> {
-        let grammar = Arc::new(Grammar::from_json(json)?);
-        Ok(Self::new(grammar, config))
-    }
-
     pub fn generate(&mut self) -> Generated {
         self.token_count = 0;
         self.at_line_start = true;
         let mut out = Twine::new();
-        let start = self.grammar.start.clone();
-        self.generate_rule(&start, 0, &mut out);
+        let start = self.grammar.start.as_str();
+        self.generate_rule(start, 0, &mut out);
         Generated {
             source: out.finish(),
             token_count: self.token_count,
@@ -206,10 +193,10 @@ impl Fuzzer {
             self.emit_token(&token, out);
             return;
         }
-        let Some(rule) = self.grammar.get_rule(name).cloned() else {
+        let Some(rule) = self.grammar.get_rule(name) else {
             return;
         };
-        self.generate_rule_inner(&rule, depth, out);
+        self.generate_rule_inner(rule, depth, out);
     }
 
     fn generate_rule_inner(&mut self, rule: &Rule, depth: usize, out: &mut Twine) {
@@ -453,6 +440,7 @@ mod tests {
 
     #[test]
     fn test_reproducible_with_seed() {
+        let grammar = Grammar::from_json(simple_grammar()).unwrap();
         let config = FuzzerConfig {
             max_depth: 5,
             max_repetitions: 2,
@@ -460,10 +448,10 @@ mod tests {
             ..Default::default()
         };
 
-        let mut fuzzer1 = Fuzzer::from_json(simple_grammar(), config.clone()).unwrap();
+        let mut fuzzer1 = Fuzzer::new(&grammar, config.clone());
         let output1 = fuzzer1.generate();
 
-        let mut fuzzer2 = Fuzzer::from_json(simple_grammar(), config).unwrap();
+        let mut fuzzer2 = Fuzzer::new(&grammar, config);
         let output2 = fuzzer2.generate();
 
         assert_eq!(
@@ -478,7 +466,8 @@ mod tests {
 
     #[test]
     fn test_with_annotations() {
-        let grammar = r#"{
+        let grammar = Grammar::from_json(
+            r#"{
             "terminals": {
                 "ident": { "type": "identifier" }
             },
@@ -493,7 +482,9 @@ mod tests {
                 "args_probability": 0.5
             },
             "start": "start"
-        }"#;
+        }"#,
+        )
+        .unwrap();
 
         let config = FuzzerConfig {
             max_depth: 5,
@@ -501,7 +492,7 @@ mod tests {
             annotation_probability: Some(1.0),
             ..Default::default()
         };
-        let mut fuzzer = Fuzzer::from_json(grammar, config).unwrap();
+        let mut fuzzer = Fuzzer::new(&grammar, config);
         let output = fuzzer.generate();
         assert!(
             output.source.contains('@'),

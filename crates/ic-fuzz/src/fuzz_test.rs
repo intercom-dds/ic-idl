@@ -32,14 +32,13 @@
     clippy::print_stderr
 )]
 
-use std::fmt;
 use std::fs::{self, File};
 use std::io::Write;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::sync::atomic::{AtomicU64, Ordering};
-use std::thread::{self, JoinHandle};
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
+use std::{fmt, thread};
 
 use ic_cli::Command;
 use ic_cli::color::Colorize;
@@ -106,13 +105,13 @@ fn main() {
         std::process::exit(1);
     });
 
-    let grammar = Arc::new(Grammar::from_json(&grammar_json).unwrap_or_else(|e| {
+    let grammar = Grammar::from_json(&grammar_json).unwrap_or_else(|e| {
         eprintln!("error: {e}");
         std::process::exit(1);
-    }));
+    });
 
-    let output_dir = Arc::new(PathBuf::from(args.output.as_deref().unwrap_or(".")));
-    fs::create_dir_all(output_dir.as_ref()).unwrap_or_else(|e| {
+    let output_dir = PathBuf::from(args.output.as_deref().unwrap_or("."));
+    fs::create_dir_all(&output_dir).unwrap_or_else(|e| {
         eprintln!("error: failed to create output directory: {e}");
         std::process::exit(1);
     });
@@ -139,32 +138,38 @@ fn main() {
 
     let total_passed = Counter::new();
     let total_failed = Counter::new();
+    let total_bytes = Counter::new();
     let mp = MultiProgress::new();
 
-    let handles: Vec<_> = (0..num_threads)
-        .map(|thread_id| {
-            spawn_worker(
-                WorkerContext {
-                    grammar: grammar.clone(),
-                    config: config.clone(),
-                    output_dir: output_dir.clone(),
-                    total_passed: total_passed.clone(),
-                    total_failed: total_failed.clone(),
-                    mp: mp.clone(),
-                    base_seed,
-                },
-                thread_id,
-            )
-        })
+    let worker_pbs: Vec<_> = (0..num_threads)
+        .map(|_| mp.add(ProgressBar::new_spinner()))
         .collect();
 
-    let summary_style = summary_progress_style(total_passed, total_failed);
+    let summary_style = summary_progress_style(
+        total_passed.clone(),
+        total_failed.clone(),
+        total_bytes.clone(),
+    );
     let summary_pb = mp.add(ProgressBar::new_spinner().with_style(summary_style));
     summary_pb.enable_steady_tick(UPDATE_INTERVAL / 2);
 
-    for handle in handles {
-        let _ = handle.join();
-    }
+    let ctx = WorkerContext {
+        grammar: &grammar,
+        config: &config,
+        output_dir: &output_dir,
+        total_passed: &total_passed,
+        total_failed: &total_failed,
+        total_bytes: &total_bytes,
+        mp: &mp,
+        base_seed,
+    };
+
+    thread::scope(|s| {
+        for (thread_id, pb) in worker_pbs.iter().enumerate() {
+            let ctx = &ctx;
+            s.spawn(move || run_worker(ctx, thread_id, pb));
+        }
+    });
 }
 
 #[derive(Clone)]
@@ -220,14 +225,33 @@ fn thread_progress_style(thread_id: usize, tokens: Counter, start: Instant) -> P
         })
 }
 
-fn summary_progress_style(passed: Counter, failed: Counter) -> ProgressStyle {
+fn format_bytes(bytes: u64) -> String {
+    const KB: u64 = 1024;
+    const MB: u64 = 1024 * KB;
+    const GB: u64 = 1024 * MB;
+    const TB: u64 = 1024 * GB;
+
+    if bytes >= TB {
+        format!("{:.2} TB", bytes as f64 / TB as f64)
+    } else if bytes >= GB {
+        format!("{:.2} GB", bytes as f64 / GB as f64)
+    } else if bytes >= MB {
+        format!("{:.1} MB", bytes as f64 / MB as f64)
+    } else if bytes >= KB {
+        format!("{:.1} KB", bytes as f64 / KB as f64)
+    } else {
+        format!("{bytes} B")
+    }
+}
+
+fn summary_progress_style(passed: Counter, failed: Counter, bytes: Counter) -> ProgressStyle {
     ProgressStyle::default_spinner()
         .tick_strings(&[
             "010010", "001100", "100101", "111010", "111101", "010111", "101011", "111000",
             "110011", "110101",
         ])
         .template(&format!(
-            "{{spinner:.red}} {{total}} {} | {{passed_count}} {} | {{failed_count}} {}",
+            "{{spinner:.red}} {{total}} {} | {{passed_count}} {} | {{failed_count}} {} | {{bytes}}",
             "tests".yellow(),
             "passed".green(),
             "failed".red(),
@@ -252,64 +276,66 @@ fn summary_progress_style(passed: Counter, failed: Counter) -> ProgressStyle {
                 let _ = write!(w, "{}", failed.get());
             },
         )
+        .with_key("bytes", move |_: &ProgressState, w: &mut dyn fmt::Write| {
+            let _ = write!(w, "{}", format_bytes(bytes.get()));
+        })
 }
 
-struct WorkerContext {
-    grammar: Arc<Grammar>,
-    config: FuzzerConfig,
-    output_dir: Arc<PathBuf>,
-    total_passed: Counter,
-    total_failed: Counter,
-    mp: MultiProgress,
+struct WorkerContext<'a> {
+    grammar: &'a Grammar,
+    config: &'a FuzzerConfig,
+    output_dir: &'a Path,
+    total_passed: &'a Counter,
+    total_failed: &'a Counter,
+    total_bytes: &'a Counter,
+    mp: &'a MultiProgress,
     base_seed: u64,
 }
 
-fn spawn_worker(ctx: WorkerContext, thread_id: usize) -> JoinHandle<()> {
+fn run_worker(ctx: &WorkerContext, thread_id: usize, pb: &ProgressBar) {
     let thread_seed = ctx.base_seed.wrapping_add((thread_id as u64) << 48);
     let thread_tokens = Counter::new();
     let thread_start = Instant::now();
 
     let style = thread_progress_style(thread_id, thread_tokens.clone(), thread_start);
-    let pb = ctx.mp.add(ProgressBar::new_spinner().with_style(style));
+    pb.set_style(style);
     pb.tick();
 
-    thread::spawn(move || {
-        let mut fuzzer = Fuzzer::new(ctx.grammar.clone(), ctx.config);
-        let mut i: u64 = 0;
-        let mut last_tick = Instant::now();
+    let mut fuzzer = Fuzzer::new(ctx.grammar, ctx.config.clone());
+    let mut i: u64 = 0;
+    let mut last_tick = Instant::now();
 
-        loop {
-            let seed = thread_seed.wrapping_add(i);
-            let generated = fuzzer.generate_with_seed(seed);
+    loop {
+        let seed = thread_seed.wrapping_add(i);
+        let generated = fuzzer.generate_with_seed(seed);
 
-            let mut source_map = SourceMap::default();
-            let file_id = source_map.embed_with_name("<fuzz>", generated.source.as_str());
-            let result = ic_parse::from_file(file_id, ProcArgs::default(), &mut source_map);
+        let mut source_map = SourceMap::default();
+        let file_id = source_map.embed_with_name("<fuzz>", generated.source.as_str());
+        let result = ic_parse::from_file(file_id, ProcArgs::default(), &mut source_map);
 
-            thread_tokens.add(generated.token_count as u64);
+        thread_tokens.add(generated.token_count as u64);
+        ctx.total_bytes.add(generated.source.len() as u64);
 
-            if result.errors.is_empty() {
-                ctx.total_passed.inc();
-            } else {
-                ctx.total_failed.inc();
-                save_failure(&ctx.output_dir, seed, &generated.source)
-                    .expect("failed to save failure");
-                _ = ctx.mp.println(format!(
-                    "{} {} error(s) -> {}/{}.idl",
-                    "FAILED".red(),
-                    result.errors.len(),
-                    ctx.output_dir.display(),
-                    seed
-                ));
-            }
-
-            i += 1;
-            if last_tick.elapsed() >= UPDATE_INTERVAL {
-                pb.tick();
-                last_tick = Instant::now();
-            }
+        if result.errors.is_empty() {
+            ctx.total_passed.inc();
+        } else {
+            ctx.total_failed.inc();
+            save_failure(ctx.output_dir, seed, &generated.source).expect("failed to save failure");
+            _ = ctx.mp.println(format!(
+                "{} {} error(s) -> {}/{}.idl",
+                "FAILED".red(),
+                result.errors.len(),
+                ctx.output_dir.display(),
+                seed
+            ));
         }
-    })
+
+        i += 1;
+        if last_tick.elapsed() >= UPDATE_INTERVAL {
+            pb.tick();
+            last_tick = Instant::now();
+        }
+    }
 }
 
 fn save_failure(output_dir: &std::path::Path, seed: u64, idl: &str) -> std::io::Result<()> {

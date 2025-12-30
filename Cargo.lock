@@ -283,6 +283,7 @@ dependencies = [
  "indicatif",
  "mimalloc",
  "rand",
+ "rustc-hash",
  "serde",
  "serde_json",
 ]

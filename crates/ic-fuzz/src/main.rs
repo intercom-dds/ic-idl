@@ -37,7 +37,7 @@ use std::io::{self, Write};
 use std::path::PathBuf;
 
 use ic_cli::Command;
-use ic_fuzz::{Fuzzer, FuzzerConfig};
+use ic_fuzz::{Fuzzer, FuzzerConfig, Grammar};
 
 /// Generate random IDL from a JSON grammar specification
 #[derive(Command, Debug, Default)]
@@ -108,14 +108,14 @@ fn main() {
         seed: args.seed,
     };
 
-    // Create the fuzzer
-    let mut fuzzer = match Fuzzer::from_json(&grammar_json, config) {
-        Ok(f) => f,
+    let grammar = match Grammar::from_json(&grammar_json) {
+        Ok(g) => g,
         Err(e) => {
             eprintln!("error: failed to parse grammar: {e}");
             std::process::exit(1);
         }
     };
+    let mut fuzzer = Fuzzer::new(&grammar, config);
 
     // Generate the output
     let count = args.count.unwrap_or(1);

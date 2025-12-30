@@ -25,9 +25,9 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use std::collections::HashMap;
 use std::fmt;
 
+use rustc_hash::FxHashMap;
 use serde::Deserialize;
 
 #[derive(Debug)]
@@ -240,8 +240,8 @@ impl Default for AnnotationConfig {
 #[derive(Debug, Clone, Deserialize)]
 pub struct Grammar {
     #[serde(default)]
-    pub terminals: HashMap<String, TerminalSpec>,
-    pub rules: HashMap<String, Rule>,
+    pub terminals: FxHashMap<String, TerminalSpec>,
+    pub rules: FxHashMap<String, Rule>,
 
     #[serde(default)]
     pub annotations: AnnotationConfig,

@@ -43,6 +43,7 @@ ic-hir = { path = "../ic-hir" }
 ic-syntax = { path = "../ic-syntax" }
 ic-diagnostic = { path = "../ic-diagnostic" }
 ic-vfs = { path = "../ic-vfs" }
+tracing.workspace = true
 
 [dev-dependencies]
 insta = "1.45"

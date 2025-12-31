@@ -42,3 +42,4 @@ ic-expr = { path = "../ic-expr" }
 ic-lexer = { path = "../ic-lexer" }
 ic-vfs = { path = "../ic-vfs" }
 rustc-hash = "2.1"
+tracing.workspace = true

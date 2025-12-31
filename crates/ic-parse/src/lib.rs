@@ -99,6 +99,7 @@ use ic_syntax::{AnnotationAppl, Item, Span};
 pub use ic_vfs::SourceMap;
 use ic_vfs::{FileId, Include};
 use parser::Parser;
+use tracing::{debug, debug_span};
 
 /// Result of parsing an IDL file.
 #[derive(Debug)]
@@ -133,13 +134,17 @@ pub fn from_path(path: &Path, args: ProcArgs, vfs: &mut SourceMap) -> std::io::R
 pub fn from_file(file_id: FileId, args: ProcArgs, vfs: &mut SourceMap) -> ParseResult {
     use ic_preproc::Token;
 
+    let _span = debug_span!("parse_file", ?file_id).entered();
+
     let mut state = ic_preproc::State::new();
     let iter = ic_preproc::with_state(file_id, args, &mut state, vfs);
 
     let tokens: Vec<Token> = iter.filter(|t| !matches!(t.kind, Kind::Newline)).collect();
+    debug!(tokens = tokens.len(), "preprocessed");
 
     let parser = Parser::new(tokens, vfs);
     let (tree, parse_errors, orphaned_annotations) = parser.parse();
+    debug!(items = tree.len(), errors = parse_errors.len(), "parsed");
 
     let mut errors: Vec<Error> = parse_errors;
     errors.extend(process_preprocessor_errors(state.errors(), vfs));

@@ -35,6 +35,7 @@ use std::collections::{HashMap, HashSet};
 
 use ic_hir::hir::{Def, DefFlags, DefId, DefKind, PrimitiveTy, Ty, TyKind};
 use ic_hir::{Context, ResolvedGraph};
+use tracing::{debug, debug_span};
 
 /// Result of analyzing a type for flags
 #[derive(Debug, Clone, Copy)]
@@ -262,6 +263,8 @@ impl TypeFlagsAnalyzer {
 /// Analyzes and marks types with `IS_TRIVIAL` and `TOTAL_ORDER` flags.
 #[must_use]
 pub fn transform(mut hir: ResolvedGraph) -> ResolvedGraph {
+    let _span = debug_span!("xform", name = "type_flags").entered();
+    debug!("applying transform");
     let analyzer = TypeFlagsAnalyzer::new();
     analyzer.analyze(&mut hir.context);
     hir

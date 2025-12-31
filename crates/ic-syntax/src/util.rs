@@ -262,3 +262,23 @@ pub fn op_name(op: OpKind) -> &'static str {
         OpKind::Not => "~",
     }
 }
+
+/// Get the identifier name from an Item, if it has one
+#[must_use]
+pub fn item_ident_name(item: &Item) -> Option<&str> {
+    match item {
+        Item::ModuleValue(v) => Some(&v.ident.name),
+        Item::StructValue(v) => Some(&v.ident.name),
+        Item::UnionValue(v) => Some(&v.ident.name),
+        Item::EnumValue(v) => Some(&v.ident.name),
+        Item::InterfaceValue(v) => Some(&v.ident.name),
+        Item::ValuetypeValue(v) => Some(&v.ident.name),
+        Item::ExceptionValue(v) => Some(&v.ident.name),
+        Item::BitmaskValue(v) => Some(&v.ident.name),
+        Item::BitsetValue(v) => Some(&v.ident.name),
+        Item::AnnotationValue(v) => Some(&v.ident.name),
+        Item::DeclValue(v) => Some(&v.ident.name),
+        Item::ConstValue(v) => Some(decl_name(&v.decl)),
+        Item::AliasValue(v) => v.decl.first().map(decl_name),
+    }
+}

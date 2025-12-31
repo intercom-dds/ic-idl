@@ -56,6 +56,7 @@ use std::path::{Path, PathBuf};
 use std::rc::Rc;
 
 use ic_alloc::arena::{Arena, Id};
+use tracing::{debug, trace};
 
 mod span;
 pub use span::{Location, Span};
@@ -145,9 +146,11 @@ impl SourceMap {
         let src = match self.files.entry(abs) {
             Entry::Occupied(id) => {
                 let id = *id.get();
+                trace!(path = %path.as_ref().display(), "file already loaded (cache hit)");
                 (id, self.source(id))
             }
             Entry::Vacant(v) => {
+                debug!(path = %v.key().display(), "opening file");
                 let source = Rc::from(std::fs::read_to_string(v.key())?);
                 let included_as = path.as_ref().to_path_buf();
                 let path = v.key().clone();
@@ -219,6 +222,11 @@ impl SourceMap {
     /// directive, allowing lints to track which files were included and from
     /// where.
     pub fn record_include(&mut self, info: IncludeInfo) {
+        trace!(
+            included_as = %info.included_as,
+            kind = ?info.kind,
+            "recording include directive"
+        );
         self.includes.push(info);
     }
 
@@ -235,6 +243,7 @@ impl SourceMap {
         source: Rc<str>,
         kind: Include,
     ) -> FileId {
+        let source_len = source.len();
         let info = FileInfo {
             path: path.clone(),
             included_as,
@@ -243,6 +252,12 @@ impl SourceMap {
         };
 
         let id = self.sources.alloc(info);
+        trace!(
+            path = %path.display(),
+            size = source_len,
+            file_id = ?id,
+            "registered file in source map",
+        );
         self.files.insert(path, id);
         id
     }

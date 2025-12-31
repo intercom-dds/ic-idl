@@ -39,6 +39,7 @@ use ic_hir::hir::{
     DefId, DefKind, EnumTy, Ident, Label, Numeric, PrimitiveTy, Span, Ty, TyKind, UnionTy, Variant,
 };
 use ic_hir::{Context, ResolvedGraph};
+use tracing::{debug, debug_span};
 
 struct ImplicitDefault {
     enum_values: HashMap<DefId, Vec<(i64, Numeric)>>,
@@ -268,6 +269,8 @@ impl Fold for ImplicitDefault {
 /// Transform HIR to add implicit default cases to incomplete unions
 #[must_use]
 pub fn transform(mut hir: ResolvedGraph) -> ResolvedGraph {
+    let _span = debug_span!("xform", name = "implicit_default").entered();
+    debug!("applying transform");
     let mut folder = ImplicitDefault::new(&hir.context);
     let def_ids: Vec<_> = hir.context.definitions.iter().map(|(id, _)| id).collect();
 

@@ -38,6 +38,7 @@ use ic_lexer::cursor::Cursor;
 use ic_lexer::token::{Base, Kind, Token};
 use ic_vfs::{FileId, Include, Location, SourceMap};
 use rustc_hash::{FxHashMap, FxHashSet};
+use tracing::{debug, trace};
 
 use crate::directives::{DirectiveHandler, IfState};
 use crate::expression::{
@@ -256,12 +257,14 @@ where
     fn search_includes<P: AsRef<Path>>(&mut self, path: P, kind: Include) -> Option<PathBuf> {
         let path = path.as_ref();
         if path.is_absolute() {
+            trace!(path = %path.display(), "include path is absolute");
             return Some(path.to_owned());
         }
 
         // Check cache first
         let cache_key = (path.to_path_buf(), kind == Include::Local);
         if let Some(cached_result) = self.include_cache.get(&cache_key) {
+            trace!(path = %path.display(), cached = true, "include cache hit");
             return cached_result.clone();
         }
 
@@ -274,6 +277,7 @@ where
             let local = self.vfs.path(cur_id);
             if let Some(parent) = local.parent() {
                 let file = parent.join(path);
+                trace!(path = %path.display(), trying = %file.display(), "trying local include");
                 if file.exists() {
                     result = Some(file);
                 }
@@ -284,6 +288,7 @@ where
         if result.is_none() {
             for p in &self.includes {
                 let file = p.join(path);
+                trace!(path = %path.display(), trying = %file.display(), "trying include directory");
                 if file.exists() {
                     result = Some(file);
                     break;
@@ -907,6 +912,8 @@ where
                 return;
             }
 
+            trace!(name = %name, depth = seen.len(), "expanding macro");
+
             match &v {
                 Macro::Function {
                     args,
@@ -1046,6 +1053,7 @@ where
 
             // Make sure all conditional directives were terminated
             let top = self.stack.last_mut()?;
+            let file_id = top.cursor.file_id();
             while let Some(cond) = top.current.pop() {
                 self.state.borrow_mut().errors.push(Error::Syntax {
                     message: "unterminated conditional directive",
@@ -1054,6 +1062,12 @@ where
             }
 
             // Cursor is empty, pop the stack
+            let file_path = self.vfs.path(file_id);
+            trace!(
+                file = %file_path.display(),
+                depth = self.stack.len(),
+                "finished processing file"
+            );
             self.stack.pop();
         }
     }
@@ -1325,17 +1339,25 @@ where
 
     /// Store the macro definition and emit warnings if it's a redefinition
     fn store_macro_definition(&mut self, name: &str, name_span: Span, definition: Macro) {
-        if self.is_active()
-            && self
+        if self.is_active() {
+            let is_function = matches!(definition, Macro::Function { .. });
+            trace!(
+                name = %name,
+                is_function = is_function,
+                "defining macro"
+            );
+
+            if self
                 .state()
                 .defines
                 .insert(name.to_string(), definition)
                 .is_some()
-        {
-            self.state().warnings.push(Error::Syntax {
-                message: "macro redefined",
-                span: name_span,
-            });
+            {
+                self.state().warnings.push(Error::Syntax {
+                    message: "macro redefined",
+                    span: name_span,
+                });
+            }
         }
     }
 
@@ -1521,7 +1543,10 @@ where
             let include_str = self.source_of(path);
             let include = include_str.trim_start_matches('"').trim_end_matches('"');
 
+            trace!(path = %include, kind = ?kind, "searching for include");
+
             if let Some(v) = self.search_includes(include, kind) {
+                debug!(path = %include, resolved = %v.display(), "resolved include");
                 match self.vfs.open(v, kind) {
                     Ok((id, source)) => {
                         // Record the include for lint purposes
@@ -1536,7 +1561,9 @@ where
 
                         // Skip files that we've already parsed if they used
                         // the `once` pragma.
-                        if !self.state().parsed_files.contains(&id) {
+                        if self.state().parsed_files.contains(&id) {
+                            trace!(path = %include, "skipping already-parsed file (pragma once)");
+                        } else {
                             let cursor = File::from_src(source, id);
                             self.stack.push(cursor);
                         }
@@ -1547,6 +1574,7 @@ where
                     }),
                 }
             } else {
+                debug!(path = %include, "include file not found");
                 self.state().errors.push(Error::Syntax {
                     message: "file not found",
                     span: path,
@@ -1584,12 +1612,14 @@ where
         self.warn_trailing(Directive::Undef);
 
         if self.is_active() {
+            trace!(name = %name, "undefining macro");
             self.state().defines.remove(name);
         }
     }
 
     fn dir_if(&mut self, span: Span) {
         let result = self.expr_and_eval(span);
+        trace!(result = result, "evaluating #if");
         let state = IfState::new_if(result, span);
         self.if_state().push(state);
     }
@@ -1597,7 +1627,9 @@ where
     fn dir_ifdef(&mut self, span: Span) {
         let result = if let Some((name, _span)) = self.macro_name() {
             self.warn_trailing(Directive::Ifdef);
-            self.is_defined(name)
+            let defined = self.is_defined(name);
+            trace!(name = %name, defined = defined, "evaluating #ifdef");
+            defined
         } else {
             false
         };
@@ -1609,7 +1641,9 @@ where
     fn dir_ifndef(&mut self, span: Span) {
         let result = if let Some((name, _span)) = self.macro_name() {
             self.warn_trailing(Directive::Ifndef);
-            !self.is_defined(name)
+            let defined = self.is_defined(name);
+            trace!(name = %name, defined = defined, "evaluating #ifndef");
+            !defined
         } else {
             false
         };
@@ -1620,6 +1654,7 @@ where
 
     fn dir_elif(&mut self, span: Span) {
         let result = self.expr_and_eval(span);
+        trace!(result = result, "evaluating #elif");
 
         match self.if_state().last_mut() {
             Some(v) => {
@@ -1635,6 +1670,7 @@ where
     }
 
     fn dir_else(&mut self, span: Span) {
+        trace!("processing #else");
         match self.if_state().last_mut() {
             Some(v) => {
                 if let Err(e) = v.eval_else(span) {
@@ -1649,6 +1685,7 @@ where
     }
 
     fn dir_endif(&mut self, span: Span) {
+        trace!("processing #endif");
         if self.if_state().pop().is_none() {
             self.state().errors.push(Error::Syntax {
                 message: "#endif without #if",
@@ -1666,13 +1703,16 @@ where
 
         if let Some(pragma) = pragma_token {
             let name = self.source_of(pragma.span);
+            trace!(name = %name, "processing #pragma");
 
             if name == "once" && self.enable_pragma_once {
                 // Handle #pragma once
                 let file_id = pragma.span.start.file_id;
+                debug!("marking file as pragma once");
                 self.mark_included(file_id);
             } else if self.is_active() && !Self::is_known_pragma(name) {
                 // Warn about unknown pragmas only in active code
+                debug!(name = %name, "unknown pragma");
                 self.state().warnings.push(Error::Syntax {
                     message: "unknown pragma directive",
                     span: pragma.span,

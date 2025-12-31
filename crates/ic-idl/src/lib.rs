@@ -91,6 +91,7 @@ use std::path::{Path, PathBuf};
 use ic_diagnostic::Diag;
 use ic_preproc::{ExpansionInfo, ProcArgs};
 use ic_vfs::SourceMap;
+use tracing::{info, info_span};
 
 // Import modules
 mod builtin;
@@ -362,19 +363,24 @@ impl Compiler {
             expansion_info: std::collections::HashMap::new(),
         };
 
-        for file in &self.options.files.clone() {
-            match self.compile_file_to_hir_without_builtins(file, true, &builtin_parsed.tree) {
-                Ok((hir, diag)) => {
-                    hirs.push(hir);
-                    all_diagnostics.warnings.extend(diag.warnings);
-                    all_diagnostics.expansion_info.extend(diag.expansion_info);
+        {
+            let file_count = self.options.files.len();
+            let _parse_span = info_span!("parse", files = file_count).entered();
+
+            for file in &self.options.files.clone() {
+                match self.compile_file_to_hir_without_builtins(file, true, &builtin_parsed.tree) {
+                    Ok((hir, diag)) => {
+                        hirs.push(hir);
+                        all_diagnostics.warnings.extend(diag.warnings);
+                        all_diagnostics.expansion_info.extend(diag.expansion_info);
+                    }
+                    Err(CompileError::Diagnostics(diag)) => {
+                        all_diagnostics.errors.extend(diag.errors);
+                        all_diagnostics.warnings.extend(diag.warnings);
+                        all_diagnostics.expansion_info.extend(diag.expansion_info);
+                    }
+                    Err(e) => return Err(e),
                 }
-                Err(CompileError::Diagnostics(diag)) => {
-                    all_diagnostics.errors.extend(diag.errors);
-                    all_diagnostics.warnings.extend(diag.warnings);
-                    all_diagnostics.expansion_info.extend(diag.expansion_info);
-                }
-                Err(e) => return Err(e),
             }
         }
 
@@ -383,40 +389,46 @@ impl Compiler {
         }
 
         // Merge all HIRs
-        let merged = hir::merge::merge_hir_trees(&hirs);
+        let hir = {
+            let _merge_span = info_span!("merge", hirs = hirs.len()).entered();
+            let merged = hir::merge::merge_hir_trees(&hirs);
 
-        // Add merge errors to diagnostics
-        all_diagnostics
-            .errors
-            .extend(merged.errors.into_iter().map(Into::into));
+            // Add merge errors to diagnostics
+            all_diagnostics
+                .errors
+                .extend(merged.errors.into_iter().map(Into::into));
 
-        if !all_diagnostics.errors.is_empty() {
-            return Err(CompileError::Diagnostics(all_diagnostics));
-        }
+            if !all_diagnostics.errors.is_empty() {
+                return Err(CompileError::Diagnostics(all_diagnostics));
+            }
 
-        let hir = hir::ResolvedGraph {
-            context: merged.context,
-            order: merged.order,
-            builtin_order: merged.builtin_order,
-            errors: Vec::new(),
-            warnings: Vec::new(),
+            hir::ResolvedGraph {
+                context: merged.context,
+                order: merged.order,
+                builtin_order: merged.builtin_order,
+                errors: Vec::new(),
+                warnings: Vec::new(),
+            }
         };
 
         // Apply HIR transformations
-        let hir = ic_hir_xform::value_annotation::transform(hir);
-        let hir = ic_hir_xform::position_annotation::transform(hir);
+        let hir = {
+            let _xform_span = info_span!("xform").entered();
+            let hir = ic_hir_xform::value_annotation::transform(hir);
+            let hir = ic_hir_xform::position_annotation::transform(hir);
 
-        // Mark types with `IS_TRIVIAL` and `TOTAL_ORDER` flags
-        let hir = ic_hir_xform::type_flags::transform(hir);
+            // Mark types with `IS_TRIVIAL` and `TOTAL_ORDER` flags
+            let hir = ic_hir_xform::type_flags::transform(hir);
 
-        // Add implicit default cases to incomplete unions
-        let hir = ic_hir_xform::implicit_default::transform(hir);
+            // Add implicit default cases to incomplete unions
+            let hir = ic_hir_xform::implicit_default::transform(hir);
 
-        // Coalesce multiple null variants in unions
-        let hir = ic_hir_xform::coalesce_null_variants::transform(hir);
+            // Coalesce multiple null variants in unions
+            let hir = ic_hir_xform::coalesce_null_variants::transform(hir);
 
-        // Final normalization after all transformations
-        let hir = ic_hir_xform::normalize::normalize(hir);
+            // Final normalization after all transformations
+            ic_hir_xform::normalize::normalize(hir)
+        };
 
         Ok((hir, all_diagnostics))
     }
@@ -437,9 +449,12 @@ impl Compiler {
             CompileError::Io(std::io::Error::new(e.kind(), format_io_error(&e, path)))
         })?;
 
+        let item_count = ast.tree.len();
+        info!(file = %path.display(), items = item_count, "parsed");
+
         let mut diagnostics = CompileDiagnostics {
             errors: ast.errors.into_iter().map(Into::into).collect(),
-            warnings: Vec::new(),
+            warnings: vec![],
             expansion_info: ast.expansion_info,
         };
 
@@ -466,6 +481,7 @@ impl Compiler {
 
         // Run AST linting first
         if diagnostics.errors.is_empty() {
+            let _lint_span = info_span!("lint_syntax").entered();
             let report =
                 ic_lint::lint_syntax_with_config(&ast.tree, &self.source_map, &lint_config);
             diagnostics
@@ -475,18 +491,25 @@ impl Compiler {
         }
 
         // Compile with or without built-in context
-        let mut hir = if include_builtins {
-            hir::from_ast(hir::AstInput::WithBuiltins {
-                builtins: builtin_ast.to_vec(),
-                user: ast.tree,
-                include_in_output: false,
-            })
-        } else {
-            hir::from_ast(hir::AstInput::User(ast.tree))
+        let mut hir = {
+            let _lower_span = info_span!("lower").entered();
+            if include_builtins {
+                hir::from_ast(hir::AstInput::WithBuiltins {
+                    builtins: builtin_ast.to_vec(),
+                    user: ast.tree,
+                    include_in_output: false,
+                })
+            } else {
+                hir::from_ast(hir::AstInput::User(ast.tree))
+            }
         };
+
+        let def_count = hir.order.len();
+        info!(definitions = def_count, "lowered");
 
         // Run HIR linting
         if diagnostics.errors.is_empty() {
+            let _lint_span = info_span!("lint_hir").entered();
             let report = ic_lint::lint_hir_with_config(&hir, &self.source_map, &lint_config);
             diagnostics
                 .errors

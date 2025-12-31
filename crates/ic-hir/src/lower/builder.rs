@@ -28,6 +28,8 @@
 //! Main builder orchestration for Phase 1: Build & Resolve.
 
 use ic_syntax::Item;
+use ic_syntax::util::{item_ident_name, item_variant_name};
+use tracing::{trace, trace_span};
 
 use super::LoweringContext;
 use super::type_items::TypeItemProcessor;
@@ -73,7 +75,11 @@ impl<'ctx> HirBuilder<'ctx> {
 
     /// Process a single AST item.
     pub(super) fn process_item(&mut self, item: &Item) -> Vec<DefId> {
-        match item {
+        let kind = item_variant_name(item);
+        let name = item_ident_name(item).unwrap_or("<anonymous>");
+        let _span = trace_span!("lower", %kind, %name).entered();
+
+        let def_ids = match item {
             Item::ModuleValue(m) => {
                 let def_id = self.process_module(m);
                 vec![def_id]
@@ -156,7 +162,10 @@ impl<'ctx> HirBuilder<'ctx> {
                 self.add_to_order_if_root(def_id);
                 vec![def_id]
             }
-        }
+        };
+
+        trace!(def_ids = ?def_ids, "lowered");
+        def_ids
     }
 
     /// Process a module definition.

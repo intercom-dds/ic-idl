@@ -45,6 +45,7 @@ ic-macros = { path = "../ic-macros" }
 ic-syntax = { path = "../ic-syntax" }
 
 intercom-cts.workspace = true
+tracing.workspace = true
 
 [dev-dependencies]
 ic-parse = { path = "../ic-parse" }

@@ -34,11 +34,14 @@
 use std::collections::HashSet;
 
 use ic_hir::{ResolvedGraph, hir};
+use tracing::{debug, debug_span};
 
 /// Transform HIR to move nested types out of interfaces and valuetypes
 /// Returns the transformed HIR and a set of `DefIds` that were moved
 #[must_use]
 pub fn transform(mut hir: ResolvedGraph) -> (ResolvedGraph, HashSet<hir::DefId>) {
+    let _span = debug_span!("xform", name = "move_nested").entered();
+    debug!("applying transform");
     let mut moved_defs = HashSet::new();
 
     // Process top-level definitions
@@ -49,6 +52,7 @@ pub fn transform(mut hir: ResolvedGraph) -> (ResolvedGraph, HashSet<hir::DefId>)
     let builtin_order = std::mem::take(&mut hir.builtin_order);
     hir.builtin_order = move_nested_from_list(&mut hir, builtin_order, None, &mut moved_defs);
 
+    debug!(moved_count = moved_defs.len(), "moved nested types");
     (hir, moved_defs)
 }
 

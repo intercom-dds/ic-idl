@@ -122,6 +122,7 @@ pub use ic_diagnostic::Level;
 use ic_diagnostic::{Diag, Label};
 use ic_syntax::{Item, Span};
 use ic_vfs::SourceMap;
+use tracing::{debug, debug_span, trace};
 
 mod annotation;
 mod any_type;
@@ -243,8 +244,14 @@ impl LintCtx<'_> {
             _ => self.config.get_level(lint_name, category),
         };
         match level {
-            Level::Error => self.errors.borrow_mut().push(diag),
-            Level::Warning => self.warnings.borrow_mut().push(diag),
+            Level::Error => {
+                trace!(lint = lint_name, level = "error", "lint triggered");
+                self.errors.borrow_mut().push(diag);
+            }
+            Level::Warning => {
+                trace!(lint = lint_name, level = "warning", "lint triggered");
+                self.warnings.borrow_mut().push(diag);
+            }
             Level::Disabled => {} // Don't emit disabled diagnostics
         }
     }
@@ -397,6 +404,8 @@ macro_rules! define_lints {
 
         /// Traverses the AST with a custom lint configuration.
         pub fn lint_syntax_with_config(tree: &[Item], vfs: &SourceMap, config: &LintConfig) -> Report {
+            let _span = debug_span!("syntax_lints").entered();
+            debug!("running syntax lints");
             let ctx = LintCtx {
                 vfs,
                 warnings: RefCell::default(),
@@ -406,14 +415,15 @@ macro_rules! define_lints {
 
             $(
                 if <$syntax_lint>::should_run(config) {
+                    trace!(lint = <$syntax_lint>::name(), "running lint");
                     <$syntax_lint>::check(&ctx, tree);
                 }
             )*
 
-            Report {
-                errors: ctx.errors.into_inner(),
-                warnings: ctx.warnings.into_inner(),
-            }
+            let errors = ctx.errors.into_inner();
+            let warnings = ctx.warnings.into_inner();
+            debug!(errors = errors.len(), warnings = warnings.len(), "complete");
+            Report { errors, warnings }
         }
 
         /// Set of lints that operates on the HIR.
@@ -427,6 +437,8 @@ macro_rules! define_lints {
             vfs: &SourceMap,
             config: &LintConfig,
         ) -> Report {
+            let _span = debug_span!("hir_lints").entered();
+            debug!("running HIR lints");
             let ctx = LintCtx {
                 vfs,
                 warnings: RefCell::default(),
@@ -436,14 +448,15 @@ macro_rules! define_lints {
 
             $(
                 if <$hir_lint>::should_run(config) {
+                    trace!(lint = <$hir_lint>::name(), "running lint");
                     <$hir_lint>::check_hir(&ctx, hir);
                 }
             )*
 
-            Report {
-                errors: ctx.errors.into_inner(),
-                warnings: ctx.warnings.into_inner(),
-            }
+            let errors = ctx.errors.into_inner();
+            let warnings = ctx.warnings.into_inner();
+            debug!(errors = errors.len(), warnings = warnings.len(), "HIR lints complete");
+            Report { errors, warnings }
         }
     };
 }

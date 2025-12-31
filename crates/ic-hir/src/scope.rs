@@ -129,8 +129,6 @@ impl ScopeTree {
         };
 
         self.scopes.push(scope);
-
-        // Add to parent's children
         self.scopes[parent.0].children.insert(name, scope_id);
 
         scope_id
@@ -140,7 +138,6 @@ impl ScopeTree {
     /// Multiple definitions with the same name are allowed (e.g., reopened modules).
     pub fn add_definition(&mut self, scope: ScopeId, name: String, def_id: DefId) {
         Self::add_to_definitions(&mut self.scopes[scope.0].definitions, name, def_id);
-        // Update reverse mapping
         self.def_to_scope.insert(def_id, scope);
     }
 
@@ -201,7 +198,6 @@ impl ScopeTree {
             // Move to parent
             current = scope.parent;
         }
-
         None
     }
 
@@ -211,19 +207,18 @@ impl ScopeTree {
         let mut current = Some(scope);
 
         while let Some(scope_id) = current {
-            let scope = &self.scopes[scope_id.0];
+            let s = &self.scopes[scope_id.0];
 
             // Check local annotation definitions
-            if let Some(def_ids) = scope.annotations.get(name)
+            if let Some(def_ids) = s.annotations.get(name)
                 && let Some(&def_id) = def_ids.last()
             {
                 return Some(def_id);
             }
 
             // Move to parent
-            current = scope.parent;
+            current = s.parent;
         }
-
         None
     }
 
@@ -280,7 +275,6 @@ impl ScopeTree {
             // Move to parent
             current = scope.parent;
         }
-
         None
     }
 

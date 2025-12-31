@@ -80,6 +80,7 @@ use std::collections::HashMap;
 use ic_hir::ResolvedGraph;
 use ic_hir::fold::{self, Fold};
 use ic_hir::hir::{DefId, DefKind, Ty, TyKind};
+use tracing::{debug, debug_span};
 
 /// Transform HIR by stripping all typedefs and inlining their underlying types.
 ///
@@ -87,8 +88,12 @@ use ic_hir::hir::{DefId, DefKind, Ty, TyKind};
 /// underlying types, and all typedef definitions removed.
 #[must_use]
 pub fn transform(mut hir: ResolvedGraph) -> ResolvedGraph {
+    let _span = debug_span!("xform", name = "strip_typedefs").entered();
+    debug!("applying transform");
+
     // Step 1: Pre-compute the resolved types for all typedefs
     let resolved_types = compute_resolved_types(&hir);
+    debug!(typedef_count = resolved_types.len(), "resolved typedefs");
 
     // Step 2: Create folder and apply it to all definitions
     let mut folder = TypedefStripper { resolved_types };

@@ -29,6 +29,7 @@ use std::collections::HashSet;
 
 use ic_alloc::arena::Arena;
 use ic_syntax::Ident;
+use tracing::trace;
 
 use crate::hir::{self, Def, DefId, DefKind, Numeric, Ty, TyKind};
 use crate::scope::ScopeTree;
@@ -189,12 +190,39 @@ impl Context {
         path: &'a ic_syntax::Path,
     ) -> Result<DefId, PathResolutionError<'a>> {
         let segments: Vec<&str> = path.segments.iter().map(|s| s.name.as_str()).collect();
+        let absolute = path.leading_colons.is_some();
 
-        if path.leading_colons.is_some() {
+        let result = if absolute {
             self.resolve_from_scope(self.root_scope(), &segments, &path.segments)
         } else {
             self.resolve_relative_path(scope, &segments, &path.segments)
+        };
+
+        if tracing::enabled!(tracing::Level::TRACE) {
+            let path_str = segments.join("::");
+            match &result {
+                Ok(def_id) => {
+                    let def = self.definitions.get(*def_id);
+                    trace!(
+                        path = %path_str,
+                        ?def_id,
+                        kind = def.kind.kind_name(),
+                        absolute,
+                        "resolved"
+                    );
+                }
+                Err(e) => {
+                    trace!(
+                        path = %path_str,
+                        failed_segment = %e.segment.name,
+                        absolute,
+                        "unresolved"
+                    );
+                }
+            }
         }
+
+        result
     }
 
     /// Resolves a relative path by trying from the current scope and walking up parents.

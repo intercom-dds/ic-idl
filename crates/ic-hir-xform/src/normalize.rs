@@ -36,6 +36,7 @@ use std::collections::{HashMap, HashSet};
 
 use ic_hir::ResolvedGraph;
 use ic_hir::hir::{DefId, DefKind, TyKind};
+use tracing::{debug, debug_span};
 
 /// Normalizes and validates HIR structure.
 pub struct Normalizer {
@@ -425,5 +426,7 @@ impl Normalizer {
 /// Run normalization on a HIR graph.
 #[must_use]
 pub fn normalize(hir: ResolvedGraph) -> ResolvedGraph {
+    let _span = debug_span!("xform", name = "normalize").entered();
+    debug!("applying transform");
     Normalizer::normalize(hir)
 }

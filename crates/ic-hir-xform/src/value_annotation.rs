@@ -36,6 +36,7 @@
 use ic_hir::fold::Fold;
 use ic_hir::hir::{Def, DefId, DefKind};
 use ic_hir::{Context, ResolvedGraph};
+use tracing::{debug, debug_span};
 
 /// Transformer that converts @value annotations to direct enum values.
 pub struct ValueAnnotationTransform {
@@ -70,6 +71,8 @@ impl Fold for ValueAnnotationTransform {
 /// Transforms all @value annotations in the HIR to direct enum values.
 #[must_use]
 pub fn transform(mut graph: ResolvedGraph) -> ResolvedGraph {
+    let _span = debug_span!("xform", name = "value_annotation").entered();
+    debug!("applying transform");
     let mut transformer = ValueAnnotationTransform::new();
 
     // Transform each definition in place

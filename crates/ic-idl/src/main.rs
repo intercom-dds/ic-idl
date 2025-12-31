@@ -31,7 +31,10 @@ use std::{backtrace, panic};
 
 use ic_cli::{Command, ParseError};
 use ic_emit::File;
-use ic_idl::{CompileDiagnostics, CompileError, Compiler, CompilerOptions, util};
+use ic_idl::util::{self, IgnoreBrokenPipe};
+use ic_idl::{CompileDiagnostics, CompileError, Compiler, CompilerOptions};
+use tracing::{Level, info, info_span};
+use tracing_subscriber::fmt;
 
 mod info;
 mod unstable;
@@ -91,6 +94,11 @@ fn main() {
         warn!("unknown warning '{}'", unknown.yellow());
     }
 
+    // Enable tracing
+    if let Some(level) = options.unstable.trace.as_deref() {
+        init_tracing(level);
+    }
+
     // Expand files
     let files = match util::collect_files(&options.files) {
         Ok(files) => files,
@@ -117,6 +125,8 @@ fn main() {
 }
 
 fn try_compile(options: CompilerOptions) {
+    info!(files = ?options.files, "starting compilation");
+
     // Create and run the compiler
     let mut compiler = Compiler::new(options);
 
@@ -124,6 +134,7 @@ fn try_compile(options: CompilerOptions) {
     if compiler.options().unstable.parse_only {
         match compiler.compile() {
             Ok(result) => {
+                let warning_count = result.diagnostics.warnings.len();
                 if !result.diagnostics.warnings.is_empty() {
                     emit_diagnostics(&compiler, &result.diagnostics);
                 }
@@ -132,6 +143,7 @@ fn try_compile(options: CompilerOptions) {
                         println!("{item:#?}");
                     }
                 }
+                info!(errors = 0, warnings = warning_count, "completed");
             }
             Err(CompileError::Io(e)) => {
                 error!("{e}");
@@ -139,6 +151,11 @@ fn try_compile(options: CompilerOptions) {
             }
             Err(CompileError::Diagnostics(diagnostics)) => {
                 emit_diagnostics(&compiler, &diagnostics);
+                info!(
+                    errors = diagnostics.errors.len(),
+                    warnings = diagnostics.warnings.len(),
+                    "failed"
+                );
                 std::process::exit(1);
             }
         }
@@ -154,11 +171,17 @@ fn try_compile(options: CompilerOptions) {
         }
         Err(CompileError::Diagnostics(diagnostics)) => {
             emit_diagnostics(&compiler, &diagnostics);
+            info!(
+                errors = diagnostics.errors.len(),
+                warnings = diagnostics.warnings.len(),
+                "failed"
+            );
             std::process::exit(1);
         }
     };
 
     // Extract warnings from compile diagnostics
+    let warning_count = diagnostics.warnings.len();
     let warnings = diagnostics.warnings;
 
     // Emit any warnings
@@ -200,111 +223,142 @@ fn try_compile(options: CompilerOptions) {
         error!("failed to write files: {}", e);
         std::process::exit(1);
     }
+
+    info!(
+        errors = 0,
+        warnings = warning_count,
+        outputs = generated.len(),
+        "completed"
+    );
 }
 
+#[allow(clippy::too_many_lines)]
 fn generate_code(
     options: &CompilerOptions,
     hir: &ic_hir::ResolvedGraph,
     vfs: &ic_vfs::SourceMap,
 ) -> Result<Vec<File>, util::Error> {
+    let _codegen_span = info_span!("codegen").entered();
     let mut generated = vec![];
 
     if let Some(output_dir) = &options.codegen.cpp_out {
+        let _span = info_span!("cpp", output_dir = %output_dir.display()).entered();
         let files = invoke_backend(
             output_dir,
             || ic_codegen_cxx::codegen_cpp(hir, vfs, options.cpp.clone()),
             options.purge_dirs,
         )?;
+        info!(files = files.len(), "generated");
         generated.extend(files);
     }
 
     if let Some(output_dir) = &options.codegen.csharp_out {
+        let _span = info_span!("csharp", output_dir = %output_dir.display()).entered();
         let files = invoke_backend(
             output_dir,
             || ic_codegen_csharp::codegen_csharp(hir, vfs, options.csharp),
             options.purge_dirs,
         )?;
+        info!(files = files.len(), "generated");
         generated.extend(files);
     }
 
     if let Some(output_dir) = &options.codegen.rust_out {
+        let _span = info_span!("rust", output_dir = %output_dir.display()).entered();
         let files = invoke_backend(
             output_dir,
             || ic_codegen_rust::codegen_rust(hir, vfs, options.rust),
             options.purge_dirs,
         )?;
+        info!(files = files.len(), "generated");
         generated.extend(files);
     }
 
     if let Some(output_dir) = &options.codegen.python_out {
+        let _span = info_span!("python", output_dir = %output_dir.display()).entered();
         let files = invoke_backend(
             output_dir,
             || ic_codegen_python::codegen_python(hir, vfs, options.python.clone()),
             options.purge_dirs,
         )?;
+        info!(files = files.len(), "generated");
         generated.extend(files);
     }
 
     if let Some(output_dir) = &options.codegen.idl_out {
+        let _span = info_span!("idl", output_dir = %output_dir.display()).entered();
         let files = invoke_backend(
             output_dir,
             || ic_codegen_idl::codegen_idl(hir, vfs, options.idl),
             options.purge_dirs,
         )?;
+        info!(files = files.len(), "generated");
         generated.extend(files);
     }
 
     if let Some(output_dir) = &options.codegen.java_out {
+        let _span = info_span!("java", output_dir = %output_dir.display()).entered();
         let files = invoke_backend(
             output_dir,
             || ic_codegen_java::codegen_java(hir, options.java.clone()),
             options.purge_dirs,
         )?;
+        info!(files = files.len(), "generated");
         generated.extend(files);
     }
 
     if let Some(output_dir) = &options.codegen.json_out {
+        let _span = info_span!("json", output_dir = %output_dir.display()).entered();
         let files = invoke_backend(
             output_dir,
             || ic_codegen_json::codegen_json(hir, vfs),
             options.purge_dirs,
         )?;
+        info!(files = files.len(), "generated");
         generated.extend(files);
     }
 
     if let Some(output_dir) = &options.codegen.json_schema_out {
+        let _span = info_span!("json_schema", output_dir = %output_dir.display()).entered();
         let files = invoke_backend(
             output_dir,
             || ic_codegen_json_schema::codegen_schema(hir, vfs, options.json_schema.clone()),
             options.purge_dirs,
         )?;
+        info!(files = files.len(), "generated");
         generated.extend(files);
     }
 
     if let Some(output_dir) = &options.codegen.xml_out {
+        let _span = info_span!("xml", output_dir = %output_dir.display()).entered();
         let files = invoke_backend(
             output_dir,
             || ic_codegen_xml::codegen_xml(hir, vfs),
             options.purge_dirs,
         )?;
+        info!(files = files.len(), "generated");
         generated.extend(files);
     }
 
     if let Some(output_dir) = &options.codegen.proto_out {
+        let _span = info_span!("proto", output_dir = %output_dir.display()).entered();
         let files = invoke_backend(
             output_dir,
             || ic_codegen_protobuf::codegen_proto(hir),
             options.purge_dirs,
         )?;
+        info!(files = files.len(), "generated");
         generated.extend(files);
     }
 
     if let Some(output_dir) = &options.codegen.typescript_out {
+        let _span = info_span!("typescript", output_dir = %output_dir.display()).entered();
         let files = invoke_backend(
             output_dir,
             || ic_codegen_typescript::codegen_typescript(hir, options.typescript.clone()),
             options.purge_dirs,
         )?;
+        info!(files = files.len(), "generated");
         generated.extend(files);
     }
 
@@ -342,6 +396,7 @@ fn write_files(files: &[File]) -> std::io::Result<()> {
             if let Some(parent) = path.parent() {
                 std::fs::create_dir_all(parent)?;
             }
+            tracing::debug!(file = %path.display(), bytes = source.len(), "generated");
             util::write_if_changed(path, source)?;
         }
     }
@@ -396,6 +451,24 @@ fn emit_diagnostics(compiler: &Compiler, diagnostics: &CompileDiagnostics) {
             warning_plural,
         );
     }
+}
+
+fn init_tracing(level: &str) {
+    let level = match level {
+        "debug" => Level::DEBUG,
+        "info" => Level::INFO,
+        "warn" => Level::WARN,
+        "error" => Level::ERROR,
+        _ => Level::TRACE,
+    };
+
+    fmt()
+        .with_writer(|| IgnoreBrokenPipe(std::io::stderr()))
+        .with_timer(fmt::time::uptime())
+        .with_span_events(fmt::format::FmtSpan::CLOSE)
+        .with_max_level(level)
+        .with_ansi(ic_cli::color::has_colors())
+        .init();
 }
 
 fn dump_backtrace(info: &std::panic::PanicHookInfo) {

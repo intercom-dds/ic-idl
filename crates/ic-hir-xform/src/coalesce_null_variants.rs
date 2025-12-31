@@ -33,6 +33,7 @@
 use ic_hir::ResolvedGraph;
 use ic_hir::fold::Fold;
 use ic_hir::hir::{DefKind, Numeric, TyKind, UnionTy, Variant};
+use tracing::{debug, debug_span};
 
 struct CoalesceNullVariants;
 
@@ -91,6 +92,8 @@ impl Fold for CoalesceNullVariants {
 /// Transform HIR to coalesce multiple null variants in unions
 #[must_use]
 pub fn transform(mut hir: ResolvedGraph) -> ResolvedGraph {
+    let _span = debug_span!("xform", name = "coalesce_null_variants").entered();
+    debug!("applying transform");
     let mut folder = CoalesceNullVariants;
 
     // Collect all definition IDs first to avoid borrowing issues

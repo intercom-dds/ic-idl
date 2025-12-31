@@ -37,6 +37,7 @@
 
 use ic_hir::ResolvedGraph;
 use ic_hir::hir::{Ann, ConstTy, Def, DefKind, Numeric};
+use tracing::{debug, debug_span};
 
 /// Process a single definition, looking for bitmask flag constants with @position annotation
 fn process_def(def: &mut Def) {
@@ -78,6 +79,8 @@ fn process_def(def: &mut Def) {
 /// Transforms all @position annotations in the HIR to direct bitmask values.
 #[must_use]
 pub fn transform(mut graph: ResolvedGraph) -> ResolvedGraph {
+    let _span = debug_span!("xform", name = "position_annotation").entered();
+    debug!("applying transform");
     // Find all bitmasks and their flag constants
     let bitmask_flags: Vec<_> = graph
         .context

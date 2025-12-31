@@ -100,6 +100,7 @@ use ic_hir::hir::{
     self, AliasTy, DefId, DefKind, Ident, InterfaceTy, ModuleTy, PrimitiveTy, Span, Ty, TyKind,
     ValueTy,
 };
+use tracing::{debug, debug_span};
 
 const ARRAY_SUFFIX: &str = "_Array";
 const SEQUENCE_PREFIX: &str = "IDL_SEQUENCE_";
@@ -317,6 +318,9 @@ fn insert_nested_def(hir: &mut ResolvedGraph, def_id: DefId, parent_id: DefId, u
 /// one `Long_10_Array` typedef is created.
 #[must_use]
 pub fn transform(mut hir: ResolvedGraph) -> ResolvedGraph {
+    let _span = debug_span!("xform", name = "synthesize_collections").entered();
+    debug!("applying transform");
+
     // First pass: collect all collection types that need to be synthesized
     let mut arrays_to_synthesize: Vec<ArrayReplacement> = Vec::new();
     let mut sequences_to_synthesize: Vec<SequenceReplacement> = Vec::new();

@@ -38,6 +38,7 @@ use std::collections::HashMap;
 use ic_alloc::insensitive::CaseMap;
 use ic_diagnostic::Diag;
 use ic_syntax::{Item, Span};
+use tracing::{debug, debug_span, info_span};
 
 use crate::Context;
 use crate::hir::{Decl, DefFlags, DefId, DefKind, Ty, TyKind};
@@ -93,12 +94,21 @@ fn lower_internal<I>(builtins: Option<I>, user: I, include_in_output: bool) -> L
 where
     I: IntoIterator<Item = Item>,
 {
+    let _span = info_span!("hir_lowering").entered();
+
     let user_items: Vec<Item> = user.into_iter().collect();
+
     let mut context = LoweringContext::new();
 
     // Process builtins if provided
     let builtin_order = if let Some(builtins) = builtins {
+        let _builtin_span = debug_span!("builtins").entered();
         let builtin_items: Vec<Item> = builtins.into_iter().collect();
+        debug!(
+            item_count = builtin_items.len(),
+            "lowering builtin definitions"
+        );
+
         let mut builder = builder::HirBuilder::new(&mut context);
         builder.build(&builtin_items);
 
@@ -120,11 +130,19 @@ where
     };
 
     // Process user items
-    let mut builder = builder::HirBuilder::new(&mut context);
-    builder.build(&user_items);
+    {
+        let _user_span = debug_span!("user").entered();
+        debug!(item_count = user_items.len(), "lowering user definitions");
+        let mut builder = builder::HirBuilder::new(&mut context);
+        builder.build(&user_items);
+    }
 
     // Intermediate pass: Update forward references
-    update_forward_references(&mut context);
+    {
+        let _fwd_span = debug_span!("forward_refs").entered();
+        debug!("updating forward references");
+        update_forward_references(&mut context);
+    }
 
     // Check for undefined forward declarations
     check_undefined_forward_decls(&mut context);

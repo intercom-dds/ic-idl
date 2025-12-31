@@ -74,5 +74,7 @@ ic-codegen-typescript = { path = "../ic-codegen-typescript" }
 ic-codegen-xml = { path = "../ic-codegen-xml" }
 
 intercom-cts.workspace = true
+tracing.workspace = true
+tracing-subscriber = { version = "0.3", default-features = false, features = ["fmt", "ansi"] }
 
 [dev-dependencies]

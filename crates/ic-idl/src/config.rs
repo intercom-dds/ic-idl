@@ -278,6 +278,10 @@ pub struct Unstable {
     #[option(long)]
     pub parse_only: bool,
 
+    /// Enable tracing output (trace, debug, info, warn, error)
+    #[option(long, arg = "level")]
+    pub trace: Option<String>,
+
     /// Show help for unstable options
     pub help: bool,
 }
@@ -286,11 +290,29 @@ impl convert::Convert for Unstable {
     fn from_result(input: &[String]) -> convert::Result<Self> {
         let mut this = Self::default();
         for arg in input {
+            // Check for trace=level or just trace
+            if let Some(level) = arg.strip_prefix("trace=") {
+                match level {
+                    "trace" | "debug" | "info" | "warn" | "error" => {
+                        this.trace = Some(level.to_string());
+                    }
+                    _ => {
+                        return Err(ConvertError::InvalidValue(format!(
+                            "invalid trace level '{}', expected one of: trace, debug, info, warn, \
+                             error",
+                            level.yellow(),
+                        )));
+                    }
+                }
+                continue;
+            }
+
             match arg.as_str() {
                 "ast-dump" => this.ast_dump = true,
                 "hir-dump" => this.hir_dump = true,
                 "ptree-dump" => this.ptree_dump = true,
                 "parse-only" => this.parse_only = true,
+                "trace" => this.trace = Some("trace".to_string()),
                 "help" => {
                     this.help = true;
                     return Ok(this);

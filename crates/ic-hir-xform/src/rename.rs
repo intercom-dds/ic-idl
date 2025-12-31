@@ -30,6 +30,7 @@ use std::collections::{HashMap, HashSet};
 use ic_emit::case::{self, Case};
 use ic_hir::hir::DefKind;
 use ic_hir::{ResolvedGraph, hir};
+use tracing::{debug, debug_span};
 
 /// Function type for preprocessing names before case conversion
 pub type NamePreprocessor = fn(&str) -> String;
@@ -349,6 +350,9 @@ fn find_prefix_to_strip(type_name: &str, names: &[String]) -> usize {
 /// Transform HIR to use the specified naming conventions with collision handling
 #[must_use]
 pub fn transform(mut hir: ResolvedGraph, target: &Target) -> ResolvedGraph {
+    let _span = debug_span!("xform", name = "rename").entered();
+    debug!("applying transform");
+
     // Process top-level definitions first (only user definitions, not builtins)
     let top_level_ids: Vec<_> = hir.order.clone();
 

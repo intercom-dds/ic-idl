@@ -29,8 +29,28 @@ use std::collections::HashSet;
 use std::io::{self, Result};
 use std::path::{Path, PathBuf};
 
+use tracing::debug;
+
+/// A writer that ignores broken pipe errors.
+pub struct IgnoreBrokenPipe<W>(pub W);
+
+impl<W: std::io::Write> std::io::Write for IgnoreBrokenPipe<W> {
+    fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
+        match self.0.write(buf) {
+            Err(e) if e.kind() == std::io::ErrorKind::BrokenPipe => Ok(buf.len()),
+            result => result,
+        }
+    }
+
+    fn flush(&mut self) -> std::io::Result<()> {
+        match self.0.flush() {
+            Err(e) if e.kind() == std::io::ErrorKind::BrokenPipe => Ok(()),
+            result => result,
+        }
+    }
+}
+
 #[derive(Debug)]
-#[allow(unused)]
 pub enum Error {
     Diagnostic(Box<ic_diagnostic::Diag>),
     Parse(Box<ic_parse::Error>),
@@ -96,6 +116,7 @@ where
     let mut files = HashSet::new();
     for path in paths {
         if std::fs::metadata(path).is_ok_and(|v| v.is_dir()) {
+            debug!(dir = %path.display(), "expanding directory");
             collect(path, &mut files)?;
         } else {
             files.insert(path.clone());
@@ -104,6 +125,9 @@ where
 
     let mut files: Vec<_> = files.into_iter().collect();
     files.sort();
+
+    debug!(count = files.len(), "collected input files");
+
     Ok(files)
 }
 
@@ -123,6 +147,9 @@ where
             std::fs::create_dir_all(p)?;
         }
         std::fs::write(path, contents)?;
+        debug!(file = %path.display(), bytes = contents.len(), "wrote");
+    } else {
+        debug!(file = %path.display(), "unchanged");
     }
     Ok(())
 }

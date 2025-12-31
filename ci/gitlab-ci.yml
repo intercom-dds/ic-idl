@@ -96,7 +96,7 @@ release:bump-version:
   script:
     # Get the last commit that touched the version line
     - |
-      LAST_VERSION_CHANGE=$(git log -1 --format="%H" -- Cargo.toml)
+      LAST_VERSION_CHANGE=$(git log -1 --format="%H" -G'^version = "' -- Cargo.toml)
       CHANGES=$(git rev-list "${LAST_VERSION_CHANGE}..HEAD" --count)
       if [ "$CHANGES" -eq 0 ]; then
         echo "no changes since last version update, skipping"

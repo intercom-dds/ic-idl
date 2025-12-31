@@ -48,7 +48,7 @@ fn test_union_case_label_exceeds_32_bits() {
 fn test_union_case_label_valid_ranges() {
     let input = r"
         union ValidUnion switch(long) {
-            case 0: void zero;
+            case 0: long zero;
             case 2147483647: long maxInt32;     // 2^31 - 1
             case -2147483648: long minInt32;    // -2^31
             case 4294967295: long maxUint32;    // 2^32 - 1

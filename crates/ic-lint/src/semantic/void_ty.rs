@@ -70,7 +70,7 @@ impl<'a> Visitor<'a> for VoidTy<'a> {
 
 impl<'a> Lint<'a> for VoidTy<'a> {
     fn name() -> &'static str {
-        "void_ty"
+        "void-ty"
     }
 
     fn category() -> Category {

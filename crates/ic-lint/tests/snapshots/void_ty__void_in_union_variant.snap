@@ -2,7 +2,7 @@
 source: crates/ic-lint/tests/void_ty.rs
 expression: test_lint_hir(source)
 ---
-error[void_ty]: `void` is only allowed as a return type in prototypes
+error[void-ty]: `void` is only allowed as a return type in prototypes
    ┌ test.idl:3:13
    │
  2 │ union InvalidUnion switch (long) {
@@ -12,7 +12,7 @@ error[void_ty]: `void` is only allowed as a return type in prototypes
  5 │     case 3: void anotherVoid;
    └──
 
-error[void_ty]: `void` is only allowed as a return type in prototypes
+error[void-ty]: `void` is only allowed as a return type in prototypes
    ┌ test.idl:5:13
    │
  3 │     case 1: void voidVariant;

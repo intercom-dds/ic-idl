@@ -106,7 +106,6 @@ ignore_without_reason = "allow"
 
 [profile.release]
 lto = "thin"
-opt-level = "s"
 codegen-units = 1
 
 # Keep symbol information for now

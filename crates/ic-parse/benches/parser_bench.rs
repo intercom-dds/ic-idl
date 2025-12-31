@@ -166,12 +166,15 @@ module DDS {
 
 /// A large IDL with many definitions to stress test the parser
 fn generate_large_idl() -> String {
+    use std::fmt::Write;
+
     let mut idl = String::with_capacity(100_000);
     idl.push_str("module LargeTest {\n");
 
     // Generate many struct definitions
     for i in 0..100 {
-        idl.push_str(&format!(
+        _ = write!(
+            idl,
             r"
     @extensibility(APPENDABLE)
     struct TestStruct{i} {{
@@ -185,12 +188,13 @@ fn generate_large_idl() -> String {
         sequence<string, 10> field8;
     }};
 "
-        ));
+        );
     }
 
     // Generate enum definitions
     for i in 0..20 {
-        idl.push_str(&format!(
+        _ = write!(
+            idl,
             r"
     enum TestEnum{i} {{
         VALUE_A_{i},
@@ -200,12 +204,13 @@ fn generate_large_idl() -> String {
         VALUE_E_{i}
     }};
 "
-        ));
+        );
     }
 
     // Generate union definitions
     for i in 0..20 {
-        idl.push_str(&format!(
+        _ = write!(
+            idl,
             r"
     union TestUnion{i} switch (long) {{
         case 0: long int_val;
@@ -214,12 +219,13 @@ fn generate_large_idl() -> String {
         default: octet default_val;
     }};
 "
-        ));
+        );
     }
 
     // Generate interface definitions
     for i in 0..10 {
-        idl.push_str(&format!(
+        _ = write!(
+            idl,
             r"
     interface TestInterface{i} {{
         void operation1(in long param1, in string param2);
@@ -229,20 +235,21 @@ fn generate_large_idl() -> String {
         attribute string attr2;
     }};
 "
-        ));
+        );
     }
 
     // Generate constants
     for i in 0..50 {
-        idl.push_str(&format!("    const long CONST_{i} = {i};\n"));
+        _ = writeln!(idl, "    const long CONST_{i} = {i};");
     }
 
     // Generate typedefs
     for i in 0..30 {
-        idl.push_str(&format!(
-            "    typedef sequence<TestStruct{seq_i}> TestStructSeq{i};\n",
+        _ = writeln!(
+            idl,
+            "    typedef sequence<TestStruct{seq_i}> TestStructSeq{i};",
             seq_i = i % 100
-        ));
+        );
     }
 
     idl.push_str("};\n");

@@ -104,10 +104,23 @@ impl<'a, 'b> InitializerEvaluator<'a, 'b> {
             .collect();
 
         let mut value_map = std::collections::HashMap::new();
+        let mut field_spans = std::collections::HashMap::new();
         let mut has_error = false;
 
         for named_expr in &init_list.values {
             if let Some(ref ident) = named_expr.ident {
+                if let Some(first_span) = field_spans.insert(ident.name.clone(), ident.span) {
+                    self.evaluator.diagnostics().errors.push(
+                        ic_diagnostic::error_span(
+                            format!("field `{}` specified more than once", ident.name),
+                            Label::new(first_span).message("first assignment"),
+                        )
+                        .label(Label::new(ident.span).message("duplicate assignment")),
+                    );
+                    has_error = true;
+                    continue;
+                }
+
                 if let Some(field_ty) = field_map.get(&ident.name) {
                     if let Some(value) = self.evaluator.eval_for_type(&named_expr.value, field_ty) {
                         value_map.insert(ident.name.clone(), value);

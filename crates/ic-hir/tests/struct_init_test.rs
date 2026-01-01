@@ -186,7 +186,6 @@ fn test_struct_init_field_order_error() {
 }
 
 #[test]
-#[ignore = "Missing field validation not yet implemented"]
 fn test_struct_init_missing_field_error() {
     let input = r"
         struct Point {
@@ -210,7 +209,6 @@ fn test_struct_init_missing_field_error() {
 }
 
 #[test]
-#[ignore = "Extra field validation not yet implemented"]
 fn test_struct_init_extra_field_error() {
     let input = r"
         struct Point {
@@ -230,5 +228,26 @@ fn test_struct_init_extra_field_error() {
     );
 
     // Snapshot test the error message
+    insta::assert_snapshot!(output);
+}
+
+#[test]
+fn test_struct_init_duplicate_field_error() {
+    let input = r"
+        struct Point {
+            int32 x;
+            int32 y;
+        };
+        
+        const Point DUP = { x = 1, y = 2, x = 3 };
+    ";
+
+    let (result, _, output) = common::parse_and_resolve(input);
+
+    assert!(
+        !result.errors.is_empty(),
+        "Expected error for duplicate struct field"
+    );
+
     insta::assert_snapshot!(output);
 }

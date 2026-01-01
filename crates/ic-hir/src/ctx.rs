@@ -192,11 +192,14 @@ impl Context {
         let segments: Vec<&str> = path.segments.iter().map(|s| s.name.as_str()).collect();
         let absolute = path.leading_colons.is_some();
 
-        let result = if absolute {
-            self.resolve_from_scope(self.root_scope(), &segments, &path.segments)
-        } else {
-            self.resolve_relative_path(scope, &segments, &path.segments)
-        };
+        // Delegate to ScopeTree and map the error to include AST segment info
+        let result = self
+            .scopes
+            .try_resolve_path(scope, &segments, absolute)
+            .map_err(|e| PathResolutionError {
+                segment: &path.segments[e.failed_segment],
+                container: e.container,
+            });
 
         if tracing::enabled!(tracing::Level::TRACE) {
             let path_str = segments.join("::");
@@ -223,102 +226,6 @@ impl Context {
         }
 
         result
-    }
-
-    /// Resolves a relative path by trying from the current scope and walking up parents.
-    fn resolve_relative_path<'a>(
-        &self,
-        start_scope: crate::scope::ScopeId,
-        segments: &[&str],
-        path_segments: &'a [Ident],
-    ) -> Result<DefId, PathResolutionError<'a>> {
-        let mut current = Some(start_scope);
-        let mut best_error = None;
-        let mut best_progress = 0;
-
-        while let Some(scope_to_try) = current {
-            match self.resolve_from_scope(scope_to_try, segments, path_segments) {
-                Ok(def_id) => return Ok(def_id),
-                Err(e) => {
-                    // Track the error that made the most progress through the path
-                    let error_segment_index = path_segments
-                        .iter()
-                        .position(|s| std::ptr::eq(s, e.segment))
-                        .unwrap_or(0);
-
-                    if best_error.is_none() || error_segment_index > best_progress {
-                        best_error = Some(e);
-                        best_progress = error_segment_index;
-                    }
-                    current = self.scopes.get_scope(scope_to_try).parent;
-                }
-            }
-        }
-
-        Err(best_error.unwrap_or_else(|| PathResolutionError {
-            segment: path_segments.first().unwrap_or(&path_segments[0]),
-            container: None,
-        }))
-    }
-
-    /// Resolves a path from a specific starting scope.
-    /// Returns the `DefId` if found, or an error with the failing segment.
-    fn resolve_from_scope<'a>(
-        &self,
-        start_scope: crate::scope::ScopeId,
-        segments: &[&str],
-        path_segments: &'a [Ident],
-    ) -> Result<DefId, PathResolutionError<'a>> {
-        let mut scope_id = start_scope;
-        let mut container_def_id = None;
-
-        for (i, &segment_name) in segments.iter().enumerate() {
-            let scope_data = self.scopes.get_scope(scope_id);
-
-            if i == segments.len() - 1 {
-                if let Some(def_ids) = scope_data.definitions.get(segment_name)
-                    && let Some(&def_id) = def_ids.last()
-                {
-                    return Ok(def_id);
-                }
-                return Err(PathResolutionError {
-                    segment: &path_segments[i],
-                    container: container_def_id,
-                });
-            }
-
-            if let Some(&child_scope) = scope_data.children.get(segment_name) {
-                scope_id = child_scope;
-                container_def_id = self.scopes.get_scope(child_scope).def_id;
-            } else if let Some(def_ids) = scope_data.definitions.get(segment_name) {
-                if let Some(&def_id) = def_ids.last() {
-                    if let Some(def_scope) = self.scopes.find_scope_for_def(def_id) {
-                        scope_id = def_scope;
-                        container_def_id = Some(def_id);
-                    } else {
-                        return Err(PathResolutionError {
-                            segment: &path_segments[i],
-                            container: container_def_id,
-                        });
-                    }
-                } else {
-                    return Err(PathResolutionError {
-                        segment: &path_segments[i],
-                        container: container_def_id,
-                    });
-                }
-            } else {
-                return Err(PathResolutionError {
-                    segment: &path_segments[i],
-                    container: container_def_id,
-                });
-            }
-        }
-
-        Err(PathResolutionError {
-            segment: &path_segments[0],
-            container: None,
-        })
     }
 
     /// Creates a child scope with the given name.
@@ -392,17 +299,15 @@ impl Context {
         parts.join("::")
     }
 
-    /// Looks up a symbol by its qualified name (e.g., "`DDS::XTypes`").
-    /// Starts from the root scope.
+    /// Looks up a symbol by its qualified name (e.g., `"DDS::XTypes"`).
+    /// Always resolves from the root scope (absolute path).
     /// For reopened modules, returns the last (most recent) definition.
     #[must_use]
     pub fn lookup_symbol(&self, qualified_name: &str) -> Option<DefId> {
         let parts: Vec<&str> = qualified_name.split("::").collect();
-        if parts.is_empty() {
-            return None;
-        }
-
-        self.lookup_path_from_scope(self.root_scope(), &parts)
+        self.scopes
+            .try_resolve_path(self.root_scope(), &parts, true)
+            .ok()
     }
 
     /// Looks up all definitions for a module by its qualified name.
@@ -411,116 +316,7 @@ impl Context {
     #[must_use]
     pub fn lookup_modules(&self, qualified_name: &str) -> Vec<DefId> {
         let parts: Vec<&str> = qualified_name.split("::").collect();
-        if parts.is_empty() {
-            return Vec::new();
-        }
-
-        self.lookup_all_defs_from_scope(self.root_scope(), &parts)
-    }
-
-    /// Helper to look up a path from a specific scope
-    fn lookup_path_from_scope(
-        &self,
-        start_scope: crate::scope::ScopeId,
-        parts: &[&str],
-    ) -> Option<DefId> {
-        // First try to resolve as a definition in current scope
-        let (name, remaining) = parts.split_first()?;
-        let scope = self.scopes.get_scope(start_scope);
-
-        // For the last part, just resolve the name
-        if remaining.is_empty() {
-            // Get the last DefId for this name (most recent definition)
-            if let Some(def_ids) = scope.definitions.get(*name) {
-                return def_ids.last().copied();
-            }
-            return None;
-        }
-
-        // For intermediate parts, we need to find the associated scope
-        // Check if there's a child scope with this name
-        if let Some((_, child_scope)) = scope
-            .children
-            .iter()
-            .find(|(child_name, _)| child_name.eq_ignore_ascii_case(name))
-        {
-            return self.lookup_path_from_scope(*child_scope, remaining);
-        }
-
-        // If no child scope, check if it's a definition with its own scope
-        if let Some(def_ids) = scope.definitions.get(*name) {
-            // Try all DefIds for this name (in case of reopened modules)
-            for &def_id in def_ids {
-                let def = self.definitions.get(def_id);
-                match &def.kind {
-                    DefKind::Module(_) | DefKind::Interface(_) | DefKind::Valuetype(_) => {
-                        // These types have child scopes - find it
-                        if let Some(def_scope) = self.scopes.find_scope_for_def(def_id)
-                            && let Some(result) = self.lookup_path_from_scope(def_scope, remaining)
-                        {
-                            return Some(result);
-                        }
-                    }
-                    _ => {} // Other types don't have child scopes
-                }
-            }
-        }
-
-        None
-    }
-
-    /// Helper to look up all definitions for a path from a specific scope.
-    /// Returns all `DefId`s for the target (useful for reopened modules).
-    fn lookup_all_defs_from_scope(
-        &self,
-        start_scope: crate::scope::ScopeId,
-        parts: &[&str],
-    ) -> Vec<DefId> {
-        let Some((name, remaining)) = parts.split_first() else {
-            return vec![];
-        };
-        let scope = self.scopes.get_scope(start_scope);
-
-        // For the last part, we need to collect all matching DefIds
-        if remaining.is_empty() {
-            let mut result = Vec::new();
-
-            // Check definitions in current scope
-            if let Some(def_ids) = scope.definitions.get(*name) {
-                for &def_id in def_ids {
-                    let def = self.definitions.get(def_id);
-                    if matches!(def.kind, DefKind::Module(_)) {
-                        result.push(def_id);
-                    }
-                }
-            }
-
-            // Also check child scopes with matching names (for modules)
-            for (child_name, &child_scope_id) in scope.children.iter() {
-                if child_name.eq_ignore_ascii_case(name)
-                    && let Some(def_id) = self.scopes.get_scope(child_scope_id).def_id
-                {
-                    let def = self.definitions.get(def_id);
-                    if matches!(def.kind, DefKind::Module(_)) {
-                        result.push(def_id);
-                    }
-                }
-            }
-
-            result
-        } else {
-            // For intermediate parts, we need to find the associated scope
-            // Check if there's a child scope with this name
-            if let Some((_, child_scope)) = scope
-                .children
-                .iter()
-                .find(|(child_name, _)| child_name.eq_ignore_ascii_case(name))
-            {
-                return self.lookup_all_defs_from_scope(*child_scope, remaining);
-            }
-
-            Vec::new()
-        }
+        self.scopes.lookup_all_modules(self.root_scope(), &parts)
     }
 
     /// Resolves a numeric value to a signed integer, recursively following

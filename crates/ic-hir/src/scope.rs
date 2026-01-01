@@ -40,7 +40,6 @@ use std::collections::HashMap;
 
 use ic_alloc::arena::Arena;
 use ic_alloc::insensitive::CaseMap;
-use ic_diagnostic::{Label, error_span};
 
 use crate::hir::{Def, DefId};
 
@@ -545,45 +544,5 @@ impl ScopeTree {
         }
 
         results
-    }
-
-    /// Find or create a module scope.
-    /// This handles module reopening by returning the existing scope if found.
-    /// Used during lowering to support IDL's module reopening feature.
-    ///
-    /// The `module_scopes` parameter tracks module reopening across the lowering process.
-    /// It maps from `parent_scope` to a `CaseMap` of module names to `(scope_id, original_span)`.
-    pub fn find_or_create_module(
-        &mut self,
-        parent: ScopeId,
-        name: &str,
-        span: ic_syntax::Span,
-        module_scopes: &mut HashMap<ScopeId, CaseMap<(ScopeId, ic_syntax::Span)>>,
-        diagnostics: &mut crate::lower::Diagnostics,
-    ) -> ScopeId {
-        let parent_modules = module_scopes.entry(parent).or_insert_with(CaseMap::new);
-
-        if let Some(&(scope_id, original_span)) = parent_modules.get(name) {
-            if let Some(canonical_name) = parent_modules.get_key(name)
-                && canonical_name != name
-            {
-                diagnostics.errors.push(
-                    error_span(
-                        format!(
-                            "inconsistent capitalization: module `{name}` was previously defined \
-                             as `{canonical_name}`"
-                        ),
-                        Label::new(span).message("module reopened here"),
-                    )
-                    .label(Label::new(original_span).message("first defined here")),
-                );
-            }
-            return scope_id;
-        }
-
-        let scope_id = self.create_child_scope(parent, name.to_string(), None);
-        let parent_modules = module_scopes.entry(parent).or_insert_with(CaseMap::new);
-        parent_modules.insert(name, (scope_id, span));
-        scope_id
     }
 }

@@ -38,16 +38,15 @@ workspace = true
 
 [dependencies]
 ic-alloc = { path = "../ic-alloc" }
-ic-cli = { path = "../ic-cli" }
 ic-diagnostic = { path = "../ic-diagnostic" }
-ic-expr = { path = "../ic-expr" }
 ic-macros = { path = "../ic-macros" }
 ic-syntax = { path = "../ic-syntax" }
 
 intercom-cts.workspace = true
-tracing.workspace = true
 
 [dev-dependencies]
+ic-cli = { path = "../ic-cli" }
+ic-hir-lower = { path = "../ic-hir-lower" }
 ic-parse = { path = "../ic-parse" }
 ic-preproc = { path = "../ic-preproc" }
 ic-vfs = { path = "../ic-vfs" }

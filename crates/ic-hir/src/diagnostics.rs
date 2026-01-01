@@ -25,54 +25,51 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-//! Common utilities for the lowering process.
+//! Diagnostic collection for HIR lowering and related processes.
 
-use ic_syntax::Path;
+use ic_diagnostic::{Diag, error_span};
 
-use crate::hir::Numeric;
+/// Diagnostics collection during lowering and other HIR operations.
+///
+/// This struct is used to accumulate errors and warnings during HIR
+/// construction and manipulation. It is designed to be shared between
+/// `ic-hir` and `ic-hir-lower` crates.
+#[derive(Debug, Default)]
+pub struct Diagnostics {
+    /// Compilation errors that prevent successful code generation.
+    pub errors: Vec<Diag>,
 
-/// Convert a path to a string for error messages.
-pub fn path_to_string(path: &Path) -> String {
-    ic_syntax::util::path_name(path)
+    /// Warnings that don't prevent compilation but indicate potential issues.
+    pub warnings: Vec<Diag>,
 }
 
-/// Convert AST literal to HIR numeric value.
-pub fn literal_to_numeric(lit: &ic_syntax::LiteralValue) -> Numeric {
-    match lit {
-        ic_syntax::LiteralValue::Bool(b) => Numeric::Bool(*b),
-        ic_syntax::LiteralValue::Char(c) => Numeric::Char(*c),
-        ic_syntax::LiteralValue::Int(i) => {
-            // Choose appropriate type based on value range
-            if i32::try_from(*i).is_ok() {
-                Numeric::Int32(*i as i32)
-            } else if i64::try_from(*i).is_ok() {
-                Numeric::Int64(*i as i64)
-            } else {
-                // Value fits in u64 but not i64
-                Numeric::UInt64(*i)
-            }
-        }
-        ic_syntax::LiteralValue::Float(f) => Numeric::Double(*f),
-        ic_syntax::LiteralValue::String(s) => Numeric::String(s.clone()),
-        ic_syntax::LiteralValue::Null => Numeric::Null,
+impl Diagnostics {
+    /// Create a new empty diagnostics collection.
+    #[must_use]
+    pub fn new() -> Self {
+        Self::default()
     }
-}
 
-/// Get the span of a path.
-pub fn path_span(path: &Path) -> ic_syntax::Span {
-    ic_syntax::util::path_span(path)
-}
+    /// Add an error diagnostic with a message and label.
+    pub fn error(&mut self, message: impl Into<String>, label: ic_diagnostic::Label) {
+        self.errors.push(error_span(message, label));
+    }
 
-/// Extension trait for Ty to get ADT `DefId`.
-pub trait TyExt {
-    fn as_adt(&self) -> Option<crate::hir::DefId>;
-}
+    /// Returns true if there are any errors.
+    #[must_use]
+    pub fn has_errors(&self) -> bool {
+        !self.errors.is_empty()
+    }
 
-impl TyExt for crate::hir::Ty {
-    fn as_adt(&self) -> Option<crate::hir::DefId> {
-        match &self.kind {
-            crate::hir::TyKind::Adt(id) => Some(*id),
-            _ => None,
-        }
+    /// Returns true if there are any warnings.
+    #[must_use]
+    pub fn has_warnings(&self) -> bool {
+        !self.warnings.is_empty()
+    }
+
+    /// Merge another diagnostics collection into this one.
+    pub fn merge(&mut self, other: Diagnostics) {
+        self.errors.extend(other.errors);
+        self.warnings.extend(other.warnings);
     }
 }

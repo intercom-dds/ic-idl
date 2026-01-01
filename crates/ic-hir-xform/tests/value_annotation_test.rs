@@ -49,7 +49,7 @@ fn test_value_annotation_transform_is_noop() {
     let parsed = ic_parse::from_file(file_id, ProcArgs::default(), &mut source_map);
 
     // Lower to HIR
-    let hir = ic_hir::from_ast(ic_hir::AstInput::User(parsed.tree));
+    let hir = ic_hir_lower::from_ast(ic_hir_lower::AstInput::User(parsed.tree));
 
     // Apply the transformation (which should be a no-op)
     let transformed = ic_hir_xform::value_annotation::transform(hir);
@@ -107,7 +107,7 @@ fn test_enum_auto_increment() {
     let parsed = ic_parse::from_file(file_id, ProcArgs::default(), &mut source_map);
 
     // Lower to HIR
-    let hir = ic_hir::from_ast(ic_hir::AstInput::User(parsed.tree));
+    let hir = ic_hir_lower::from_ast(ic_hir_lower::AstInput::User(parsed.tree));
 
     // Apply the transformation (which should be a no-op)
     let transformed = ic_hir_xform::value_annotation::transform(hir);

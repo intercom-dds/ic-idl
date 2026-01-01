@@ -27,13 +27,13 @@
 
 //! Common annotation conversion logic shared between type and value contexts.
 
+use ic_hir::hir::{Ann, AnnArg, AnnParam, DefId, DefKind, Ident};
+use ic_hir::scope::ScopeId;
 use ic_syntax::util::{path_name, path_span};
 use ic_syntax::{AnnotationAppl, AnnotationArg};
 
-use crate::hir::{Ann, AnnArg, AnnParam, DefId, DefKind, Ident};
-use crate::lower::LoweringContext;
-use crate::lower::eval::ConstEvaluator;
-use crate::scope::ScopeId;
+use crate::LoweringContext;
+use crate::eval::ConstEvaluator;
 
 /// Convert AST annotations to HIR annotations.
 pub fn convert_annotations(
@@ -56,9 +56,7 @@ fn convert_annotation(ctx: &mut LoweringContext, ann_appl: &AnnotationAppl, scop
     };
 
     // Try to resolve the annotation path
-    let def_id = ctx
-        .context
-        .resolve_annotation_syntax_path(start, &ann_appl.ident);
+    let def_id = crate::resolve::resolve_annotation(&ctx.context, start, &ann_appl.ident);
     let name = path_name(&ann_appl.ident);
 
     // If we found something, verify it's an annotation

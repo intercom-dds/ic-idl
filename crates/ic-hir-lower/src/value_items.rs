@@ -26,20 +26,20 @@
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use ic_diagnostic::{Label, error_span};
-use ic_syntax::{AnnotationDef, BitmaskDef, BitsetDef, ConstDef, EnumDef};
-
-use super::LoweringContext;
-use super::annotation_common::convert_annotations;
-use super::eval::ConstEvaluator;
-use super::registry::DefKindTag;
-use super::type_resolver::TypeResolver;
-use super::utils::TyExt;
-use crate::Context;
-use crate::hir::{
+use ic_hir::Context;
+use ic_hir::hir::{
     AnnParam, AnnotationTy, BitmaskTy, BitsetField, BitsetTy, ConstTy, Def, DefFlags, DefId,
     DefKind, EnumTy, Numeric, PrimitiveTy, Ty, TyKind,
 };
-use crate::scope::ScopeId;
+use ic_hir::scope::ScopeId;
+use ic_syntax::{AnnotationDef, BitmaskDef, BitsetDef, ConstDef, EnumDef};
+
+use crate::LoweringContext;
+use crate::annotation::convert_annotations;
+use crate::eval::ConstEvaluator;
+use crate::registry::DefKindTag;
+use crate::type_resolver::TypeResolver;
+use crate::utils::TyExt;
 
 /// Processes value items (constants, enums, bitmasks).
 pub struct ValueItemProcessor<'ctx> {
@@ -455,7 +455,7 @@ impl<'ctx> ValueItemProcessor<'ctx> {
                 } else {
                     self.ctx.diagnostics.error(
                         "parent must be a bitset type".to_string(),
-                        Label::new(super::utils::path_span(parent_path))
+                        Label::new(crate::utils::path_span(parent_path))
                             .message("expected bitset type"),
                     );
                     None
@@ -563,8 +563,6 @@ impl<'ctx> ValueItemProcessor<'ctx> {
         );
 
         let annotations = convert_annotations(self.ctx, &a.annotations, self.current_scope);
-
-        // Placeholder, will be updated with params and types after processing
         let def_id = self.ctx.context.definitions.alloc_with_id(|id| Def {
             id,
             ident: a.ident.clone(),
@@ -574,7 +572,7 @@ impl<'ctx> ValueItemProcessor<'ctx> {
             kind: DefKind::Annotation(AnnotationTy {
                 params: Vec::new(),
                 types: Vec::new(),
-            }), // Placeholder
+            }),
             flags: DefFlags::nil(),
         });
 
@@ -604,7 +602,7 @@ impl<'ctx> ValueItemProcessor<'ctx> {
                     params.push(AnnParam { ident, ty, default });
                 }
                 ic_syntax::AnnotationField::Item(item) => {
-                    let mut builder = super::builder::HirBuilder::new(self.ctx);
+                    let mut builder = crate::builder::HirBuilder::new(self.ctx);
                     let prev_scope = builder.current_scope;
                     builder.current_scope = scope;
                     let item_defs = builder.process_item(item);

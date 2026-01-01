@@ -27,15 +27,15 @@
 
 //! Main builder orchestration for Phase 1: Build & Resolve.
 
+use ic_hir::hir::{DefId, DefKind};
+use ic_hir::scope::ScopeId;
 use ic_syntax::Item;
 use ic_syntax::util::{item_ident_name, item_variant_name};
 use tracing::{trace, trace_span};
 
-use super::LoweringContext;
-use super::type_items::TypeItemProcessor;
-use super::value_items::ValueItemProcessor;
-use crate::hir::{DefId, DefKind};
-use crate::scope::ScopeId;
+use crate::LoweringContext;
+use crate::type_items::TypeItemProcessor;
+use crate::value_items::ValueItemProcessor;
 
 /// Main HIR builder that orchestrates the lowering process.
 pub struct HirBuilder<'ctx> {
@@ -167,7 +167,8 @@ impl<'ctx> HirBuilder<'ctx> {
 
     fn process_module(&mut self, m: &ic_syntax::ModuleDef) -> DefId {
         // Handles module reopening (same name in same scope)
-        let module_scope = self.ctx.context.scopes.find_or_create_module(
+        let module_scope = crate::resolve::find_or_create_module(
+            &mut self.ctx.context.scopes,
             self.current_scope,
             &m.ident.name,
             m.ident.span,
@@ -176,26 +177,23 @@ impl<'ctx> HirBuilder<'ctx> {
         );
 
         let prev_scope = self.current_scope;
-        let annotations = super::annotation_common::convert_annotations(
-            self.ctx,
-            &m.annotations,
-            self.current_scope,
-        );
+        let annotations =
+            crate::annotation::convert_annotations(self.ctx, &m.annotations, self.current_scope);
 
         let def_id = self
             .ctx
             .context
             .definitions
-            .alloc_with_id(|id| crate::hir::Def {
+            .alloc_with_id(|id| ic_hir::hir::Def {
                 id,
                 ident: m.ident.clone(),
                 parent: self.ctx.context.scopes.get_scope(prev_scope).def_id,
                 annotations,
                 span: m.span,
-                kind: DefKind::Module(crate::hir::ModuleTy {
+                kind: DefKind::Module(ic_hir::hir::ModuleTy {
                     definitions: Vec::new(), // Will be updated later
                 }),
-                flags: crate::hir::DefFlags::nil(),
+                flags: ic_hir::hir::DefFlags::nil(),
             });
 
         // Must set before processing contents so nested items can find their parent

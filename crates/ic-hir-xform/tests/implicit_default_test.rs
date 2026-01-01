@@ -41,7 +41,7 @@ fn parse_and_transform(idl: &str) -> ic_hir::ResolvedGraph {
         parsed.errors
     );
 
-    let hir = ic_hir::from_ast(ic_hir::AstInput::User(parsed.tree));
+    let hir = ic_hir_lower::from_ast(ic_hir_lower::AstInput::User(parsed.tree));
     assert!(hir.errors.is_empty(), "HIR errors: {:?}", hir.errors);
 
     implicit_default::transform(hir)

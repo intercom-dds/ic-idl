@@ -36,15 +36,15 @@ mod rank;
 
 pub use cast::{check_float_to_int_precision_loss, get_type_name};
 use ic_diagnostic::{Label, error_span, warn_span};
+use ic_hir::Context;
+use ic_hir::hir::{DefId, DefKind, Numeric, PrimitiveTy, Ty, TyKind};
+use ic_hir::scope::ScopeId;
 pub use rank::{FloatRank, IntRank, int_min_max};
 
 use self::cast::{numeric_from_value, value_from_numeric};
 use self::ops::{eval_bin, eval_unary, op_from_ast};
 use super::LoweringContext;
 use super::utils::{literal_to_numeric, path_span, path_to_string};
-use crate::ctx::Context;
-use crate::hir::{DefId, DefKind, Numeric, PrimitiveTy, Ty, TyKind};
-use crate::scope::ScopeId;
 
 /// A simplified value domain for evaluation.
 #[derive(Clone, Debug)]
@@ -134,7 +134,7 @@ impl<'a> ConstEvaluator<'a> {
     }
 
     /// Returns a mutable reference to the diagnostics.
-    pub fn diagnostics(&mut self) -> &mut super::Diagnostics {
+    pub fn diagnostics(&mut self) -> &mut ic_hir::diagnostics::Diagnostics {
         &mut self.ctx.diagnostics
     }
 
@@ -142,14 +142,12 @@ impl<'a> ConstEvaluator<'a> {
     fn resolve_path_with_fallback<'p>(
         &self,
         path: &'p ic_syntax::Path,
-    ) -> Result<DefId, crate::ctx::PathResolutionError<'p>> {
+    ) -> Result<DefId, crate::resolve::PathResolutionError<'p>> {
         if let Some(ann_scope) = self.annotation_scope {
-            self.ctx
-                .context
-                .resolve_syntax_path(ann_scope, path)
-                .or_else(|_| self.ctx.context.resolve_syntax_path(self.scope, path))
+            crate::resolve::resolve_path(&self.ctx.context, ann_scope, path)
+                .or_else(|_| crate::resolve::resolve_path(&self.ctx.context, self.scope, path))
         } else {
-            self.ctx.context.resolve_syntax_path(self.scope, path)
+            crate::resolve::resolve_path(&self.ctx.context, self.scope, path)
         }
     }
 

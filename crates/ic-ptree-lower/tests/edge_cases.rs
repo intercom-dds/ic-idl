@@ -25,7 +25,8 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use ic_hir::{AstInput, ResolvedGraph};
+use ic_hir::ResolvedGraph;
+use ic_hir_lower::AstInput;
 use ic_parse::from_file;
 use ic_preproc::ProcArgs;
 use ic_ptree_lower::from_hir;
@@ -37,7 +38,7 @@ fn parse_idl(idl: &str) -> (ResolvedGraph, SourceMap) {
     let parsed = from_file(file_id, ProcArgs::default(), &mut vfs);
     assert!(parsed.errors.is_empty());
 
-    let hir = ic_hir::from_ast(AstInput::User(parsed.tree));
+    let hir = ic_hir_lower::from_ast(AstInput::User(parsed.tree));
     assert!(hir.errors.is_empty());
     (hir, vfs)
 }

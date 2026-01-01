@@ -28,10 +28,10 @@
 //! Initializer list evaluation for structs, arrays, sequences, and maps.
 
 use ic_diagnostic::Label;
+use ic_hir::hir::{DefId, DefKind, Member, Numeric, Ty};
 use ic_syntax::{Expr, InitList};
 
-use super::eval::ConstEvaluator;
-use crate::hir::{DefId, DefKind, Member, Numeric, Ty};
+use crate::eval::ConstEvaluator;
 
 /// Handles evaluation of initializer lists for complex types.
 pub struct InitializerEvaluator<'a, 'b> {

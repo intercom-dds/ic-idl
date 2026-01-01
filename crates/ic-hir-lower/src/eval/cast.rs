@@ -28,10 +28,10 @@
 //! Type casting and conversion between Value, Numeric, and HIR types.
 
 use ic_diagnostic::Label;
+use ic_hir::hir::{Numeric, PrimitiveTy, Ty, TyKind};
 
 use super::rank::{FloatRank, IntRank, TyTag, int_min_max, rank_mask_unsigned};
 use super::{EvalError, Value};
-use crate::hir::{Numeric, PrimitiveTy, Ty, TyKind};
 
 /// Cast a value to a target type tag, performing necessary conversions.
 pub(super) fn cast_to(value: Value, target: TyTag) -> Result<Value, EvalError> {
@@ -106,11 +106,7 @@ pub(super) fn cast_to(value: Value, target: TyTag) -> Result<Value, EvalError> {
 }
 
 /// Cast a value to a specific HIR type.
-pub fn cast_value_to_type(
-    v: Value,
-    ty: &Ty,
-    ctx: &crate::ctx::Context,
-) -> Result<Value, EvalError> {
+pub fn cast_value_to_type(v: Value, ty: &Ty, ctx: &ic_hir::Context) -> Result<Value, EvalError> {
     let resolved_ty = ctx.resolve_ty(ty);
     match &resolved_ty.kind {
         TyKind::Primitive(p) => {
@@ -337,7 +333,7 @@ pub fn get_type_name(ty: &Ty, ctx: &super::super::LoweringContext) -> String {
 pub fn check_float_to_int_precision_loss(
     expr: &ic_syntax::Expr,
     expected_ty: &Ty,
-    diagnostics: &mut super::super::Diagnostics,
+    diagnostics: &mut ic_hir::diagnostics::Diagnostics,
 ) {
     // Check if we have a float literal
     if let ic_syntax::Expr::Literal(lit) = expr
@@ -347,14 +343,14 @@ pub fn check_float_to_int_precision_loss(
         if let TyKind::Primitive(prim) = &expected_ty.kind {
             let is_int_type = matches!(
                 prim,
-                crate::hir::PrimitiveTy::Int8
-                    | crate::hir::PrimitiveTy::UInt8
-                    | crate::hir::PrimitiveTy::Int16
-                    | crate::hir::PrimitiveTy::UInt16
-                    | crate::hir::PrimitiveTy::Int32
-                    | crate::hir::PrimitiveTy::UInt32
-                    | crate::hir::PrimitiveTy::Int64
-                    | crate::hir::PrimitiveTy::UInt64
+                ic_hir::hir::PrimitiveTy::Int8
+                    | ic_hir::hir::PrimitiveTy::UInt8
+                    | ic_hir::hir::PrimitiveTy::Int16
+                    | ic_hir::hir::PrimitiveTy::UInt16
+                    | ic_hir::hir::PrimitiveTy::Int32
+                    | ic_hir::hir::PrimitiveTy::UInt32
+                    | ic_hir::hir::PrimitiveTy::Int64
+                    | ic_hir::hir::PrimitiveTy::UInt64
             );
 
             if is_int_type {

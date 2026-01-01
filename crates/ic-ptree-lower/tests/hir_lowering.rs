@@ -41,7 +41,7 @@ fn parse_and_lower_hir(idl: &str) -> (ic_ptree::ParseResult, ResolvedGraph) {
         parsed.errors
     );
 
-    let hir = ic_hir::from_ast(ic_hir::AstInput::User(parsed.tree));
+    let hir = ic_hir_lower::from_ast(ic_hir_lower::AstInput::User(parsed.tree));
     assert!(hir.errors.is_empty(), "HIR errors: {:?}", hir.errors);
 
     let ptree = from_hir(&hir, &vfs);
@@ -366,7 +366,7 @@ fn test_native_type() {
     let parsed = from_file(file_id, ProcArgs::default(), &mut vfs);
     assert!(parsed.errors.is_empty());
 
-    let hir = ic_hir::from_ast(ic_hir::AstInput::User(parsed.tree));
+    let hir = ic_hir_lower::from_ast(ic_hir_lower::AstInput::User(parsed.tree));
     assert!(hir.errors.is_empty());
 }
 

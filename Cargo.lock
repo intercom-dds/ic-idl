@@ -295,7 +295,7 @@ dependencies = [
  "ic-alloc",
  "ic-cli",
  "ic-diagnostic",
- "ic-expr",
+ "ic-hir-lower",
  "ic-macros",
  "ic-parse",
  "ic-preproc",
@@ -303,6 +303,21 @@ dependencies = [
  "ic-vfs",
  "insta",
  "intercom-cts",
+]
+
+[[package]]
+name = "ic-hir-lower"
+version = "0.3.2"
+dependencies = [
+ "ic-alloc",
+ "ic-diagnostic",
+ "ic-expr",
+ "ic-hir",
+ "ic-parse",
+ "ic-preproc",
+ "ic-syntax",
+ "ic-vfs",
+ "insta",
  "tracing",
 ]
 
@@ -322,6 +337,7 @@ dependencies = [
  "ic-diagnostic",
  "ic-emit",
  "ic-hir",
+ "ic-hir-lower",
  "ic-idl",
  "ic-parse",
  "ic-preproc",
@@ -349,6 +365,7 @@ dependencies = [
  "ic-diagnostic",
  "ic-emit",
  "ic-hir",
+ "ic-hir-lower",
  "ic-hir-tree",
  "ic-hir-xform",
  "ic-lexer",
@@ -382,6 +399,7 @@ dependencies = [
  "ic-cli",
  "ic-diagnostic",
  "ic-hir",
+ "ic-hir-lower",
  "ic-parse",
  "ic-preproc",
  "ic-ptree-lower",
@@ -444,6 +462,7 @@ name = "ic-ptree-lower"
 version = "0.3.2"
 dependencies = [
  "ic-hir",
+ "ic-hir-lower",
  "ic-parse",
  "ic-preproc",
  "ic-ptree",

@@ -74,7 +74,7 @@ fn test_lint_with_includes(main_source: &str) -> String {
     );
 
     // Lower to HIR with built-ins
-    let hir = ic_hir::from_ast(ic_hir::AstInput::WithBuiltins {
+    let hir = ic_hir_lower::from_ast(ic_hir_lower::AstInput::WithBuiltins {
         builtins: builtin_parsed.tree,
         user: ast.tree,
         include_in_output: false,

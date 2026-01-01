@@ -25,15 +25,13 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-//! Central registry for managing forward declarations and definitions.
-
 use std::collections::HashMap;
 
+use ic_diagnostic::{Label, error_span};
+use ic_hir::diagnostics::Diagnostics;
+use ic_hir::hir::{Decl, DefId};
+use ic_hir::scope::ScopeId;
 use ic_syntax::Ident;
-
-use super::Diagnostics;
-use crate::hir::{Decl, DefId};
-use crate::scope::ScopeId;
 
 /// Case-folded name for case-insensitive lookup.
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
@@ -61,16 +59,23 @@ pub enum DefKindTag {
 
 /// Registry for tracking forward declarations and definitions.
 pub struct DefinitionRegistry {
-    /// Map (scope, case-folded name) → forward declaration info
+    /// Map (scope, case-folded name) -> forward declaration info.
     /// Multiple forward decls of different types are tracked here
     forward_decls: HashMap<(ScopeId, NameKey), Vec<(Decl, DefId)>>,
 
-    /// Map (scope, case-folded name) → definition `DefId`
+    /// Map (scope, case-folded name) -> definition `DefId`.
     /// Only one definition per name is allowed in a scope
     definitions: HashMap<(ScopeId, NameKey), DefId>,
 }
 
+impl Default for DefinitionRegistry {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl DefinitionRegistry {
+    #[must_use]
     pub fn new() -> Self {
         Self {
             forward_decls: HashMap::new(),
@@ -87,18 +92,14 @@ impl DefinitionRegistry {
         kind: Decl,
         def_id: DefId,
         diagnostics: &mut Diagnostics,
-        context: &crate::Context,
+        context: &ic_hir::Context,
     ) -> Option<DefId> {
         let key = (scope, NameKey::new(&name.name));
-
-        // Get or create the forward declaration list for this name
         let forward_decls = self.forward_decls.entry(key.clone()).or_default();
 
         // Check if we already have a forward declaration of this type
         for (existing_kind, _existing_id) in forward_decls.iter() {
             if *existing_kind == kind {
-                // Multiple forward declarations of the same kind are allowed
-                // Add this new forward declaration to the list
                 forward_decls.push((kind, def_id));
                 return Some(def_id);
             }
@@ -106,7 +107,6 @@ impl DefinitionRegistry {
 
         // Check if there's a forward declaration with a different type
         if !forward_decls.is_empty() {
-            use ic_diagnostic::{Label, error_span};
             let (existing_kind, existing_id) = &forward_decls[0];
             let existing_def = context.definitions.get(*existing_id);
             let existing_type_str = decl_type_str(*existing_kind);
@@ -144,13 +144,12 @@ impl DefinitionRegistry {
         kind: DefKindTag,
         def_id: DefId,
         diagnostics: &mut Diagnostics,
-        context: &crate::Context,
+        context: &ic_hir::Context,
     ) -> Option<DefId> {
         let key = (scope, NameKey::new(&name.name));
 
         // Check if definition already exists
         if let Some(&existing_id) = self.definitions.get(&key) {
-            use ic_diagnostic::{Label, error_span};
             let existing_def = context.definitions.get(existing_id);
             diagnostics.errors.push(
                 error_span(
@@ -164,7 +163,6 @@ impl DefinitionRegistry {
 
         // Check if there's a forward declaration with a mismatched type
         if let Some(forward_decls) = self.forward_decls.get(&key) {
-            use ic_diagnostic::{Label, error_span};
             for (decl_kind, forward_id) in forward_decls {
                 let expected_def_kind = def_kind_tag_from_decl(*decl_kind);
                 if expected_def_kind != kind {
@@ -195,6 +193,7 @@ impl DefinitionRegistry {
     }
 
     /// Get all forward declarations and their matching definitions.
+    #[must_use]
     pub fn get_forward_to_def_mapping(&self) -> HashMap<DefId, DefId> {
         let mut mapping = HashMap::new();
 
@@ -211,7 +210,6 @@ impl DefinitionRegistry {
     }
 }
 
-/// Convert declaration kind to definition kind tag.
 fn def_kind_tag_from_decl(decl: Decl) -> DefKindTag {
     match decl {
         Decl::Struct => DefKindTag::Struct,
@@ -222,7 +220,6 @@ fn def_kind_tag_from_decl(decl: Decl) -> DefKindTag {
     }
 }
 
-/// Get string representation of a declaration kind.
 fn decl_type_str(decl: Decl) -> &'static str {
     match decl {
         Decl::Struct => "struct",
@@ -233,7 +230,6 @@ fn decl_type_str(decl: Decl) -> &'static str {
     }
 }
 
-/// Get string representation of a definition kind tag.
 fn def_kind_tag_str(kind: DefKindTag) -> &'static str {
     match kind {
         DefKindTag::Struct => "struct",

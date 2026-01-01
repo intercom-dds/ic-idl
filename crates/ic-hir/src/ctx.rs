@@ -28,21 +28,9 @@
 use std::collections::HashSet;
 
 use ic_alloc::arena::Arena;
-use ic_syntax::Ident;
-use tracing::trace;
 
 use crate::hir::{self, Def, DefId, DefKind, Numeric, Ty, TyKind};
 use crate::scope::ScopeTree;
-
-/// Error returned when path resolution fails.
-#[must_use]
-#[derive(Debug, Clone)]
-pub struct PathResolutionError<'a> {
-    /// The identifier segment that could not be resolved.
-    pub segment: &'a Ident,
-    /// The container definition we were searching in, if any.
-    pub container: Option<DefId>,
-}
 
 #[must_use]
 #[derive(Clone, Debug)]
@@ -177,57 +165,6 @@ impl Context {
         self.scopes.resolve_path(scope, path)
     }
 
-    /// Resolves a syntax path starting from the given scope.
-    ///
-    /// # Errors
-    ///
-    /// Returns an error containing the failing segment and the container `DefId` where
-    /// resolution failed. The container `DefId` will be None if resolution failed at
-    /// the top-level scope.
-    pub fn resolve_syntax_path<'a>(
-        &self,
-        scope: crate::scope::ScopeId,
-        path: &'a ic_syntax::Path,
-    ) -> Result<DefId, PathResolutionError<'a>> {
-        let segments: Vec<&str> = path.segments.iter().map(|s| s.name.as_str()).collect();
-        let absolute = path.leading_colons.is_some();
-
-        // Delegate to ScopeTree and map the error to include AST segment info
-        let result = self
-            .scopes
-            .try_resolve_path(scope, &segments, absolute)
-            .map_err(|e| PathResolutionError {
-                segment: &path.segments[e.failed_segment],
-                container: e.container,
-            });
-
-        if tracing::enabled!(tracing::Level::TRACE) {
-            let path_str = segments.join("::");
-            match &result {
-                Ok(def_id) => {
-                    let def = self.definitions.get(*def_id);
-                    trace!(
-                        path = %path_str,
-                        ?def_id,
-                        kind = def.kind.kind_name(),
-                        absolute,
-                        "resolved"
-                    );
-                }
-                Err(e) => {
-                    trace!(
-                        path = %path_str,
-                        failed_segment = %e.segment.name,
-                        absolute,
-                        "unresolved"
-                    );
-                }
-            }
-        }
-
-        result
-    }
-
     /// Creates a child scope with the given name.
     pub fn create_child_scope(
         &mut self,
@@ -256,17 +193,6 @@ impl Context {
         def_id: DefId,
     ) {
         self.scopes.add_annotation(scope, name, def_id);
-    }
-
-    /// Resolves an annotation syntax path starting from the given scope.
-    #[must_use]
-    pub fn resolve_annotation_syntax_path(
-        &self,
-        scope: crate::scope::ScopeId,
-        path: &ic_syntax::Path,
-    ) -> Option<DefId> {
-        let segments: Vec<&str> = path.segments.iter().map(|s| s.name.as_str()).collect();
-        self.scopes.resolve_annotation_path(scope, &segments)
     }
 
     /// Returns the `DefId` of the given type, if one exists. For arrays,

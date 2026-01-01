@@ -99,7 +99,7 @@ impl Eq for CaseString {}
 
 /// A case-insensitive map that stores keys in their original form but
 /// performs case-insensitive lookups.
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug)]
 pub struct CaseMap<T> {
     inner: HashMap<CaseString, T>,
 }
@@ -223,6 +223,14 @@ impl<T> CaseMap<T> {
             CaseMapEntry {
                 inner: self.inner.entry(case_key),
             }
+        }
+    }
+}
+
+impl<T> Default for CaseMap<T> {
+    fn default() -> Self {
+        Self {
+            inner: HashMap::default(),
         }
     }
 }

@@ -25,28 +25,44 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-//! Common test utilities for HIR transformation tests
+//! HIR validation utilities.
+//!
+//! This module provides semantic validation checks on the HIR that can be run
+//! after lowering is complete.
 
-use ic_hir::ResolvedGraph;
-use ic_hir_lower::AstInput;
-use ic_vfs::SourceMap;
+use std::collections::HashMap;
 
-/// Parse IDL input and return the HIR
-#[track_caller]
-pub fn parse_and_resolve(input: &str) -> ResolvedGraph {
-    let mut source_map = SourceMap::default();
-    let file = source_map.embed_with_name("test.idl", input);
-    let parsed = ic_parse::from_file(file, ic_preproc::ProcArgs::default(), &mut source_map);
+use ic_diagnostic::{Diag, Label, error_span};
 
-    assert!(
-        parsed.errors.is_empty(),
-        "Parse errors: {:?}",
-        parsed.errors
-    );
+use crate::Context;
+use crate::hir::{Decl, DefId, DefKind};
 
-    let result = ic_hir_lower::from_ast(AstInput::User(parsed.tree));
+/// Returns errors for any forward declarations that were never defined.
+///
+/// Native declarations are excluded since they're not expected to have definitions.
+#[must_use]
+pub fn check_undefined_forward_decls<S: std::hash::BuildHasher>(
+    ctx: &Context,
+    forward_to_def: &HashMap<DefId, DefId, S>,
+) -> Vec<Diag> {
+    let mut errors = Vec::new();
 
-    assert!(result.errors.is_empty(), "HIR errors: {:?}", result.errors);
+    for (def_id, def) in &ctx.definitions {
+        if let DefKind::Decl(decl_kind) = &def.kind {
+            // Native declarations are meant to stay as declarations - skip them
+            if matches!(decl_kind, Decl::Native) {
+                continue;
+            }
 
-    result
+            // This is a forward declaration - check if it has a matching definition
+            if !forward_to_def.contains_key(&def_id) {
+                errors.push(error_span(
+                    format!("type `{}` is declared but not defined", def.ident.name),
+                    Label::new(def.ident.span).message("declared here"),
+                ));
+            }
+        }
+    }
+
+    errors
 }

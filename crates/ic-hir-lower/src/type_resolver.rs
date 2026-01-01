@@ -25,18 +25,14 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-//! Type resolution for converting AST types to HIR types.
-
-#![allow(clippy::uninlined_format_args)]
-
 use ic_diagnostic::{Label, error_span};
+use ic_hir::hir::{DefId, DefKind, PrimitiveTy, Ty, TyKind};
+use ic_hir::scope::ScopeId;
 use ic_syntax::{Path, Type as AstType};
 
-use super::LoweringContext;
-use super::eval::ConstEvaluator;
-use super::utils::{path_span, path_to_string};
-use crate::hir::{DefId, DefKind, PrimitiveTy, Ty, TyKind};
-use crate::scope::ScopeId;
+use crate::eval::ConstEvaluator;
+use crate::utils::{path_span, path_to_string};
+use crate::{LoweringContext, resolve};
 
 /// Resolves AST types to HIR types.
 pub struct TypeResolver<'ctx> {
@@ -126,7 +122,7 @@ impl<'ctx> TypeResolver<'ctx> {
         };
 
         // Resolve the path
-        match self.ctx.context.resolve_syntax_path(start, path) {
+        match resolve::resolve_path(&self.ctx.context, start, path) {
             Ok(def_id) => {
                 let def = self.ctx.context.definitions.get(def_id);
                 if Self::is_type_definition(&def.kind) {
@@ -154,7 +150,7 @@ impl<'ctx> TypeResolver<'ctx> {
                 };
 
                 self.ctx.diagnostics.errors.push(error_span(
-                    format!("no type named '{}' in {}", err.segment.name, context),
+                    format!("no type named '{}' in {context}", err.segment.name),
                     Label::new(err.segment.span).message("unknown type"),
                 ));
                 None
@@ -162,7 +158,6 @@ impl<'ctx> TypeResolver<'ctx> {
         }
     }
 
-    /// Resolve a primitive type by name.
     fn resolve_primitive(name: &str) -> Option<PrimitiveTy> {
         Some(match name {
             "void" => PrimitiveTy::Void,
@@ -184,14 +179,11 @@ impl<'ctx> TypeResolver<'ctx> {
         })
     }
 
-    /// Evaluate a bound expression to a numeric value.
     fn evaluate_bound(&mut self, expr: &ic_syntax::Expr) -> Option<usize> {
-        // Use the full expression evaluator
         let mut evaluator = ConstEvaluator::new(self.ctx, self.current_scope);
         evaluator.eval_nonneg_bound(expr)
     }
 
-    /// Check if a `DefKind` represents a type definition.
     fn is_type_definition(kind: &DefKind) -> bool {
         !matches!(
             kind,
@@ -201,7 +193,6 @@ impl<'ctx> TypeResolver<'ctx> {
 
     /// Check if a path reference has consistent capitalization with the definition.
     fn check_case_consistency(&mut self, path: &Path, _def_id: DefId) {
-        // Walk through each segment of the path and check its case
         let mut current_scope = if path.leading_colons.is_some() {
             self.ctx.context.root_scope()
         } else {
@@ -215,7 +206,6 @@ impl<'ctx> TypeResolver<'ctx> {
 
             // For the last segment, look for a definition
             if is_last {
-                // Check all parent scopes for this definition
                 let mut check_scope = Some(current_scope);
                 while let Some(scope_id) = check_scope {
                     let scope = self.ctx.context.scopes.get_scope(scope_id);
@@ -226,12 +216,12 @@ impl<'ctx> TypeResolver<'ctx> {
                             self.ctx.diagnostics.errors.push(
                                 error_span(
                                     format!(
-                                        "inconsistent capitalization: `{}` should be `{}`",
-                                        name, canonical_name
+                                        "inconsistent capitalization: `{name}` should be \
+                                         `{canonical_name}`",
                                     ),
                                     Label::new(span).message("used here"),
                                 )
-                                .note(format!("the canonical name is `{}`", canonical_name)),
+                                .note(format!("the canonical name is `{canonical_name}`")),
                             );
                         }
                         return;
@@ -248,12 +238,12 @@ impl<'ctx> TypeResolver<'ctx> {
                         self.ctx.diagnostics.errors.push(
                             error_span(
                                 format!(
-                                    "inconsistent capitalization: `{}` should be `{}`",
-                                    name, canonical_name
+                                    "inconsistent capitalization: `{name}` should be \
+                                     `{canonical_name}`"
                                 ),
                                 Label::new(span).message("module name used here"),
                             )
-                            .note(format!("the canonical module name is `{}`", canonical_name)),
+                            .note(format!("the canonical module name is `{canonical_name}`")),
                         );
                     }
 
@@ -261,10 +251,10 @@ impl<'ctx> TypeResolver<'ctx> {
                     if let Some(&child_scope) = scope.children.get(name) {
                         current_scope = child_scope;
                     } else {
-                        return; // Path doesn't resolve
+                        return;
                     }
                 } else {
-                    return; // Module not found
+                    return;
                 }
             }
         }

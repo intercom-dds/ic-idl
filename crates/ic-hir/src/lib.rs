@@ -35,22 +35,20 @@
 
 //! High-level Intermediate Representation (HIR) for IDL compilation.
 //!
-//! This crate transforms the parse tree (AST) into a typed, resolved
-//! representation suitable for semantic analysis and code generation. The HIR
-//! resolves names, performs type checking, and evaluates constant expressions.
+//! This crate provides the core HIR data structures and utilities. The HIR is a
+//! typed, resolved representation suitable for semantic analysis and code generation.
 //!
 //! # Architecture
 //!
-//! The main entry point is [`from_ast`], which takes an AST and produces a [`ResolvedGraph`].
-//! The graph contains:
-//! - A [`Context`] with all type definitions and metadata
-//! - The order in which types were defined
-//! - Any errors or warnings encountered during lowering
+//! The HIR consists of:
+//! - [`ResolvedGraph`] - The top-level result containing all definitions
+//! - [`Context`] - Owns all type definitions and provides lookup
+//! - [`hir`] module - Core type definitions (`Def`, `DefKind`, `Ty`, etc.)
 //!
-//! # Example
+//! To create HIR from AST, use `ic-hir-lower`:
 //!
 //! ```ignore
-//! use ic_hir::{from_ast, AstInput};
+//! use ic_hir_lower::{from_ast, AstInput};
 //!
 //! let ast = parse_idl_file("example.idl")?;
 //! let hir = from_ast(AstInput::User(ast));
@@ -67,10 +65,11 @@
 
 use std::fmt::Debug;
 
+mod ctx;
 pub use crate::ctx::Context;
 
-mod ctx;
-mod lower;
+/// Diagnostic collection for HIR lowering.
+pub mod diagnostics;
 
 /// Annotation processing and validation.
 pub mod annotation;
@@ -87,33 +86,20 @@ pub mod keywords;
 /// Merging multiple HIR graphs into a single graph.
 pub mod merge;
 
+/// HIR rewriting utilities for replacing DefId references.
+pub mod rewrite;
+
 /// Scope resolution and name lookup utilities.
 pub mod scope;
 
 /// Type size calculations for fixed-size types.
 pub mod type_size;
 
+/// HIR validation utilities.
+pub mod validate;
+
 /// HIR visitor pattern for traversal and analysis.
 pub mod visit;
-
-/// Input for HIR lowering, supporting both user-only and user+builtins scenarios.
-pub enum AstInput<I> {
-    /// Just user AST, no builtins
-    User(I),
-
-    /// User AST with builtin definitions
-    WithBuiltins {
-        /// Built-in definitions that will be marked with `IS_BUILTIN` flag
-        builtins: I,
-
-        /// User definitions
-        user: I,
-
-        /// If true, builtins are included in the output order.
-        /// If false, they're available in context but not in the output.
-        include_in_output: bool,
-    },
-}
 
 /// The result of lowering AST to HIR.
 ///
@@ -156,32 +142,6 @@ impl<'a> IntoIterator for &'a ResolvedGraph {
 
     fn into_iter(self) -> Self::IntoIter {
         self.iter()
-    }
-}
-
-/// Convert AST to HIR with the specified input configuration.
-pub fn from_ast<I>(input: AstInput<I>) -> ResolvedGraph
-where
-    I: IntoIterator<Item = ic_syntax::Item>,
-{
-    let result = match input {
-        AstInput::User(ast) => lower::lower(ast),
-        AstInput::WithBuiltins {
-            builtins,
-            user,
-            include_in_output,
-        } => {
-            // Process builtins and user AST together
-            lower::lower_with_builtins(builtins, user, include_in_output)
-        }
-    };
-
-    ResolvedGraph {
-        context: result.context,
-        order: result.order,
-        builtin_order: result.builtin_order,
-        errors: result.errors,
-        warnings: result.warnings,
     }
 }
 

@@ -42,7 +42,7 @@ fn parse_with_builtins(input: &str) -> ResolvedGraph {
     );
     let builtin_parsed = ic_parse::from_file(builtin_file_id, ProcArgs::default(), &mut source_map);
 
-    ic_hir::from_ast(ic_hir::AstInput::WithBuiltins {
+    ic_hir_lower::from_ast(ic_hir_lower::AstInput::WithBuiltins {
         builtins: builtin_parsed.tree,
         user: parsed.tree,
         include_in_output: false,

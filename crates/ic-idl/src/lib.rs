@@ -209,7 +209,7 @@ impl CompileDiagnostics {
 // Re-export core modules for the compilation pipeline
 pub use ic_parse::ParseResult as AstResult;
 pub use ic_syntax::Item as AstItem;
-pub use {ic_hir as hir, ic_ptree as ptree, ic_vfs as vfs};
+pub use {ic_hir as hir, ic_hir_lower as hir_lower, ic_ptree as ptree, ic_vfs as vfs};
 
 /// Convert AST to HIR.
 ///
@@ -234,7 +234,7 @@ where
     all_warnings.extend(report.warnings);
 
     // Lower to HIR
-    let mut hir = hir::from_ast(hir::AstInput::User(ast_vec));
+    let mut hir = hir_lower::from_ast(hir_lower::AstInput::User(ast_vec));
 
     // Lint the HIR if no errors so far
     if all_errors.is_empty() {
@@ -494,13 +494,13 @@ impl Compiler {
         let mut hir = {
             let _lower_span = info_span!("lower").entered();
             if include_builtins {
-                hir::from_ast(hir::AstInput::WithBuiltins {
+                hir_lower::from_ast(hir_lower::AstInput::WithBuiltins {
                     builtins: builtin_ast.to_vec(),
                     user: ast.tree,
                     include_in_output: false,
                 })
             } else {
-                hir::from_ast(hir::AstInput::User(ast.tree))
+                hir_lower::from_ast(hir_lower::AstInput::User(ast.tree))
             }
         };
 

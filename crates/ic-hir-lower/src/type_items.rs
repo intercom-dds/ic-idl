@@ -25,22 +25,20 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-//! Processing for type items: struct, union, interface, valuetype, native.
-
-use ic_syntax::{AliasDef, ExceptDef, InterfaceDef, StructDef, UnionDef, ValuetypeDef};
-
-use super::LoweringContext;
-use super::annotation_common::convert_annotations;
-use super::eval::ConstEvaluator;
-use super::registry::DefKindTag;
-use super::type_resolver::TypeResolver;
-use super::utils::TyExt;
-use super::value_items::resolve_declarator;
-use crate::hir::{
+use ic_hir::hir::{
     AliasTy, Attribute, Decl, Def, DefFlags, DefId, DefKind, ExceptTy, InterfaceTy, Label, Member,
     Parameter, PrimitiveTy, ProtoTy, StructTy, Ty, TyKind, UnionTy, ValueTy, Variant,
 };
-use crate::scope::ScopeId;
+use ic_hir::scope::ScopeId;
+use ic_syntax::{AliasDef, ExceptDef, InterfaceDef, StructDef, UnionDef, ValuetypeDef};
+
+use crate::LoweringContext;
+use crate::annotation::convert_annotations;
+use crate::eval::ConstEvaluator;
+use crate::registry::DefKindTag;
+use crate::type_resolver::TypeResolver;
+use crate::utils::TyExt;
+use crate::value_items::resolve_declarator;
 
 /// Processes type items (struct, union, interface, valuetype, native).
 pub struct TypeItemProcessor<'ctx> {
@@ -101,7 +99,7 @@ impl<'ctx> TypeItemProcessor<'ctx> {
             kind: DefKind::Struct(StructTy {
                 parent: self.ctx.context.scopes.get_scope(self.current_scope).def_id,
                 members: Vec::new(),
-            }), // Placeholder
+            }),
             flags: DefFlags::nil(),
         });
 
@@ -127,12 +125,12 @@ impl<'ctx> TypeItemProcessor<'ctx> {
                         parent_id,
                         "struct",
                         &s.ident.name,
-                        super::utils::path_span(parent_type),
+                        crate::utils::path_span(parent_type),
                     )
                 } else {
                     self.ctx.diagnostics.error(
                         "parent must be a struct type".to_string(),
-                        ic_diagnostic::Label::new(super::utils::path_span(parent_type))
+                        ic_diagnostic::Label::new(crate::utils::path_span(parent_type))
                             .message("expected struct type"),
                     );
                     None
@@ -167,7 +165,7 @@ impl<'ctx> TypeItemProcessor<'ctx> {
                         parent_id,
                         "interface",
                         &i.ident.name,
-                        super::utils::path_span(parent_path),
+                        crate::utils::path_span(parent_path),
                     ) {
                         parents.push(valid_parent_id);
                     }
@@ -219,7 +217,7 @@ impl<'ctx> TypeItemProcessor<'ctx> {
                     attributes.extend(self.process_attributes(attr));
                 }
                 ic_syntax::InterfaceMember::Item(item) => {
-                    let mut builder = super::builder::HirBuilder::new(self.ctx);
+                    let mut builder = crate::builder::HirBuilder::new(self.ctx);
                     builder.current_scope = scope;
                     let item_defs = builder.process_item(item);
                     definitions.extend(item_defs);
@@ -291,7 +289,7 @@ impl<'ctx> TypeItemProcessor<'ctx> {
         let mut resolver = TypeResolver::new(self.ctx, self.current_scope);
         let disc_ty = resolver.resolve_type(&u.disc.ty).unwrap_or_else(|| Ty {
             span: (ic_syntax::util::ty_span(&u.disc.ty)),
-            kind: crate::hir::TyKind::Primitive(crate::hir::PrimitiveTy::Int32),
+            kind: ic_hir::hir::TyKind::Primitive(ic_hir::hir::PrimitiveTy::Int32),
         });
 
         let disc_annotations =
@@ -337,7 +335,7 @@ impl<'ctx> TypeItemProcessor<'ctx> {
 
         let variants = self.process_union_variants(&u.fields, &disc_ty);
 
-        let disc = crate::hir::Disc {
+        let disc = ic_hir::hir::Disc {
             annotations: disc_annotations,
             ty: disc_ty,
         };
@@ -426,7 +424,7 @@ impl<'ctx> TypeItemProcessor<'ctx> {
                     parent_id,
                     "valuetype",
                     &v.ident.name,
-                    super::utils::path_span(parent_type),
+                    crate::utils::path_span(parent_type),
                 )
             })
     }
@@ -448,7 +446,7 @@ impl<'ctx> TypeItemProcessor<'ctx> {
                 } else {
                     self.ctx.diagnostics.error(
                         "supports must be an interface type".to_string(),
-                        ic_diagnostic::Label::new(super::utils::path_span(supports_type))
+                        ic_diagnostic::Label::new(crate::utils::path_span(supports_type))
                             .message("expected interface type"),
                     );
                     None
@@ -484,7 +482,7 @@ impl<'ctx> TypeItemProcessor<'ctx> {
                     attributes.extend(self.process_attributes(attr));
                 }
                 ic_syntax::ValueElement::Item(item) => {
-                    let mut builder = super::builder::HirBuilder::new(self.ctx);
+                    let mut builder = crate::builder::HirBuilder::new(self.ctx);
                     builder.current_scope = scope;
                     let item_defs = builder.process_item(item);
                     definitions.extend(item_defs);
@@ -734,7 +732,7 @@ impl<'ctx> TypeItemProcessor<'ctx> {
                         } else {
                             self.ctx.diagnostics.error(
                                 format!("'{}' is not an exception type", def.ident.name),
-                                ic_diagnostic::Label::new(super::utils::path_span(path))
+                                ic_diagnostic::Label::new(crate::utils::path_span(path))
                                     .message("not an exception"),
                             );
                             None

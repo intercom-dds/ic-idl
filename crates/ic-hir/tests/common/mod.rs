@@ -28,7 +28,8 @@
 //! Common test utilities for HIR tests
 
 use ic_cli::color::ColorMode;
-use ic_hir::{AstInput, ResolvedGraph};
+use ic_hir::ResolvedGraph;
+use ic_hir_lower::AstInput;
 use ic_vfs::SourceMap;
 
 /// Parse IDL input and return the HIR along with rendered diagnostics
@@ -58,7 +59,7 @@ pub fn parse_and_resolve(input: &str) -> (ResolvedGraph, SourceMap, String) {
         &mut source_map,
     );
 
-    let result = ic_hir::from_ast(AstInput::WithBuiltins {
+    let result = ic_hir_lower::from_ast(AstInput::WithBuiltins {
         builtins: builtin_parsed.tree,
         user: parsed.tree,
         include_in_output: false,
@@ -176,7 +177,7 @@ pub fn parse_with_custom_builtins(
         user_parsed.errors
     );
 
-    let result = ic_hir::from_ast(AstInput::WithBuiltins {
+    let result = ic_hir_lower::from_ast(AstInput::WithBuiltins {
         builtins: builtin_parsed.tree,
         user: user_parsed.tree,
         include_in_output: include_builtins_in_output,

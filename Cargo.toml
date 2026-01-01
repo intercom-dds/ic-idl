@@ -48,6 +48,7 @@ members = [
     "crates/ic-expr",
     "crates/ic-fuzz",
     "crates/ic-hir",
+    "crates/ic-hir-lower",
     "crates/ic-hir-tree",
     "crates/ic-hir-xform",
     "crates/ic-idl",

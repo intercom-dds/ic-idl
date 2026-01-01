@@ -92,7 +92,6 @@ impl<'ctx> TypeItemProcessor<'ctx> {
     pub fn process_struct(&mut self, s: &StructDef) -> DefId {
         let annotations = convert_annotations(self.ctx, &s.annotations, self.current_scope);
 
-        // Create a placeholder definition first
         let def_id = self.ctx.context.definitions.alloc_with_id(|id| Def {
             id,
             ident: s.ident.clone(),
@@ -106,13 +105,11 @@ impl<'ctx> TypeItemProcessor<'ctx> {
             flags: DefFlags::nil(),
         });
 
-        // Register in scope immediately so self-references work
         self.ctx
             .context
             .scopes
             .add_definition(self.current_scope, s.ident.name.clone(), def_id);
 
-        // Register with the registry
         _ = self.ctx.registry.register_definition(
             self.current_scope,
             &s.ident,
@@ -122,7 +119,6 @@ impl<'ctx> TypeItemProcessor<'ctx> {
             &self.ctx.context,
         );
 
-        // Now resolve parent type if present
         let parent = if let Some(ref parent_type) = s.parent {
             let mut resolver = TypeResolver::new(self.ctx, self.current_scope);
             resolver.resolve_path_type(parent_type).and_then(|ty| {
@@ -146,10 +142,8 @@ impl<'ctx> TypeItemProcessor<'ctx> {
             None
         };
 
-        // Process members (struct is now in scope)
         let members = self.process_members(&s.members);
 
-        // Update the definition with the actual struct data
         let def = self.ctx.context.definitions.get_mut(def_id);
         if let DefKind::Struct(struct_ty) = &mut def.kind {
             struct_ty.parent = parent;
@@ -169,7 +163,6 @@ impl<'ctx> TypeItemProcessor<'ctx> {
             let mut resolver = TypeResolver::new(self.ctx, self.current_scope);
             if let Some(ty) = resolver.resolve_path_type(parent_path) {
                 if let Some(parent_id) = ty.as_adt() {
-                    // Validate that parent is not an incomplete type
                     if let Some(valid_parent_id) = self.validate_parent_inheritance(
                         parent_id,
                         "interface",
@@ -188,14 +181,12 @@ impl<'ctx> TypeItemProcessor<'ctx> {
             }
         }
 
-        // Create scope and process members
         let scope = self.ctx.context.scopes.create_child_scope(
             self.current_scope,
             i.ident.name.clone(),
             None,
         );
 
-        // Create the interface definition first with empty collections
         let def_id = self.ctx.context.definitions.alloc_with_id(|id| Def {
             id,
             ident: i.ident.clone(),
@@ -212,14 +203,10 @@ impl<'ctx> TypeItemProcessor<'ctx> {
             flags: DefFlags::nil(),
         });
 
-        // Update the scope's def_id so nested items can find their parent
         self.ctx.context.scopes.set_scope_def_id(scope, def_id);
 
-        // Process interface members now that the interface exists
         let mut prototypes = Vec::new();
         let mut attributes = Vec::new();
-
-        // Save current scope and switch to interface scope
         let prev_scope = self.current_scope;
         self.current_scope = scope;
 
@@ -232,7 +219,6 @@ impl<'ctx> TypeItemProcessor<'ctx> {
                     attributes.extend(self.process_attributes(attr));
                 }
                 ic_syntax::InterfaceMember::Item(item) => {
-                    // Process nested type definition
                     let mut builder = super::builder::HirBuilder::new(self.ctx);
                     builder.current_scope = scope;
                     let item_defs = builder.process_item(item);
@@ -241,10 +227,8 @@ impl<'ctx> TypeItemProcessor<'ctx> {
             }
         }
 
-        // Restore previous scope
         self.current_scope = prev_scope;
 
-        // Update the interface with the collected members
         let interface_def = self.ctx.context.definitions.get_mut(def_id);
         if let DefKind::Interface(ref mut interface_ty) = interface_def.kind {
             interface_ty.prototypes = prototypes;
@@ -252,7 +236,6 @@ impl<'ctx> TypeItemProcessor<'ctx> {
             interface_ty.definitions = definitions;
         }
 
-        // Register with the registry
         if self
             .ctx
             .registry
@@ -266,7 +249,6 @@ impl<'ctx> TypeItemProcessor<'ctx> {
             )
             .is_some()
         {
-            // Register in scope only if registry registration succeeded
             self.ctx.context.scopes.add_definition(
                 self.current_scope,
                 i.ident.name.clone(),
@@ -281,7 +263,7 @@ impl<'ctx> TypeItemProcessor<'ctx> {
     pub fn process_union(&mut self, u: &UnionDef) -> DefId {
         let annotations = convert_annotations(self.ctx, &u.annotations, self.current_scope);
 
-        // Create a placeholder union declaration first
+        // Create as a forward declaration first so self-references work
         let def_id = self.ctx.context.definitions.alloc_with_id(|id| Def {
             id,
             ident: u.ident.clone(),
@@ -292,13 +274,11 @@ impl<'ctx> TypeItemProcessor<'ctx> {
             flags: DefFlags::nil(),
         });
 
-        // Register in scope immediately so self-references work
         self.ctx
             .context
             .scopes
             .add_definition(self.current_scope, u.ident.name.clone(), def_id);
 
-        // Register with the registry
         self.ctx.registry.register_definition(
             self.current_scope,
             &u.ident,
@@ -308,22 +288,16 @@ impl<'ctx> TypeItemProcessor<'ctx> {
             &self.ctx.context,
         );
 
-        // Now resolve discriminator type
         let mut resolver = TypeResolver::new(self.ctx, self.current_scope);
-        let disc_ty = resolver.resolve_type(&u.disc.ty).unwrap_or_else(|| {
-            // Use a default type on error
-            Ty {
-                span: (ic_syntax::util::ty_span(&u.disc.ty)),
-                kind: crate::hir::TyKind::Primitive(crate::hir::PrimitiveTy::Int32),
-            }
+        let disc_ty = resolver.resolve_type(&u.disc.ty).unwrap_or_else(|| Ty {
+            span: (ic_syntax::util::ty_span(&u.disc.ty)),
+            kind: crate::hir::TyKind::Primitive(crate::hir::PrimitiveTy::Int32),
         });
 
-        // Convert discriminator annotations
         let disc_annotations =
             convert_annotations(self.ctx, &u.disc.annotations, self.current_scope);
 
-        // Validate that discriminator is an enum, integral type, boolean, or char
-        // Resolve through typedefs to get the underlying type
+        // Validate discriminator is an enum, integral type, boolean, or char
         let resolved_disc_ty = self.ctx.context.resolve_ty(&disc_ty);
         let is_valid_discriminator = match &resolved_disc_ty.kind {
             TyKind::Primitive(p) => matches!(
@@ -355,23 +329,19 @@ impl<'ctx> TypeItemProcessor<'ctx> {
             );
         }
 
-        // Create scope for union members
         let _scope = self.ctx.context.scopes.create_child_scope(
             self.current_scope,
             u.ident.name.clone(),
             Some(def_id),
         );
 
-        // Process union variants (union is now in scope)
         let variants = self.process_union_variants(&u.fields, &disc_ty);
 
-        // Create the Disc struct with annotations and type
         let disc = crate::hir::Disc {
             annotations: disc_annotations,
             ty: disc_ty,
         };
 
-        // Update the definition with the actual union data
         let def = self.ctx.context.definitions.get_mut(def_id);
         def.kind = DefKind::Union(UnionTy { disc, variants });
 
@@ -380,19 +350,16 @@ impl<'ctx> TypeItemProcessor<'ctx> {
 
     /// Process a valuetype definition.
     pub fn process_valuetype(&mut self, v: &ValuetypeDef) -> DefId {
-        // Resolve parent and supports
         let parent = self.resolve_valuetype_parent(v);
         let supports = self.resolve_valuetype_supports(v);
         let annotations = convert_annotations(self.ctx, &v.annotations, self.current_scope);
 
-        // Create scope for valuetype members
         let scope = self.ctx.context.scopes.create_child_scope(
             self.current_scope,
             v.ident.name.clone(),
             None,
         );
 
-        // Create the valuetype definition first with empty collections
         let def_id = self.ctx.context.definitions.alloc_with_id(|id| Def {
             id,
             ident: v.ident.clone(),
@@ -410,14 +377,11 @@ impl<'ctx> TypeItemProcessor<'ctx> {
             flags: DefFlags::nil(),
         });
 
-        // Update the scope's def_id so nested items can find their parent
         self.ctx.context.scopes.set_scope_def_id(scope, def_id);
 
-        // Process valuetype elements now that the valuetype exists
         let (members, prototypes, attributes, definitions) =
             self.process_valuetype_elements(v, scope);
 
-        // Update the valuetype with the collected members
         let valuetype_def = self.ctx.context.definitions.get_mut(def_id);
         if let DefKind::Valuetype(ref mut value_ty) = valuetype_def.kind {
             value_ty.prototypes = prototypes;
@@ -426,7 +390,6 @@ impl<'ctx> TypeItemProcessor<'ctx> {
             value_ty.definitions = definitions;
         }
 
-        // Register with the registry
         if self
             .ctx
             .registry
@@ -506,8 +469,6 @@ impl<'ctx> TypeItemProcessor<'ctx> {
         let mut prototypes = Vec::new();
         let mut attributes = Vec::new();
         let mut definitions = Vec::new();
-
-        // Save current scope and switch to valuetype scope
         let prev_scope = self.current_scope;
         self.current_scope = scope;
 
@@ -531,9 +492,7 @@ impl<'ctx> TypeItemProcessor<'ctx> {
             }
         }
 
-        // Restore previous scope
         self.current_scope = prev_scope;
-
         (members, prototypes, attributes, definitions)
     }
 
@@ -550,9 +509,7 @@ impl<'ctx> TypeItemProcessor<'ctx> {
         self.create_forward_declaration(&decl.ident, hir_decl_kind)
     }
 
-    /// Create a forward declaration.
     fn create_forward_declaration(&mut self, ident: &ic_syntax::Ident, kind: Decl) -> DefId {
-        // Allocate the forward declaration definition
         let def_id = self.ctx.context.definitions.alloc_with_id(|id| Def {
             id,
             ident: ident.clone(),
@@ -563,7 +520,6 @@ impl<'ctx> TypeItemProcessor<'ctx> {
             flags: DefFlags::IS_INCOMPLETE,
         });
 
-        // Register with the registry
         if let Some(existing_id) = self.ctx.registry.register_forward_decl(
             self.current_scope,
             ident,
@@ -576,7 +532,6 @@ impl<'ctx> TypeItemProcessor<'ctx> {
             return existing_id;
         }
 
-        // Register in scope
         self.ctx
             .context
             .scopes
@@ -590,18 +545,14 @@ impl<'ctx> TypeItemProcessor<'ctx> {
         let mut members = Vec::new();
 
         for field in fields {
-            // Resolve the type once for this field
             let mut resolver = TypeResolver::new(self.ctx, self.current_scope);
             let Some(ty) = resolver.resolve_type(&field.ty) else {
-                continue; // Error already reported
+                continue;
             };
 
-            // Convert field annotations
             let annotations = convert_annotations(self.ctx, &field.annotations, self.current_scope);
 
-            // Process each declarator in the field
             for decl in &field.names {
-                // Use resolve_declarator to handle array types properly
                 let (ident, member_ty) =
                     resolve_declarator(decl, ty.clone(), self.ctx, self.current_scope);
 
@@ -628,27 +579,22 @@ impl<'ctx> TypeItemProcessor<'ctx> {
             let annotations = convert_annotations(self.ctx, &field.annotations, self.current_scope);
             match &field.field {
                 ic_syntax::UnionElement::Member(member) => {
-                    // Resolve the type for this variant
                     let mut resolver = TypeResolver::new(self.ctx, self.current_scope);
                     let Some(ty) = resolver.resolve_type(&member.ty) else {
-                        continue; // Error already reported
+                        continue;
                     };
 
-                    // Use resolve_declarator to handle array types properly
                     let (ident, variant_ty) =
                         resolve_declarator(&member.decl, ty, self.ctx, self.current_scope);
 
-                    // Check if this is a default case
                     let is_default = field
                         .labels
                         .iter()
                         .any(|label| matches!(label, ic_syntax::Label::Default(_)));
 
-                    // Process and evaluate case labels
                     let mut labels = Vec::new();
                     for label in &field.labels {
                         if let ic_syntax::Label::Case(expr) = label {
-                            // Create an evaluator and evaluate the expression
                             let mut evaluator = ConstEvaluator::new(self.ctx, self.current_scope);
                             if let Some(numeric) = evaluator.eval_union_case_label(expr, disc) {
                                 labels.push(Label {
@@ -656,7 +602,6 @@ impl<'ctx> TypeItemProcessor<'ctx> {
                                     span: expr.span(),
                                 });
                             }
-                            // If evaluation fails, error was already reported
                         }
                     }
 
@@ -679,11 +624,9 @@ impl<'ctx> TypeItemProcessor<'ctx> {
                         .iter()
                         .any(|label| matches!(label, ic_syntax::Label::Default(_)));
 
-                    // Process and evaluate case labels
                     let mut labels = Vec::new();
                     for label in &field.labels {
                         if let ic_syntax::Label::Case(expr) = label {
-                            // Create an evaluator and evaluate the expression
                             let mut evaluator = ConstEvaluator::new(self.ctx, self.current_scope);
                             if let Some(numeric) = evaluator.eval_union_case_label(expr, disc) {
                                 labels.push(Label {
@@ -691,11 +634,9 @@ impl<'ctx> TypeItemProcessor<'ctx> {
                                     span: expr.span(),
                                 });
                             }
-                            // If evaluation fails, error was already reported
                         }
                     }
 
-                    // Use a null type for null cases
                     let null_ty = Ty {
                         span: null_elem.span,
                         kind: TyKind::Null,
@@ -715,34 +656,23 @@ impl<'ctx> TypeItemProcessor<'ctx> {
         variants
     }
 
-    /// Process a prototype (interface method).
     fn process_prototype(&mut self, proto: &ic_syntax::Prototype) -> ProtoTy {
-        // Resolve return type
         let mut resolver = TypeResolver::new(self.ctx, self.current_scope);
-        let ty = resolver.resolve_type(&proto.ret).unwrap_or_else(|| {
-            // Default to void on error
-            Ty {
-                span: ic_syntax::util::ty_span(&proto.ret),
-                kind: TyKind::Null,
-            }
+        let ty = resolver.resolve_type(&proto.ret).unwrap_or_else(|| Ty {
+            span: ic_syntax::util::ty_span(&proto.ret),
+            kind: TyKind::Null,
         });
 
-        // Process parameters
         let params = proto
             .params
             .iter()
             .map(|param| {
-                // Resolve the base type first
                 let mut resolver = TypeResolver::new(self.ctx, self.current_scope);
-                let base_ty = resolver.resolve_type(&param.ty).unwrap_or_else(|| {
-                    // Default type on error
-                    Ty {
-                        span: ic_syntax::util::ty_span(&param.ty),
-                        kind: TyKind::Primitive(PrimitiveTy::Int32),
-                    }
+                let base_ty = resolver.resolve_type(&param.ty).unwrap_or_else(|| Ty {
+                    span: ic_syntax::util::ty_span(&param.ty),
+                    kind: TyKind::Primitive(PrimitiveTy::Int32),
                 });
 
-                // Use resolve_declarator to handle array types and validate bounds
                 let (ident, param_ty) =
                     resolve_declarator(&param.decl, base_ty, self.ctx, self.current_scope);
 
@@ -764,23 +694,18 @@ impl<'ctx> TypeItemProcessor<'ctx> {
         }
     }
 
-    /// Process attributes (can have multiple declarators).
     fn process_attributes(&mut self, attr: &ic_syntax::Attribute) -> Vec<Attribute> {
         let mut attributes = Vec::new();
 
-        // Resolve the attribute type
         let mut resolver = TypeResolver::new(self.ctx, self.current_scope);
         let Some(ty) = resolver.resolve_type(&attr.ty) else {
-            return attributes; // Error already reported
+            return attributes;
         };
 
-        // Process raises clauses (for exceptions)
         let getraises = self.resolve_exception_paths(&attr.getraises);
         let setraises = self.resolve_exception_paths(&attr.setraises);
 
-        // Process each declarator
         for decl in &attr.decl {
-            // Use resolve_declarator to handle array types properly
             let (ident, attr_ty) =
                 resolve_declarator(decl, ty.clone(), self.ctx, self.current_scope);
 
@@ -796,7 +721,6 @@ impl<'ctx> TypeItemProcessor<'ctx> {
         attributes
     }
 
-    /// Resolve exception paths to `DefIds`.
     fn resolve_exception_paths(&mut self, paths: &[ic_syntax::Path]) -> Vec<DefId> {
         paths
             .iter()
@@ -804,7 +728,6 @@ impl<'ctx> TypeItemProcessor<'ctx> {
                 let mut resolver = TypeResolver::new(self.ctx, self.current_scope);
                 resolver.resolve_path_type(path).and_then(|ty| {
                     if let Some(def_id) = ty.as_adt() {
-                        // Verify it's an exception type
                         let def = self.ctx.context.definitions.get(def_id);
                         if matches!(&def.kind, DefKind::Except(_)) {
                             Some(def_id)
@@ -824,23 +747,17 @@ impl<'ctx> TypeItemProcessor<'ctx> {
             .collect()
     }
 
-    /// Process a type alias definition.
     pub fn process_alias(&mut self, a: &AliasDef) -> Vec<DefId> {
         let mut def_ids = Vec::new();
         let annotations = convert_annotations(self.ctx, &a.annotations, self.current_scope);
 
-        // Type aliases can have multiple declarators, process each one
         for decl in &a.decl {
-            // Resolve the base type first
             let mut resolver = TypeResolver::new(self.ctx, self.current_scope);
             let Some(base_ty) = resolver.resolve_type(&a.ty) else {
-                continue; // Error already reported
+                continue;
             };
 
-            // Use resolve_declarator to handle array types and validate bounds
             let (ident, ty) = resolve_declarator(decl, base_ty, self.ctx, self.current_scope);
-
-            // Create the alias definition
             let alias_ty = AliasTy { ty };
 
             let def_id = self.ctx.context.definitions.alloc_with_id(|id| Def {
@@ -853,8 +770,6 @@ impl<'ctx> TypeItemProcessor<'ctx> {
                 flags: DefFlags::nil(),
             });
 
-            // Type aliases don't use the registry (they're not forward-declarable)
-            // Just register in the scope
             self.ctx
                 .context
                 .scopes
@@ -866,14 +781,9 @@ impl<'ctx> TypeItemProcessor<'ctx> {
         def_ids
     }
 
-    /// Process an exception definition.
     pub fn process_exception(&mut self, e: &ExceptDef) -> DefId {
         let annotations = convert_annotations(self.ctx, &e.annotations, self.current_scope);
-
-        // Process exception members (similar to struct members)
         let members = self.process_members(&e.members);
-
-        // Create the exception definition
         let except_ty = ExceptTy { members };
 
         let def_id = self.ctx.context.definitions.alloc_with_id(|id| Def {
@@ -886,7 +796,7 @@ impl<'ctx> TypeItemProcessor<'ctx> {
             flags: DefFlags::nil(),
         });
 
-        // Exceptions are not forward-declarable, just register in the scope
+        // Register in scope so self-references work
         self.ctx
             .context
             .scopes
@@ -895,23 +805,15 @@ impl<'ctx> TypeItemProcessor<'ctx> {
         def_id
     }
 
-    /// Process valuetype state members.
     fn process_value_members(&mut self, members: &ic_syntax::ValueMember) -> Vec<Member> {
         let mut result = Vec::new();
 
-        // Process visibility (public/private)
-        // Note: visibility is not stored in HIR, but could be added if needed
-        let _ = members.is_public;
-
-        // Resolve the type
         let mut resolver = TypeResolver::new(self.ctx, self.current_scope);
         let Some(ty) = resolver.resolve_type(&members.ty) else {
-            return result; // Error already reported
+            return result;
         };
 
-        // Process each declarator
         for decl in &members.decl {
-            // Use resolve_declarator to handle array types properly
             let (ident, member_ty) =
                 resolve_declarator(decl, ty.clone(), self.ctx, self.current_scope);
 

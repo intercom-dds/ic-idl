@@ -52,14 +52,11 @@ impl<'ctx> ValueItemProcessor<'ctx> {
         Self { ctx, current_scope }
     }
 
-    /// Process a constant definition.
     pub fn process_const(&mut self, c: &ConstDef) -> DefId {
-        // Resolve the base type first
         let mut resolver = TypeResolver::new(self.ctx, self.current_scope);
         let (base_ty, type_resolved) = if let Some(ty) = resolver.resolve_type(&c.ty) {
             (ty, true)
         } else {
-            // Use a default type on error
             let fallback = Ty {
                 span: ic_syntax::util::ty_span(&c.ty),
                 kind: TyKind::Primitive(PrimitiveTy::Int32),
@@ -67,10 +64,8 @@ impl<'ctx> ValueItemProcessor<'ctx> {
             (fallback, false)
         };
 
-        // Process the declarator to get identifier and full type (including array dimensions)
         let (ident, ty) = resolve_declarator(&c.decl, base_ty, self.ctx, self.current_scope);
 
-        // Evaluate the value using the promotion-aware evaluator
         // Skip evaluation if type resolution failed to avoid confusing secondary errors
         let value = if type_resolved {
             let mut eval = ConstEvaluator::new(self.ctx, self.current_scope);
@@ -79,16 +74,12 @@ impl<'ctx> ValueItemProcessor<'ctx> {
             None
         };
 
-        // Create the constant definition
         let const_ty = ConstTy {
             ty,
             value: value.unwrap_or(Numeric::Null),
         };
 
-        // Convert annotations before the closure
         let annotations = convert_annotations(self.ctx, &c.annotations, self.current_scope);
-
-        // Now create the definition fully formed
         let def_id = self.ctx.context.definitions.alloc_with_id(|id| Def {
             id,
             ident: ident.clone(),
@@ -99,7 +90,6 @@ impl<'ctx> ValueItemProcessor<'ctx> {
             flags: DefFlags::nil(),
         });
 
-        // Register with the registry
         if self
             .ctx
             .registry
@@ -113,7 +103,6 @@ impl<'ctx> ValueItemProcessor<'ctx> {
             )
             .is_some()
         {
-            // Register in scope only if registry registration succeeded
             self.ctx
                 .context
                 .scopes
@@ -123,22 +112,17 @@ impl<'ctx> ValueItemProcessor<'ctx> {
         def_id
     }
 
-    /// Process an enum definition.
     pub fn process_enum(&mut self, e: &EnumDef) -> DefId {
-        // Create and register the enum definition
         let enum_id = self.create_enum_definition(e);
 
-        // Create a child scope for the enum to hold its enumerators
         let enum_scope = self.ctx.context.scopes.create_child_scope(
             self.current_scope,
             e.ident.name.clone(),
             Some(enum_id),
         );
 
-        // Process enumerators
         let fields = self.process_enumerators(e, enum_id, enum_scope);
 
-        // Update the enum definition with the collected fields
         if let DefKind::Enum(ref mut enum_ty) = self.ctx.context.definitions.get_mut(enum_id).kind {
             enum_ty.fields = fields;
         }
@@ -146,17 +130,13 @@ impl<'ctx> ValueItemProcessor<'ctx> {
         enum_id
     }
 
-    /// Create and register an enum definition.
     fn create_enum_definition(&mut self, e: &EnumDef) -> DefId {
         let enum_ty = EnumTy {
             fields: Vec::new(),
             ty: PrimitiveTy::Int32,
         };
 
-        // Convert annotations before the closure
         let annotations = convert_annotations(self.ctx, &e.annotations, self.current_scope);
-
-        // Create the enum definition
         let enum_id = self.ctx.context.definitions.alloc_with_id(|id| Def {
             id,
             ident: e.ident.clone(),
@@ -167,7 +147,6 @@ impl<'ctx> ValueItemProcessor<'ctx> {
             flags: DefFlags::nil(),
         });
 
-        // Register with the registry
         if self
             .ctx
             .registry
@@ -181,7 +160,6 @@ impl<'ctx> ValueItemProcessor<'ctx> {
             )
             .is_some()
         {
-            // Register in scope only if registry registration succeeded
             self.ctx.context.scopes.add_definition(
                 self.current_scope,
                 e.ident.name.clone(),
@@ -192,7 +170,6 @@ impl<'ctx> ValueItemProcessor<'ctx> {
         enum_id
     }
 
-    /// Process all enumerators in an enum.
     fn process_enumerators(
         &mut self,
         e: &EnumDef,
@@ -203,14 +180,10 @@ impl<'ctx> ValueItemProcessor<'ctx> {
         let mut last_value = -1i64;
 
         for enumerator in &e.fields {
-            // Calculate value
             let value = self.calculate_enumerator_value(enumerator, &mut last_value);
             last_value = value;
-
-            // Check if this enumerator has an explicit value
             let is_explicit = enumerator.value.is_some();
 
-            // Create and register the enumerator
             if let Some(field_id) =
                 self.create_enumerator(enumerator, enum_id, value, enum_scope, is_explicit)
             {
@@ -218,12 +191,10 @@ impl<'ctx> ValueItemProcessor<'ctx> {
             }
         }
 
-        // Sort enumerators by their assigned values
         fields.sort_by_key(|&field| enum_key(&self.ctx.context, field));
         fields
     }
 
-    /// Calculate the value for an enumerator.
     fn calculate_enumerator_value(
         &mut self,
         enumerator: &ic_syntax::Enumerator,
@@ -249,13 +220,11 @@ impl<'ctx> ValueItemProcessor<'ctx> {
                 0
             }
         } else {
-            // Auto-increment
             *last_value += 1;
             *last_value
         }
     }
 
-    /// Create an enumerator constant.
     fn create_enumerator(
         &mut self,
         enumerator: &ic_syntax::Enumerator,
@@ -264,11 +233,9 @@ impl<'ctx> ValueItemProcessor<'ctx> {
         enum_scope: ScopeId,
         is_explicit: bool,
     ) -> Option<DefId> {
-        // Convert annotations before the closure
         let annotations =
             convert_annotations(self.ctx, &enumerator.annotations, self.current_scope);
 
-        // Create enumerator as a constant
         let field_id = self.ctx.context.definitions.alloc_with_id(|id| Def {
             id,
             ident: enumerator.ident.clone(),
@@ -289,7 +256,6 @@ impl<'ctx> ValueItemProcessor<'ctx> {
             },
         });
 
-        // Register enumerator through the registry to check for duplicates
         if self
             .ctx
             .registry
@@ -303,14 +269,13 @@ impl<'ctx> ValueItemProcessor<'ctx> {
             )
             .is_some()
         {
-            // Add to parent scope (for unscoped access like TWO)
+            // Add to parent scope for unscoped access (e.g. TWO)
             self.ctx.context.scopes.add_definition(
                 self.current_scope,
                 enumerator.ident.name.clone(),
                 field_id,
             );
-
-            // Also add to enum's own scope (for scoped access like MyEnum::TWO)
+            // Add to enum's scope for scoped access (e.g. MyEnum::TWO)
             self.ctx.context.scopes.add_definition(
                 enum_scope,
                 enumerator.ident.name.clone(),
@@ -323,7 +288,6 @@ impl<'ctx> ValueItemProcessor<'ctx> {
         }
     }
 
-    /// Process a bitmask definition.
     fn process_bitmask_flag(
         &mut self,
         flag: &ic_syntax::Bit,
@@ -332,21 +296,17 @@ impl<'ctx> ValueItemProcessor<'ctx> {
         bitmask_id: DefId,
         bitmask_scope: ScopeId,
     ) -> Option<DefId> {
-        // Check if this flag has an explicit position
         let is_explicit = flag.value.is_some();
 
-        // Calculate bit position
         let bit_pos = if let Some(ref expr) = flag.value {
             let mut eval = ConstEvaluator::new(self.ctx, self.current_scope);
             eval.eval_nonneg_bound(expr).unwrap_or(0) as u32
         } else {
-            // Auto-increment bit position
             if i == 0 { 0 } else { *last_bit + 1 }
         };
 
         *last_bit = bit_pos;
 
-        // Calculate value (1 << bit_pos), checking for overflow
         let Some(value) = 1u64.checked_shl(bit_pos) else {
             self.ctx.diagnostics.errors.push(error_span(
                 "bitmask bit position out of range",
@@ -357,13 +317,11 @@ impl<'ctx> ValueItemProcessor<'ctx> {
             return None;
         };
 
-        // Create flag as a constant in the parent scope
         let flag_ty = Ty {
             span: (flag.ident.span),
             kind: TyKind::Adt(bitmask_id),
         };
 
-        // Convert annotations
         let flag_annotations = convert_annotations(self.ctx, &flag.annotations, self.current_scope);
 
         let flag_id = self.ctx.context.definitions.alloc_with_id(|id| Def {
@@ -383,7 +341,6 @@ impl<'ctx> ValueItemProcessor<'ctx> {
             },
         });
 
-        // Register flag through the registry to check for duplicates
         if self
             .ctx
             .registry
@@ -397,14 +354,11 @@ impl<'ctx> ValueItemProcessor<'ctx> {
             )
             .is_some()
         {
-            // Add to parent scope (for unscoped access like BitmaskBitA)
             self.ctx.context.scopes.add_definition(
                 self.current_scope,
                 flag.ident.name.clone(),
                 flag_id,
             );
-
-            // Also add to bitmask's own scope (for scoped access like BitmaskTest::BitmaskBitA)
             self.ctx
                 .context
                 .scopes
@@ -433,7 +387,6 @@ impl<'ctx> ValueItemProcessor<'ctx> {
             flags: DefFlags::nil(),
         });
 
-        // Register with the registry
         if self
             .ctx
             .registry
@@ -447,7 +400,6 @@ impl<'ctx> ValueItemProcessor<'ctx> {
             )
             .is_some()
         {
-            // Register in scope only if registry registration succeeded
             self.ctx.context.scopes.add_definition(
                 self.current_scope,
                 b.ident.name.clone(),
@@ -455,14 +407,12 @@ impl<'ctx> ValueItemProcessor<'ctx> {
             );
         }
 
-        // Create a child scope for the bitmask to hold its flags
         let bitmask_scope = self.ctx.context.scopes.create_child_scope(
             self.current_scope,
             b.ident.name.clone(),
             Some(bitmask_id),
         );
 
-        // Process flags
         let mut flag_ids = Vec::new();
         let mut last_bit = 0u32;
         for (i, flag) in b.bits.iter().enumerate() {
@@ -473,7 +423,6 @@ impl<'ctx> ValueItemProcessor<'ctx> {
             }
         }
 
-        // Sort flags by their assigned values
         flag_ids.sort_by_key(|&flag_id| {
             let def = self.ctx.context.definitions.get(flag_id);
             if let DefKind::Const(const_ty) = &def.kind {
@@ -486,7 +435,6 @@ impl<'ctx> ValueItemProcessor<'ctx> {
             }
         });
 
-        // Update the bitmask definition with the collected flags
         if let DefKind::Bitmask(ref mut bitmask_ty) =
             self.ctx.context.definitions.get_mut(bitmask_id).kind
         {
@@ -496,9 +444,7 @@ impl<'ctx> ValueItemProcessor<'ctx> {
         bitmask_id
     }
 
-    /// Process a bitset definition.
     pub fn process_bitset(&mut self, b: &BitsetDef) -> DefId {
-        // Resolve parent bitset if present
         let parent = if let Some(ref parent_path) = b.parent {
             let mut resolver = TypeResolver::new(self.ctx, self.current_scope);
             resolver.resolve_path_type(parent_path).and_then(|ty| {
@@ -517,7 +463,6 @@ impl<'ctx> ValueItemProcessor<'ctx> {
             None
         };
 
-        // Process bitset fields
         let mut fields = Vec::new();
         for field in &b.fields {
             // Evaluate the size expression
@@ -530,7 +475,6 @@ impl<'ctx> ValueItemProcessor<'ctx> {
                 continue;
             };
 
-            // Resolve the type if present, otherwise default to appropriate unsigned type
             let ty = if let Some(ref field_ty) = field.ty {
                 let mut resolver = TypeResolver::new(self.ctx, self.current_scope);
                 match resolver.resolve_type(field_ty) {
@@ -556,11 +500,9 @@ impl<'ctx> ValueItemProcessor<'ctx> {
                 }
             };
 
-            // Convert annotations for the field
             let field_annotations =
                 convert_annotations(self.ctx, &field.annotations, self.current_scope);
 
-            // Create a BitsetField for each name in the declaration
             for name in &field.names {
                 let ident = match name {
                     ic_syntax::Declarator::Simple(ident) => ident.clone(),
@@ -575,10 +517,7 @@ impl<'ctx> ValueItemProcessor<'ctx> {
             }
         }
 
-        // Create the bitset definition
         let bitset_ty = BitsetTy { parent, fields };
-
-        // Convert annotations before the closure
         let annotations = convert_annotations(self.ctx, &b.annotations, self.current_scope);
 
         let def_id = self.ctx.context.definitions.alloc_with_id(|id| Def {
@@ -591,7 +530,6 @@ impl<'ctx> ValueItemProcessor<'ctx> {
             flags: DefFlags::nil(),
         });
 
-        // Register with the registry for duplicate detection
         if self
             .ctx
             .registry
@@ -605,7 +543,6 @@ impl<'ctx> ValueItemProcessor<'ctx> {
             )
             .is_some()
         {
-            // Register in scope only if registry registration succeeded
             self.ctx.context.scopes.add_definition(
                 self.current_scope,
                 b.ident.name.clone(),
@@ -616,19 +553,16 @@ impl<'ctx> ValueItemProcessor<'ctx> {
         def_id
     }
 
-    /// Process an annotation definition.
     pub fn process_annotation(&mut self, a: &AnnotationDef) -> DefId {
-        // Create scope for the annotation
         let scope = self.ctx.context.scopes.create_child_scope(
             self.current_scope,
             a.ident.name.clone(),
             None,
         );
 
-        // Convert annotations before the closure
         let annotations = convert_annotations(self.ctx, &a.annotations, self.current_scope);
 
-        // Create a placeholder annotation definition first
+        // Placeholder, will be updated with params and types after processing
         let def_id = self.ctx.context.definitions.alloc_with_id(|id| Def {
             id,
             ident: a.ident.clone(),
@@ -642,26 +576,22 @@ impl<'ctx> ValueItemProcessor<'ctx> {
             flags: DefFlags::nil(),
         });
 
-        // Update the scope's def_id BEFORE processing contents
+        // Must set before processing contents so nested items can reference the annotation
         self.ctx.context.scopes.set_scope_def_id(scope, def_id);
 
-        // Process annotation parameters and nested types
         let mut params = Vec::new();
         let mut types = Vec::new();
 
         for field in &a.params {
             match field {
                 ic_syntax::AnnotationField::Member(member) => {
-                    // Resolve the base type first using the annotation's scope
                     let mut resolver = TypeResolver::new(self.ctx, scope);
                     let Some(base_ty) = resolver.resolve_type(&member.ty) else {
-                        continue; // Error already reported
+                        continue;
                     };
 
-                    // Use resolve_declarator to handle array types and validate bounds
                     let (ident, ty) = resolve_declarator(&member.decl, base_ty, self.ctx, scope);
 
-                    // Evaluate default value if present
                     let default = if let Some(ref default_expr) = member.default {
                         let mut evaluator = ConstEvaluator::new(self.ctx, scope);
                         evaluator.eval_numeric(default_expr)
@@ -672,27 +602,16 @@ impl<'ctx> ValueItemProcessor<'ctx> {
                     params.push(AnnParam { ident, ty, default });
                 }
                 ic_syntax::AnnotationField::Item(item) => {
-                    // Process nested type definition
-                    // Create a new HirBuilder to process this nested item
                     let mut builder = super::builder::HirBuilder::new(self.ctx);
-
-                    // Save current scope and switch to annotation scope
                     let prev_scope = builder.current_scope;
                     builder.current_scope = scope;
-
-                    // Process the nested item and collect its DefIds
                     let item_defs = builder.process_item(item);
-
-                    // Restore previous scope
                     builder.current_scope = prev_scope;
-
-                    // Add the returned DefIds to our types list
                     types.extend(item_defs);
                 }
             }
         }
 
-        // Update the annotation definition with collected params and types
         if let DefKind::Annotation(ref mut annotation_ty) =
             self.ctx.context.definitions.get_mut(def_id).kind
         {
@@ -700,13 +619,12 @@ impl<'ctx> ValueItemProcessor<'ctx> {
             annotation_ty.types = types;
         }
 
-        // Register in annotation namespace
         self.ctx
             .context
             .scopes
             .add_annotation(self.current_scope, a.ident.name.clone(), def_id);
 
-        // Check for duplicate annotations by looking at existing definitions
+        // Check for consistent redefinition
         if let Some(existing_def_ids) = self
             .ctx
             .context
@@ -716,12 +634,10 @@ impl<'ctx> ValueItemProcessor<'ctx> {
             .get(&a.ident.name)
             && existing_def_ids.len() > 1
         {
-            // We just added one, so if there's more than one, check if they're consistent
             let prev_def_id = existing_def_ids[existing_def_ids.len() - 2];
             let existing_def = self.ctx.context.definitions.get(prev_def_id);
             let new_def = self.ctx.context.definitions.get(def_id);
 
-            // Check if the annotations are consistent
             if !are_annotations_consistent(&existing_def.kind, &new_def.kind, &self.ctx.context) {
                 self.ctx.diagnostics.errors.push(
                     error_span(

@@ -100,7 +100,6 @@ where
 
     let mut context = LoweringContext::new();
 
-    // Process builtins if provided
     let builtin_order = if let Some(builtins) = builtins {
         let _builtin_span = debug_span!("builtins").entered();
         let builtin_items: Vec<Item> = builtins.into_iter().collect();
@@ -112,10 +111,7 @@ where
         let mut builder = builder::HirBuilder::new(&mut context);
         builder.build(&builtin_items);
 
-        // Save builtin def IDs from order
         let builtin_ids = context.order.clone();
-
-        // Mark all builtins with IS_BUILTIN flag
         for &def_id in &builtin_ids {
             context.context.definitions.get_mut(def_id).flags |= DefFlags::IS_BUILTIN;
         }
@@ -129,7 +125,6 @@ where
         Vec::new()
     };
 
-    // Process user items
     {
         let _user_span = debug_span!("user").entered();
         debug!(item_count = user_items.len(), "lowering user definitions");
@@ -137,17 +132,14 @@ where
         builder.build(&user_items);
     }
 
-    // Intermediate pass: Update forward references
     {
         let _fwd_span = debug_span!("forward_refs").entered();
         debug!("updating forward references");
         update_forward_references(&mut context);
     }
 
-    // Check for undefined forward declarations
     check_undefined_forward_decls(&mut context);
 
-    // Extract results
     let LoweringContext {
         context,
         order,
@@ -215,23 +207,18 @@ impl Diagnostics {
     }
 }
 
-/// Updates forward declaration references to point to definitions.
 fn update_forward_references(
     ctx: &mut LoweringContext,
 ) -> std::collections::HashMap<DefId, Vec<DefId>> {
-    // Build mapping from forward decl DefIds to definition DefIds
     let forward_to_def = ctx.registry.get_forward_to_def_mapping();
 
     if !forward_to_def.is_empty() {
-        // Update all definitions to replace forward references
         let all_defs: Vec<DefId> = ctx.context.definitions.iter().map(|(id, _)| id).collect();
-
         for def_id in all_defs {
             update_def_references(&mut ctx.context, def_id, &forward_to_def);
         }
     }
 
-    // Build the inverse mapping: from definition to forward declarations
     let mut def_to_forwards = std::collections::HashMap::new();
     for (forward_id, def_id) in forward_to_def {
         def_to_forwards
@@ -239,11 +226,9 @@ fn update_forward_references(
             .or_insert_with(Vec::new)
             .push(forward_id);
     }
-
     def_to_forwards
 }
 
-/// Update references in a single definition.
 fn update_def_references(
     ctx: &mut crate::Context,
     def_id: DefId,
@@ -332,7 +317,6 @@ fn update_def_references(
     }
 }
 
-/// Update type references to replace forward decl `DefIds` with definition `DefIds`.
 fn update_type_references(ty: &mut Ty, mapping: &std::collections::HashMap<DefId, DefId>) {
     match &mut ty.kind {
         TyKind::Adt(def_id) => {
@@ -351,7 +335,6 @@ fn update_type_references(ty: &mut Ty, mapping: &std::collections::HashMap<DefId
     }
 }
 
-/// Update numeric references to replace forward decl `DefIds` with definition `DefIds`.
 fn update_numeric_references(
     numeric: &mut crate::hir::Numeric,
     mapping: &std::collections::HashMap<DefId, DefId>,
@@ -406,15 +389,11 @@ fn update_numeric_references(
     }
 }
 
-/// Check for undefined forward declarations.
 fn check_undefined_forward_decls(ctx: &mut LoweringContext) {
     use ic_diagnostic::{Label, error_span};
 
-    // Get the mapping to see which forward declarations have definitions
     let mapping = ctx.registry.get_forward_to_def_mapping();
 
-    // Check ALL forward declarations in the context, not just top-level ones
-    // The registry tracks all forward declarations, including nested ones
     for (def_id, def) in &ctx.context.definitions {
         if let DefKind::Decl(decl_kind) = &def.kind {
             // Native declarations are meant to stay as declarations - skip them

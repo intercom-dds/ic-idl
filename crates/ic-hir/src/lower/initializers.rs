@@ -124,6 +124,15 @@ impl<'a, 'b> InitializerEvaluator<'a, 'b> {
             for member in &struct_members {
                 if let Some(value) = value_map.remove(&member.ident.name) {
                     fields.push(value);
+                } else {
+                    // Field not provided in initializer - this is an error
+                    self.evaluator.diagnostics().error(
+                        format!(
+                            "missing initializer for field `{}` in struct `{}`",
+                            member.ident.name, struct_name
+                        ),
+                        Label::new(init_list.span).message("incomplete initialization"),
+                    );
                 }
             }
         } else {
@@ -145,11 +154,18 @@ impl<'a, 'b> InitializerEvaluator<'a, 'b> {
             }
 
             // Match values to fields in declaration order
+            let mut has_error = false;
             for (i, named_expr) in init_list.values.iter().enumerate() {
                 let member = &struct_members[i];
                 if let Some(value) = self.evaluator.eval_for_type(&named_expr.value, &member.ty) {
                     fields.push(value);
+                } else {
+                    // Error already reported by eval_for_type, but we need to track failure
+                    has_error = true;
                 }
+            }
+            if has_error {
+                return None;
             }
         }
 

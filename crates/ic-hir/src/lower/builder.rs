@@ -85,7 +85,6 @@ impl<'ctx> HirBuilder<'ctx> {
                 vec![def_id]
             }
 
-            // Delegate type items to type_items.rs
             Item::StructValue(s) => {
                 let mut processor = TypeItemProcessor::new(self.ctx, self.current_scope);
                 let def_id = processor.process_struct(s);
@@ -117,7 +116,6 @@ impl<'ctx> HirBuilder<'ctx> {
                 vec![def_id]
             }
 
-            // Delegate value items to value_items.rs
             Item::ConstValue(c) => {
                 let mut processor = ValueItemProcessor::new(self.ctx, self.current_scope);
                 let def_id = processor.process_const(c);
@@ -137,7 +135,6 @@ impl<'ctx> HirBuilder<'ctx> {
                 vec![def_id]
             }
 
-            // Other items
             Item::AnnotationValue(a) => {
                 let mut processor = ValueItemProcessor::new(self.ctx, self.current_scope);
                 let def_id = processor.process_annotation(a);
@@ -168,9 +165,8 @@ impl<'ctx> HirBuilder<'ctx> {
         def_ids
     }
 
-    /// Process a module definition.
     fn process_module(&mut self, m: &ic_syntax::ModuleDef) -> DefId {
-        // Find or create the module scope (handles reopening)
+        // Handles module reopening (same name in same scope)
         let module_scope = self.ctx.context.scopes.find_or_create_module(
             self.current_scope,
             &m.ident.name,
@@ -179,7 +175,6 @@ impl<'ctx> HirBuilder<'ctx> {
             &mut self.ctx.diagnostics,
         );
 
-        // Save current scope and switch to module scope
         let prev_scope = self.current_scope;
         let annotations = super::annotation_common::convert_annotations(
             self.ctx,
@@ -187,7 +182,6 @@ impl<'ctx> HirBuilder<'ctx> {
             self.current_scope,
         );
 
-        // Create a placeholder module definition first
         let def_id = self
             .ctx
             .context
@@ -204,41 +198,34 @@ impl<'ctx> HirBuilder<'ctx> {
                 flags: crate::hir::DefFlags::nil(),
             });
 
-        // Update the module scope's def_id BEFORE processing contents
+        // Must set before processing contents so nested items can find their parent
         self.ctx
             .context
             .scopes
             .set_scope_def_id(module_scope, def_id);
 
-        // NOW switch to module scope and process contents
         self.current_scope = module_scope;
         let module_block_definitions = self.build(&m.definitions);
 
-        // Update the module definition with the collected definitions
         if let DefKind::Module(ref mut module_ty) =
             self.ctx.context.definitions.get_mut(def_id).kind
         {
             module_ty.definitions = module_block_definitions;
         }
 
-        // Check if this is the first module block with this name in the parent scope
+        // Only register the first block (reopened modules share the same scope)
         let parent_scope = self.ctx.context.scopes.get_scope(prev_scope);
-        let is_first_module = !parent_scope.definitions.contains_key(&m.ident.name);
-
-        if is_first_module {
-            // First module block with this name: register it in the parent scope's name map
+        if !parent_scope.definitions.contains_key(&m.ident.name) {
             self.ctx
                 .context
                 .scopes
                 .add_definition(prev_scope, m.ident.name.clone(), def_id);
         }
 
-        // Only record as a top-level item if we're at the root scope
         if prev_scope == self.ctx.context.root_scope() {
             self.ctx.order.push(def_id);
         }
 
-        // Restore previous scope
         self.current_scope = prev_scope;
 
         def_id

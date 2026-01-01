@@ -252,7 +252,7 @@ impl Context {
     pub fn add_annotation_to_scope(
         &mut self,
         scope: crate::scope::ScopeId,
-        name: String,
+        name: &str,
         def_id: DefId,
     ) {
         self.scopes.add_annotation(scope, name, def_id);

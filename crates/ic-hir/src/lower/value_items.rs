@@ -301,7 +301,11 @@ impl<'ctx> ValueItemProcessor<'ctx> {
         let bit_pos = if let Some(ref expr) = flag.value {
             let mut eval = ConstEvaluator::new(self.ctx, self.current_scope);
             eval.eval_nonneg_bound(expr).unwrap_or(0) as u32
-        } else if i == 0 { 0 } else { *last_bit + 1 };
+        } else if i == 0 {
+            0
+        } else {
+            *last_bit + 1
+        };
 
         *last_bit = bit_pos;
 
@@ -620,7 +624,7 @@ impl<'ctx> ValueItemProcessor<'ctx> {
         self.ctx
             .context
             .scopes
-            .add_annotation(self.current_scope, a.ident.name.clone(), def_id);
+            .add_annotation(self.current_scope, &a.ident.name, def_id);
 
         // Check for consistent redefinition (annotations are stored with @ prefix)
         let ann_key = format!("@{}", a.ident.name);

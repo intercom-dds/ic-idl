@@ -166,7 +166,7 @@ impl ScopeTree {
 
     /// Adds an annotation definition to a scope.
     /// Annotations are stored with an `@` prefix to avoid collisions with regular definitions.
-    pub fn add_annotation(&mut self, scope: ScopeId, name: String, def_id: DefId) {
+    pub fn add_annotation(&mut self, scope: ScopeId, name: &str, def_id: DefId) {
         self.add_definition(scope, format!("@{name}"), def_id);
     }
 
@@ -262,10 +262,10 @@ impl ScopeTree {
             // Before moving to parent, check if we would cross an interface boundary
             if let Some(parent_scope_id) = scope_data.parent
                 && self.is_interface_scope(parent_scope_id, definitions)
-                    && !self.is_inside_scope(starting_scope, parent_scope_id)
-                {
-                    return None;
-                }
+                && !self.is_inside_scope(starting_scope, parent_scope_id)
+            {
+                return None;
+            }
 
             current = scope_data.parent;
         }
@@ -314,10 +314,14 @@ impl ScopeTree {
     }
 
     /// Resolves a path, trying relative resolution first, then absolute.
-    /// Returns detailed error information on failure.
     ///
     /// For relative paths, walks up parent scopes trying each one.
     /// Tracks the "best" error (the one that made most progress through the path).
+    ///
+    /// # Errors
+    ///
+    /// Returns `ResolutionError` if the path cannot be resolved, containing the
+    /// index of the failing segment and the container definition (if any).
     pub fn try_resolve_path(
         &self,
         scope: ScopeId,
@@ -407,14 +411,15 @@ impl ScopeTree {
 
         // If not a child scope, check if it's a definition (like an enum) with its own scope
         if let Some(def_id) = scope_data.get_definition(path[0])
-            && let Some(def_scope) = self.find_scope_for_def(def_id) {
-                return self.try_resolve_path_from_scope(
-                    def_scope,
-                    &path[1..],
-                    segment_offset + 1,
-                    Some(def_id),
-                );
-            }
+            && let Some(def_scope) = self.find_scope_for_def(def_id)
+        {
+            return self.try_resolve_path_from_scope(
+                def_scope,
+                &path[1..],
+                segment_offset + 1,
+                Some(def_id),
+            );
+        }
 
         Err(ResolutionError {
             failed_segment: segment_offset,
@@ -477,9 +482,10 @@ impl ScopeTree {
             // Also check child scope's def_id (has the most recent for reopened modules)
             if let Some(&child_scope_id) = scope_data.children.get(path[0])
                 && let Some(def_id) = self.scopes[child_scope_id.0].def_id
-                    && !result.contains(&def_id) {
-                        result.push(def_id);
-                    }
+                && !result.contains(&def_id)
+            {
+                result.push(def_id);
+            }
 
             result
         } else {

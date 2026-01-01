@@ -828,7 +828,7 @@ impl HirMerger {
             if matches!(&def.kind, DefKind::Annotation(_)) {
                 self.new_context
                     .scopes
-                    .add_annotation(scope_id, def_name, new_def_id);
+                    .add_annotation(scope_id, &def_name, new_def_id);
             } else {
                 self.new_context
                     .scopes

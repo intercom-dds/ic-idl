@@ -31,7 +31,7 @@ use ic_diagnostic::Label;
 use ic_syntax::{Expr, InitList};
 
 use super::eval::ConstEvaluator;
-use crate::hir::{DefId, DefKind, Numeric, Ty};
+use crate::hir::{DefId, DefKind, Member, Numeric, Ty};
 
 /// Handles evaluation of initializer lists for complex types.
 pub struct InitializerEvaluator<'a, 'b> {
@@ -67,15 +67,6 @@ impl<'a, 'b> InitializerEvaluator<'a, 'b> {
             )
         };
 
-        // Build a map of field names to types from the struct definition
-        let mut field_map = std::collections::HashMap::new();
-        for member in &struct_members {
-            field_map.insert(member.ident.name.clone(), member.ty.clone());
-        }
-
-        // Process initializer list elements
-        let mut fields = Vec::new();
-
         if init_list.values.is_empty() {
             self.evaluator.diagnostics().error(
                 "struct initializer cannot be empty".to_string(),
@@ -87,92 +78,112 @@ impl<'a, 'b> InitializerEvaluator<'a, 'b> {
             return None;
         }
 
-        // Handle both named and positional initialization
         let is_named = init_list.values.iter().any(|v| v.ident.is_some());
-
-        if is_named {
-            // Named initialization: { .field1 = value1, .field2 = value2 }
-            // Build a map of field name -> value from the initializer list
-            let mut value_map = std::collections::HashMap::new();
-            for named_expr in &init_list.values {
-                if let Some(ref ident) = named_expr.ident {
-                    if let Some(field_ty) = field_map.get(&ident.name) {
-                        if let Some(value) =
-                            self.evaluator.eval_for_type(&named_expr.value, field_ty)
-                        {
-                            value_map.insert(ident.name.clone(), value);
-                        }
-                    } else {
-                        self.evaluator.diagnostics().error(
-                            format!(
-                                "struct `{}` has no field named `{}`",
-                                struct_name, ident.name
-                            ),
-                            Label::new(ident.span).message("unknown field"),
-                        );
-                    }
-                } else {
-                    self.evaluator.diagnostics().error(
-                        "mixing named and positional initialization is not allowed".to_string(),
-                        Label::new(ic_syntax::util::expr_span(&named_expr.value))
-                            .message("expected named field"),
-                    );
-                }
-            }
-
-            // Collect values in struct member declaration order
-            for member in &struct_members {
-                if let Some(value) = value_map.remove(&member.ident.name) {
-                    fields.push(value);
-                } else {
-                    // Field not provided in initializer - this is an error
-                    self.evaluator.diagnostics().error(
-                        format!(
-                            "missing initializer for field `{}` in struct `{}`",
-                            member.ident.name, struct_name
-                        ),
-                        Label::new(init_list.span).message("incomplete initialization"),
-                    );
-                }
-            }
+        let fields = if is_named {
+            self.eval_struct_named(init_list, &struct_name, &struct_members)?
         } else {
-            // Positional initialization: { value1, value2 }
-            if init_list.values.len() != struct_members.len() {
-                self.evaluator.diagnostics().error(
-                    format!(
-                        "struct `{}` expects {} fields, but {} were provided",
-                        struct_name,
-                        struct_members.len(),
-                        init_list.values.len()
-                    ),
-                    Label::new(ic_syntax::util::expr_span(&Expr::InitList(
-                        init_list.clone(),
-                    )))
-                    .message("incorrect number of fields"),
-                );
-                return None;
-            }
-
-            // Match values to fields in declaration order
-            let mut has_error = false;
-            for (i, named_expr) in init_list.values.iter().enumerate() {
-                let member = &struct_members[i];
-                if let Some(value) = self.evaluator.eval_for_type(&named_expr.value, &member.ty) {
-                    fields.push(value);
-                } else {
-                    // Error already reported by eval_for_type, but we need to track failure
-                    has_error = true;
-                }
-            }
-            if has_error {
-                return None;
-            }
-        }
+            self.eval_struct_positional(init_list, &struct_name, &struct_members)?
+        };
 
         Some(Numeric::Struct {
             ty: struct_def_id,
             fields: fields.into_boxed_slice(),
         })
+    }
+
+    /// Evaluates named struct initialization: `{ .field1 = value1, .field2 = value2 }`
+    fn eval_struct_named(
+        &mut self,
+        init_list: &InitList,
+        struct_name: &str,
+        struct_members: &[Member],
+    ) -> Option<Vec<Numeric>> {
+        let field_map: std::collections::HashMap<_, _> = struct_members
+            .iter()
+            .map(|m| (m.ident.name.clone(), m.ty.clone()))
+            .collect();
+
+        let mut value_map = std::collections::HashMap::new();
+        let mut has_error = false;
+
+        for named_expr in &init_list.values {
+            if let Some(ref ident) = named_expr.ident {
+                if let Some(field_ty) = field_map.get(&ident.name) {
+                    if let Some(value) = self.evaluator.eval_for_type(&named_expr.value, field_ty) {
+                        value_map.insert(ident.name.clone(), value);
+                    } else {
+                        has_error = true;
+                    }
+                } else {
+                    self.evaluator.diagnostics().error(
+                        format!("struct `{struct_name}` has no field named `{}`", ident.name),
+                        Label::new(ident.span).message("unknown field"),
+                    );
+                    has_error = true;
+                }
+            } else {
+                self.evaluator.diagnostics().error(
+                    "mixing named and positional initialization is not allowed".to_string(),
+                    Label::new(ic_syntax::util::expr_span(&named_expr.value))
+                        .message("expected named field"),
+                );
+                has_error = true;
+            }
+        }
+
+        let mut fields = Vec::new();
+        for member in struct_members {
+            if let Some(value) = value_map.remove(&member.ident.name) {
+                fields.push(value);
+            } else {
+                self.evaluator.diagnostics().error(
+                    format!(
+                        "missing initializer for field `{}` in struct `{struct_name}`",
+                        member.ident.name
+                    ),
+                    Label::new(init_list.span).message("incomplete initialization"),
+                );
+                has_error = true;
+            }
+        }
+
+        if has_error { None } else { Some(fields) }
+    }
+
+    /// Evaluates positional struct initialization: `{ value1, value2 }`
+    fn eval_struct_positional(
+        &mut self,
+        init_list: &InitList,
+        struct_name: &str,
+        struct_members: &[Member],
+    ) -> Option<Vec<Numeric>> {
+        if init_list.values.len() != struct_members.len() {
+            self.evaluator.diagnostics().error(
+                format!(
+                    "struct `{struct_name}` expects {} fields, but {} were provided",
+                    struct_members.len(),
+                    init_list.values.len()
+                ),
+                Label::new(ic_syntax::util::expr_span(&Expr::InitList(
+                    init_list.clone(),
+                )))
+                .message("incorrect number of fields"),
+            );
+            return None;
+        }
+
+        let mut fields = Vec::new();
+        let mut has_error = false;
+        for (i, named_expr) in init_list.values.iter().enumerate() {
+            let member = &struct_members[i];
+            if let Some(value) = self.evaluator.eval_for_type(&named_expr.value, &member.ty) {
+                fields.push(value);
+            } else {
+                has_error = true;
+            }
+        }
+
+        if has_error { None } else { Some(fields) }
     }
 
     /// Evaluates an array initializer list.

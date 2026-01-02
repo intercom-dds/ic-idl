@@ -1,15 +1,14 @@
 ---
 source: crates/ic-hir/tests/const_eval_regression_test.rs
-assertion_line: 189
 expression: diagnostics
 ---
 warning: integer overflow in constant expression
-   ┌ test.idl:4:17
+   ┌ test.idl:4:21
    │
  2 │         enum MyEnum {
  3 │             A = 2147483647,
  4 │             B = A + 1
-   ·                 ^^^^^ overflow detected
+   ·                     ^ overflow
  5 │         };
    └──
- note: consider using a larger integer type if overflow was not intended
+ note: consider using a larger integer type

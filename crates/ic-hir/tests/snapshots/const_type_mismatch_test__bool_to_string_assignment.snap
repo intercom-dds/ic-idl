@@ -2,11 +2,11 @@
 source: crates/ic-hir/tests/const_type_mismatch_test.rs
 expression: output
 ---
-error: constant 'MY_BOOL' of type bool cannot be assigned to string
+error: constant 'MY_BOOL' of type boolean cannot be assigned to string
    ┌ test.idl:3:28
    │
  2 │         const boolean MY_BOOL = true;
-   ·                       ^^^^^^^ 'MY_BOOL' declared as bool here
+   ·                       ^^^^^^^ 'MY_BOOL' declared as boolean here
  3 │         const string FOO = MY_BOOL;
    ·                            ^^^^^^^ incompatible types
    └──

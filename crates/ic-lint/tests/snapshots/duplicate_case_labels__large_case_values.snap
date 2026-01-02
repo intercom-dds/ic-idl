@@ -32,7 +32,7 @@ error[union-label-range]: case label value 9223372036854775807 exceeds 32-bit ra
  6 │ };
    └──
 
-error: value out of range for target type
+error: unsigned integer value out of range for 'int64'
    ┌ test.idl:4:10
    │
  2 │ union LargeUnion switch (long long) {

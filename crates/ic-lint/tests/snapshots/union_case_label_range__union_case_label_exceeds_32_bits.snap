@@ -1,9 +1,8 @@
 ---
 source: crates/ic-lint/tests/union_case_label_range.rs
-assertion_line: 44
 expression: output
 ---
-error: integer literal out of range for 'int32'
+error: integer value out of range for 'int32'
    ┌ test.idl:3:18
    │
  2 │         union MyUnion switch(long) {
@@ -13,7 +12,7 @@ error: integer literal out of range for 'int32'
  5 │             case -2147483648: long minInt32;   // -2^31, valid
    └──
 
-error: integer literal out of range for 'int32'
+error: integer value out of range for 'int32'
    ┌ test.idl:4:18
    │
  2 │         union MyUnion switch(long) {
@@ -24,7 +23,7 @@ error: integer literal out of range for 'int32'
  6 │             case 4294967296: long tooLarge;    // 2^32, exceeds range
    └──
 
-error: integer literal out of range for 'int32'
+error: integer value out of range for 'int32'
    ┌ test.idl:6:18
    │
  4 │             case 4294967295: long maxUint32;   // 2^32 - 1, still valid

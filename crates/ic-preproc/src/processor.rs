@@ -419,7 +419,9 @@ where
         }
 
         let expr = match lhs.kind {
-            Kind::Ident | Kind::Keyword(_) | Kind::Number { .. } | Kind::Char => Expr::Lit(lhs),
+            Kind::Ident | Kind::Keyword(_) | Kind::Number { .. } | Kind::Char => {
+                Expr::Lit(lhs, lhs.span)
+            }
             Kind::Plus | Kind::Minus | Kind::Not | Kind::BitNot => {
                 let prefix = prefix_precedence(lhs.kind);
                 let expr = self.binary_expr(prefix, context_span)?;
@@ -536,12 +538,15 @@ where
         };
 
         // Create a literal expression with the value
-        Ok(Expr::Lit(Token {
-            kind: Kind::Number {
-                base: Base::Decimal,
+        Ok(Expr::Lit(
+            Token {
+                kind: Kind::Number {
+                    base: Base::Decimal,
+                },
+                span,
             },
             span,
-        }))
+        ))
     }
 
     // Note that this function uses `Parser::next` instead of `Cursor::next` as

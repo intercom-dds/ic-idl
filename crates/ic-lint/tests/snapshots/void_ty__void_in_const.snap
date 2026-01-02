@@ -8,3 +8,10 @@ error[void-ty]: `void` is only allowed as a return type in prototypes
  2 │ const void INVALID_CONST = 0;
    ·       ^^^^ invalid use of `void`
    └──
+
+error: integer value cannot be assigned to type void
+   ┌ test.idl:2:28
+   │
+ 2 │ const void INVALID_CONST = 0;
+   ·                            ^ incompatible types
+   └──

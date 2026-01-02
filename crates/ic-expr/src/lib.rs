@@ -25,39 +25,32 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-//! Expression evaluation for constant expressions in IDL.
+//! Expression evaluation for constant expressions.
 //!
-//! This crate provides generic expression evaluation functionality that can work
-//! with different numeric types. It's primarily used for evaluating constant
-//! expressions in IDL files, such as array bounds, enumeration values, and
-//! constant definitions.
-//!
-//! # Examples
-//!
-//! ```ignore
-//! use ic_expr::{Expr, Op, Binary, eval};
-//!
-//! let expr = Expr::Binary(Box::new(Binary {
-//!     lhs: Expr::Lit(10),
-//!     op: Op::Add,
-//!     rhs: Expr::Lit(5),
-//! }));
-//!
-//! let result = eval(&expr, &Default::default(), |_| None)?;
-//! assert_eq!(result, 15);
-//! ```
+//! This crate provides generic expression evaluation functionality using
+//! `Value<R>` as the unified value type. It's used for evaluating constant
+//! expressions in IDL files and C preprocessor expressions.
 
-use std::fmt;
+#![allow(
+    clippy::cast_possible_truncation,
+    clippy::cast_possible_wrap,
+    clippy::cast_sign_loss,
+    clippy::cast_precision_loss,
+    clippy::cast_lossless
+)]
 
-/// Error types for expression evaluation.
-pub mod error;
-pub use error::{Error, Result};
+mod rank;
+pub use rank::{FloatRank, IntRank, int_bounds};
 
-/// C language adapter for expression evaluation.
-pub mod c_adapter;
-/// Generic numeric type that can represent various numeric values.
-pub mod generic_numeric;
-pub use generic_numeric::GenericNumeric;
+mod value;
+pub use value::Value;
+
+/// Arithmetic operations on typed values.
+pub mod ops;
+pub use ops::{ArithError, BinOp, UnaryOp, eval_bin, eval_unary};
+
+/// Result type for expression evaluation.
+pub type Result<T, R> = std::result::Result<T, ArithError<R>>;
 
 /// Binary and unary operators supported in expressions.
 #[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -125,275 +118,178 @@ pub enum Op {
 
 /// An expression tree that can be evaluated.
 ///
-/// The type parameter `T` represents the type of literals in the expression.
+/// `T` is the literal/leaf type, `S` is the span type for error reporting.
 #[derive(Debug)]
-pub enum Expr<T> {
-    /// A literal value.
-    Lit(T),
-    /// A variable reference.
-    Var(String),
-    /// A unary operation.
-    Unary(Box<Unary<T>>),
-    /// A binary operation.
-    Binary(Box<Binary<T>>),
-    /// A ternary conditional expression (? :).
-    Ternary(Box<Ternary<T>>),
+pub enum Expr<T, S = ()> {
+    Lit(T, S),
+    Var(String, S),
+    Unary(Box<Unary<T, S>>),
+    Binary(Box<Binary<T, S>>),
+    Ternary(Box<Ternary<T, S>>),
 }
 
 /// A unary operation on an expression.
 #[derive(Debug)]
-pub struct Unary<T> {
+pub struct Unary<T, S = ()> {
     /// The unary operator.
     pub op: Op,
     /// The expression to apply the operator to.
-    pub expr: Expr<T>,
+    pub expr: Expr<T, S>,
 }
 
 /// A binary operation on two expressions.
 #[derive(Debug)]
-pub struct Binary<T> {
-    /// The left-hand side expression.
-    pub lhs: Expr<T>,
-    /// The binary operator.
+pub struct Binary<T, S = ()> {
+    pub lhs: Expr<T, S>,
     pub op: Op,
-    /// The right-hand side expression.
-    pub rhs: Expr<T>,
+    pub rhs: Expr<T, S>,
 }
 
 /// A ternary conditional expression (cond ? then : else).
 #[derive(Debug)]
-pub struct Ternary<T> {
-    /// The condition to evaluate.
-    pub cond: Expr<T>,
-    /// The expression to evaluate if the condition is true.
-    pub then: Expr<T>,
-    /// The expression to evaluate if the condition is false.
-    pub els: Expr<T>,
+pub struct Ternary<T, S = ()> {
+    pub cond: Expr<T, S>,
+    pub then: Expr<T, S>,
+    pub els: Expr<T, S>,
 }
 
-/// Configuration for expression evaluation behavior
-#[derive(Debug, Clone, Copy)]
-pub struct EvalConfig {
-    /// How to handle arithmetic overflow
-    pub overflow: OverflowBehavior,
+/// Context for expression evaluation using `Value<R>`.
+pub trait EvalContext<T, R: Clone, S: Clone> {
+    /// Evaluate a literal to a value.
+    ///
+    /// # Errors
+    /// Returns an error if the literal cannot be evaluated.
+    fn eval_literal(
+        &mut self,
+        lit: &T,
+        span: S,
+    ) -> std::result::Result<Value<R>, SpannedError<R, S>>;
 
-    /// Maximum bit shift amount allowed
-    pub max_shift: u32,
-}
-
-impl Default for EvalConfig {
-    fn default() -> Self {
-        Self {
-            overflow: OverflowBehavior::Wrap,
-            max_shift: 127,
-        }
+    /// Look up a variable by name.
+    ///
+    /// # Errors
+    /// Returns an error if the variable is not found or cannot be evaluated.
+    fn lookup_var(
+        &mut self,
+        name: &str,
+        span: S,
+    ) -> std::result::Result<Value<R>, SpannedError<R, S>> {
+        Err((
+            ArithError::Custom(format!("undefined variable: {name}")),
+            span,
+        ))
     }
 }
 
-/// How to handle arithmetic overflow
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum OverflowBehavior {
-    /// Wrap around on overflow (like C)
-    Wrap,
-    /// Return an error on overflow
-    Error,
-    /// Saturate at min/max values
-    Saturate,
-}
+/// Spanned error result from evaluation.
+pub type SpannedError<R, S> = (ArithError<R>, S);
 
-/// Trait for values that can be evaluated in expressions
-pub trait NumericValue: Sized + fmt::Debug + Clone {
-    /// Create from a boolean value
-    fn from_bool(b: bool) -> Self;
-
-    /// Convert to boolean (zero is false, non-zero is true)
-    fn to_bool(&self) -> bool;
-
-    /// Unary negation
-    ///
-    /// # Errors
-    /// Returns an error if overflow occurs and overflow behavior is set to error
-    fn negate(&self, config: EvalConfig) -> Result<Self>;
-
-    /// Bitwise NOT
-    #[must_use]
-    fn bit_not(&self) -> Self;
-
-    /// Addition
-    ///
-    /// # Errors
-    /// Returns an error if overflow occurs and overflow behavior is set to error
-    fn add(&self, rhs: &Self, config: EvalConfig) -> Result<Self>;
-
-    /// Subtraction
-    ///
-    /// # Errors
-    /// Returns an error if overflow occurs and overflow behavior is set to error
-    fn sub(&self, rhs: &Self, config: EvalConfig) -> Result<Self>;
-
-    /// Multiplication
-    ///
-    /// # Errors
-    /// Returns an error if overflow occurs and overflow behavior is set to error
-    fn mul(&self, rhs: &Self, config: EvalConfig) -> Result<Self>;
-
-    /// Division
-    ///
-    /// # Errors
-    /// Returns an error if division by zero occurs
-    fn div(&self, rhs: &Self, config: EvalConfig) -> Result<Self>;
-
-    /// Modulo
-    ///
-    /// # Errors
-    /// Returns an error if modulo by zero occurs
-    fn modulo(&self, rhs: &Self, config: EvalConfig) -> Result<Self>;
-
-    /// Bitwise AND
-    #[must_use]
-    fn bit_and(&self, rhs: &Self) -> Self;
-
-    /// Bitwise OR
-    #[must_use]
-    fn bit_or(&self, rhs: &Self) -> Self;
-
-    /// Bitwise XOR
-    #[must_use]
-    fn bit_xor(&self, rhs: &Self) -> Self;
-
-    /// Left shift
-    ///
-    /// # Errors
-    /// Returns an error if the shift amount exceeds the configured maximum
-    fn shl(&self, rhs: &Self, config: EvalConfig) -> Result<Self>;
-
-    /// Right shift
-    ///
-    /// # Errors
-    /// Returns an error if the shift amount exceeds the configured maximum
-    fn shr(&self, rhs: &Self, config: EvalConfig) -> Result<Self>;
-
-    /// Less than
-    fn lt(&self, rhs: &Self) -> bool;
-
-    /// Less than or equal
-    fn le(&self, rhs: &Self) -> bool;
-
-    /// Greater than
-    fn gt(&self, rhs: &Self) -> bool;
-
-    /// Greater than or equal
-    fn ge(&self, rhs: &Self) -> bool;
-
-    /// Equal
-    fn eq(&self, rhs: &Self) -> bool;
-
-    /// Not equal
-    fn ne(&self, rhs: &Self) -> bool;
-}
-
-/// Context for expression evaluation
-pub trait EvalContext<T> {
-    /// The numeric value type
-    type Value: NumericValue;
-
-    /// Evaluate a literal to a value
-    ///
-    /// # Errors
-    /// Returns an error if the literal cannot be evaluated
-    fn eval_literal(&mut self, lit: &T) -> Result<Self::Value>;
-
-    /// Look up a variable by name
-    ///
-    /// # Errors
-    /// Returns an error if the variable is not found or cannot be evaluated
-    fn lookup_var(&mut self, name: &str) -> Result<Self::Value> {
-        Err(Error::Custom(format!("undefined variable: {name}")))
-    }
-
-    /// Get the evaluation configuration
-    fn config(&self) -> EvalConfig;
-}
-
-/// Evaluate an expression with the given context
+/// Evaluate an expression with the given context.
 ///
 /// # Errors
-/// Returns an error if the expression cannot be evaluated
-pub fn eval<T, C>(expr: &Expr<T>, ctx: &mut C) -> Result<C::Value>
+///
+/// Returns an error with the span where it occurred.
+#[allow(clippy::too_many_lines)]
+pub fn eval<T, R, S, C>(
+    expr: &Expr<T, S>,
+    ctx: &mut C,
+) -> std::result::Result<Value<R>, SpannedError<R, S>>
 where
-    C: EvalContext<T>,
+    R: Clone,
+    S: Clone,
+    C: EvalContext<T, R, S>,
 {
     match expr {
-        Expr::Lit(lit) => ctx.eval_literal(lit),
-
-        Expr::Var(name) => ctx.lookup_var(name),
-
+        Expr::Lit(lit, span) => ctx.eval_literal(lit, span.clone()),
+        Expr::Var(name, span) => ctx.lookup_var(name, span.clone()),
         Expr::Unary(unary) => {
             let val = eval(&unary.expr, ctx)?;
+            let span = unary.expr.span();
             match unary.op {
-                Op::Sub => val.negate(ctx.config()),
-                Op::Add => Ok(val),
-                Op::Not => Ok(C::Value::from_bool(!val.to_bool())),
-                Op::BitNot => Ok(val.bit_not()),
-                _ => Err(Error::InvalidUnaryOp(unary.op)),
+                Op::Sub => eval_unary(UnaryOp::Neg, val).map_err(|e| (e, span)),
+                Op::Add => eval_unary(UnaryOp::Plus, val).map_err(|e| (e, span)),
+                Op::BitNot => eval_unary(UnaryOp::BitNot, val).map_err(|e| (e, span)),
+                Op::Not => Ok(Value::Int(i128::from(!val.to_bool()), IntRank::I32)),
+                _ => Err((ArithError::InvalidUnaryOp, span)),
             }
         }
-
         Expr::Binary(binary) => {
+            let rhs_span = binary.rhs.span();
             match binary.op {
-                // Short-circuit evaluation for logical operators
                 Op::And => {
                     let lhs = eval(&binary.lhs, ctx)?;
                     if !lhs.to_bool() {
-                        return Ok(C::Value::from_bool(false));
+                        return Ok(Value::Int(0, IntRank::I32));
                     }
                     let rhs = eval(&binary.rhs, ctx)?;
-                    Ok(C::Value::from_bool(rhs.to_bool()))
+                    Ok(Value::Int(i128::from(rhs.to_bool()), IntRank::I32))
                 }
                 Op::Or => {
                     let lhs = eval(&binary.lhs, ctx)?;
                     if lhs.to_bool() {
-                        return Ok(C::Value::from_bool(true));
+                        return Ok(Value::Int(1, IntRank::I32));
                     }
                     let rhs = eval(&binary.rhs, ctx)?;
-                    Ok(C::Value::from_bool(rhs.to_bool()))
+                    Ok(Value::Int(i128::from(rhs.to_bool()), IntRank::I32))
                 }
-
-                // Non-short-circuit operators
+                Op::Lt => {
+                    let lhs = eval(&binary.lhs, ctx)?;
+                    let rhs = eval(&binary.rhs, ctx)?;
+                    let result = compare_values(&lhs, &rhs, std::cmp::Ordering::Less);
+                    Ok(Value::Int(i128::from(result), IntRank::I32))
+                }
+                Op::LtEq => {
+                    let lhs = eval(&binary.lhs, ctx)?;
+                    let rhs = eval(&binary.rhs, ctx)?;
+                    let result = compare_values(&lhs, &rhs, std::cmp::Ordering::Less)
+                        || compare_values(&lhs, &rhs, std::cmp::Ordering::Equal);
+                    Ok(Value::Int(i128::from(result), IntRank::I32))
+                }
+                Op::Gt => {
+                    let lhs = eval(&binary.lhs, ctx)?;
+                    let rhs = eval(&binary.rhs, ctx)?;
+                    let result = compare_values(&lhs, &rhs, std::cmp::Ordering::Greater);
+                    Ok(Value::Int(i128::from(result), IntRank::I32))
+                }
+                Op::GtEq => {
+                    let lhs = eval(&binary.lhs, ctx)?;
+                    let rhs = eval(&binary.rhs, ctx)?;
+                    let result = compare_values(&lhs, &rhs, std::cmp::Ordering::Greater)
+                        || compare_values(&lhs, &rhs, std::cmp::Ordering::Equal);
+                    Ok(Value::Int(i128::from(result), IntRank::I32))
+                }
+                Op::EqEq => {
+                    let lhs = eval(&binary.lhs, ctx)?;
+                    let rhs = eval(&binary.rhs, ctx)?;
+                    let result = compare_values(&lhs, &rhs, std::cmp::Ordering::Equal);
+                    Ok(Value::Int(i128::from(result), IntRank::I32))
+                }
+                Op::NotEq => {
+                    let lhs = eval(&binary.lhs, ctx)?;
+                    let rhs = eval(&binary.rhs, ctx)?;
+                    let result = !compare_values(&lhs, &rhs, std::cmp::Ordering::Equal);
+                    Ok(Value::Int(i128::from(result), IntRank::I32))
+                }
                 _ => {
                     let lhs = eval(&binary.lhs, ctx)?;
                     let rhs = eval(&binary.rhs, ctx)?;
-
-                    match binary.op {
-                        // Arithmetic
-                        Op::Add => lhs.add(&rhs, ctx.config()),
-                        Op::Sub => lhs.sub(&rhs, ctx.config()),
-                        Op::Mul => lhs.mul(&rhs, ctx.config()),
-                        Op::Div => lhs.div(&rhs, ctx.config()),
-                        Op::Mod => lhs.modulo(&rhs, ctx.config()),
-
-                        // Bitwise
-                        Op::BitAnd => Ok(lhs.bit_and(&rhs)),
-                        Op::BitOr => Ok(lhs.bit_or(&rhs)),
-                        Op::BitXor => Ok(lhs.bit_xor(&rhs)),
-                        Op::LShift => lhs.shl(&rhs, ctx.config()),
-                        Op::RShift => lhs.shr(&rhs, ctx.config()),
-
-                        // Comparison
-                        Op::Lt => Ok(C::Value::from_bool(lhs.lt(&rhs))),
-                        Op::LtEq => Ok(C::Value::from_bool(lhs.le(&rhs))),
-                        Op::Gt => Ok(C::Value::from_bool(lhs.gt(&rhs))),
-                        Op::GtEq => Ok(C::Value::from_bool(lhs.ge(&rhs))),
-                        Op::EqEq => Ok(C::Value::from_bool(lhs.eq(&rhs))),
-                        Op::NotEq => Ok(C::Value::from_bool(lhs.ne(&rhs))),
-
-                        Op::And | Op::Or => unreachable!("handled above"),
-                        Op::Not | Op::BitNot => unreachable!("unary operator"),
-                    }
+                    let bin_op = match binary.op {
+                        Op::Add => BinOp::Add,
+                        Op::Sub => BinOp::Sub,
+                        Op::Mul => BinOp::Mul,
+                        Op::Div => BinOp::Div,
+                        Op::Mod => BinOp::Mod,
+                        Op::BitAnd => BinOp::BitAnd,
+                        Op::BitOr => BinOp::BitOr,
+                        Op::BitXor => BinOp::Xor,
+                        Op::LShift => BinOp::Shl,
+                        Op::RShift => BinOp::Shr,
+                        _ => unreachable!("handled above"),
+                    };
+                    eval_bin(bin_op, lhs, rhs).map_err(|e| (e, rhs_span))
                 }
             }
         }
-
         Expr::Ternary(ternary) => {
             let cond = eval(&ternary.cond, ctx)?;
             if cond.to_bool() {
@@ -405,136 +301,51 @@ where
     }
 }
 
-/// Simple i128-based numeric value for C preprocessor compatibility
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
-pub struct SimpleInt(pub i128);
-
-impl NumericValue for SimpleInt {
-    fn from_bool(b: bool) -> Self {
-        Self(i128::from(b))
-    }
-
-    fn to_bool(&self) -> bool {
-        self.0 != 0
-    }
-
-    fn negate(&self, config: EvalConfig) -> Result<Self> {
-        match config.overflow {
-            OverflowBehavior::Wrap => Ok(Self(self.0.wrapping_neg())),
-            OverflowBehavior::Error => self
-                .0
-                .checked_neg()
-                .map(Self)
-                .ok_or(Error::Overflow("negation")),
-            OverflowBehavior::Saturate => Ok(Self(self.0.saturating_neg())),
+impl<T, S: Clone> Expr<T, S> {
+    /// Get the span of this expression.
+    pub fn span(&self) -> S {
+        match self {
+            Expr::Lit(_, s) | Expr::Var(_, s) => s.clone(),
+            Expr::Unary(u) => u.expr.span(),
+            Expr::Binary(b) => b.lhs.span(), // Use LHS span as representative
+            Expr::Ternary(t) => t.cond.span(),
         }
     }
+}
 
-    fn bit_not(&self) -> Self {
-        Self(!self.0)
-    }
-
-    fn add(&self, rhs: &Self, config: EvalConfig) -> Result<Self> {
-        match config.overflow {
-            OverflowBehavior::Wrap => Ok(Self(self.0.wrapping_add(rhs.0))),
-            OverflowBehavior::Error => self
-                .0
-                .checked_add(rhs.0)
-                .map(Self)
-                .ok_or(Error::Overflow("addition")),
-            OverflowBehavior::Saturate => Ok(Self(self.0.saturating_add(rhs.0))),
+fn compare_values<R>(lhs: &Value<R>, rhs: &Value<R>, expected: std::cmp::Ordering) -> bool {
+    match (lhs, rhs) {
+        (Value::Int(a, _), Value::Int(b, _)) => a.cmp(b) == expected,
+        (Value::UInt(a, _), Value::UInt(b, _)) => a.cmp(b) == expected,
+        (Value::Int(a, _), Value::UInt(b, _)) => {
+            if *a < 0 {
+                expected == std::cmp::Ordering::Less
+            } else {
+                (*a as u128).cmp(b) == expected
+            }
         }
-    }
-
-    fn sub(&self, rhs: &Self, config: EvalConfig) -> Result<Self> {
-        match config.overflow {
-            OverflowBehavior::Wrap => Ok(Self(self.0.wrapping_sub(rhs.0))),
-            OverflowBehavior::Error => self
-                .0
-                .checked_sub(rhs.0)
-                .map(Self)
-                .ok_or(Error::Overflow("subtraction")),
-            OverflowBehavior::Saturate => Ok(Self(self.0.saturating_sub(rhs.0))),
+        (Value::UInt(a, _), Value::Int(b, _)) => {
+            if *b < 0 {
+                expected == std::cmp::Ordering::Greater
+            } else {
+                a.cmp(&(*b as u128)) == expected
+            }
         }
-    }
-
-    fn mul(&self, rhs: &Self, config: EvalConfig) -> Result<Self> {
-        match config.overflow {
-            OverflowBehavior::Wrap => Ok(Self(self.0.wrapping_mul(rhs.0))),
-            OverflowBehavior::Error => self
-                .0
-                .checked_mul(rhs.0)
-                .map(Self)
-                .ok_or(Error::Overflow("multiplication")),
-            OverflowBehavior::Saturate => Ok(Self(self.0.saturating_mul(rhs.0))),
+        (Value::Float(a, _), Value::Float(b, _)) => a.partial_cmp(b).is_some_and(|o| o == expected),
+        (Value::Float(a, _), Value::Int(b, _)) => {
+            a.partial_cmp(&(*b as f64)).is_some_and(|o| o == expected)
         }
-    }
-
-    fn div(&self, rhs: &Self, _config: EvalConfig) -> Result<Self> {
-        if rhs.0 == 0 {
-            return Err(Error::DivisionByZero);
+        (Value::Int(a, _), Value::Float(b, _)) => {
+            (*a as f64).partial_cmp(b).is_some_and(|o| o == expected)
         }
-        Ok(Self(self.0.wrapping_div(rhs.0)))
-    }
-
-    fn modulo(&self, rhs: &Self, _config: EvalConfig) -> Result<Self> {
-        if rhs.0 == 0 {
-            return Err(Error::ModuloByZero);
+        (Value::Float(a, _), Value::UInt(b, _)) => {
+            a.partial_cmp(&(*b as f64)).is_some_and(|o| o == expected)
         }
-        Ok(Self(self.0.wrapping_rem(rhs.0)))
-    }
-
-    fn bit_and(&self, rhs: &Self) -> Self {
-        Self(self.0 & rhs.0)
-    }
-
-    fn bit_or(&self, rhs: &Self) -> Self {
-        Self(self.0 | rhs.0)
-    }
-
-    fn bit_xor(&self, rhs: &Self) -> Self {
-        Self(self.0 ^ rhs.0)
-    }
-
-    fn shl(&self, rhs: &Self, config: EvalConfig) -> Result<Self> {
-        if rhs.0 < 0 || rhs.0 > i128::from(config.max_shift) {
-            return Err(Error::InvalidShift(rhs.0));
+        (Value::UInt(a, _), Value::Float(b, _)) => {
+            (*a as f64).partial_cmp(b).is_some_and(|o| o == expected)
         }
-        #[allow(clippy::cast_possible_truncation)]
-        #[allow(clippy::cast_sign_loss)]
-        Ok(Self(self.0.wrapping_shl(rhs.0 as u32)))
-    }
-
-    fn shr(&self, rhs: &Self, config: EvalConfig) -> Result<Self> {
-        if rhs.0 < 0 || rhs.0 > i128::from(config.max_shift) {
-            return Err(Error::InvalidShift(rhs.0));
-        }
-        #[allow(clippy::cast_possible_truncation)]
-        #[allow(clippy::cast_sign_loss)]
-        Ok(Self(self.0.wrapping_shr(rhs.0 as u32)))
-    }
-
-    fn lt(&self, rhs: &Self) -> bool {
-        self.0 < rhs.0
-    }
-
-    fn le(&self, rhs: &Self) -> bool {
-        self.0 <= rhs.0
-    }
-
-    fn gt(&self, rhs: &Self) -> bool {
-        self.0 > rhs.0
-    }
-
-    fn ge(&self, rhs: &Self) -> bool {
-        self.0 >= rhs.0
-    }
-
-    fn eq(&self, rhs: &Self) -> bool {
-        self.0 == rhs.0
-    }
-
-    fn ne(&self, rhs: &Self) -> bool {
-        self.0 != rhs.0
+        (Value::Bool(a), Value::Bool(b)) => a.cmp(b) == expected,
+        (Value::Char(a), Value::Char(b)) => a.cmp(b) == expected,
+        _ => false,
     }
 }

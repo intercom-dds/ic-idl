@@ -52,12 +52,7 @@ impl<'a, 'b> InitializerEvaluator<'a, 'b> {
         _struct_ty: &Ty,
     ) -> Option<Numeric> {
         let (struct_name, struct_members) = {
-            let struct_def = self
-                .evaluator
-                .context()
-                .context
-                .definitions
-                .get(struct_def_id);
+            let struct_def = self.evaluator.ctx.context.definitions.get(struct_def_id);
             let DefKind::Struct(struct_ty_info) = &struct_def.kind else {
                 return None;
             };

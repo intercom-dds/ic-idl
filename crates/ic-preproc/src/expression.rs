@@ -25,14 +25,16 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use ic_expr::c_adapter::{CContext, CLiteral, parse_character, parse_integer};
-use ic_expr::{Op, SimpleInt, eval};
-use ic_lexer::token::{Base as LexerBase, Kind, Token};
+use std::convert::Infallible;
+
+use ic_expr::{ArithError, EvalContext, IntRank, Op, SpannedError, Value, eval};
+use ic_lexer::token::{Base, Kind, Token};
 
 use crate::Span;
 use crate::state::Error;
 
-pub type Expr = ic_expr::Expr<Token>;
+/// Preprocessor expression with span tracking.
+pub type Expr = ic_expr::Expr<Token, Span>;
 
 /// Expression evaluation context
 pub trait ExpressionContext {
@@ -40,35 +42,60 @@ pub trait ExpressionContext {
     fn source_of(&self, span: Span) -> &str;
 }
 
+/// Context for evaluating preprocessor expressions directly on tokens.
+struct PreprocEvalContext<'a> {
+    expr_ctx: &'a dyn ExpressionContext,
+}
+
+impl EvalContext<Token, Infallible, Span> for PreprocEvalContext<'_> {
+    fn eval_literal(
+        &mut self,
+        token: &Token,
+        span: Span,
+    ) -> Result<Value<Infallible>, SpannedError<Infallible, Span>> {
+        let text = self.expr_ctx.source_of(token.span);
+        match token.kind {
+            Kind::Number { base } => {
+                let value = parse_integer(text, base)
+                    .map_err(|msg| (ArithError::Custom(msg.to_string()), span))?;
+                Ok(Value::Int(value, IntRank::I64))
+            }
+            Kind::Char => {
+                let ch = parse_character(text)
+                    .map_err(|msg| (ArithError::Custom(msg.to_string()), span))?;
+                Ok(Value::Int(i128::from(ch as u32), IntRank::I32))
+            }
+            Kind::Ident | Kind::Keyword(_) => {
+                let value = match text {
+                    "__LINE__" => 1,
+                    _ => 0,
+                };
+                Ok(Value::Int(value, IntRank::I64))
+            }
+            _ => Err((
+                ArithError::Custom(format!("unexpected token kind: {:?}", token.kind)),
+                span,
+            )),
+        }
+    }
+}
+
 /// Evaluate a preprocessor expression to an integer value
 pub fn evaluate_expression(expr: &Expr, ctx: &dyn ExpressionContext) -> Result<i128, Error> {
-    // Convert to CLiteral expression
-    let converted_expr = convert_expr(expr, ctx)?;
+    let mut eval_ctx = PreprocEvalContext { expr_ctx: ctx };
 
-    // Create evaluation context with macro resolver
-    let mut eval_ctx = CContext::new(|name| {
-        // Handle special identifiers
-        match name {
-            "__LINE__" => Some(1), // For now, just return 1
-            _ => Some(0),          // Undefined macros evaluate to 0
-        }
-    });
-
-    // Evaluate using ic-expr
-    match eval(&converted_expr, &mut eval_ctx) {
-        Ok(SimpleInt(value)) => Ok(value),
-        Err(e) => {
-            // Convert ic-expr errors to our Error type with proper spans
-            let span = find_error_span(expr, &e)
-                .expect("Expression should have at least one token with a span");
-
+    match eval(expr, &mut eval_ctx) {
+        Ok(value) => value.to_i128().ok_or_else(|| Error::Expr {
+            message: "expression did not evaluate to an integer",
+            span: expr.span(),
+        }),
+        Err((e, span)) => {
             let message = match e {
-                ic_expr::Error::DivisionByZero => "division by zero",
-                ic_expr::Error::ModuloByZero => "modulo by zero",
-                ic_expr::Error::InvalidShift(_) => "invalid shift amount",
+                ArithError::DivByZero => "division by zero",
+                ArithError::ModByZero => "modulo by zero",
+                ArithError::ShiftOutOfRange(_) => "invalid shift amount",
                 _ => "expression evaluation error",
             };
-
             Err(Error::Expr { message, span })
         }
     }
@@ -79,121 +106,64 @@ pub fn is_true(expr: &Expr, ctx: &dyn ExpressionContext) -> Result<bool, Error> 
     evaluate_expression(expr, ctx).map(|v| v != 0)
 }
 
-/// Convert our Expr<Token> to Expr<CLiteral> for evaluation
-fn convert_expr(
-    expr: &Expr,
-    ctx: &dyn ExpressionContext,
-) -> Result<ic_expr::Expr<CLiteral>, Error> {
-    match expr {
-        ic_expr::Expr::Lit(token) => {
-            let literal = token_to_cliteral(token, ctx)?;
-            Ok(ic_expr::Expr::Lit(literal))
-        }
-        ic_expr::Expr::Unary(unary) => {
-            let converted = convert_expr(&unary.expr, ctx)?;
-            Ok(ic_expr::Expr::Unary(Box::new(ic_expr::Unary {
-                op: unary.op,
-                expr: converted,
-            })))
-        }
-        ic_expr::Expr::Binary(binary) => {
-            let lhs = convert_expr(&binary.lhs, ctx)?;
-            let rhs = convert_expr(&binary.rhs, ctx)?;
-            Ok(ic_expr::Expr::Binary(Box::new(ic_expr::Binary {
-                lhs,
-                op: binary.op,
-                rhs,
-            })))
-        }
-        ic_expr::Expr::Ternary(ternary) => {
-            let cond = convert_expr(&ternary.cond, ctx)?;
-            let then = convert_expr(&ternary.then, ctx)?;
-            let els = convert_expr(&ternary.els, ctx)?;
-            Ok(ic_expr::Expr::Ternary(Box::new(ic_expr::Ternary {
-                cond,
-                then,
-                els,
-            })))
-        }
-        ic_expr::Expr::Var(_name) => {
-            // The preprocessor doesn't support variables, so this is an error
-            Err(Error::Syntax {
-                message: "undefined identifier in preprocessor expression",
-                span: Span::default(), // We don't have span info here
-            })
-        }
-    }
-}
-
-/// Convert a Token to `CLiteral` for ic-expr evaluation
-fn token_to_cliteral(token: &Token, ctx: &dyn ExpressionContext) -> Result<CLiteral, Error> {
-    let lit = ctx.source_of(token.span);
-    match token.kind {
-        Kind::Number { base } => {
-            // Convert from ic-lexer Base to ic-expr Base
-            let expr_base = match base {
-                LexerBase::Octal => ic_expr::c_adapter::Base::Octal,
-                LexerBase::Decimal => ic_expr::c_adapter::Base::Decimal,
-                LexerBase::Hexadecimal => ic_expr::c_adapter::Base::Hexadecimal,
-            };
-            let value = parse_integer(lit, expr_base).map_err(|msg| Error::Expr {
-                message: msg,
-                span: token.span,
-            })?;
-            Ok(CLiteral::Int(value))
-        }
-        Kind::Char => {
-            let ch = parse_character(lit).map_err(|msg| Error::Expr {
-                message: msg,
-                span: token.span,
-            })?;
-            Ok(CLiteral::Char(ch))
-        }
-        Kind::Ident | Kind::Keyword(_) => Ok(CLiteral::Ident(lit.to_string())),
-        _ => unreachable!("Invalid token kind for literal: {:?}", token.kind),
-    }
-}
-
-/// Find the best span for an error based on the error type
-fn find_error_span(expr: &Expr, error: &ic_expr::Error) -> Option<Span> {
-    match error {
-        ic_expr::Error::DivisionByZero | ic_expr::Error::ModuloByZero => {
-            // For division/modulo errors, find the specific operation
-            find_div_mod_span(expr).or_else(|| expr_span(expr))
-        }
-        _ => expr_span(expr),
-    }
-}
-
-/// Extract span from an expression (if possible)
-fn expr_span(expr: &Expr) -> Option<Span> {
-    match expr {
-        ic_expr::Expr::Lit(tok) => Some(tok.span),
-        ic_expr::Expr::Unary(u) => expr_span(&u.expr),
-        ic_expr::Expr::Binary(b) => expr_span(&b.lhs).or_else(|| expr_span(&b.rhs)),
-        ic_expr::Expr::Ternary(t) => expr_span(&t.cond),
-        ic_expr::Expr::Var(_) => None, // Variables don't have spans in the preprocessor
-    }
-}
-
-/// Find the span of a division or modulo operation in an expression
-fn find_div_mod_span(expr: &Expr) -> Option<Span> {
-    match expr {
-        ic_expr::Expr::Binary(b) => match b.op {
-            Op::Div | Op::Mod => {
-                // For division/modulo, prefer the right operand's span (divisor)
-                expr_span(&b.rhs).or_else(|| expr_span(&b.lhs))
+/// Parse an integer literal
+fn parse_integer(s: &str, base: Base) -> Result<i128, &'static str> {
+    let s = match base {
+        Base::Octal => {
+            if s.len() > 1 {
+                s.trim_start_matches('0')
+            } else {
+                s
             }
-            _ => {
-                // Check recursively in both operands
-                find_div_mod_span(&b.lhs).or_else(|| find_div_mod_span(&b.rhs))
+        }
+        Base::Decimal => s,
+        Base::Hexadecimal => s.trim_start_matches("0x"),
+    };
+
+    i128::from_str_radix(s, base as u32).map_err(|_| "invalid literal")
+}
+
+/// Parse a character literal
+fn parse_character(lit: &str) -> Result<char, &'static str> {
+    if !lit.starts_with('\'') || !lit.ends_with('\'') {
+        return Err("character literal must be surrounded by single quotes");
+    }
+    let content = &lit[1..lit.len() - 1];
+
+    if content.is_empty() {
+        return Err("empty character literal");
+    }
+
+    if content.starts_with('\\') && content.len() > 1 {
+        let escape_char = content.chars().nth(1);
+        match escape_char {
+            Some('n') => Ok('\n'),
+            Some('t') => Ok('\t'),
+            Some('r') => Ok('\r'),
+            Some('0') => Ok('\0'),
+            Some('\\') => Ok('\\'),
+            Some('\'') => Ok('\''),
+            Some('"') => Ok('"'),
+            Some('b') => Ok('\u{0008}'),
+            Some('f') => Ok('\u{000C}'),
+            Some('v') => Ok('\u{000B}'),
+            Some('x') => {
+                if content.len() >= 4 {
+                    let hex_str = &content[2..4];
+                    u8::from_str_radix(hex_str, 16)
+                        .map(|v| v as char)
+                        .map_err(|_| "invalid hex escape sequence in character literal")
+                } else {
+                    Err("incomplete hex escape sequence in character literal")
+                }
             }
-        },
-        ic_expr::Expr::Unary(u) => find_div_mod_span(&u.expr),
-        ic_expr::Expr::Ternary(t) => find_div_mod_span(&t.cond)
-            .or_else(|| find_div_mod_span(&t.then))
-            .or_else(|| find_div_mod_span(&t.els)),
-        ic_expr::Expr::Lit(_) | ic_expr::Expr::Var(_) => None,
+            Some(c) => Ok(c),
+            None => Err("invalid escape sequence in character literal"),
+        }
+    } else if content.len() == 1 {
+        Ok(content.chars().next().unwrap())
+    } else {
+        Err("character literal contains multiple characters")
     }
 }
 
@@ -222,7 +192,6 @@ pub fn infix_precedence(kind: Kind) -> Option<u8> {
         Kind::BitAnd => Some(6),
         Kind::EqEq | Kind::NotEq => Some(7),
         Kind::Gt | Kind::GtEq | Kind::Lt | Kind::LtEq => Some(8),
-        // Note: Shift operators are handled specially in binary_expr by checking consecutive tokens
         Kind::Plus | Kind::Minus => Some(10),
         Kind::Star | Kind::Slash | Kind::Modulo => Some(11),
         _ => None,

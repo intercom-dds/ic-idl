@@ -1,9 +1,8 @@
 ---
 source: crates/ic-lint/tests/union_case_label_range.rs
-assertion_line: 74
 expression: output
 ---
-error: integer literal out of range for 'int32'
+error: integer value out of range for 'int32'
    ┌ test.idl:3:32
    │
  2 │         const long SMALL_VALUE = 100;

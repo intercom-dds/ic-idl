@@ -3,10 +3,10 @@ source: crates/ic-hir/tests/overflow_detection.rs
 expression: test_overflow(source)
 ---
 warning: integer overflow in constant expression
-   ┌ test.idl:3:24
+   ┌ test.idl:3:30
    │
  2 │ const int32 BIG = 1000000;
  3 │ const int32 OVERFLOW = BIG * BIG;
-   ·                        ^^^^^^^^^ overflow detected
+   ·                              ^^^ overflow
    └──
- note: consider using a larger integer type if overflow was not intended
+ note: consider using a larger integer type

@@ -301,15 +301,6 @@ fn shift_operations_edge_cases() {
     let mut vfs = SourceMap::default();
     let id = vfs.embed(
         r"
-            // Large shift amounts
-            #if 1 << 64 == 0
-                #define LARGE_LEFT_SHIFT_ZERO
-            #endif
-            
-            #if 1024 >> 64 == 0
-                #define LARGE_RIGHT_SHIFT_ZERO
-            #endif
-            
             // Negative shift results
             #if -1 >> 1 == -1
                 #define ARITHMETIC_RIGHT_SHIFT

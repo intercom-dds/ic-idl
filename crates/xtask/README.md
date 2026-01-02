@@ -36,7 +36,7 @@ automate certain tasks.
 The application can be invoked through the `cargo xtask` alias, e.g.:
 
 ```sh
-cargo xtask bootstrap
+cargo xtask deny
 ```
 
 Run `cargo xtask` without any additional arguments to see a list of available

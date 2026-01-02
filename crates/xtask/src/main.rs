@@ -29,7 +29,6 @@
 
 use ic_cli::Command;
 
-mod bootstrap;
 mod deny;
 mod ipr;
 mod release;
@@ -39,7 +38,6 @@ mod release;
 enum Commands {
     Ipr(ipr::Options),
     Deny(deny::Options),
-    Bootstrap(bootstrap::Options),
     Release(release::Options),
 }
 
@@ -48,7 +46,6 @@ fn main() {
     let cmd = Commands::from_result(&result);
 
     match cmd {
-        Commands::Bootstrap(_) => bootstrap::build(),
         Commands::Ipr(v) => ipr::check(v),
         Commands::Release(v) => release::build(v),
         Commands::Deny(_) => deny::check(),

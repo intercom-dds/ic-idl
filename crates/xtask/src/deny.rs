@@ -25,6 +25,7 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+use std::path::PathBuf;
 use std::process::Command;
 
 /// Check licenses of all dependencies
@@ -47,13 +48,24 @@ fn install_deny() {
         .expect("failed to install cargo-deny");
 }
 
+fn git_root() -> PathBuf {
+    let output = Command::new("git")
+        .args(["rev-parse", "--show-toplevel"])
+        .output()
+        .unwrap();
+
+    PathBuf::from(std::str::from_utf8(&output.stdout).unwrap().trim())
+}
+
 pub fn check() {
     if !is_installed() {
         install_deny();
     }
 
+    let config_path = git_root().join("ci/deny.toml");
     Command::new("cargo")
-        .args(["deny", "--all-features", "check"])
+        .args(["deny", "--all-features", "check", "--config"])
+        .arg(&config_path)
         .status()
         .expect("failed to run cargo-deny");
 }

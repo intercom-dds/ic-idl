@@ -119,10 +119,10 @@ fn find_missing() -> (HashSet<PathBuf>, usize) {
 
     for f in files.iter().filter(|v| whitelist(v)) {
         let path = root.join(f);
-        if let Ok(contents) = std::fs::read_to_string(&path) {
-            if !check_file(&contents) {
-                missing.insert(path);
-            }
+        if let Ok(contents) = std::fs::read_to_string(&path)
+            && !check_file(&contents)
+        {
+            missing.insert(path);
         }
     }
     (missing, files.len())

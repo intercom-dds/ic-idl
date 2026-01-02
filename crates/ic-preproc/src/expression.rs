@@ -110,11 +110,8 @@ pub fn is_true(expr: &Expr, ctx: &dyn ExpressionContext) -> Result<bool, Error> 
 fn parse_integer(s: &str, base: Base) -> Result<i128, &'static str> {
     let s = match base {
         Base::Octal => {
-            if s.len() > 1 {
-                s.trim_start_matches('0')
-            } else {
-                s
-            }
+            let trimmed = s.trim_start_matches('0');
+            if trimmed.is_empty() { "0" } else { trimmed }
         }
         Base::Decimal => s,
         Base::Hexadecimal => s.trim_start_matches("0x"),

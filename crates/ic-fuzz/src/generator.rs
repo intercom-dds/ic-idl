@@ -91,7 +91,7 @@ impl<'g> Fuzzer<'g> {
     pub fn new(grammar: &'g Grammar, config: FuzzerConfig) -> Self {
         let rng = match config.seed {
             Some(seed) => SmallRng::seed_from_u64(seed),
-            None => SmallRng::from_entropy(),
+            None => SmallRng::from_os_rng(),
         };
         let max_tokens = config.effective_max_tokens();
         Self {
@@ -168,7 +168,7 @@ impl<'g> Fuzzer<'g> {
     fn repetition_count_one_or_more(&mut self, bias: f64) -> usize {
         let mut count = 1;
         let prob = (0.5 * bias).clamp(0.0, 0.9);
-        while count < self.config.max_repetitions && self.rng.gen_bool(prob) {
+        while count < self.config.max_repetitions && self.rng.random_bool(prob) {
             count += 1;
         }
         count
@@ -177,11 +177,12 @@ impl<'g> Fuzzer<'g> {
     fn repetition_count_zero_or_more(&mut self, bias: f64) -> usize {
         let prob = (0.7 * bias).clamp(0.0, 1.0);
 
-        if !self.rng.gen_bool(prob) {
+        if !self.rng.random_bool(prob) {
             return 0;
         }
 
-        self.rng.gen_range(1..=self.config.max_repetitions.max(1))
+        self.rng
+            .random_range(1..=self.config.max_repetitions.max(1))
     }
 
     fn generate_rule(&mut self, name: &str, depth: usize, out: &mut Twine) {
@@ -206,7 +207,7 @@ impl<'g> Fuzzer<'g> {
             }
             Rule::Choice { choice, .. } => self.generate_choice(choice, depth, out),
             Rule::Optional { opt } => {
-                if self.rng.gen_bool(self.config.optional_probability) {
+                if self.rng.random_bool(self.config.optional_probability) {
                     self.generate_element(opt, 1.0, depth, out);
                 }
             }
@@ -246,7 +247,7 @@ impl<'g> Fuzzer<'g> {
                 self.weighted_choice(choice)
             } else {
                 // TODO: respect weights in non-recursive selection too
-                non_recursive[self.rng.gen_range(0..non_recursive.len())]
+                non_recursive[self.rng.random_range(0..non_recursive.len())]
             }
         } else {
             self.weighted_choice(choice)
@@ -264,9 +265,9 @@ impl<'g> Fuzzer<'g> {
     fn weighted_choice<'a>(&mut self, choice: &'a [RuleElement]) -> &'a RuleElement {
         let total: f64 = choice.iter().map(|e| self.element_weight(e)).sum();
         if total <= 0.0 {
-            return &choice[self.rng.gen_range(0..choice.len())];
+            return &choice[self.rng.random_range(0..choice.len())];
         }
-        let mut r = self.rng.gen::<f64>() * total;
+        let mut r = self.rng.random::<f64>() * total;
         for elem in choice {
             r -= self.element_weight(elem);
             if r <= 0.0 {
@@ -347,7 +348,7 @@ impl<'g> Fuzzer<'g> {
         match rep {
             Repetition::Once => self.generate_rule(name, depth + 1, out),
             Repetition::Optional => {
-                if self.rng.gen_bool(self.config.optional_probability) {
+                if self.rng.random_bool(self.config.optional_probability) {
                     self.generate_rule(name, depth + 1, out);
                 }
             }
@@ -374,16 +375,18 @@ impl<'g> Fuzzer<'g> {
 
     fn maybe_inject_annotation(&mut self, depth: usize, out: &mut Twine) {
         let prob = self.annotation_probability();
-        if prob <= 0.0 || depth >= self.config.max_depth || !self.rng.gen_bool(prob) {
+        if prob <= 0.0 || depth >= self.config.max_depth || !self.rng.random_bool(prob) {
             return;
         }
         if self.grammar.annotations.names.is_empty() {
             return;
         }
-        let idx = self.rng.gen_range(0..self.grammar.annotations.names.len());
+        let idx = self
+            .rng
+            .random_range(0..self.grammar.annotations.names.len());
         let name = self.grammar.annotations.names[idx].clone();
         let args_prob = self.grammar.annotations.args_probability;
-        let annotation = if args_prob > 0.0 && self.rng.gen_bool(args_prob) {
+        let annotation = if args_prob > 0.0 && self.rng.random_bool(args_prob) {
             let arg = self.random_annotation_arg();
             format!("@{name}({arg})")
         } else {
@@ -393,13 +396,13 @@ impl<'g> Fuzzer<'g> {
     }
 
     fn random_annotation_arg(&mut self) -> String {
-        match self.rng.gen_range(0..4) {
+        match self.rng.random_range(0..4) {
             0 => "TRUE".into(),
             1 => "FALSE".into(),
-            2 => format!("{}", self.rng.gen_range(0..100)),
+            2 => format!("{}", self.rng.random_range(0..100)),
             _ => format!(
                 "\"{}\"",
-                ["key", "value", "name", "id"][self.rng.gen_range(0..4)]
+                ["key", "value", "name", "id"][self.rng.random_range(0..4)]
             ),
         }
     }

@@ -52,11 +52,11 @@ impl<'a, R: Rng> TerminalGenerator<'a, R> {
         let prefixes = ["x", "y", "z", "foo", "bar", "baz", "my", "the", "a"];
         let suffixes = ["", "1", "2", "_val", "_type", "_data"];
 
-        let prefix = prefixes[self.rng.gen_range(0..prefixes.len())];
-        let suffix = suffixes[self.rng.gen_range(0..suffixes.len())];
+        let prefix = prefixes[self.rng.random_range(0..prefixes.len())];
+        let suffix = suffixes[self.rng.random_range(0..suffixes.len())];
 
-        if self.rng.gen_bool(0.3) {
-            format!("{prefix}{}{suffix}", self.rng.gen_range(0..100))
+        if self.rng.random_bool(0.3) {
+            format!("{prefix}{}{suffix}", self.rng.random_range(0..100))
         } else {
             format!("{prefix}{suffix}")
         }
@@ -66,13 +66,13 @@ impl<'a, R: Rng> TerminalGenerator<'a, R> {
         let base = if bases.is_empty() {
             IntegerBase::Decimal
         } else {
-            bases[self.rng.gen_range(0..bases.len())]
+            bases[self.rng.random_range(0..bases.len())]
         };
 
-        let value: u64 = if self.rng.gen_bool(0.7) {
-            self.rng.gen_range(0..1000)
+        let value: u64 = if self.rng.random_bool(0.7) {
+            self.rng.random_range(0..1000)
         } else {
-            self.rng.gen_range(0..1_000_000)
+            self.rng.random_range(0..1_000_000)
         };
 
         match base {
@@ -85,23 +85,23 @@ impl<'a, R: Rng> TerminalGenerator<'a, R> {
     fn generate_float(&mut self) -> String {
         let formats = [
             |rng: &mut R| {
-                let int_part: u32 = rng.gen_range(0..1000);
-                let frac_part: u32 = rng.gen_range(0..1000);
+                let int_part: u32 = rng.random_range(0..1000);
+                let frac_part: u32 = rng.random_range(0..1000);
                 format!("{int_part}.{frac_part}")
             },
             |rng: &mut R| {
-                let mantissa: f64 = rng.gen_range(1.0..10.0);
-                let exp: i32 = rng.gen_range(-10..10);
+                let mantissa: f64 = rng.random_range(1.0..10.0);
+                let exp: i32 = rng.random_range(-10..10);
                 format!("{mantissa:.2}e{exp}")
             },
             |rng: &mut R| {
-                let value: u32 = rng.gen_range(1..100);
-                let exp: i32 = rng.gen_range(-5..5);
+                let value: u32 = rng.random_range(1..100);
+                let exp: i32 = rng.random_range(-5..5);
                 format!("{value}E{exp}")
             },
         ];
 
-        let format_fn = formats[self.rng.gen_range(0..formats.len())];
+        let format_fn = formats[self.rng.random_range(0..formats.len())];
         format_fn(self.rng)
     }
 
@@ -119,7 +119,7 @@ impl<'a, R: Rng> TerminalGenerator<'a, R> {
             "quote: \\\"nested\\\"",
         ];
 
-        let content = contents[self.rng.gen_range(0..contents.len())];
+        let content = contents[self.rng.random_range(0..contents.len())];
         format!("\"{content}\"")
     }
 
@@ -129,7 +129,7 @@ impl<'a, R: Rng> TerminalGenerator<'a, R> {
             '@',
         ];
 
-        let c = chars[self.rng.gen_range(0..chars.len())];
+        let c = chars[self.rng.random_range(0..chars.len())];
         format!("'{c}'")
     }
 }
@@ -148,10 +148,10 @@ mod tests {
     #[test]
     fn test_generate_identifier() {
         let mut rng = make_rng();
-        let mut gen = TerminalGenerator::new(&mut rng);
+        let mut generator = TerminalGenerator::new(&mut rng);
 
         for _ in 0..10 {
-            let ident = gen.generate(&TerminalSpec::Identifier);
+            let ident = generator.generate(&TerminalSpec::Identifier);
             assert!(!ident.is_empty());
             assert!(ident.chars().next().unwrap().is_ascii_alphabetic());
         }
@@ -160,13 +160,13 @@ mod tests {
     #[test]
     fn test_generate_integer_decimal() {
         let mut rng = make_rng();
-        let mut gen = TerminalGenerator::new(&mut rng);
+        let mut generator = TerminalGenerator::new(&mut rng);
 
         let spec = TerminalSpec::Integer {
             bases: vec![IntegerBase::Decimal],
         };
         for _ in 0..10 {
-            let num = gen.generate(&spec);
+            let num = generator.generate(&spec);
             assert!(num.parse::<u64>().is_ok(), "failed to parse: {num}");
         }
     }
@@ -174,13 +174,13 @@ mod tests {
     #[test]
     fn test_generate_integer_hex() {
         let mut rng = make_rng();
-        let mut gen = TerminalGenerator::new(&mut rng);
+        let mut generator = TerminalGenerator::new(&mut rng);
 
         let spec = TerminalSpec::Integer {
             bases: vec![IntegerBase::Hex],
         };
         for _ in 0..10 {
-            let num = gen.generate(&spec);
+            let num = generator.generate(&spec);
             assert!(num.starts_with("0x"), "expected hex prefix: {num}");
         }
     }
@@ -188,10 +188,10 @@ mod tests {
     #[test]
     fn test_generate_float() {
         let mut rng = make_rng();
-        let mut gen = TerminalGenerator::new(&mut rng);
+        let mut generator = TerminalGenerator::new(&mut rng);
 
         for _ in 0..10 {
-            let f = gen.generate(&TerminalSpec::Float);
+            let f = generator.generate(&TerminalSpec::Float);
             assert!(
                 f.contains('.') || f.contains('e') || f.contains('E'),
                 "expected float format: {f}"
@@ -202,10 +202,10 @@ mod tests {
     #[test]
     fn test_generate_string() {
         let mut rng = make_rng();
-        let mut gen = TerminalGenerator::new(&mut rng);
+        let mut generator = TerminalGenerator::new(&mut rng);
 
         for _ in 0..10 {
-            let s = gen.generate(&TerminalSpec::String);
+            let s = generator.generate(&TerminalSpec::String);
             assert!(
                 s.starts_with('"') && s.ends_with('"'),
                 "expected quoted string: {s}"
@@ -216,10 +216,10 @@ mod tests {
     #[test]
     fn test_generate_char() {
         let mut rng = make_rng();
-        let mut gen = TerminalGenerator::new(&mut rng);
+        let mut generator = TerminalGenerator::new(&mut rng);
 
         for _ in 0..10 {
-            let c = gen.generate(&TerminalSpec::Char);
+            let c = generator.generate(&TerminalSpec::Char);
             assert!(
                 c.starts_with('\'') && c.ends_with('\''),
                 "expected char literal: {c}"

@@ -44,24 +44,6 @@ if (MSVC AND CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /EHsc")
 endif()
 
-if (IC_TIDY)
-    find_program(
-        TIDY_EXE REQUIRED
-        NAMES clang-tidy
-    )
-
-    set(TIDY_INVOCATION
-        "clang-tidy"
-        "--use-color"
-        "--header-filter=.*"
-        "--warnings-as-errors='*'"
-        "--config-file=${CMAKE_CURRENT_SOURCE_DIR}/.clang-tidy"
-    )
-
-    set(CMAKE_C_CLANG_TIDY "${TIDY_INVOCATION}" CACHE INTERNAL "clang-tidy")
-    set(CMAKE_CXX_CLANG_TIDY "${TIDY_INVOCATION}" CACHE INTERNAL "clang-tidy")
-endif()
-
 add_compile_definitions(
     FMT_HEADER_ONLY
     FMT_CONSTEVAL=

@@ -37,6 +37,7 @@ use std::io::{self, Write};
 use std::path::PathBuf;
 
 use ic_cli::Command;
+use ic_emit::printer::Twine;
 use ic_fuzz::{Fuzzer, FuzzerConfig, Grammar};
 
 /// Generate random IDL from a JSON grammar specification
@@ -131,12 +132,13 @@ fn main() {
     };
 
     for i in 0..count {
-        let result = if let Some(base_seed) = args.seed {
-            fuzzer.generate_with_seed(base_seed.wrapping_add(i as u64))
+        let mut out = Twine::new();
+        if let Some(base_seed) = args.seed {
+            fuzzer.generate_with_seed_into(base_seed.wrapping_add(i as u64), &mut out);
         } else {
-            fuzzer.generate()
-        };
+            fuzzer.generate_into(&mut out);
+        }
 
-        writeln!(output, "{}", result.source).ok();
+        writeln!(output, "{}", out.finish()).ok();
     }
 }

@@ -27,7 +27,8 @@
 
 //! IDL source code generator from grammar.
 
-use ic_emit::printer::{Twine, w};
+use std::fmt::Write;
+
 use rand::rngs::SmallRng;
 use rand::{Rng, SeedableRng};
 
@@ -105,15 +106,20 @@ impl<'g> Fuzzer<'g> {
     }
 
     pub fn generate(&mut self) -> Generated {
-        self.token_count = 0;
-        self.at_line_start = true;
-        let mut out = Twine::new();
-        let start = self.grammar.start.as_str();
-        self.generate_rule(start, 0, &mut out);
+        let mut out = String::with_capacity(64 * 1024);
+        self.generate_into(&mut out);
         Generated {
-            source: out.finish(),
+            source: out,
             token_count: self.token_count,
         }
+    }
+
+    pub fn generate_into(&mut self, out: &mut impl Write) -> usize {
+        self.token_count = 0;
+        self.at_line_start = true;
+        let start = self.grammar.start.as_str();
+        self.generate_rule(start, 0, out);
+        self.token_count
     }
 
     pub fn generate_with_seed(&mut self, seed: u64) -> Generated {
@@ -121,23 +127,28 @@ impl<'g> Fuzzer<'g> {
         self.generate()
     }
 
-    fn emit_token(&mut self, token: &str, out: &mut Twine) {
+    pub fn generate_with_seed_into(&mut self, seed: u64, out: &mut impl Write) -> usize {
+        self.rng = SmallRng::seed_from_u64(seed);
+        self.generate_into(out)
+    }
+
+    fn emit_token(&mut self, token: &str, out: &mut impl Write) {
         self.token_count += 1;
 
         // Put closing braces on their own line
         if token == "}" && !self.at_line_start {
-            w!(out, "\n");
+            _ = out.write_char('\n');
             self.at_line_start = true;
         }
 
         if !self.at_line_start && Self::needs_space_before(token) {
-            w!(out, " ");
+            _ = out.write_char(' ');
         }
 
-        w!(out, token);
+        _ = out.write_str(token);
 
         if Self::needs_newline_after(token) {
-            w!(out, "\n");
+            _ = out.write_char('\n');
             self.at_line_start = true;
         } else {
             self.at_line_start = false;
@@ -185,7 +196,7 @@ impl<'g> Fuzzer<'g> {
             .random_range(1..=self.config.max_repetitions.max(1))
     }
 
-    fn generate_rule(&mut self, name: &str, depth: usize, out: &mut Twine) {
+    fn generate_rule(&mut self, name: &str, depth: usize, out: &mut impl Write) {
         if self.token_count >= self.max_tokens {
             return;
         }
@@ -200,7 +211,7 @@ impl<'g> Fuzzer<'g> {
         self.generate_rule_inner(rule, depth, out);
     }
 
-    fn generate_rule_inner(&mut self, rule: &Rule, depth: usize, out: &mut Twine) {
+    fn generate_rule_inner(&mut self, rule: &Rule, depth: usize, out: &mut impl Write) {
         match rule {
             Rule::Sequence { seq, .. } => {
                 self.generate_sequence(seq, rule.repetition_bias(), depth, out);
@@ -219,7 +230,7 @@ impl<'g> Fuzzer<'g> {
         seq: &[RuleElement],
         repetition_bias: f64,
         depth: usize,
-        out: &mut Twine,
+        out: &mut impl Write,
     ) {
         for (i, elem) in seq.iter().enumerate() {
             if i > 0 {
@@ -232,7 +243,7 @@ impl<'g> Fuzzer<'g> {
         }
     }
 
-    fn generate_choice(&mut self, choice: &[RuleElement], depth: usize, out: &mut Twine) {
+    fn generate_choice(&mut self, choice: &[RuleElement], depth: usize, out: &mut impl Write) {
         if choice.is_empty() {
             return;
         }
@@ -308,7 +319,13 @@ impl<'g> Fuzzer<'g> {
         }
     }
 
-    fn generate_element(&mut self, elem: &RuleElement, bias: f64, depth: usize, out: &mut Twine) {
+    fn generate_element(
+        &mut self,
+        elem: &RuleElement,
+        bias: f64,
+        depth: usize,
+        out: &mut impl Write,
+    ) {
         match elem {
             RuleElement::Literal(s) => {
                 if s.starts_with('\'') && s.ends_with('\'') && s.len() >= 2 {
@@ -328,7 +345,7 @@ impl<'g> Fuzzer<'g> {
         rep: Repetition,
         parent_repetition_bias: f64,
         depth: usize,
-        out: &mut Twine,
+        out: &mut impl Write,
     ) {
         let name = s
             .trim_end_matches('*')
@@ -373,7 +390,7 @@ impl<'g> Fuzzer<'g> {
         }
     }
 
-    fn maybe_inject_annotation(&mut self, depth: usize, out: &mut Twine) {
+    fn maybe_inject_annotation(&mut self, depth: usize, out: &mut impl Write) {
         let prob = self.annotation_probability();
         if prob <= 0.0 || depth >= self.config.max_depth || !self.rng.random_bool(prob) {
             return;

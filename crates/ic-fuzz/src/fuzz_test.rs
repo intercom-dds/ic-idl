@@ -303,23 +303,25 @@ fn run_worker(ctx: &WorkerContext, thread_id: usize, pb: &ProgressBar) {
     let mut fuzzer = Fuzzer::new(ctx.grammar, ctx.config.clone());
     let mut i: u64 = 0;
     let mut last_tick = Instant::now();
+    let mut buf = String::with_capacity(64 * 1024);
 
     loop {
         let seed = thread_seed.wrapping_add(i);
-        let generated = fuzzer.generate_with_seed(seed);
+        buf.clear();
+        let token_count = fuzzer.generate_with_seed_into(seed, &mut buf);
 
         let mut source_map = SourceMap::default();
-        let file_id = source_map.embed_with_name("<fuzz>", generated.source.as_str());
+        let file_id = source_map.embed_with_name("<fuzz>", buf.as_str());
         let result = ic_parse::from_file(file_id, &source_map);
 
-        thread_tokens.add(generated.token_count as u64);
-        ctx.total_bytes.add(generated.source.len() as u64);
+        thread_tokens.add(token_count as u64);
+        ctx.total_bytes.add(buf.len() as u64);
 
         if result.errors.is_empty() {
             ctx.total_passed.inc();
         } else {
             ctx.total_failed.inc();
-            save_failure(ctx.output_dir, seed, &generated.source).expect("failed to save failure");
+            save_failure(ctx.output_dir, seed, &buf).expect("failed to save failure");
             _ = ctx.mp.println(format!(
                 "{} {} error(s) -> {}/{}.idl",
                 "FAILED".red(),

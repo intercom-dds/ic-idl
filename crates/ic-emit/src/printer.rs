@@ -55,7 +55,7 @@ impl PrettyPrinter {
     #[must_use]
     pub fn new() -> Self {
         Self {
-            tokens: Vec::new(),
+            tokens: Vec::with_capacity(64 * 1024),
             indent_str: "    ",
         }
     }
@@ -226,6 +226,13 @@ impl Twine {
     #[must_use]
     pub fn finish(self) -> String {
         self.writer.finish()
+    }
+}
+
+impl std::fmt::Write for Twine {
+    fn write_str(&mut self, s: &str) -> std::fmt::Result {
+        self.write(&[&s]);
+        Ok(())
     }
 }
 

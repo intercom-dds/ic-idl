@@ -25,6 +25,8 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+use std::fmt::Write;
+
 use rand::Rng;
 
 use crate::grammar::{IntegerBase, TerminalSpec};
@@ -38,31 +40,31 @@ impl<'a, R: Rng> TerminalGenerator<'a, R> {
         Self { rng }
     }
 
-    pub fn generate(&mut self, spec: &TerminalSpec) -> String {
+    pub fn write(&mut self, spec: &TerminalSpec, out: &mut impl Write) {
         match spec {
-            TerminalSpec::Identifier => self.generate_identifier(),
-            TerminalSpec::Integer { bases } => self.generate_integer(bases),
-            TerminalSpec::Float => self.generate_float(),
-            TerminalSpec::String => self.generate_string(),
-            TerminalSpec::Char => self.generate_char(),
+            TerminalSpec::Identifier => self.write_identifier(out),
+            TerminalSpec::Integer { bases } => self.write_integer(bases, out),
+            TerminalSpec::Float => self.write_float(out),
+            TerminalSpec::String => self.write_string(out),
+            TerminalSpec::Char => self.write_char(out),
         }
     }
 
-    pub fn generate_identifier(&mut self) -> String {
-        let prefixes = ["x", "y", "z", "foo", "bar", "baz", "my", "the", "a"];
-        let suffixes = ["", "1", "2", "_val", "_type", "_data"];
+    pub fn write_identifier(&mut self, out: &mut impl Write) {
+        const PREFIXES: [&str; 9] = ["x", "y", "z", "foo", "bar", "baz", "my", "the", "a"];
+        const SUFFIXES: [&str; 6] = ["", "1", "2", "_val", "_type", "_data"];
 
-        let prefix = prefixes[self.rng.random_range(0..prefixes.len())];
-        let suffix = suffixes[self.rng.random_range(0..suffixes.len())];
+        let prefix = PREFIXES[self.rng.random_range(0..PREFIXES.len())];
+        let suffix = SUFFIXES[self.rng.random_range(0..SUFFIXES.len())];
 
+        _ = out.write_str(prefix);
         if self.rng.random_bool(0.3) {
-            format!("{prefix}{}{suffix}", self.rng.random_range(0..100))
-        } else {
-            format!("{prefix}{suffix}")
+            _ = write!(out, "{}", self.rng.random_range(0..100u32));
         }
+        _ = out.write_str(suffix);
     }
 
-    fn generate_integer(&mut self, bases: &[IntegerBase]) -> String {
+    fn write_integer(&mut self, bases: &[IntegerBase], out: &mut impl Write) {
         let base = if bases.is_empty() {
             IntegerBase::Decimal
         } else {
@@ -76,37 +78,40 @@ impl<'a, R: Rng> TerminalGenerator<'a, R> {
         };
 
         match base {
-            IntegerBase::Decimal => format!("{value}"),
-            IntegerBase::Hex => format!("0x{value:X}"),
-            IntegerBase::Octal => format!("0{value:o}"),
+            IntegerBase::Decimal => {
+                _ = write!(out, "{value}");
+            }
+            IntegerBase::Hex => {
+                _ = write!(out, "0x{value:X}");
+            }
+            IntegerBase::Octal => {
+                _ = write!(out, "0{value:o}");
+            }
         }
     }
 
-    fn generate_float(&mut self) -> String {
-        let formats = [
-            |rng: &mut R| {
-                let int_part: u32 = rng.random_range(0..1000);
-                let frac_part: u32 = rng.random_range(0..1000);
-                format!("{int_part}.{frac_part}")
-            },
-            |rng: &mut R| {
-                let mantissa: f64 = rng.random_range(1.0..10.0);
-                let exp: i32 = rng.random_range(-10..10);
-                format!("{mantissa:.2}e{exp}")
-            },
-            |rng: &mut R| {
-                let value: u32 = rng.random_range(1..100);
-                let exp: i32 = rng.random_range(-5..5);
-                format!("{value}E{exp}")
-            },
-        ];
-
-        let format_fn = formats[self.rng.random_range(0..formats.len())];
-        format_fn(self.rng)
+    fn write_float(&mut self, out: &mut impl Write) {
+        match self.rng.random_range(0..3) {
+            0 => {
+                let int_part: u32 = self.rng.random_range(0..1000);
+                let frac_part: u32 = self.rng.random_range(0..1000);
+                _ = write!(out, "{int_part}.{frac_part}");
+            }
+            1 => {
+                let mantissa: f64 = self.rng.random_range(1.0..10.0);
+                let exp: i32 = self.rng.random_range(-10..10);
+                _ = write!(out, "{mantissa:.2}e{exp}");
+            }
+            _ => {
+                let value: u32 = self.rng.random_range(1..100);
+                let exp: i32 = self.rng.random_range(-5..5);
+                _ = write!(out, "{value}E{exp}");
+            }
+        }
     }
 
-    fn generate_string(&mut self) -> String {
-        let contents = [
+    fn write_string(&mut self, out: &mut impl Write) {
+        const CONTENTS: [&str; 10] = [
             "",
             "hello",
             "world",
@@ -119,18 +124,22 @@ impl<'a, R: Rng> TerminalGenerator<'a, R> {
             "quote: \\\"nested\\\"",
         ];
 
-        let content = contents[self.rng.random_range(0..contents.len())];
-        format!("\"{content}\"")
+        let content = CONTENTS[self.rng.random_range(0..CONTENTS.len())];
+        _ = out.write_char('"');
+        _ = out.write_str(content);
+        _ = out.write_char('"');
     }
 
-    fn generate_char(&mut self) -> String {
-        let chars = [
+    fn write_char(&mut self, out: &mut impl Write) {
+        const CHARS: [char; 18] = [
             'a', 'b', 'c', 'x', 'y', 'z', 'A', 'B', 'C', 'X', 'Y', 'Z', '0', '1', '9', ' ', '!',
             '@',
         ];
 
-        let c = chars[self.rng.random_range(0..chars.len())];
-        format!("'{c}'")
+        let c = CHARS[self.rng.random_range(0..CHARS.len())];
+        _ = out.write_char('\'');
+        _ = out.write_char(c);
+        _ = out.write_char('\'');
     }
 }
 
@@ -145,13 +154,18 @@ mod tests {
         StdRng::seed_from_u64(12345)
     }
 
+    fn generate(rng: &mut StdRng, spec: &TerminalSpec) -> String {
+        let mut out = String::new();
+        TerminalGenerator::new(rng).write(spec, &mut out);
+        out
+    }
+
     #[test]
     fn test_generate_identifier() {
         let mut rng = make_rng();
-        let mut generator = TerminalGenerator::new(&mut rng);
 
         for _ in 0..10 {
-            let ident = generator.generate(&TerminalSpec::Identifier);
+            let ident = generate(&mut rng, &TerminalSpec::Identifier);
             assert!(!ident.is_empty());
             assert!(ident.chars().next().unwrap().is_ascii_alphabetic());
         }
@@ -160,13 +174,12 @@ mod tests {
     #[test]
     fn test_generate_integer_decimal() {
         let mut rng = make_rng();
-        let mut generator = TerminalGenerator::new(&mut rng);
 
         let spec = TerminalSpec::Integer {
             bases: vec![IntegerBase::Decimal],
         };
         for _ in 0..10 {
-            let num = generator.generate(&spec);
+            let num = generate(&mut rng, &spec);
             assert!(num.parse::<u64>().is_ok(), "failed to parse: {num}");
         }
     }
@@ -174,13 +187,12 @@ mod tests {
     #[test]
     fn test_generate_integer_hex() {
         let mut rng = make_rng();
-        let mut generator = TerminalGenerator::new(&mut rng);
 
         let spec = TerminalSpec::Integer {
             bases: vec![IntegerBase::Hex],
         };
         for _ in 0..10 {
-            let num = generator.generate(&spec);
+            let num = generate(&mut rng, &spec);
             assert!(num.starts_with("0x"), "expected hex prefix: {num}");
         }
     }
@@ -188,10 +200,9 @@ mod tests {
     #[test]
     fn test_generate_float() {
         let mut rng = make_rng();
-        let mut generator = TerminalGenerator::new(&mut rng);
 
         for _ in 0..10 {
-            let f = generator.generate(&TerminalSpec::Float);
+            let f = generate(&mut rng, &TerminalSpec::Float);
             assert!(
                 f.contains('.') || f.contains('e') || f.contains('E'),
                 "expected float format: {f}"
@@ -202,10 +213,9 @@ mod tests {
     #[test]
     fn test_generate_string() {
         let mut rng = make_rng();
-        let mut generator = TerminalGenerator::new(&mut rng);
 
         for _ in 0..10 {
-            let s = generator.generate(&TerminalSpec::String);
+            let s = generate(&mut rng, &TerminalSpec::String);
             assert!(
                 s.starts_with('"') && s.ends_with('"'),
                 "expected quoted string: {s}"
@@ -216,10 +226,9 @@ mod tests {
     #[test]
     fn test_generate_char() {
         let mut rng = make_rng();
-        let mut generator = TerminalGenerator::new(&mut rng);
 
         for _ in 0..10 {
-            let c = generator.generate(&TerminalSpec::Char);
+            let c = generate(&mut rng, &TerminalSpec::Char);
             assert!(
                 c.starts_with('\'') && c.ends_with('\''),
                 "expected char literal: {c}"

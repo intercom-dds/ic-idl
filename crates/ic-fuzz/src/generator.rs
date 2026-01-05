@@ -201,14 +201,24 @@ impl<'g> Fuzzer<'g> {
             return;
         }
         if let Some(spec) = self.grammar.get_terminal(name) {
-            let token = TerminalGenerator::new(&mut self.rng).generate(spec);
-            self.emit_token(&token, out);
+            self.emit_terminal(spec, out);
             return;
         }
         let Some(rule) = self.grammar.get_rule(name) else {
             return;
         };
         self.generate_rule_inner(rule, depth, out);
+    }
+
+    fn emit_terminal(&mut self, spec: &crate::grammar::TerminalSpec, out: &mut impl Write) {
+        self.token_count += 1;
+
+        if !self.at_line_start {
+            _ = out.write_char(' ');
+        }
+
+        TerminalGenerator::new(&mut self.rng).write(spec, out);
+        self.at_line_start = false;
     }
 
     fn generate_rule_inner(&mut self, rule: &Rule, depth: usize, out: &mut impl Write) {
@@ -401,26 +411,38 @@ impl<'g> Fuzzer<'g> {
         let idx = self
             .rng
             .random_range(0..self.grammar.annotations.names.len());
-        let name = self.grammar.annotations.names[idx].clone();
+        let name = &self.grammar.annotations.names[idx];
         let args_prob = self.grammar.annotations.args_probability;
-        let annotation = if args_prob > 0.0 && self.rng.random_bool(args_prob) {
-            let arg = self.random_annotation_arg();
-            format!("@{name}({arg})")
-        } else {
-            format!("@{name}")
-        };
-        self.emit_token(&annotation, out);
+
+        self.token_count += 1;
+        _ = out.write_char('@');
+        _ = out.write_str(name);
+        if args_prob > 0.0 && self.rng.random_bool(args_prob) {
+            _ = out.write_char('(');
+            self.write_annotation_arg(out);
+            _ = out.write_char(')');
+        }
+        _ = out.write_char(' ');
+        self.at_line_start = false;
     }
 
-    fn random_annotation_arg(&mut self) -> String {
+    fn write_annotation_arg(&mut self, out: &mut impl Write) {
         match self.rng.random_range(0..4) {
-            0 => "TRUE".into(),
-            1 => "FALSE".into(),
-            2 => format!("{}", self.rng.random_range(0..100)),
-            _ => format!(
-                "\"{}\"",
-                ["key", "value", "name", "id"][self.rng.random_range(0..4)]
-            ),
+            0 => {
+                _ = out.write_str("TRUE");
+            }
+            1 => {
+                _ = out.write_str("FALSE");
+            }
+            2 => {
+                _ = write!(out, "{}", self.rng.random_range(0..100));
+            }
+            _ => {
+                let s = ["key", "value", "name", "id"][self.rng.random_range(0..4)];
+                _ = out.write_char('"');
+                _ = out.write_str(s);
+                _ = out.write_char('"');
+            }
         }
     }
 }

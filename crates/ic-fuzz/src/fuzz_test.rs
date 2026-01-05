@@ -43,7 +43,6 @@ use std::{fmt, thread};
 use ic_cli::Command;
 use ic_cli::color::Colorize;
 use ic_fuzz::{Fuzzer, FuzzerConfig, Grammar};
-use ic_vfs::SourceMap;
 use indicatif::{MultiProgress, ProgressBar, ProgressState, ProgressStyle};
 
 #[global_allocator]
@@ -308,12 +307,9 @@ fn run_worker(ctx: &WorkerContext, thread_id: usize, pb: &ProgressBar) {
     loop {
         let seed = thread_seed.wrapping_add(i);
         buf.clear();
+
         let token_count = fuzzer.generate_with_seed_into(seed, &mut buf);
-
-        let mut source_map = SourceMap::default();
-        let file_id = source_map.embed_with_name("<fuzz>", buf.as_str());
-        let result = ic_parse::from_file(file_id, &source_map);
-
+        let result = ic_parse::from_str(&buf);
         thread_tokens.add(token_count as u64);
         ctx.total_bytes.add(buf.len() as u64);
 

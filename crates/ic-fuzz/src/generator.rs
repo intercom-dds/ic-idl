@@ -197,9 +197,6 @@ impl<'g> Fuzzer<'g> {
     }
 
     fn generate_rule(&mut self, name: &str, depth: usize, out: &mut impl Write) {
-        if self.token_count >= self.max_tokens {
-            return;
-        }
         if let Some(spec) = self.grammar.get_terminal(name) {
             self.emit_terminal(spec, out);
             return;
@@ -375,13 +372,18 @@ impl<'g> Fuzzer<'g> {
         match rep {
             Repetition::Once => self.generate_rule(name, depth + 1, out),
             Repetition::Optional => {
-                if self.rng.random_bool(self.config.optional_probability) {
+                if self.token_count < self.max_tokens
+                    && self.rng.random_bool(self.config.optional_probability)
+                {
                     self.generate_rule(name, depth + 1, out);
                 }
             }
             Repetition::ZeroOrMore => {
                 let count = self.repetition_count_zero_or_more(repetition_bias);
                 for i in 0..count {
+                    if self.token_count >= self.max_tokens {
+                        break;
+                    }
                     if i > 0 {
                         self.maybe_inject_annotation(depth, out);
                     }
@@ -391,6 +393,9 @@ impl<'g> Fuzzer<'g> {
             Repetition::OneOrMore => {
                 let count = self.repetition_count_one_or_more(repetition_bias);
                 for i in 0..count {
+                    if i > 0 && self.token_count >= self.max_tokens {
+                        break;
+                    }
                     if i > 0 {
                         self.maybe_inject_annotation(depth, out);
                     }
@@ -417,11 +422,11 @@ impl<'g> Fuzzer<'g> {
         self.token_count += 1;
         _ = out.write_char('@');
         _ = out.write_str(name);
+        _ = out.write_char('(');
         if args_prob > 0.0 && self.rng.random_bool(args_prob) {
-            _ = out.write_char('(');
             self.write_annotation_arg(out);
-            _ = out.write_char(')');
         }
+        _ = out.write_char(')');
         _ = out.write_char(' ');
         self.at_line_start = false;
     }

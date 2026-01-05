@@ -4,5 +4,12 @@
   "enabledManagers": ["cargo"],
   "lockFileMaintenance": {
     "enabled": false
-  }
+  },
+  "packageRules": [
+    {
+      "matchManagers": ["cargo"],
+      "groupName": "all cargo dependencies",
+      "automerge": true
+    }
+  ]
 }

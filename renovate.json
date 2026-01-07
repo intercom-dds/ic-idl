@@ -12,7 +12,13 @@
       "matchManagers": ["cargo"],
       "groupName": "all cargo dependencies",
       "automerge": true,
-      "rangeStrategy": "bump"
+      "rangeStrategy": "bump",
+      "matchUpdateTypes": ["major", "minor"]
+    },
+    {
+      "matchManagers": ["cargo"],
+      "matchUpdateTypes": ["patch"],
+      "enabled": false
     }
   ]
 }

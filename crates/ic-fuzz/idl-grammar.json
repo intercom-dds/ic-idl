@@ -38,11 +38,13 @@
         "identifier",
         { "seq": ["'::'", "identifier"] },
         { "seq": ["identifier", "scoped_name_tail*"] }
-      ]
+      ],
+      "inject_annotations": false
     },
 
     "scoped_name_tail": {
-      "seq": ["'::'", "identifier"]
+      "seq": ["'::'", "identifier"],
+      "inject_annotations": false
     },
 
     "const_dcl": {

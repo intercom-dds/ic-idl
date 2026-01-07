@@ -191,6 +191,9 @@ pub enum Rule {
 
         #[serde(default)]
         repetition_bias: Option<f64>,
+
+        #[serde(default = "default_inject_annotations")]
+        inject_annotations: bool,
     },
     Choice {
         choice: Vec<RuleElement>,
@@ -200,10 +203,17 @@ pub enum Rule {
 
         #[serde(default)]
         repetition_bias: Option<f64>,
+
+        #[serde(default = "default_inject_annotations")]
+        inject_annotations: bool,
     },
     Optional {
         opt: Box<RuleElement>,
     },
+}
+
+fn default_inject_annotations() -> bool {
+    true
 }
 
 fn default_bias() -> f64 {
@@ -321,22 +331,27 @@ impl Grammar {
     }
 
     #[must_use]
-    pub fn get_rule(&self, name: &str) -> Option<&Rule> {
+    pub fn rule(&self, name: &str) -> Option<&Rule> {
         self.rules.get(name)
     }
 
     #[must_use]
-    pub fn get_rule_bias(&self, name: &str) -> f64 {
+    pub fn rule_bias(&self, name: &str) -> f64 {
         self.rules.get(name).map_or(1.0, Rule::bias)
     }
 
     #[must_use]
-    pub fn get_rule_repetition_bias(&self, name: &str) -> f64 {
+    pub fn rule_repetition_bias(&self, name: &str) -> f64 {
         self.rules.get(name).map_or(1.0, Rule::repetition_bias)
     }
 
     #[must_use]
-    pub fn get_terminal(&self, name: &str) -> Option<&TerminalSpec> {
+    pub fn rule_inject_annotations(&self, name: &str) -> bool {
+        self.rules.get(name).is_none_or(Rule::inject_annotations)
+    }
+
+    #[must_use]
+    pub fn terminal(&self, name: &str) -> Option<&TerminalSpec> {
         self.terminals.get(name)
     }
 
@@ -367,6 +382,18 @@ impl Rule {
                 ..
             } => repetition_bias.unwrap_or(*bias),
             Rule::Optional { .. } => 1.0,
+        }
+    }
+
+    pub fn inject_annotations(&self) -> bool {
+        match self {
+            Rule::Sequence {
+                inject_annotations, ..
+            }
+            | Rule::Choice {
+                inject_annotations, ..
+            } => *inject_annotations,
+            Rule::Optional { .. } => true,
         }
     }
 }
@@ -441,7 +468,7 @@ mod tests {
         }"#;
 
         let grammar = Grammar::from_json(json).unwrap();
-        match grammar.get_rule("start_rule") {
+        match grammar.rule("start_rule") {
             Some(Rule::Choice { choice, .. }) => {
                 assert_eq!(choice.len(), 2);
             }

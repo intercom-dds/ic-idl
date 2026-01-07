@@ -197,11 +197,11 @@ impl<'g> Fuzzer<'g> {
     }
 
     fn generate_rule(&mut self, name: &str, depth: usize, out: &mut impl Write) {
-        if let Some(spec) = self.grammar.get_terminal(name) {
+        if let Some(spec) = self.grammar.terminal(name) {
             self.emit_terminal(spec, out);
             return;
         }
-        let Some(rule) = self.grammar.get_rule(name) else {
+        let Some(rule) = self.grammar.rule(name) else {
             return;
         };
         self.generate_rule_inner(rule, depth, out);
@@ -220,8 +220,18 @@ impl<'g> Fuzzer<'g> {
 
     fn generate_rule_inner(&mut self, rule: &Rule, depth: usize, out: &mut impl Write) {
         match rule {
-            Rule::Sequence { seq, .. } => {
-                self.generate_sequence(seq, rule.repetition_bias(), depth, out);
+            Rule::Sequence {
+                seq,
+                inject_annotations,
+                ..
+            } => {
+                self.generate_sequence(
+                    seq,
+                    rule.repetition_bias(),
+                    *inject_annotations,
+                    depth,
+                    out,
+                );
             }
             Rule::Choice { choice, .. } => self.generate_choice(choice, depth, out),
             Rule::Optional { opt } => {
@@ -236,11 +246,12 @@ impl<'g> Fuzzer<'g> {
         &mut self,
         seq: &[RuleElement],
         repetition_bias: f64,
+        inject_annotations: bool,
         depth: usize,
         out: &mut impl Write,
     ) {
         for (i, elem) in seq.iter().enumerate() {
-            if i > 0 {
+            if i > 0 && inject_annotations {
                 let next_is_lparen = elem.literal_value() == Some("(");
                 if !next_is_lparen {
                     self.maybe_inject_annotation(depth, out);
@@ -275,7 +286,7 @@ impl<'g> Fuzzer<'g> {
 
     fn element_weight(&self, elem: &RuleElement) -> f64 {
         match elem.rule_name() {
-            Some(name) => self.grammar.get_rule_bias(name),
+            Some(name) => self.grammar.rule_bias(name),
             None => 1.0,
         }
     }
@@ -310,7 +321,7 @@ impl<'g> Fuzzer<'g> {
     }
 
     fn is_leaf_rule(&self, name: &str) -> bool {
-        let Some(rule) = self.grammar.get_rule(name) else {
+        let Some(rule) = self.grammar.rule(name) else {
             return false;
         };
         match rule {
@@ -361,13 +372,15 @@ impl<'g> Fuzzer<'g> {
 
         // Use rule's repetition_bias if set, otherwise inherit from parent
         let repetition_bias = {
-            let rule_bias = self.grammar.get_rule_repetition_bias(name);
+            let rule_bias = self.grammar.rule_repetition_bias(name);
             if (rule_bias - 1.0).abs() < f64::EPSILON {
                 parent_repetition_bias
             } else {
                 rule_bias
             }
         };
+
+        let inject_annotations = self.grammar.rule_inject_annotations(name);
 
         match rep {
             Repetition::Once => self.generate_rule(name, depth + 1, out),
@@ -384,7 +397,7 @@ impl<'g> Fuzzer<'g> {
                     if self.token_count >= self.max_tokens {
                         break;
                     }
-                    if i > 0 {
+                    if i > 0 && inject_annotations {
                         self.maybe_inject_annotation(depth, out);
                     }
                     self.generate_rule(name, depth + 1, out);
@@ -396,7 +409,7 @@ impl<'g> Fuzzer<'g> {
                     if i > 0 && self.token_count >= self.max_tokens {
                         break;
                     }
-                    if i > 0 {
+                    if i > 0 && inject_annotations {
                         self.maybe_inject_annotation(depth, out);
                     }
                     self.generate_rule(name, depth + 1, out);

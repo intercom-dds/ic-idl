@@ -38,5 +38,12 @@ ic-expr = { path = "../ic-expr" }
 ic-vfs = { path = "../ic-vfs" }
 rustc-hash = "2.1.1"
 
+[dev-dependencies]
+criterion.workspace = true
+
+[[bench]]
+name = "lexer_bench"
+harness = false
+
 [lints]
 workspace = true

@@ -43,4 +43,9 @@ ic-vfs = { path = "../ic-vfs" }
 tracing.workspace = true
 
 [dev-dependencies]
+criterion.workspace = true
 ic-diagnostic = { path = "../ic-diagnostic" }
+
+[[bench]]
+name = "parser_bench"
+harness = false

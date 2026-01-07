@@ -54,7 +54,7 @@ lint:clippy:
   needs: []
   script:
     - rustup component add clippy
-    - cargo clippy --workspace --lib --bins --tests -- -Dwarnings
+    - cargo clippy --workspace --all-targets -- -Dwarnings
 
 lint:license:
   stage: lint
@@ -72,4 +72,4 @@ test:stable:
   stage: test
   needs: []
   script:
-    - cargo nextest run --workspace --lib --bins --tests
+    - cargo nextest run --workspace --all-targets

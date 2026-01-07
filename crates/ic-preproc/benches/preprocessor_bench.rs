@@ -25,16 +25,11 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#![feature(test)]
-#![allow(clippy::format_push_string)]
+use std::fmt::Write;
 
-extern crate test;
-
-use std::hint::black_box;
-
+use criterion::{BenchmarkId, Criterion, Throughput, criterion_group, criterion_main};
 use ic_preproc::{ProcArgs, State, with_state};
 use ic_vfs::SourceMap;
-use test::Bencher;
 
 // Helper to create test input with macros
 fn create_macro_heavy_input() -> String {
@@ -50,15 +45,10 @@ fn create_macro_heavy_input() -> String {
 
     // Use macros repeatedly
     for i in 0..100 {
-        input.push_str(&format!(
-            "int result{} = MAX({}, SQUARE({}));\n",
-            i,
-            i,
-            i + 1
-        ));
-        input.push_str(&format!("int min{i} = MIN({}, {});\n", i * 2, i * 3));
-        input.push_str(&format!("const char* str{i} = STRINGIFY(value_{i});\n"));
-        input.push_str(&format!("int CONCAT(var_, {i}) = {};\n", i * 10));
+        _ = writeln!(input, "int result{i} = MAX({i}, SQUARE({}));", i + 1);
+        _ = writeln!(input, "int min{i} = MIN({}, {});", i * 2, i * 3);
+        _ = writeln!(input, "const char* str{i} = STRINGIFY(value_{i});");
+        _ = writeln!(input, "int CONCAT(var_, {i}) = {};", i * 10);
     }
 
     input
@@ -73,12 +63,12 @@ fn create_conditional_heavy_input() -> String {
     input.push_str("#define VERSION 5\n");
 
     for i in 0..50 {
-        input.push_str(&format!("#if FEATURE_A && VERSION > {}\n", i % 10));
-        input.push_str(&format!("    int feature_a_{i} = {i};\n"));
+        _ = writeln!(input, "#if FEATURE_A && VERSION > {}", i % 10);
+        _ = writeln!(input, "    int feature_a_{i} = {i};");
         input.push_str("#elif FEATURE_B\n");
-        input.push_str(&format!("    int feature_b_{i} = {};\n", i * 2));
+        _ = writeln!(input, "    int feature_b_{i} = {};", i * 2);
         input.push_str("#else\n");
-        input.push_str(&format!("    int default_{i} = {};\n", i * 3));
+        _ = writeln!(input, "    int default_{i} = {};", i * 3);
         input.push_str("#endif\n");
     }
 
@@ -99,75 +89,15 @@ fn create_token_manipulation_input() -> String {
     input.push_str("    const char* name ## _str = #name;\n");
 
     for i in 0..100 {
-        input.push_str(&format!("MAKE_FUNC(test_{i})\n"));
-        input.push_str(&format!("DECLARE_VAR(int, var_{i}, {})\n", i * 100));
+        _ = writeln!(input, "MAKE_FUNC(test_{i})");
+        _ = writeln!(input, "DECLARE_VAR(int, var_{i}, {})", i * 100);
     }
 
     input
 }
 
-#[bench]
-fn bench_simple_tokenization(b: &mut Bencher) {
-    let input = "int main() { return 0; }\n".repeat(1000);
-
-    b.iter(|| {
-        let mut vfs = SourceMap::default();
-        let id = vfs.embed(&input);
-        let args = ProcArgs::default();
-        let mut state = State::new();
-
-        let tokens: Vec<_> = with_state(id, args, &mut state, &mut vfs).collect();
-        black_box(tokens);
-    });
-}
-
-#[bench]
-fn bench_macro_expansion(b: &mut Bencher) {
-    let input = create_macro_heavy_input();
-
-    b.iter(|| {
-        let mut vfs = SourceMap::default();
-        let id = vfs.embed(&input);
-        let args = ProcArgs::default();
-        let mut state = State::new();
-
-        let tokens: Vec<_> = with_state(id, args, &mut state, &mut vfs).collect();
-        black_box(tokens);
-    });
-}
-
-#[bench]
-fn bench_conditional_processing(b: &mut Bencher) {
-    let input = create_conditional_heavy_input();
-
-    b.iter(|| {
-        let mut vfs = SourceMap::default();
-        let id = vfs.embed(&input);
-        let args = ProcArgs::default();
-        let mut state = State::new();
-
-        let tokens: Vec<_> = with_state(id, args, &mut state, &mut vfs).collect();
-        black_box(tokens);
-    });
-}
-
-#[bench]
-fn bench_token_manipulation(b: &mut Bencher) {
-    let input = create_token_manipulation_input();
-
-    b.iter(|| {
-        let mut vfs = SourceMap::default();
-        let id = vfs.embed(&input);
-        let args = ProcArgs::default();
-        let mut state = State::new();
-
-        let tokens: Vec<_> = with_state(id, args, &mut state, &mut vfs).collect();
-        black_box(tokens);
-    });
-}
-
-#[bench]
-fn bench_nested_macro_expansion(b: &mut Bencher) {
+// Helper to create input with nested macro expansion
+fn create_nested_macro_input() -> String {
     let mut input = String::new();
 
     // Create nested macro definitions
@@ -178,40 +108,195 @@ fn bench_nested_macro_expansion(b: &mut Bencher) {
 
     // Use the nested macros
     for i in 0..200 {
-        input.push_str(&format!("int result{i} = A({i});\n"));
+        _ = writeln!(input, "int result{i} = A({i});");
     }
 
-    b.iter(|| {
-        let mut vfs = SourceMap::default();
-        let id = vfs.embed(&input);
-        let args = ProcArgs::default();
-        let mut state = State::new();
-
-        let tokens: Vec<_> = with_state(id, args, &mut state, &mut vfs).collect();
-        black_box(tokens);
-    });
+    input
 }
 
-#[bench]
-fn bench_include_processing(b: &mut Bencher) {
-    // This benchmark simulates the overhead of include directives
-    // without actual file I/O
+// Helper to create input simulating include guard patterns
+fn create_include_guard_input() -> String {
     let mut input = String::new();
 
     for i in 0..50 {
-        input.push_str(&format!("#define HEADER_{i}_H\n"));
-        input.push_str(&format!("#ifndef HEADER_{i}_H\n"));
-        input.push_str(&format!("struct Data{i} {{ int value; }};\n"));
+        _ = writeln!(input, "#define HEADER_{i}_H");
+        _ = writeln!(input, "#ifndef HEADER_{i}_H");
+        _ = writeln!(input, "struct Data{i} {{ int value; }};");
         input.push_str("#endif\n");
     }
 
-    b.iter(|| {
-        let mut vfs = SourceMap::default();
-        let id = vfs.embed(&input);
-        let args = ProcArgs::default();
-        let mut state = State::new();
-
-        let tokens: Vec<_> = with_state(id, args, &mut state, &mut vfs).collect();
-        black_box(tokens);
-    });
+    input
 }
+
+fn bench_simple_tokenization(c: &mut Criterion) {
+    let input = "int main() { return 0; }\n".repeat(1000);
+
+    let mut group = c.benchmark_group("preproc");
+    group.throughput(Throughput::Bytes(input.len() as u64));
+
+    group.bench_function("simple_tokenization", |b| {
+        b.iter(|| {
+            let mut vfs = SourceMap::default();
+            let id = vfs.embed(&input);
+            let args = ProcArgs::default();
+            let mut state = State::new();
+
+            let tokens: Vec<_> = with_state(id, args, &mut state, &mut vfs).collect();
+            std::hint::black_box(tokens)
+        });
+    });
+
+    group.finish();
+}
+
+fn bench_macro_expansion(c: &mut Criterion) {
+    let input = create_macro_heavy_input();
+
+    let mut group = c.benchmark_group("preproc");
+    group.throughput(Throughput::Bytes(input.len() as u64));
+
+    group.bench_function("macro_expansion", |b| {
+        b.iter(|| {
+            let mut vfs = SourceMap::default();
+            let id = vfs.embed(&input);
+            let args = ProcArgs::default();
+            let mut state = State::new();
+
+            let tokens: Vec<_> = with_state(id, args, &mut state, &mut vfs).collect();
+            std::hint::black_box(tokens)
+        });
+    });
+
+    group.finish();
+}
+
+fn bench_conditional_processing(c: &mut Criterion) {
+    let input = create_conditional_heavy_input();
+
+    let mut group = c.benchmark_group("preproc");
+    group.throughput(Throughput::Bytes(input.len() as u64));
+
+    group.bench_function("conditionals", |b| {
+        b.iter(|| {
+            let mut vfs = SourceMap::default();
+            let id = vfs.embed(&input);
+            let args = ProcArgs::default();
+            let mut state = State::new();
+
+            let tokens: Vec<_> = with_state(id, args, &mut state, &mut vfs).collect();
+            std::hint::black_box(tokens)
+        });
+    });
+
+    group.finish();
+}
+
+fn bench_token_manipulation(c: &mut Criterion) {
+    let input = create_token_manipulation_input();
+
+    let mut group = c.benchmark_group("preproc");
+    group.throughput(Throughput::Bytes(input.len() as u64));
+
+    group.bench_function("token_manipulation", |b| {
+        b.iter(|| {
+            let mut vfs = SourceMap::default();
+            let id = vfs.embed(&input);
+            let args = ProcArgs::default();
+            let mut state = State::new();
+
+            let tokens: Vec<_> = with_state(id, args, &mut state, &mut vfs).collect();
+            std::hint::black_box(tokens)
+        });
+    });
+
+    group.finish();
+}
+
+fn bench_nested_macros(c: &mut Criterion) {
+    let input = create_nested_macro_input();
+
+    let mut group = c.benchmark_group("preproc");
+    group.throughput(Throughput::Bytes(input.len() as u64));
+
+    group.bench_function("nested_macros", |b| {
+        b.iter(|| {
+            let mut vfs = SourceMap::default();
+            let id = vfs.embed(&input);
+            let args = ProcArgs::default();
+            let mut state = State::new();
+
+            let tokens: Vec<_> = with_state(id, args, &mut state, &mut vfs).collect();
+            std::hint::black_box(tokens)
+        });
+    });
+
+    group.finish();
+}
+
+fn bench_include_guards(c: &mut Criterion) {
+    let input = create_include_guard_input();
+
+    let mut group = c.benchmark_group("preproc");
+    group.throughput(Throughput::Bytes(input.len() as u64));
+
+    group.bench_function("include_guards", |b| {
+        b.iter(|| {
+            let mut vfs = SourceMap::default();
+            let id = vfs.embed(&input);
+            let args = ProcArgs::default();
+            let mut state = State::new();
+
+            let tokens: Vec<_> = with_state(id, args, &mut state, &mut vfs).collect();
+            std::hint::black_box(tokens)
+        });
+    });
+
+    group.finish();
+}
+
+fn bench_all_workloads(c: &mut Criterion) {
+    let simple = "int main() { return 0; }\n".repeat(1000);
+    let macros = create_macro_heavy_input();
+    let conditionals = create_conditional_heavy_input();
+    let token_manip = create_token_manipulation_input();
+    let nested = create_nested_macro_input();
+    let guards = create_include_guard_input();
+
+    let mut group = c.benchmark_group("preproc_comparison");
+
+    for (name, input) in [
+        ("simple", simple.as_str()),
+        ("macros", macros.as_str()),
+        ("conditionals", conditionals.as_str()),
+        ("token_manipulation", token_manip.as_str()),
+        ("nested_macros", nested.as_str()),
+        ("include_guards", guards.as_str()),
+    ] {
+        group.throughput(Throughput::Bytes(input.len() as u64));
+        group.bench_with_input(BenchmarkId::from_parameter(name), input, |b, input| {
+            b.iter(|| {
+                let mut vfs = SourceMap::default();
+                let id = vfs.embed(input);
+                let args = ProcArgs::default();
+                let mut state = State::new();
+
+                let tokens: Vec<_> = with_state(id, args, &mut state, &mut vfs).collect();
+                std::hint::black_box(tokens)
+            });
+        });
+    }
+
+    group.finish();
+}
+
+criterion_group!(
+    benches,
+    bench_simple_tokenization,
+    bench_macro_expansion,
+    bench_conditional_processing,
+    bench_token_manipulation,
+    bench_nested_macros,
+    bench_include_guards,
+    bench_all_workloads,
+);
+criterion_main!(benches);

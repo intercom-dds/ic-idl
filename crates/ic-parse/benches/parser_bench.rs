@@ -25,13 +25,10 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#![feature(test)]
-extern crate test;
+use std::fmt::Write;
 
-use std::hint::black_box;
-
+use criterion::{BenchmarkId, Criterion, Throughput, criterion_group, criterion_main};
 use ic_parse::from_str;
-use test::Bencher;
 
 /// A small but representative IDL sample with common constructs
 const SMALL_IDL: &str = r"
@@ -166,8 +163,6 @@ module DDS {
 
 /// A large IDL with many definitions to stress test the parser
 fn generate_large_idl() -> String {
-    use std::fmt::Write;
-
     let mut idl = String::with_capacity(100_000);
     idl.push_str("module LargeTest {\n");
 
@@ -256,40 +251,48 @@ fn generate_large_idl() -> String {
     idl
 }
 
-#[bench]
-fn bench_parse_small_idl(b: &mut Bencher) {
-    b.iter(|| {
-        let result = from_str(black_box(SMALL_IDL));
-        black_box(result)
-    });
-}
-
-#[bench]
-fn bench_parse_medium_idl(b: &mut Bencher) {
-    b.iter(|| {
-        let result = from_str(black_box(MEDIUM_IDL));
-        black_box(result)
-    });
-}
-
-#[bench]
-fn bench_parse_large_idl(b: &mut Bencher) {
+fn bench_parse_sizes(c: &mut Criterion) {
     let large_idl = generate_large_idl();
-    b.iter(|| {
-        let result = from_str(black_box(&large_idl));
-        black_box(result)
+
+    let mut group = c.benchmark_group("parser");
+
+    // Small IDL
+    group.throughput(Throughput::Bytes(SMALL_IDL.len() as u64));
+    group.bench_with_input(BenchmarkId::new("parse", "small"), SMALL_IDL, |b, input| {
+        b.iter(|| {
+            let result = from_str(std::hint::black_box(input));
+            std::hint::black_box(result)
+        });
     });
+
+    // Medium IDL
+    group.throughput(Throughput::Bytes(MEDIUM_IDL.len() as u64));
+    group.bench_with_input(
+        BenchmarkId::new("parse", "medium"),
+        MEDIUM_IDL,
+        |b, input| {
+            b.iter(|| {
+                let result = from_str(std::hint::black_box(input));
+                std::hint::black_box(result)
+            });
+        },
+    );
+
+    // Large IDL
+    group.throughput(Throughput::Bytes(large_idl.len() as u64));
+    group.bench_with_input(
+        BenchmarkId::new("parse", "large"),
+        &large_idl,
+        |b, input| {
+            b.iter(|| {
+                let result = from_str(std::hint::black_box(input));
+                std::hint::black_box(result)
+            });
+        },
+    );
+
+    group.finish();
 }
 
-/// Benchmark that measures throughput in bytes per second
-#[bench]
-fn bench_parse_throughput(b: &mut Bencher) {
-    let large_idl = generate_large_idl();
-    let bytes = large_idl.len();
-
-    b.bytes = bytes as u64;
-    b.iter(|| {
-        let result = from_str(black_box(&large_idl));
-        black_box(result)
-    });
-}
+criterion_group!(benches, bench_parse_sizes);
+criterion_main!(benches);

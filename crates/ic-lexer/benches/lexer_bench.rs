@@ -25,14 +25,9 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#![feature(test)]
-extern crate test;
-
-use std::hint::black_box;
-
+use criterion::{Criterion, Throughput, criterion_group, criterion_main};
 use ic_lexer::cursor::Cursor;
 use ic_vfs::SourceMap;
-use test::Bencher;
 
 const SAMPLE_IDL: &str = r"
 module Example {
@@ -63,91 +58,107 @@ module Example {
 }
 ";
 
-#[bench]
-fn bench_tokenize_sample(b: &mut Bencher) {
+fn bench_tokenize_sample(c: &mut Criterion) {
     let mut vfs = SourceMap::default();
     let id = vfs.embed(SAMPLE_IDL);
     let src = vfs.source(id);
 
-    b.iter(|| {
-        let mut cursor = Cursor::new(src.clone(), id);
-        let mut tokens = Vec::with_capacity(100);
-        while let Some(token) = cursor.advance() {
-            tokens.push(black_box(token));
-        }
-        black_box(tokens)
+    let mut group = c.benchmark_group("lexer");
+    group.throughput(Throughput::Bytes(SAMPLE_IDL.len() as u64));
+
+    group.bench_function("sample_idl", |b| {
+        b.iter(|| {
+            let cursor = Cursor::new(src.clone(), id);
+            let tokens: Vec<_> = cursor.collect();
+            std::hint::black_box(tokens)
+        });
     });
+    group.finish();
 }
 
-#[bench]
-fn bench_tokenize_keywords(b: &mut Bencher) {
+fn bench_tokenize_keywords(c: &mut Criterion) {
     let keywords =
         "module struct interface enum typedef const public private readonly attribute in out inout";
     let mut vfs = SourceMap::default();
     let id = vfs.embed(keywords);
     let src = vfs.source(id);
 
-    b.iter(|| {
-        let mut cursor = Cursor::new(src.clone(), id);
-        let mut count = 0;
-        while let Some(token) = cursor.advance() {
-            count += 1;
-            black_box(token);
-        }
-        black_box(count)
+    let mut group = c.benchmark_group("lexer");
+    group.throughput(Throughput::Bytes(keywords.len() as u64));
+
+    group.bench_function("keywords", |b| {
+        b.iter(|| {
+            let cursor = Cursor::new(src.clone(), id);
+            let tokens: Vec<_> = cursor.collect();
+            std::hint::black_box(tokens)
+        });
     });
+    group.finish();
 }
 
-#[bench]
-fn bench_tokenize_numbers(b: &mut Bencher) {
+fn bench_tokenize_numbers(c: &mut Criterion) {
     let numbers = "123 456 0xFF 0777 3.14 2.71828 1e10 1.5e-10";
     let mut vfs = SourceMap::default();
     let id = vfs.embed(numbers);
     let src = vfs.source(id);
 
-    b.iter(|| {
-        let mut cursor = Cursor::new(src.clone(), id);
-        let mut count = 0;
-        while let Some(token) = cursor.advance() {
-            count += 1;
-            black_box(token);
-        }
-        black_box(count)
+    let mut group = c.benchmark_group("lexer");
+    group.throughput(Throughput::Bytes(numbers.len() as u64));
+
+    group.bench_function("numbers", |b| {
+        b.iter(|| {
+            let cursor = Cursor::new(src.clone(), id);
+            let tokens: Vec<_> = cursor.collect();
+            std::hint::black_box(tokens)
+        });
     });
+    group.finish();
 }
 
-#[bench]
-fn bench_tokenize_strings(b: &mut Bencher) {
+fn bench_tokenize_strings(c: &mut Criterion) {
     let strings = r#""hello" "world" "foo\nbar" "escaped\"quote" 'a' 'b' '\n'"#;
     let mut vfs = SourceMap::default();
     let id = vfs.embed(strings);
     let src = vfs.source(id);
 
-    b.iter(|| {
-        let mut cursor = Cursor::new(src.clone(), id);
-        let mut count = 0;
-        while let Some(token) = cursor.advance() {
-            count += 1;
-            black_box(token);
-        }
-        black_box(count)
+    let mut group = c.benchmark_group("lexer");
+    group.throughput(Throughput::Bytes(strings.len() as u64));
+
+    group.bench_function("strings", |b| {
+        b.iter(|| {
+            let cursor = Cursor::new(src.clone(), id);
+            let tokens: Vec<_> = cursor.collect();
+            std::hint::black_box(tokens)
+        });
     });
+    group.finish();
 }
 
-#[bench]
-fn bench_tokenize_operators(b: &mut Bencher) {
+fn bench_tokenize_operators(c: &mut Criterion) {
     let operators = "+ - * / % < > <= >= == != & | ^ ~ && || = : :: ; , . ( ) [ ] { }";
     let mut vfs = SourceMap::default();
     let id = vfs.embed(operators);
     let src = vfs.source(id);
 
-    b.iter(|| {
-        let mut cursor = Cursor::new(src.clone(), id);
-        let mut count = 0;
-        while let Some(token) = cursor.advance() {
-            count += 1;
-            black_box(token);
-        }
-        black_box(count)
+    let mut group = c.benchmark_group("lexer");
+    group.throughput(Throughput::Bytes(operators.len() as u64));
+
+    group.bench_function("operators", |b| {
+        b.iter(|| {
+            let cursor = Cursor::new(src.clone(), id);
+            let tokens: Vec<_> = cursor.collect();
+            std::hint::black_box(tokens)
+        });
     });
+    group.finish();
 }
+
+criterion_group!(
+    benches,
+    bench_tokenize_sample,
+    bench_tokenize_keywords,
+    bench_tokenize_numbers,
+    bench_tokenize_strings,
+    bench_tokenize_operators,
+);
+criterion_main!(benches);

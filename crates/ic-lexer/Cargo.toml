@@ -36,7 +36,7 @@ version.workspace = true
 [dependencies]
 ic-expr = { path = "../ic-expr" }
 ic-vfs = { path = "../ic-vfs" }
-rustc-hash = "2.1"
+rustc-hash = "2.1.1"
 
 [lints]
 workspace = true

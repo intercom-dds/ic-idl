@@ -76,6 +76,6 @@ ic-codegen-xml = { path = "../ic-codegen-xml" }
 
 intercom-cts.workspace = true
 tracing.workspace = true
-tracing-subscriber = { version = "0.3", default-features = false, features = ["fmt", "ansi"] }
+tracing-subscriber = { version = "0.3.22", default-features = false, features = ["fmt", "ansi"] }
 
 [dev-dependencies]

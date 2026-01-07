@@ -50,9 +50,9 @@ ic-emit = { path = "../ic-emit" }
 ic-parse = { path = "../ic-parse" }
 ic-preproc = { path = "../ic-preproc" }
 ic-vfs = { path = "../ic-vfs" }
-indicatif = "0.18"
-mimalloc = "0.1"
-rand = { version = "0.9", features = ["small_rng"] }
-rustc-hash = "2.1"
-serde = { version = "1.0", features = ["derive"] }
-serde_json = "1.0"
+indicatif = "0.18.3"
+mimalloc = "0.1.48"
+rand = { version = "0.9.2", features = ["small_rng"] }
+rustc-hash = "2.1.1"
+serde = { version = "1.0.228", features = ["derive"] }
+serde_json = "1.0.149"

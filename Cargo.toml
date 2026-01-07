@@ -74,10 +74,10 @@ publish = false
 authors = ["KONGSBERG <DDS-InterCOM@kda.kongsberg.com>"]
 
 [workspace.dependencies]
-proc-macro2 = "1.0"
-quote = "1.0"
-syn = "2.0"
-tracing = "0.1"
+proc-macro2 = "1.0.105"
+quote = "1.0.43"
+syn = "2.0.114"
+tracing = "0.1.44"
 intercom-cts = { path = "library/rust/intercom-cts", features = ["derive"] }
 
 [workspace.lints.rust]

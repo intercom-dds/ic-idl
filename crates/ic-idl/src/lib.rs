@@ -473,7 +473,11 @@ impl Compiler {
         if self.options.warn.preprocessor_enabled() {
             diagnostics
                 .warnings
-                .extend(ast.preproc_warnings.iter().cloned());
+                .extend(pretty::preproc_warnings_to_diags(
+                    &ast.preproc_warnings,
+                    &self.source_map,
+                    &diagnostics.expansion_info,
+                ));
         }
 
         // Convert to HIR without built-in annotations
@@ -637,10 +641,10 @@ fn try_compile_to_ast(
         let ast = match parse::from_path(file, args.clone(), vfs) {
             Ok(ast) => ast,
             Err(e) => {
-                all_errors.push(InternalError::Custom(format!(
+                all_errors.push(InternalError::Io(std::io::Error::other(format!(
                     "failed to open `{}`: {e}",
                     file.display(),
-                )));
+                ))));
                 continue;
             }
         };
@@ -652,34 +656,34 @@ fn try_compile_to_ast(
 
         // Collect preprocessor warnings if enabled
         if options.warn.preprocessor_enabled() {
-            all_warnings.extend(ast.preproc_warnings.iter().cloned());
+            all_warnings.extend(pretty::preproc_warnings_to_diags(
+                &ast.preproc_warnings,
+                vfs,
+                &ast.expansion_info,
+            ));
         }
 
         all_expansion_info.extend(ast.expansion_info);
         all_asts.extend(ast.tree);
-
-        // Collect parse errors (moved last since it consumes ast.errors)
         all_errors.extend(ast.errors);
     }
 
-    // If there were parse errors, return early
-    if !all_errors.is_empty() {
-        return Err(CompileError::Diagnostics(CompileDiagnostics {
+    if all_errors.is_empty() {
+        Ok((
+            all_asts,
+            CompileDiagnostics {
+                errors: Vec::new(),
+                warnings: all_warnings,
+                expansion_info: all_expansion_info,
+            },
+        ))
+    } else {
+        Err(CompileError::Diagnostics(CompileDiagnostics {
             errors: all_errors,
             warnings: all_warnings,
             expansion_info: all_expansion_info,
-        }));
+        }))
     }
-
-    // Return the AST with any warnings as diagnostics
-    Ok((
-        all_asts,
-        CompileDiagnostics {
-            errors: Vec::new(),
-            warnings: all_warnings,
-            expansion_info: all_expansion_info,
-        },
-    ))
 }
 
 /// Format an I/O error with a filename for user-friendly output.

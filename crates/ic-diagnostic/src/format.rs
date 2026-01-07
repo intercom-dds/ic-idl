@@ -919,7 +919,7 @@ pub fn with_file(f: &mut dyn fmt::Write, vfs: &SourceMap, diag: &Diag) -> fmt::R
     // Process each file's labels
     for (file_id, label_indices) in labels_by_file {
         let info = vfs.file_info(file_id);
-        let name = info.included_as.to_string_lossy().to_string();
+        let name = info.path.to_string_lossy().to_string();
 
         let fmt = Formatter {
             filename: Some(&name),

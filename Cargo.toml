@@ -74,6 +74,7 @@ publish = false
 authors = ["KONGSBERG <DDS-InterCOM@kda.kongsberg.com>"]
 
 [workspace.dependencies]
+criterion = "0.8"
 proc-macro2 = "1.0.105"
 quote = "1.0.43"
 syn = "2.0.114"

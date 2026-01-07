@@ -50,13 +50,20 @@ impl<W: std::io::Write> std::io::Write for IgnoreBrokenPipe<W> {
     }
 }
 
+/// Compilation errors from different stages of the pipeline.
 #[derive(Debug)]
 pub enum Error {
-    Diagnostic(Box<ic_diagnostic::Diag>),
+    /// Parse error from `ic_parse`
     Parse(Box<ic_parse::Error>),
-    Preproc(ic_preproc::ProcError),
+
+    /// Preprocessor error from `ic_preproc`
+    Preproc(Box<ic_preproc::Error>),
+
+    /// Lowering/semantic error
+    Lower(Box<ic_diagnostic::Diag>),
+
+    /// I/O error
     Io(std::io::Error),
-    Custom(String),
 }
 
 impl From<std::io::Error> for Error {
@@ -67,7 +74,7 @@ impl From<std::io::Error> for Error {
 
 impl From<ic_diagnostic::Diag> for Error {
     fn from(value: ic_diagnostic::Diag) -> Self {
-        Self::Diagnostic(Box::new(value))
+        Self::Lower(Box::new(value))
     }
 }
 
@@ -77,14 +84,19 @@ impl From<ic_parse::Error> for Error {
     }
 }
 
+impl From<ic_preproc::Error> for Error {
+    fn from(value: ic_preproc::Error) -> Self {
+        Self::Preproc(Box::new(value))
+    }
+}
+
 impl std::fmt::Display for Error {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Error::Diagnostic(e) => e.fmt(f),
             Error::Parse(e) => e.fmt(f),
-            Error::Preproc(e) => e.fmt(f),
+            Error::Preproc(e) => write!(f, "preprocessor error: {e:?}"),
+            Error::Lower(e) => e.fmt(f),
             Error::Io(e) => e.fmt(f),
-            Error::Custom(e) => e.fmt(f),
         }
     }
 }
@@ -164,7 +176,7 @@ where
 /// Returns an error if:
 /// - The directory contains blacklisted files (`.git`, `.hg`)
 /// - An I/O error occurs while reading or removing the directory
-pub fn safe_purge<P>(dir: P) -> std::result::Result<(), Error>
+pub fn safe_purge<P>(dir: P) -> io::Result<()>
 where
     P: AsRef<Path>,
 {
@@ -176,7 +188,7 @@ where
         for entry in std::fs::read_dir(&dir)?.flatten() {
             let file_name = entry.file_name();
             if BLACKLIST.iter().any(|v| file_name.eq_ignore_ascii_case(v)) {
-                return Err(Error::Custom(format!(
+                return Err(io::Error::other(format!(
                     "cowardly refusing to purge output directory that contains `{}`",
                     file_name.to_string_lossy(),
                 )));

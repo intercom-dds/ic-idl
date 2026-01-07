@@ -191,3 +191,15 @@ pub enum Error {
         span: Span,
     },
 }
+
+impl Error {
+    #[must_use]
+    pub fn span(&self) -> Span {
+        match self {
+            Self::Note { span, .. }
+            | Self::Extraneous { span, .. }
+            | Self::Syntax { span, .. }
+            | Self::Expr { span, .. } => *span,
+        }
+    }
+}

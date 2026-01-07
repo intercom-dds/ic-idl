@@ -1,10 +1,12 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
-  "extends": ["config:recommended"],
+  "extends": ["config:recommended", ":disableDependencyDashboard"],
   "enabledManagers": ["cargo"],
   "lockFileMaintenance": {
     "enabled": false
   },
+  "platformAutomerge": true,
+  "automergeType": "pr",
   "packageRules": [
     {
       "matchManagers": ["cargo"],

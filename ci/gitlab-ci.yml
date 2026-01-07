@@ -40,7 +40,6 @@ default:
 
 stages:
   - lint
-  - build
   - test
 
 lint:rustfmt:
@@ -68,16 +67,6 @@ lint:ipr:
   needs: []
   script:
     - cargo xtask ipr
-
-build:stable:
-  stage: build
-  needs: []
-  script:
-    - rustc --version && cargo --version
-    - cargo xtask release
-  artifacts:
-    paths:
-      - "install"
 
 test:stable:
   stage: test

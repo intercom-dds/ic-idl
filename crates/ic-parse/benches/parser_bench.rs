@@ -161,7 +161,7 @@ module DDS {
 };
 ";
 
-/// A large IDL with many definitions to stress test the parser
+/// Generate a large IDL with many definitions
 fn generate_large_idl() -> String {
     let mut idl = String::with_capacity(100_000);
     idl.push_str("module LargeTest {\n");
@@ -251,18 +251,150 @@ fn generate_large_idl() -> String {
     idl
 }
 
+/// Generate IDL with many annotations (tests annotation parsing performance)
+fn generate_annotation_heavy_idl() -> String {
+    let mut idl = String::with_capacity(50_000);
+    idl.push_str("module Annotated {\n");
+
+    for i in 0..50 {
+        _ = write!(
+            idl,
+            r#"
+    @extensibility(MUTABLE)
+    @nested
+    @id({i})
+    @topic
+    @autoid(HASH)
+    struct AnnotatedStruct{i} {{
+        @id(1) @key @optional long id;
+        @id(2) @must_understand string name;
+        @id(3) @range(min = 0, max = 100) long value;
+        @id(4) @unit("meters") double distance;
+        @id(5) @default(42) long defaulted;
+    }};
+"#
+        );
+    }
+
+    idl.push_str("};\n");
+    idl
+}
+
+/// Generate IDL with complex constant expressions
+fn generate_expression_heavy_idl() -> String {
+    let mut idl = String::with_capacity(20_000);
+    idl.push_str("module Expressions {\n");
+
+    // Base constants
+    idl.push_str("    const long BASE = 100;\n");
+    idl.push_str("    const long MULTIPLIER = 10;\n");
+    idl.push_str("    const long OFFSET = 5;\n");
+
+    // Complex expressions
+    for i in 0..100 {
+        _ = writeln!(
+            idl,
+            "    const long EXPR_{i} = (BASE + {i}) * MULTIPLIER - OFFSET + ({i} << 2) | ({i} & \
+             0xFF);"
+        );
+    }
+
+    // Nested arithmetic
+    for i in 0..50 {
+        _ = writeln!(
+            idl,
+            "    const long NESTED_{i} = ((({i} + 1) * 2) + 3) * 4 + 5;"
+        );
+    }
+
+    idl.push_str("};\n");
+    idl
+}
+
+/// Generate IDL with deeply nested types
+fn generate_nested_types_idl() -> String {
+    let mut idl = String::with_capacity(30_000);
+    idl.push_str("module NestedTypes {\n");
+
+    // Deeply nested sequences and maps
+    for i in 0..30 {
+        _ = writeln!(
+            idl,
+            "    typedef sequence<sequence<sequence<long>>> DeepSeq{i};"
+        );
+        _ = writeln!(
+            idl,
+            "    typedef map<string, map<string, map<string, long>>> DeepMap{i};"
+        );
+        _ = writeln!(
+            idl,
+            "    typedef sequence<map<string, sequence<long, 10>, 20>, 30> MixedNested{i};"
+        );
+    }
+
+    // Structs with nested generic types
+    for i in 0..20 {
+        _ = write!(
+            idl,
+            r"
+    struct NestedStruct{i} {{
+        sequence<sequence<long, 10>, 20> nested_seq;
+        map<string, sequence<map<long, string>>> complex_map;
+        sequence<map<string, sequence<long>>> mixed;
+    }};
+"
+        );
+    }
+
+    idl.push_str("};\n");
+    idl
+}
+
+/// Generate IDL with many union case labels
+fn generate_union_heavy_idl() -> String {
+    let mut idl = String::with_capacity(30_000);
+    idl.push_str("module Unions {\n");
+
+    for i in 0..20 {
+        _ = writeln!(idl, "    union ManyCase{i} switch (long) {{");
+        for j in 0..20 {
+            _ = writeln!(idl, "        case {j}: long val_{j};");
+        }
+        idl.push_str("        default: octet other;\n");
+        idl.push_str("    };\n");
+    }
+
+    // Unions with enum discriminators
+    for i in 0..10 {
+        _ = write!(
+            idl,
+            r"
+    enum Disc{i} {{ A_{i}, B_{i}, C_{i}, D_{i}, E_{i} }};
+    union EnumUnion{i} switch (Disc{i}) {{
+        case A_{i}: long a_val;
+        case B_{i}: float b_val;
+        case C_{i}: string c_val;
+        case D_{i}: double d_val;
+        default: octet other;
+    }};
+"
+        );
+    }
+
+    idl.push_str("};\n");
+    idl
+}
+
+// Benchmark parsing different input sizes
 fn bench_parse_sizes(c: &mut Criterion) {
     let large_idl = generate_large_idl();
 
-    let mut group = c.benchmark_group("parser");
+    let mut group = c.benchmark_group("parser/size");
 
     // Small IDL
     group.throughput(Throughput::Bytes(SMALL_IDL.len() as u64));
     group.bench_with_input(BenchmarkId::new("parse", "small"), SMALL_IDL, |b, input| {
-        b.iter(|| {
-            let result = from_str(std::hint::black_box(input));
-            std::hint::black_box(result)
-        });
+        b.iter(|| from_str(std::hint::black_box(input)));
     });
 
     // Medium IDL
@@ -271,10 +403,7 @@ fn bench_parse_sizes(c: &mut Criterion) {
         BenchmarkId::new("parse", "medium"),
         MEDIUM_IDL,
         |b, input| {
-            b.iter(|| {
-                let result = from_str(std::hint::black_box(input));
-                std::hint::black_box(result)
-            });
+            b.iter(|| from_str(std::hint::black_box(input)));
         },
     );
 
@@ -284,15 +413,56 @@ fn bench_parse_sizes(c: &mut Criterion) {
         BenchmarkId::new("parse", "large"),
         &large_idl,
         |b, input| {
-            b.iter(|| {
-                let result = from_str(std::hint::black_box(input));
-                std::hint::black_box(result)
-            });
+            b.iter(|| from_str(std::hint::black_box(input)));
         },
     );
 
     group.finish();
 }
 
-criterion_group!(benches, bench_parse_sizes);
+// Benchmark parsing specific constructs
+fn bench_parse_constructs(c: &mut Criterion) {
+    let annotations = generate_annotation_heavy_idl();
+    let expressions = generate_expression_heavy_idl();
+    let nested = generate_nested_types_idl();
+    let unions = generate_union_heavy_idl();
+
+    let mut group = c.benchmark_group("parser/construct");
+
+    group.throughput(Throughput::Bytes(annotations.len() as u64));
+    group.bench_with_input(
+        BenchmarkId::new("parse", "annotations"),
+        &annotations,
+        |b, input| {
+            b.iter(|| from_str(std::hint::black_box(input)));
+        },
+    );
+
+    group.throughput(Throughput::Bytes(expressions.len() as u64));
+    group.bench_with_input(
+        BenchmarkId::new("parse", "expressions"),
+        &expressions,
+        |b, input| {
+            b.iter(|| from_str(std::hint::black_box(input)));
+        },
+    );
+
+    group.throughput(Throughput::Bytes(nested.len() as u64));
+    group.bench_with_input(
+        BenchmarkId::new("parse", "nested_types"),
+        &nested,
+        |b, input| {
+            b.iter(|| from_str(std::hint::black_box(input)));
+        },
+    );
+
+    group.throughput(Throughput::Bytes(unions.len() as u64));
+    group.bench_with_input(BenchmarkId::new("parse", "unions"), &unions, |b, input| {
+        b.iter(|| from_str(std::hint::black_box(input)));
+    });
+
+    group.finish();
+}
+
+criterion_group!(benches, bench_parse_sizes, bench_parse_constructs);
 criterion_main!(benches);

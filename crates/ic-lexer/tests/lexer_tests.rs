@@ -36,7 +36,7 @@ fn scan(input: &str) -> Vec<Token> {
     let mut cursor = Cursor::new(src, id);
 
     let mut tokens = vec![];
-    while let Some(t) = cursor.next() {
+    while let Some(t) = cursor.advance() {
         tokens.push(t);
     }
     tokens
@@ -361,13 +361,13 @@ fn test_line_tracking() {
     let mut cursor = Cursor::new(src, id);
 
     assert_eq!(cursor.line(), 1);
-    cursor.next(); // foo
+    cursor.advance(); // foo
     assert_eq!(cursor.line(), 1);
-    cursor.next(); // \n
+    cursor.advance(); // \n
     assert_eq!(cursor.line(), 2);
-    cursor.next(); // bar
+    cursor.advance(); // bar
     assert_eq!(cursor.line(), 2);
-    cursor.next(); // \n
+    cursor.advance(); // \n
     assert_eq!(cursor.line(), 3);
 }
 
@@ -379,7 +379,7 @@ fn test_source_of() {
     let cursor = Cursor::new(src, id);
     let mut cursor2 = cursor.clone();
 
-    let token = cursor2.next().unwrap();
+    let token = cursor2.advance().unwrap();
     assert_eq!(cursor.source_of(token.span), "hello");
 }
 

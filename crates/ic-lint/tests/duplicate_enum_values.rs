@@ -39,7 +39,7 @@ fn test_duplicate_enum_values_error() {
 
     let mut vfs = SourceMap::default();
     let file_id = vfs.embed_with_name("<test>", input);
-    let parsed = ic_parse::from_file(file_id, ic_preproc::ProcArgs::default(), &mut vfs);
+    let parsed = ic_parse::from_file(file_id, &vfs);
     let hir = ic_hir_lower::from_ast(ic_hir_lower::AstInput::User(parsed.tree));
     let report = ic_lint::lint_hir(&hir, &vfs);
 
@@ -67,7 +67,7 @@ fn test_duplicate_bitmask_values_allowed() {
 
     let mut vfs = SourceMap::default();
     let file_id = vfs.embed_with_name("<test>", input);
-    let parsed = ic_parse::from_file(file_id, ic_preproc::ProcArgs::default(), &mut vfs);
+    let parsed = ic_parse::from_file(file_id, &vfs);
     let hir = ic_hir_lower::from_ast(ic_hir_lower::AstInput::User(parsed.tree));
     let report = ic_lint::lint_hir(&hir, &vfs);
 

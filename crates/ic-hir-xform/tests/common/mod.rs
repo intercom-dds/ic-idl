@@ -36,7 +36,7 @@ use ic_vfs::SourceMap;
 pub fn parse_and_resolve(input: &str) -> ResolvedGraph {
     let mut source_map = SourceMap::default();
     let file = source_map.embed_with_name("test.idl", input);
-    let parsed = ic_parse::from_file(file, ic_preproc::ProcArgs::default(), &mut source_map);
+    let parsed = ic_parse::from_file(file, &source_map);
 
     assert!(
         parsed.errors.is_empty(),

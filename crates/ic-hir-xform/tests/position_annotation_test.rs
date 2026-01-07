@@ -27,20 +27,19 @@
 
 use ic_hir::ResolvedGraph;
 use ic_hir::hir::{DefKind, Numeric};
-use ic_preproc::ProcArgs;
 use ic_vfs::SourceMap;
 
 /// Helper to parse IDL with builtin annotations
 fn parse_with_builtins(input: &str) -> ResolvedGraph {
     let mut source_map = SourceMap::default();
     let file_id = source_map.embed(input);
-    let parsed = ic_parse::from_file(file_id, ProcArgs::default(), &mut source_map);
+    let parsed = ic_parse::from_file(file_id, &source_map);
 
     let builtin_file_id = source_map.embed_with_name(
         "<builtin-annotations>",
         include_str!("../../ic-idl/idl/annotations.idl"),
     );
-    let builtin_parsed = ic_parse::from_file(builtin_file_id, ProcArgs::default(), &mut source_map);
+    let builtin_parsed = ic_parse::from_file(builtin_file_id, &source_map);
 
     ic_hir_lower::from_ast(ic_hir_lower::AstInput::WithBuiltins {
         builtins: builtin_parsed.tree,

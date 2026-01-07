@@ -81,8 +81,7 @@
 //! // Example 3: Parse a single file
 //! let file_path = PathBuf::from("example.idl");
 //! let mut source_map = ic_vfs::SourceMap::default();
-//! let file_id = source_map.open(&file_path, ic_vfs::Include::Static).unwrap().0;
-//! let parsed = ic_parse::from_file(file_id, ic_preproc::ProcArgs::default(), &mut source_map);
+//! let parsed = ic_idl::parse::from_path(&file_path, ic_preproc::ProcArgs::default(), &mut source_map).unwrap();
 //!
 //! ```
 
@@ -96,6 +95,7 @@ use tracing::{info, info_span};
 // Import modules
 mod builtin;
 pub(crate) mod config;
+pub mod parse;
 pub mod pretty;
 pub mod util;
 
@@ -207,8 +207,8 @@ impl CompileDiagnostics {
 }
 
 // Re-export core modules for the compilation pipeline
-pub use ic_parse::ParseResult as AstResult;
 pub use ic_syntax::Item as AstItem;
+pub use parse::ParseResult as AstResult;
 pub use {ic_hir as hir, ic_hir_lower as hir_lower, ic_ptree as ptree, ic_vfs as vfs};
 
 /// Convert AST to HIR.
@@ -347,7 +347,7 @@ impl Compiler {
             include_str!("../idl/annotations.idl"),
         );
         let builtin_parsed =
-            ic_parse::from_file(builtin_file_id, ProcArgs::default(), &mut self.source_map);
+            parse::from_file(builtin_file_id, ProcArgs::default(), &mut self.source_map);
 
         assert!(
             builtin_parsed.errors.is_empty(),
@@ -445,7 +445,7 @@ impl Compiler {
         builtin_ast: &[ic_syntax::Item],
     ) -> Result<(hir::ResolvedGraph, CompileDiagnostics), CompileError> {
         let proc_args = self.proc_args();
-        let ast = ic_parse::from_path(path, proc_args, &mut self.source_map).map_err(|e| {
+        let ast = parse::from_path(path, proc_args, &mut self.source_map).map_err(|e| {
             CompileError::Io(std::io::Error::new(e.kind(), format_io_error(&e, path)))
         })?;
 
@@ -453,7 +453,7 @@ impl Compiler {
         info!(file = %path.display(), items = item_count, "parsed");
 
         let mut diagnostics = CompileDiagnostics {
-            errors: ast.errors.into_iter().map(Into::into).collect(),
+            errors: ast.errors,
             warnings: vec![],
             expansion_info: ast.expansion_info,
         };
@@ -473,7 +473,7 @@ impl Compiler {
         if self.options.warn.preprocessor_enabled() {
             diagnostics
                 .warnings
-                .extend(ast.preproc_warnings.iter().map(pretty::to_warning));
+                .extend(ast.preproc_warnings.iter().cloned());
         }
 
         // Convert to HIR without built-in annotations
@@ -546,7 +546,7 @@ impl Compiler {
             include_str!("../idl/annotations.idl"),
         );
         let builtin_parsed =
-            ic_parse::from_file(builtin_file_id, ProcArgs::default(), &mut self.source_map);
+            parse::from_file(builtin_file_id, ProcArgs::default(), &mut self.source_map);
 
         assert!(
             builtin_parsed.errors.is_empty(),
@@ -564,13 +564,13 @@ impl Compiler {
     /// Returns an error if the file cannot be parsed.
     pub fn parse_to_ast(&mut self, path: &Path) -> Result<AstResult, CompileError> {
         let proc_args = self.proc_args();
-        let ast = ic_parse::from_path(path, proc_args, &mut self.source_map).map_err(|e| {
+        let ast = parse::from_path(path, proc_args, &mut self.source_map).map_err(|e| {
             CompileError::Io(std::io::Error::new(e.kind(), format_io_error(&e, path)))
         })?;
 
         if !ast.errors.is_empty() {
             return Err(CompileError::Diagnostics(CompileDiagnostics {
-                errors: ast.errors.into_iter().map(Into::into).collect(),
+                errors: ast.errors,
                 warnings: Vec::new(),
                 expansion_info: std::collections::HashMap::new(),
             }));
@@ -634,7 +634,7 @@ fn try_compile_to_ast(
 
     // Parse all files to AST
     for file in &options.files {
-        let ast = match ic_parse::from_path(file, args.clone(), vfs) {
+        let ast = match parse::from_path(file, args.clone(), vfs) {
             Ok(ast) => ast,
             Err(e) => {
                 all_errors.push(InternalError::Custom(format!(
@@ -645,9 +645,6 @@ fn try_compile_to_ast(
             }
         };
 
-        // Collect parse errors
-        all_errors.extend(ast.errors.iter().cloned().map(Into::into));
-
         // Convert orphaned annotations to warnings
         for ann in &ast.orphaned_annotations {
             all_warnings.push(pretty::orphaned_annotation_warning(ann));
@@ -655,11 +652,14 @@ fn try_compile_to_ast(
 
         // Collect preprocessor warnings if enabled
         if options.warn.preprocessor_enabled() {
-            all_warnings.extend(ast.preproc_warnings.iter().map(pretty::to_warning));
+            all_warnings.extend(ast.preproc_warnings.iter().cloned());
         }
 
         all_expansion_info.extend(ast.expansion_info);
         all_asts.extend(ast.tree);
+
+        // Collect parse errors (moved last since it consumes ast.errors)
+        all_errors.extend(ast.errors);
     }
 
     // If there were parse errors, return early

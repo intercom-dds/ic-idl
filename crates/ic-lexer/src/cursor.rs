@@ -290,11 +290,11 @@ impl Cursor {
     // non-alphanumeric characters.
     #[inline]
     fn annotation(&mut self) -> Kind {
-        if let Some(v) = self.clone().next()
+        if let Some(v) = self.clone().advance()
             && v.kind == Kind::Ident
             && self.source_of(v.span) == "annotation"
         {
-            _ = self.next();
+            _ = self.advance();
             return Kind::Keyword(Kw::Annotation);
         }
         Kind::At
@@ -411,7 +411,7 @@ impl Cursor {
     pub fn until(&mut self, kind: Kind) -> (Vec<Token>, Span) {
         let mut tokens = vec![];
         let start = self.chars.index();
-        while let Some(tok) = self.next() {
+        while let Some(tok) = self.advance() {
             if tok.kind == kind {
                 break;
             }
@@ -429,7 +429,7 @@ impl Cursor {
             if tok == kind {
                 break;
             }
-            self.next();
+            self.advance();
         }
         self.span_since(start)
     }
@@ -438,12 +438,12 @@ impl Cursor {
     /// `Cursor::until`, this accounts for escaped newlines.
     pub fn until_newline(&mut self) -> Vec<Token> {
         let mut tokens = vec![];
-        while let Some(tok) = self.next() {
+        while let Some(tok) = self.advance() {
             match tok.kind {
                 Kind::Backslash => {
                     // Don't include the bachslash in the macro definition if
                     // it was used to escape a newline.
-                    if let Some(next) = self.next() {
+                    if let Some(next) = self.advance() {
                         // An escaped newline followed by a non-escaped newline
                         // counts as an empty macro definition.
                         if next.kind != Kind::Newline {
@@ -462,8 +462,7 @@ impl Cursor {
     }
 
     /// Advances the underlying iterator and yields the next token.
-    #[allow(clippy::should_implement_trait)]
-    pub fn next(&mut self) -> Option<Token> {
+    pub fn advance(&mut self) -> Option<Token> {
         loop {
             let start = self.chars.index();
             let c = self.chars.next()?;
@@ -582,7 +581,7 @@ impl Cursor {
     /// type `kind`.
     pub fn take_if(&mut self, kind: Kind) -> Option<Token> {
         if self.peek()? == kind {
-            self.next()
+            self.advance()
         } else {
             None
         }
@@ -615,7 +614,15 @@ impl Cursor {
     /// `N` lookup to properly parse expressions.
     #[must_use]
     pub fn peek(&self) -> Option<Kind> {
-        self.clone().next().map(|v| v.kind)
+        self.clone().advance().map(|v| v.kind)
+    }
+}
+
+impl Iterator for Cursor {
+    type Item = Token;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        Cursor::advance(self)
     }
 }
 
@@ -677,7 +684,7 @@ mod tests {
         let mut cursor = Cursor::new(src, id);
 
         let mut tokens = vec![];
-        while let Some(t) = cursor.next() {
+        while let Some(t) = cursor.advance() {
             tokens.push(t);
         }
         tokens

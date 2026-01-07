@@ -27,13 +27,13 @@
 
 use ic_hir::hir::{DefKind, Numeric, TyKind};
 use ic_hir_xform::implicit_default;
+use ic_vfs::SourceMap;
 
 fn parse_and_transform(idl: &str) -> ic_hir::ResolvedGraph {
-    let mut vfs = ic_vfs::SourceMap::default();
+    let mut vfs = SourceMap::default();
     let file_id = vfs.embed(idl);
 
-    let args = ic_preproc::ProcArgs::default();
-    let parsed = ic_parse::from_file(file_id, args, &mut vfs);
+    let parsed = ic_parse::from_file(file_id, &vfs);
 
     assert!(
         parsed.errors.is_empty(),

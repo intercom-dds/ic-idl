@@ -222,8 +222,8 @@ fn test_merge_module_reopening() {
     let file1 = source_map.embed_with_name("shapes1.idl", input1);
     let file2 = source_map.embed_with_name("shapes2.idl", input2);
 
-    let parsed1 = ic_parse::from_file(file1, ic_preproc::ProcArgs::default(), &mut source_map);
-    let parsed2 = ic_parse::from_file(file2, ic_preproc::ProcArgs::default(), &mut source_map);
+    let parsed1 = ic_parse::from_file(file1, &source_map);
+    let parsed2 = ic_parse::from_file(file2, &source_map);
 
     let graph1 = ic_hir_lower::from_ast(ic_hir_lower::AstInput::User(parsed1.tree));
     let graph2 = ic_hir_lower::from_ast(ic_hir_lower::AstInput::User(parsed2.tree));
@@ -323,8 +323,8 @@ fn test_merge_conflicting_definitions() {
     let file1 = source_map.embed_with_name("file1.idl", input1);
     let file2 = source_map.embed_with_name("file2.idl", input2);
 
-    let parsed1 = ic_parse::from_file(file1, ic_preproc::ProcArgs::default(), &mut source_map);
-    let parsed2 = ic_parse::from_file(file2, ic_preproc::ProcArgs::default(), &mut source_map);
+    let parsed1 = ic_parse::from_file(file1, &source_map);
+    let parsed2 = ic_parse::from_file(file2, &source_map);
 
     let graph1 = ic_hir_lower::from_ast(ic_hir_lower::AstInput::User(parsed1.tree));
     let graph2 = ic_hir_lower::from_ast(ic_hir_lower::AstInput::User(parsed2.tree));
@@ -384,8 +384,8 @@ enum Color { RED, GREEN, BLUE };
     let file1 = source_map.embed_with_name("shapes.idl", input1);
     let file2 = source_map.embed_with_name("graphics.idl", input2);
 
-    let parsed1 = ic_parse::from_file(file1, ic_preproc::ProcArgs::default(), &mut source_map);
-    let parsed2 = ic_parse::from_file(file2, ic_preproc::ProcArgs::default(), &mut source_map);
+    let parsed1 = ic_parse::from_file(file1, &source_map);
+    let parsed2 = ic_parse::from_file(file2, &source_map);
 
     let graph1 = ic_hir_lower::from_ast(ic_hir_lower::AstInput::User(parsed1.tree));
     let graph2 = ic_hir_lower::from_ast(ic_hir_lower::AstInput::User(parsed2.tree));
@@ -427,11 +427,14 @@ module api {
     let file1 = source_map.embed_with_name("api_request.idl", input1);
     let file2 = source_map.embed_with_name("api_response.idl", input2);
 
-    let parsed1 = ic_parse::from_file(file1, ic_preproc::ProcArgs::default(), &mut source_map);
-    let parsed2 = ic_parse::from_file(file2, ic_preproc::ProcArgs::default(), &mut source_map);
+    let parsed1 = ic_parse::from_file(file1, &source_map);
+    let parsed2 = ic_parse::from_file(file2, &source_map);
 
     let graph1 = ic_hir_lower::from_ast(ic_hir_lower::AstInput::User(parsed1.tree));
     let graph2 = ic_hir_lower::from_ast(ic_hir_lower::AstInput::User(parsed2.tree));
+
+    assert!(graph1.errors.is_empty());
+    assert!(graph2.errors.is_empty());
 
     let merged = merge_hir_trees(&[graph1, graph2]);
 
@@ -470,16 +473,8 @@ module abc {
     let shared_file = source_map.embed_with_name("shared.idl", shared_content);
 
     // Parse the shared file twice (simulating it being included in two different files)
-    let parsed1 = ic_parse::from_file(
-        shared_file,
-        ic_preproc::ProcArgs::default(),
-        &mut source_map,
-    );
-    let parsed2 = ic_parse::from_file(
-        shared_file,
-        ic_preproc::ProcArgs::default(),
-        &mut source_map,
-    );
+    let parsed1 = ic_parse::from_file(shared_file, &source_map);
+    let parsed2 = ic_parse::from_file(shared_file, &source_map);
 
     let graph1 = ic_hir_lower::from_ast(ic_hir_lower::AstInput::User(parsed1.tree));
     let graph2 = ic_hir_lower::from_ast(ic_hir_lower::AstInput::User(parsed2.tree));
@@ -644,8 +639,8 @@ module test {
     let file1 = source_map.embed_with_name("file1.idl", input1);
     let file2 = source_map.embed_with_name("file2.idl", input2);
 
-    let parsed1 = ic_parse::from_file(file1, ic_preproc::ProcArgs::default(), &mut source_map);
-    let parsed2 = ic_parse::from_file(file2, ic_preproc::ProcArgs::default(), &mut source_map);
+    let parsed1 = ic_parse::from_file(file1, &source_map);
+    let parsed2 = ic_parse::from_file(file2, &source_map);
 
     let graph1 = ic_hir_lower::from_ast(ic_hir_lower::AstInput::User(parsed1.tree));
     let graph2 = ic_hir_lower::from_ast(ic_hir_lower::AstInput::User(parsed2.tree));
@@ -712,8 +707,8 @@ module TestModule {
     let file1 = source_map.embed_with_name("parent.idl", input1);
     let file2 = source_map.embed_with_name("child.idl", input2);
 
-    let parsed1 = ic_parse::from_file(file1, ic_preproc::ProcArgs::default(), &mut source_map);
-    let parsed2 = ic_parse::from_file(file2, ic_preproc::ProcArgs::default(), &mut source_map);
+    let parsed1 = ic_parse::from_file(file1, &source_map);
+    let parsed2 = ic_parse::from_file(file2, &source_map);
 
     let graph1 = ic_hir_lower::from_ast(ic_hir_lower::AstInput::User(parsed1.tree));
     let graph2 = ic_hir_lower::from_ast(ic_hir_lower::AstInput::User(parsed2.tree));
@@ -786,8 +781,8 @@ module Outer {
     let file1 = source_map.embed_with_name("types1.idl", input1);
     let file2 = source_map.embed_with_name("types2.idl", input2);
 
-    let parsed1 = ic_parse::from_file(file1, ic_preproc::ProcArgs::default(), &mut source_map);
-    let parsed2 = ic_parse::from_file(file2, ic_preproc::ProcArgs::default(), &mut source_map);
+    let parsed1 = ic_parse::from_file(file1, &source_map);
+    let parsed2 = ic_parse::from_file(file2, &source_map);
 
     let graph1 = ic_hir_lower::from_ast(ic_hir_lower::AstInput::User(parsed1.tree));
     let graph2 = ic_hir_lower::from_ast(ic_hir_lower::AstInput::User(parsed2.tree));

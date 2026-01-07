@@ -25,23 +25,18 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use ic_parse::from_file;
-use ic_preproc::ProcArgs;
+use ic_parse::from_str;
 use ic_syntax::{Expr, Item, OpKind};
-use ic_vfs::SourceMap;
 
 #[test]
 fn test_shift_operators_in_constants() {
-    let mut vfs = SourceMap::default();
-    let file = vfs.embed(
+    let result = from_str(
         r"
         const long LEFT_SHIFT = 1 << 4;
         const long RIGHT_SHIFT = 64 >> 2;
         const long COMPLEX = (1 << 8) + (256 >> 4);
     ",
     );
-
-    let result = from_file(file, ProcArgs::default(), &mut vfs);
     assert!(result.errors.is_empty());
 
     // Verify the constants were parsed with shift operators
@@ -67,16 +62,13 @@ fn test_shift_operators_in_constants() {
 
 #[test]
 fn test_nested_templates() {
-    let mut vfs = SourceMap::default();
-    let file = vfs.embed(
+    let result = from_str(
         r"
         typedef sequence<sequence<string>> StringMatrix;
         typedef map<string, sequence<long>> StringToSeq;
         typedef sequence<map<long, sequence<octet>>> ComplexType;
     ",
     );
-
-    let result = from_file(file, ProcArgs::default(), &mut vfs);
     assert!(result.errors.is_empty());
 
     // Verify all typedefs were parsed successfully
@@ -89,25 +81,20 @@ fn test_nested_templates() {
 
 #[test]
 fn test_shift_in_template_bounds() {
-    let mut vfs = SourceMap::default();
-    let file = vfs.embed(
+    let result = from_str(
         r"
         typedef sequence<long, (1 << 10)> KB_Array;
         typedef sequence<octet, (256 >> 2)> SixtyFour_Array;
     ",
     );
-
-    let result = from_file(file, ProcArgs::default(), &mut vfs);
     assert!(result.errors.is_empty());
     assert_eq!(result.tree.len(), 2);
 }
 
 #[test]
 fn test_ambiguous_cases() {
-    let mut vfs = SourceMap::default();
-
     // Test case where >> could be ambiguous
-    let file = vfs.embed(
+    let result = from_str(
         r"
         // In expression context, >> is shift
         const long SHIFT = 1024 >> 2;
@@ -119,19 +106,15 @@ fn test_ambiguous_cases() {
         typedef sequence<octet, (1024 >> 2)> Array;
     ",
     );
-
-    let result = from_file(file, ProcArgs::default(), &mut vfs);
     assert!(result.errors.is_empty());
     assert_eq!(result.tree.len(), 3);
 }
 
 #[test]
 fn test_shift_operators_in_template_bounds_without_parens() {
-    let mut vfs = SourceMap::default();
-
     // Test shift operators in template bounds WITHOUT parentheses
     // This is the key C++-like parsing challenge
-    let file = vfs.embed(
+    let result = from_str(
         r"
         // Basic case: 1 >> 2 followed by > to close template
         typedef sequence<int32, 1 >> 2> ShiftBound;
@@ -146,8 +129,6 @@ fn test_shift_operators_in_template_bounds_without_parens() {
         typedef sequence<long, 256 >> 2 + 1> ShiftThenAdd;
     ",
     );
-
-    let result = from_file(file, ProcArgs::default(), &mut vfs);
     assert!(
         result.errors.is_empty(),
         "Parse errors: {:?}",
@@ -163,12 +144,10 @@ fn test_shift_operators_in_template_bounds_without_parens() {
 
 #[test]
 fn test_shift_vs_template_closer_disambiguation() {
-    let mut vfs = SourceMap::default();
-
     // Verify that >> is correctly interpreted based on context:
     // - As shift when followed by expression-starting token
     // - As two > when followed by , or > or non-expression
-    let file = vfs.embed(
+    let result = from_str(
         r"
         // >> followed by number -> shift operator
         typedef sequence<int32, 8 >> 2> A;
@@ -190,8 +169,6 @@ fn test_shift_vs_template_closer_disambiguation() {
         typedef sequence<sequence<int32, 4 >> 1>> F;
     ",
     );
-
-    let result = from_file(file, ProcArgs::default(), &mut vfs);
     assert!(
         result.errors.is_empty(),
         "Parse errors: {:?}",
@@ -202,11 +179,9 @@ fn test_shift_vs_template_closer_disambiguation() {
 
 #[test]
 fn test_shift_in_multi_arg_template() {
-    let mut vfs = SourceMap::default();
-
     // fixed<D, S> has two args - first arg position knows more args follow,
     // so `>> ident ,` is treated as shift (comma = next template arg)
-    let file = vfs.embed(
+    let result = from_str(
         r"
         const long N = 2;
 
@@ -220,7 +195,6 @@ fn test_shift_in_multi_arg_template() {
         typedef fixed<8 >> 2, 16 >> 4> BothShift;
     ",
     );
-    let result = from_file(file, ProcArgs::default(), &mut vfs);
     assert!(
         result.errors.is_empty(),
         "Parse errors: {:?}",
@@ -231,9 +205,7 @@ fn test_shift_in_multi_arg_template() {
 
 #[test]
 fn test_deeply_nested_templates_with_shifts() {
-    let mut vfs = SourceMap::default();
-
-    let file = vfs.embed(
+    let result = from_str(
         r"
         // Three levels of nesting
         typedef sequence<sequence<sequence<long>>> Triple;
@@ -245,8 +217,6 @@ fn test_deeply_nested_templates_with_shifts() {
         typedef map<string, sequence<octet, 1024 >> 4>> MapWithShift;
     ",
     );
-
-    let result = from_file(file, ProcArgs::default(), &mut vfs);
     assert!(
         result.errors.is_empty(),
         "Parse errors: {:?}",
@@ -257,11 +227,9 @@ fn test_deeply_nested_templates_with_shifts() {
 
 #[test]
 fn test_template_closers_with_declarator_list() {
-    let mut vfs = SourceMap::default();
-
     // Test that >> followed by identifier then comma is treated as template closers,
     // not shift operator. The identifier is a declarator name, not part of expression.
-    let file = vfs.embed(
+    let result = from_str(
         r"
         // Multiple declarators after nested template
         typedef sequence<sequence<int32>> a, b, c;
@@ -273,8 +241,6 @@ fn test_template_closers_with_declarator_list() {
         typedef sequence<sequence<octet, 8>> x, y;
     ",
     );
-
-    let result = from_file(file, ProcArgs::default(), &mut vfs);
     assert!(
         result.errors.is_empty(),
         "Parse errors: {:?}",

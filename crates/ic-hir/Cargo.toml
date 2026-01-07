@@ -48,6 +48,5 @@ intercom-cts.workspace = true
 ic-cli = { path = "../ic-cli" }
 ic-hir-lower = { path = "../ic-hir-lower" }
 ic-parse = { path = "../ic-parse" }
-ic-preproc = { path = "../ic-preproc" }
 ic-vfs = { path = "../ic-vfs" }
 insta = "1.46.0"

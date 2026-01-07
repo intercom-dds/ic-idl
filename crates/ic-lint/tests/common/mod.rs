@@ -37,8 +37,7 @@ pub fn test_lint(source: &str) -> String {
     let file_id = vfs.embed(source);
 
     // Parse the IDL code
-    let args = ic_preproc::ProcArgs::default();
-    let ast = ic_parse::from_file(file_id, args, &mut vfs);
+    let ast = ic_parse::from_file(file_id, &vfs);
 
     // Assert no parse errors in test code
     assert!(
@@ -85,16 +84,14 @@ pub fn lint_hir(source: &str) -> Report {
     let file_id = vfs.embed(source);
 
     // Parse the IDL code
-    let args = ic_preproc::ProcArgs::default();
-    let ast = ic_parse::from_file(file_id, args, &mut vfs);
+    let ast = ic_parse::from_file(file_id, &vfs);
 
     // Parse built-in annotations (same as ic-idl does)
     let builtin_file_id = vfs.embed_with_name(
         "<builtin-annotations>",
         include_str!("../../../ic-idl/idl/annotations.idl"),
     );
-    let builtin_parsed =
-        ic_parse::from_file(builtin_file_id, ic_preproc::ProcArgs::default(), &mut vfs);
+    let builtin_parsed = ic_parse::from_file(builtin_file_id, &vfs);
 
     // Lower to HIR with built-ins
     let hir = ic_hir_lower::from_ast(ic_hir_lower::AstInput::WithBuiltins {
@@ -123,16 +120,14 @@ pub fn test_lint_hir(source: &str) -> String {
     let file_id = vfs.embed(source);
 
     // Parse the IDL code
-    let args = ic_preproc::ProcArgs::default();
-    let ast = ic_parse::from_file(file_id, args, &mut vfs);
+    let ast = ic_parse::from_file(file_id, &vfs);
 
     // Parse built-in annotations (same as ic-idl does)
     let builtin_file_id = vfs.embed_with_name(
         "<builtin-annotations>",
         include_str!("../../../ic-idl/idl/annotations.idl"),
     );
-    let builtin_parsed =
-        ic_parse::from_file(builtin_file_id, ic_preproc::ProcArgs::default(), &mut vfs);
+    let builtin_parsed = ic_parse::from_file(builtin_file_id, &vfs);
 
     // Assert no parse errors in test code
     assert!(

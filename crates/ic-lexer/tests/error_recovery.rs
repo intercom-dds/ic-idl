@@ -36,7 +36,7 @@ fn scan(input: &str) -> Vec<Token> {
     let mut cursor = Cursor::new(src, id);
 
     let mut tokens = vec![];
-    while let Some(t) = cursor.next() {
+    while let Some(t) = cursor.advance() {
         tokens.push(t);
     }
     tokens

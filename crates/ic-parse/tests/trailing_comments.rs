@@ -25,96 +25,27 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use ic_parse::from_file;
-use ic_preproc::{ProcArgs, preprocess};
+use ic_parse::from_str;
 use ic_syntax::Item;
-use ic_vfs::SourceMap;
-
-#[test]
-fn test_trailing_comments_in_tokens() {
-    let mut vfs = SourceMap::default();
-
-    // Simple test case with trailing comment
-    let content = "int value; /// trailing comment";
-    let file = vfs.embed(content);
-
-    // Run preprocessor to get tokens
-    let args = ProcArgs::default();
-    let token_iter = preprocess(file, args, &mut vfs);
-    let tokens: Vec<_> = token_iter.collect();
-
-    // Check that we have the expected tokens
-    let comment_tokens: Vec<_> = tokens
-        .into_iter()
-        .filter(|t| matches!(t.kind, ic_lexer::token::Kind::Comment { .. }))
-        .collect();
-
-    assert_eq!(comment_tokens.len(), 1);
-
-    // Verify the comment is marked as trailing
-    if let ic_lexer::token::Kind::Comment { trailing, .. } = comment_tokens[0].kind {
-        assert!(trailing, "Comment should be marked as trailing");
-    } else {
-        panic!("Expected Comment token");
-    }
-}
-
-#[test]
-fn test_leading_vs_trailing_comments() {
-    let mut vfs = SourceMap::default();
-
-    let content = r"/// Leading comment
-int a;
-int b; /// Trailing comment
-    /// Another leading comment
-int c;";
-
-    let file = vfs.embed(content);
-
-    // Run preprocessor to get tokens
-    let args = ProcArgs::default();
-    let token_iter = preprocess(file, args, &mut vfs);
-    let tokens: Vec<_> = token_iter.collect();
-
-    // Collect all comment tokens with their trailing flag
-    let comments: Vec<bool> = tokens
-        .into_iter()
-        .filter_map(|t| match t.kind {
-            ic_lexer::token::Kind::Comment { trailing, .. } => Some(trailing),
-            _ => None,
-        })
-        .collect();
-
-    assert_eq!(comments.len(), 3);
-    assert!(!comments[0]); // Leading comment
-    assert!(comments[1]); // Trailing comment
-    assert!(!comments[2]); // Leading comment (with indentation)
-}
 
 #[test]
 fn test_struct_field_trailing_comments() {
-    let mut vfs = SourceMap::default();
-
-    let content = r"
+    let result = from_str(
+        r"
 struct Example {
     long field1; /// This is a trailing comment for field1
     string field2; /// This is a trailing comment for field2
-};";
-
-    let file = vfs.embed(content);
-
-    // Parse using from_file
-    let args = ProcArgs::default();
-    let parse_result = from_file(file, args, &mut vfs);
-    assert!(
-        parse_result.errors.is_empty(),
-        "Parse errors: {:?}",
-        parse_result.errors
+};",
     );
-    assert_eq!(parse_result.tree.len(), 1);
+    assert!(
+        result.errors.is_empty(),
+        "Parse errors: {:?}",
+        result.errors
+    );
+    assert_eq!(result.tree.len(), 1);
 
     // Check that the struct has the expected fields with annotations
-    if let Item::StructValue(s) = &parse_result.tree[0] {
+    if let Item::StructValue(s) = &result.tree[0] {
         assert_eq!(s.members.len(), 2);
 
         // Check field1 has a trailing comment annotation
@@ -133,9 +64,8 @@ struct Example {
 
 #[test]
 fn test_leading_vs_trailing_struct_comments() {
-    let mut vfs = SourceMap::default();
-
-    let content = r"
+    let result = from_str(
+        r"
 struct MixedComments {
     /// Leading comment for field1
     long field1;
@@ -143,35 +73,31 @@ struct MixedComments {
     /// Leading comment for field3
     /// Another line of leading comment
     string field3;
-};";
-
-    let file = vfs.embed(content);
-
-    // Parse using from_file
-    let args = ProcArgs::default();
-    let parse_result = from_file(file, args, &mut vfs);
-    assert!(
-        parse_result.errors.is_empty(),
-        "Parse errors: {:?}",
-        parse_result.errors
+};",
     );
-    assert_eq!(parse_result.tree.len(), 1);
+    assert!(
+        result.errors.is_empty(),
+        "Parse errors: {:?}",
+        result.errors
+    );
+    assert_eq!(result.tree.len(), 1);
 
     // Check that the struct has the expected fields with annotations
-    if let Item::StructValue(s) = &parse_result.tree[0] {
+    if let Item::StructValue(s) = &result.tree[0] {
         assert_eq!(s.members.len(), 3);
 
-        // field1 should have 1 leading comment
-        let field1 = &s.members[0];
-        assert_eq!(field1.annotations.len(), 1);
+        // field1 should have 1 leading comment annotation
+        assert_eq!(s.members[0].annotations.len(), 1);
+        assert_eq!(s.members[0].annotations[0].ident.segments[0].name, "doc");
 
-        // field2 should have 1 trailing comment
-        let field2 = &s.members[1];
-        assert_eq!(field2.annotations.len(), 1);
+        // field2 should have 1 trailing comment annotation
+        assert_eq!(s.members[1].annotations.len(), 1);
+        assert_eq!(s.members[1].annotations[0].ident.segments[0].name, "doc");
 
-        // field3 should have 2 leading comments
-        let field3 = &s.members[2];
-        assert_eq!(field3.annotations.len(), 2);
+        // field3 should have 2 leading comment annotations
+        assert_eq!(s.members[2].annotations.len(), 2);
+        assert_eq!(s.members[2].annotations[0].ident.segments[0].name, "doc");
+        assert_eq!(s.members[2].annotations[1].ident.segments[0].name, "doc");
     } else {
         panic!("Expected a struct item");
     }

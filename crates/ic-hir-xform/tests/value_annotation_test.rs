@@ -26,7 +26,6 @@
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use ic_hir::hir::{DefKind, Numeric};
-use ic_preproc::ProcArgs;
 use ic_vfs::SourceMap;
 
 #[test]
@@ -46,7 +45,7 @@ fn test_value_annotation_transform_is_noop() {
     // Parse the input
     let mut source_map = SourceMap::default();
     let file_id = source_map.embed(input);
-    let parsed = ic_parse::from_file(file_id, ProcArgs::default(), &mut source_map);
+    let parsed = ic_parse::from_file(file_id, &source_map);
 
     // Lower to HIR
     let hir = ic_hir_lower::from_ast(ic_hir_lower::AstInput::User(parsed.tree));
@@ -104,7 +103,7 @@ fn test_enum_auto_increment() {
     // Parse the input
     let mut source_map = SourceMap::default();
     let file_id = source_map.embed(input);
-    let parsed = ic_parse::from_file(file_id, ProcArgs::default(), &mut source_map);
+    let parsed = ic_parse::from_file(file_id, &source_map);
 
     // Lower to HIR
     let hir = ic_hir_lower::from_ast(ic_hir_lower::AstInput::User(parsed.tree));

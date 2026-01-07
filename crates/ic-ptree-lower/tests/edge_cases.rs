@@ -27,15 +27,13 @@
 
 use ic_hir::ResolvedGraph;
 use ic_hir_lower::AstInput;
-use ic_parse::from_file;
-use ic_preproc::ProcArgs;
 use ic_ptree_lower::from_hir;
 use ic_vfs::SourceMap;
 
 fn parse_idl(idl: &str) -> (ResolvedGraph, SourceMap) {
     let mut vfs = SourceMap::default();
     let file_id = vfs.embed(idl);
-    let parsed = from_file(file_id, ProcArgs::default(), &mut vfs);
+    let parsed = ic_parse::from_file(file_id, &vfs);
     assert!(parsed.errors.is_empty());
 
     let hir = ic_hir_lower::from_ast(AstInput::User(parsed.tree));

@@ -62,10 +62,6 @@ fn format_slice<T: std::fmt::Display>(kind: &[T]) -> String {
     }
 }
 
-fn to_diag(error: &ic_parse::Error, is_warning: bool) -> Diag {
-    to_diag_with_expansion(error, is_warning, &HashMap::new())
-}
-
 fn to_diag_with_expansion(
     error: &ic_parse::Error,
     is_warning: bool,
@@ -214,10 +210,6 @@ pub fn fmt_warnings(warnings: &[Diag], vfs: &SourceMap) -> String {
         _ = ic_diagnostic::emit_diagnostic(&mut buf, vfs, diag);
     }
     buf
-}
-
-pub fn to_warning(error: &ic_parse::Error) -> Diag {
-    to_diag(error, true)
 }
 
 /// Creates a warning for an orphaned annotation.

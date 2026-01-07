@@ -137,7 +137,7 @@ where
 
     fn keyword(&mut self) {
         // Empty directives are allowed, but we should consume the hashtag.
-        if let Some(tok) = self.cursor().next() {
+        if let Some(tok) = self.cursor().advance() {
             match tok.kind {
                 Kind::Ident | Kind::Keyword(_) => self.directive(tok.span),
                 Kind::Number { .. } | Kind::Newline => (),
@@ -152,7 +152,7 @@ where
     }
 
     fn macro_name(&mut self) -> Option<(&'a str, Span)> {
-        let tok = self.cursor().next()?;
+        let tok = self.cursor().advance()?;
         match tok.kind {
             Kind::Ident | Kind::Keyword(_) => Some((self.source_of(tok.span), tok.span)),
             _ => {
@@ -320,7 +320,7 @@ where
     }
 
     fn expect(&mut self, kind: Kind, message: &'static str) -> Option<Token> {
-        if let Some(tok) = self.cursor().next() {
+        if let Some(tok) = self.cursor().advance() {
             if tok.kind == kind {
                 return Some(tok);
             }
@@ -720,7 +720,7 @@ where
 
         // Consume the '('
         if let Some(file) = self.stack.last_mut() {
-            file.cursor.next();
+            file.cursor.advance();
         } else {
             // This shouldn't happen in normal operation - the stack should never be empty here
             self.state().errors.push(Error::Syntax {
@@ -960,12 +960,12 @@ where
             && lparen == Kind::LParen
         {
             // consume the opening parenthesis
-            self.cursor().next();
+            self.cursor().advance();
 
             // Get the string literal argument
-            if let Some(string_tok) = self.cursor().next()
+            if let Some(string_tok) = self.cursor().advance()
                 && matches!(string_tok.kind, Kind::String { terminated: true })
-                && let Some(rparen) = self.cursor().next()
+                && let Some(rparen) = self.cursor().advance()
                 && rparen.kind == Kind::RParen
             {
                 // Extract the pragma content from the string literal
@@ -979,7 +979,7 @@ where
                     let pragma_src = self.vfs.source(pragma_id);
                     let mut pragma_cursor = Cursor::new(pragma_src, pragma_id);
                     let mut pragma_tokens = Vec::new();
-                    while let Some(tok) = pragma_cursor.next() {
+                    while let Some(tok) = pragma_cursor.advance() {
                         if tok.kind != Kind::Newline {
                             pragma_tokens.push(tok);
                         }
@@ -1042,7 +1042,7 @@ where
             }
 
             // Advance the cursor and continue parsing directives
-            if let Some(tok) = self.stack.last_mut()?.cursor.next() {
+            if let Some(tok) = self.stack.last_mut()?.cursor.advance() {
                 if tok.kind == Kind::Hash {
                     self.keyword();
                     continue 'outer;
@@ -1095,7 +1095,7 @@ where
 
         loop {
             let tok = if let Some(file) = self.stack.last_mut() {
-                file.cursor.next()
+                file.cursor.advance()
             } else {
                 None
             };
@@ -1223,7 +1223,7 @@ where
             }
 
             // Advance the cursor and continue parsing directives
-            if let Some(tok) = self.stack.last_mut()?.cursor.next() {
+            if let Some(tok) = self.stack.last_mut()?.cursor.advance() {
                 if tok.kind == Kind::Hash {
                     self.keyword();
                     continue 'outer;
@@ -1291,7 +1291,7 @@ where
             }
 
             // Parse parameter
-            let Some(arg) = self.cursor().next() else {
+            let Some(arg) = self.cursor().advance() else {
                 return (args, false);
             };
             match arg.kind {
@@ -1318,11 +1318,11 @@ where
     /// Check if we have three consecutive periods (...) and consume them
     fn check_and_consume_ellipsis(&mut self) -> bool {
         let cursor = self.cursor();
-        cursor.next();
+        cursor.advance();
         if cursor.peek() == Some(Kind::Period) {
-            cursor.next();
+            cursor.advance();
             if cursor.peek() == Some(Kind::Period) {
-                cursor.next();
+                cursor.advance();
                 return true;
             }
         }
@@ -1510,13 +1510,13 @@ where
         let cursor = self.cursor();
         let (kind, path) = match cursor.peek() {
             Some(Kind::Lt) => {
-                _ = cursor.next();
+                _ = cursor.advance();
                 let span = cursor.until_peek(Kind::Gt);
                 self.expect(Kind::Gt, "unterminated include");
                 (Include::System, span)
             }
             Some(Kind::String { .. }) => {
-                let Some(tok) = cursor.next() else {
+                let Some(tok) = cursor.advance() else {
                     self.state().errors.push(Error::Syntax {
                         message: "unexpected end of file in include directive",
                         span,
@@ -1754,7 +1754,7 @@ where
         if let Some(tok) = self.cursor().peek()
             && matches!(tok, Kind::String { terminated: true })
         {
-            self.cursor().next();
+            self.cursor().advance();
         }
 
         self.warn_trailing(Directive::Line);

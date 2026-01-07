@@ -88,190 +88,63 @@ mod expr;
 mod parser;
 mod types;
 
-use std::collections::HashMap;
-use std::path::Path;
-
 pub use error::{Error, Expected, Reason};
-pub use ic_lexer as lexer;
-use ic_lexer::token::Kind;
-use ic_preproc::ProcArgs;
-use ic_syntax::{AnnotationAppl, Item, Span};
+use ic_lexer::cursor::Cursor;
+use ic_lexer::token::{Kind, Token};
+use ic_syntax::{AnnotationAppl, Item};
+use ic_vfs::FileId;
 pub use ic_vfs::SourceMap;
-use ic_vfs::{FileId, Include};
 use parser::Parser;
-use tracing::{debug, debug_span};
+use tracing::debug;
 
 /// Result of parsing an IDL file.
 #[derive(Debug)]
 pub struct ParseResult {
     pub tree: Vec<Item>,
     pub errors: Vec<Error>,
+
     /// Annotations that couldn't be attached to any construct.
     pub orphaned_annotations: Vec<AnnotationAppl>,
-    /// Warnings from the preprocessor
-    pub preproc_warnings: Vec<Error>,
-
-    /// Map of spans to their macro expansion context
-    pub expansion_info: HashMap<Span, ic_preproc::ExpansionInfo>,
 }
 
-/// Constructs an AST from the given source code.
+/// Parses source code from a string.
 #[must_use]
 pub fn from_str(input: &str) -> ParseResult {
     let mut vfs = SourceMap::default();
     let file_id = vfs.embed(input);
-    from_file(file_id, ProcArgs::default(), &mut vfs)
+    from_file(file_id, &vfs)
 }
 
-/// Parses the specified file path and constructs an AST.
-pub fn from_path(path: &Path, args: ProcArgs, vfs: &mut SourceMap) -> std::io::Result<ParseResult> {
-    let (file_id, _) = vfs.open(path, Include::Static)?;
-    Ok(from_file(file_id, args, vfs))
-}
-
-/// Parses the specified file and constructs an AST.
+/// Parses source from a file that has already been loaded into the
+/// `SourceMap`.
+///
+/// This function lexes the source and parses the resulting tokens. It does
+/// *not* run the preprocessor - callers should preprocess first if needed.
 #[must_use]
-pub fn from_file(file_id: FileId, args: ProcArgs, vfs: &mut SourceMap) -> ParseResult {
-    use ic_preproc::Token;
-
-    let _span = debug_span!("parse_file", ?file_id).entered();
-
-    let mut state = ic_preproc::State::new();
-    let iter = ic_preproc::with_state(file_id, args, &mut state, vfs);
-
-    let tokens: Vec<Token> = iter.filter(|t| !matches!(t.kind, Kind::Newline)).collect();
-    debug!(tokens = tokens.len(), "preprocessed");
-
-    let parser = Parser::new(tokens, vfs);
-    let (tree, parse_errors, orphaned_annotations) = parser.parse();
-    debug!(items = tree.len(), errors = parse_errors.len(), "parsed");
-
-    let mut errors: Vec<Error> = parse_errors;
-    errors.extend(process_preprocessor_errors(state.errors(), vfs));
-    let preproc_warnings = process_preprocessor_warnings(state.warnings(), vfs);
-
-    ParseResult {
-        tree,
-        errors,
-        orphaned_annotations,
-        preproc_warnings,
-        expansion_info: state
-            .expansion_info
-            .iter()
-            .map(|(k, v)| (*k, v.clone()))
-            .collect(),
-    }
+pub fn from_file(file_id: FileId, vfs: &SourceMap) -> ParseResult {
+    let source = vfs.source(file_id);
+    let cursor = Cursor::new(source, file_id);
+    from_iter(cursor, vfs)
 }
 
-/// Constructs an AST from the given token iterator.
-pub fn from_iter<I>(iter: I) -> ParseResult
+/// Parses from a token iterator.
+pub fn from_iter<I>(tokens: I, vfs: &SourceMap) -> ParseResult
 where
-    I: IntoIterator<Item = ic_lexer::token::Token>,
+    I: IntoIterator<Item = Token>,
 {
-    let vfs = SourceMap::default();
+    let tokens: Vec<_> = tokens
+        .into_iter()
+        .filter(|t| !matches!(t.kind, Kind::Newline))
+        .collect();
 
-    let tokens: Vec<_> = iter.into_iter().collect();
-
-    let parser = Parser::new(tokens, &vfs);
+    debug!(tokens = tokens.len(), "lexed");
+    let parser = Parser::new(tokens, vfs);
     let (tree, errors, orphaned_annotations) = parser.parse();
+    debug!(items = tree.len(), errors = errors.len(), "parsed");
 
     ParseResult {
         tree,
         errors,
         orphaned_annotations,
-        preproc_warnings: Vec::new(),
-        expansion_info: HashMap::default(),
     }
-}
-
-fn process_preprocessor_errors(errors: &[ic_preproc::Error], vfs: &SourceMap) -> Vec<Error> {
-    let mut result = Vec::new();
-
-    for error in errors {
-        match error {
-            ic_preproc::Error::Note { span, tokens } => {
-                let message = if tokens.is_empty() {
-                    "#error directive".to_string()
-                } else {
-                    let token_text = tokens
-                        .iter()
-                        .map(|t| &vfs.source_str(t.span.start.file_id)[t.span.range()])
-                        .collect::<Vec<_>>()
-                        .join(" ");
-                    format!("#error directive: {token_text}")
-                };
-                result.push(Error {
-                    found: None,
-                    expected: None,
-                    reason: Reason::Custom(message),
-                    label: None,
-                    span: *span,
-                });
-            }
-            ic_preproc::Error::Syntax { message, span }
-            | ic_preproc::Error::Expr { message, span } => {
-                result.push(Error {
-                    found: None,
-                    expected: None,
-                    reason: Reason::Custom((*message).to_string()),
-                    label: None,
-                    span: *span,
-                });
-            }
-            ic_preproc::Error::Extraneous { .. } => {}
-        }
-    }
-
-    result
-}
-
-fn process_preprocessor_warnings(warnings: &[ic_preproc::Error], vfs: &SourceMap) -> Vec<Error> {
-    let mut result = Vec::new();
-
-    for warning in warnings {
-        match warning {
-            ic_preproc::Error::Note { span, tokens } => {
-                let message = if tokens.is_empty() {
-                    "#warning directive".to_string()
-                } else {
-                    let token_text = tokens
-                        .iter()
-                        .map(|t| &vfs.source_str(t.span.start.file_id)[t.span.range()])
-                        .collect::<Vec<_>>()
-                        .join(" ");
-                    format!("#warning directive: {token_text}")
-                };
-                result.push(Error {
-                    found: None,
-                    expected: None,
-                    reason: Reason::Custom(message),
-                    label: Some("preprocessor warning"),
-                    span: *span,
-                });
-            }
-            ic_preproc::Error::Extraneous {
-                directive, span, ..
-            } => {
-                result.push(Error {
-                    found: None,
-                    expected: None,
-                    reason: Reason::Custom(format!("extra tokens after #{directive} directive")),
-                    label: Some("preprocessor warning"),
-                    span: *span,
-                });
-            }
-            ic_preproc::Error::Syntax { message, span }
-            | ic_preproc::Error::Expr { message, span } => {
-                result.push(Error {
-                    found: None,
-                    expected: None,
-                    reason: Reason::Custom((*message).to_string()),
-                    label: Some("preprocessor warning"),
-                    span: *span,
-                });
-            }
-        }
-    }
-
-    result
 }

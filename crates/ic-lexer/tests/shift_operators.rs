@@ -38,16 +38,16 @@ fn test_no_shift_tokens() {
     let source = vfs.source_str(file_id);
     let mut cursor = Cursor::new(Rc::from(source), file_id);
 
-    let tok1 = cursor.next().unwrap();
+    let tok1 = cursor.advance().unwrap();
     assert_eq!(tok1.kind, Kind::Ident);
 
-    let tok2 = cursor.next().unwrap();
+    let tok2 = cursor.advance().unwrap();
     assert_eq!(tok2.kind, Kind::Gt);
 
-    let tok3 = cursor.next().unwrap();
+    let tok3 = cursor.advance().unwrap();
     assert_eq!(tok3.kind, Kind::Gt);
 
-    let tok4 = cursor.next().unwrap();
+    let tok4 = cursor.advance().unwrap();
     assert_eq!(tok4.kind, Kind::Ident);
 }
 
@@ -58,16 +58,16 @@ fn test_left_shift_as_two_tokens() {
     let source = vfs.source_str(file_id);
     let mut cursor = Cursor::new(Rc::from(source), file_id);
 
-    let tok1 = cursor.next().unwrap();
+    let tok1 = cursor.advance().unwrap();
     assert_eq!(tok1.kind, Kind::Ident);
 
-    let tok2 = cursor.next().unwrap();
+    let tok2 = cursor.advance().unwrap();
     assert_eq!(tok2.kind, Kind::Lt);
 
-    let tok3 = cursor.next().unwrap();
+    let tok3 = cursor.advance().unwrap();
     assert_eq!(tok3.kind, Kind::Lt);
 
-    let tok4 = cursor.next().unwrap();
+    let tok4 = cursor.advance().unwrap();
     assert_eq!(tok4.kind, Kind::Ident);
 }
 
@@ -78,7 +78,7 @@ fn test_template_closing() {
     let source = vfs.source_str(file_id);
     let mut cursor = Cursor::new(Rc::from(source), file_id);
 
-    let tokens: Vec<_> = std::iter::from_fn(|| cursor.next())
+    let tokens: Vec<_> = std::iter::from_fn(|| cursor.advance())
         .map(|t| t.kind)
         .collect();
 
@@ -103,18 +103,18 @@ fn test_comparison_operators() {
     let source = vfs.source_str(file_id);
     let mut cursor = Cursor::new(Rc::from(source), file_id);
 
-    let tok1 = cursor.next().unwrap();
+    let tok1 = cursor.advance().unwrap();
     assert_eq!(tok1.kind, Kind::Ident);
 
-    let tok2 = cursor.next().unwrap();
+    let tok2 = cursor.advance().unwrap();
     assert_eq!(tok2.kind, Kind::LtEq);
 
-    let tok3 = cursor.next().unwrap();
+    let tok3 = cursor.advance().unwrap();
     assert_eq!(tok3.kind, Kind::Ident);
 
-    let tok4 = cursor.next().unwrap();
+    let tok4 = cursor.advance().unwrap();
     assert_eq!(tok4.kind, Kind::GtEq);
 
-    let tok5 = cursor.next().unwrap();
+    let tok5 = cursor.advance().unwrap();
     assert_eq!(tok5.kind, Kind::Ident);
 }

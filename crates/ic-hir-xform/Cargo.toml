@@ -41,9 +41,7 @@ tracing.workspace = true
 [dev-dependencies]
 ic-diagnostic = { path = "../ic-diagnostic" }
 ic-hir-lower = { path = "../ic-hir-lower" }
-ic-idl = { path = "../ic-idl" }
 ic-parse = { path = "../ic-parse" }
-ic-preproc = { path = "../ic-preproc" }
 ic-syntax = { path = "../ic-syntax" }
 ic-vfs = { path = "../ic-vfs" }
 

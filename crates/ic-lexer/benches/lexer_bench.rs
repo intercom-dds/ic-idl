@@ -72,7 +72,7 @@ fn bench_tokenize_sample(b: &mut Bencher) {
     b.iter(|| {
         let mut cursor = Cursor::new(src.clone(), id);
         let mut tokens = Vec::with_capacity(100);
-        while let Some(token) = cursor.next() {
+        while let Some(token) = cursor.advance() {
             tokens.push(black_box(token));
         }
         black_box(tokens)
@@ -90,7 +90,7 @@ fn bench_tokenize_keywords(b: &mut Bencher) {
     b.iter(|| {
         let mut cursor = Cursor::new(src.clone(), id);
         let mut count = 0;
-        while let Some(token) = cursor.next() {
+        while let Some(token) = cursor.advance() {
             count += 1;
             black_box(token);
         }
@@ -108,7 +108,7 @@ fn bench_tokenize_numbers(b: &mut Bencher) {
     b.iter(|| {
         let mut cursor = Cursor::new(src.clone(), id);
         let mut count = 0;
-        while let Some(token) = cursor.next() {
+        while let Some(token) = cursor.advance() {
             count += 1;
             black_box(token);
         }
@@ -126,7 +126,7 @@ fn bench_tokenize_strings(b: &mut Bencher) {
     b.iter(|| {
         let mut cursor = Cursor::new(src.clone(), id);
         let mut count = 0;
-        while let Some(token) = cursor.next() {
+        while let Some(token) = cursor.advance() {
             count += 1;
             black_box(token);
         }
@@ -144,7 +144,7 @@ fn bench_tokenize_operators(b: &mut Bencher) {
     b.iter(|| {
         let mut cursor = Cursor::new(src.clone(), id);
         let mut count = 0;
-        while let Some(token) = cursor.next() {
+        while let Some(token) = cursor.advance() {
             count += 1;
             black_box(token);
         }

@@ -48,6 +48,7 @@ tracing.workspace = true
 [dev-dependencies]
 insta = "1.46.0"
 ic-hir-lower = { path = "../ic-hir-lower" }
+ic-lexer = { path = "../ic-lexer" }
 ic-parse = { path = "../ic-parse" }
 ic-preproc = { path = "../ic-preproc" }
 ic-ptree-lower = { path = "../ic-ptree-lower" }

@@ -293,30 +293,3 @@ fn bench_parse_throughput(b: &mut Bencher) {
         black_box(result)
     });
 }
-
-/// Benchmark preprocessing only (lexing + preprocessing)
-#[bench]
-fn bench_preproc_only(b: &mut Bencher) {
-    use ic_lexer::token::Kind;
-    use ic_parse::SourceMap;
-    use ic_preproc::ProcArgs;
-
-    let large_idl = generate_large_idl();
-    let bytes = large_idl.len();
-
-    b.bytes = bytes as u64;
-    b.iter(|| {
-        let mut vfs = SourceMap::default();
-        let file_id = vfs.embed(black_box(&large_idl));
-
-        let mut state = ic_preproc::State::new();
-        let iter = ic_preproc::with_state(file_id, ProcArgs::default(), &mut state, &mut vfs);
-
-        // Collect tokens, filtering out comments and newlines
-        let tokens: Vec<_> = iter
-            .filter(|t| !matches!(t.kind, Kind::Comment { .. } | Kind::Newline))
-            .collect();
-
-        black_box(tokens)
-    });
-}

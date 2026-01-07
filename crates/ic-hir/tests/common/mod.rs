@@ -39,7 +39,7 @@ pub fn parse_and_resolve(input: &str) -> (ResolvedGraph, SourceMap, String) {
 
     let mut source_map = SourceMap::default();
     let file = source_map.embed_with_name("test.idl", input);
-    let parsed = ic_parse::from_file(file, ic_preproc::ProcArgs::default(), &mut source_map);
+    let parsed = ic_parse::from_file(file, &source_map);
 
     // Check parse errors
     assert!(
@@ -53,11 +53,7 @@ pub fn parse_and_resolve(input: &str) -> (ResolvedGraph, SourceMap, String) {
         "<builtin-annotations>",
         include_str!("../../../ic-idl/idl/annotations.idl"),
     );
-    let builtin_parsed = ic_parse::from_file(
-        builtin_file_id,
-        ic_preproc::ProcArgs::default(),
-        &mut source_map,
-    );
+    let builtin_parsed = ic_parse::from_file(builtin_file_id, &source_map);
 
     let result = ic_hir_lower::from_ast(AstInput::WithBuiltins {
         builtins: builtin_parsed.tree,
@@ -156,15 +152,10 @@ pub fn parse_with_custom_builtins(
     let mut source_map = SourceMap::default();
 
     let builtin_file = source_map.embed_with_name("<builtin>", builtins);
-    let builtin_parsed = ic_parse::from_file(
-        builtin_file,
-        ic_preproc::ProcArgs::default(),
-        &mut source_map,
-    );
+    let builtin_parsed = ic_parse::from_file(builtin_file, &source_map);
 
     let user_file = source_map.embed_with_name("test.idl", user);
-    let user_parsed =
-        ic_parse::from_file(user_file, ic_preproc::ProcArgs::default(), &mut source_map);
+    let user_parsed = ic_parse::from_file(user_file, &source_map);
 
     assert!(
         builtin_parsed.errors.is_empty(),

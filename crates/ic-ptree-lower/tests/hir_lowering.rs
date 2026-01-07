@@ -26,15 +26,13 @@
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use ic_hir::ResolvedGraph;
-use ic_parse::from_file;
-use ic_preproc::ProcArgs;
 use ic_ptree_lower::from_hir;
 use ic_vfs::SourceMap;
 
 fn parse_and_lower_hir(idl: &str) -> (ic_ptree::ParseResult, ResolvedGraph) {
     let mut vfs = SourceMap::default();
     let file_id = vfs.embed(idl);
-    let parsed = from_file(file_id, ProcArgs::default(), &mut vfs);
+    let parsed = ic_parse::from_file(file_id, &vfs);
     assert!(
         parsed.errors.is_empty(),
         "Parse errors: {:?}",
@@ -363,7 +361,7 @@ fn test_native_type() {
     // Native types are forward declarations, so we expect HIR errors
     let mut vfs = SourceMap::default();
     let file_id = vfs.embed(idl);
-    let parsed = from_file(file_id, ProcArgs::default(), &mut vfs);
+    let parsed = ic_parse::from_file(file_id, &vfs);
     assert!(parsed.errors.is_empty());
 
     let hir = ic_hir_lower::from_ast(ic_hir_lower::AstInput::User(parsed.tree));

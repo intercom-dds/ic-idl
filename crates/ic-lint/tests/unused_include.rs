@@ -35,6 +35,20 @@ use ic_lint::{Category, LintConfig};
 use ic_vfs::SourceMap;
 use insta::assert_snapshot;
 
+/// Parse source using the preprocessor (for tests that need include handling).
+fn parse_with_preproc(
+    file_id: ic_vfs::FileId,
+    args: ic_preproc::ProcArgs,
+    vfs: &mut SourceMap,
+) -> ic_parse::ParseResult {
+    let mut state = ic_preproc::State::new();
+    let iter = ic_preproc::with_state(file_id, args, &mut state, vfs);
+    let tokens: Vec<_> = iter
+        .filter(|t| !matches!(t.kind, ic_lexer::token::Kind::Newline))
+        .collect();
+    ic_parse::from_iter(tokens, vfs)
+}
+
 /// Helper function to test include-related lints with file-based includes.
 fn test_lint_with_includes(main_source: &str) -> String {
     ic_cli::color::set_color_override(ColorMode::Never);
@@ -49,8 +63,8 @@ fn test_lint_with_includes(main_source: &str) -> String {
 
     let file_id = vfs.embed_with_name("test.idl", main_source);
 
-    // Parse the IDL code
-    let ast = ic_parse::from_file(file_id, args, &mut vfs);
+    // Parse the IDL code (needs preprocessor for #include handling)
+    let ast = parse_with_preproc(file_id, args, &mut vfs);
 
     // Assert no parse errors in test code
     assert!(
@@ -59,13 +73,12 @@ fn test_lint_with_includes(main_source: &str) -> String {
         ast.errors
     );
 
-    // Parse built-in annotations
+    // Parse built-in annotations (no includes, simple parse)
     let builtin_file_id = vfs.embed_with_name(
         "<builtin-annotations>",
         include_str!("../../ic-idl/idl/annotations.idl"),
     );
-    let builtin_parsed =
-        ic_parse::from_file(builtin_file_id, ic_preproc::ProcArgs::default(), &mut vfs);
+    let builtin_parsed = ic_parse::from_file(builtin_file_id, &vfs);
 
     assert!(
         builtin_parsed.errors.is_empty(),

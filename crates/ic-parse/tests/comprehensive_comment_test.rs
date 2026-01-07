@@ -25,10 +25,8 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use ic_parse::from_file;
-use ic_preproc::ProcArgs;
+use ic_parse::from_str;
 use ic_syntax::{AnnotationAppl, Expr, Item, Literal, LiteralValue};
-use ic_vfs::SourceMap;
 
 fn get_doc_strings(annotations: &[AnnotationAppl]) -> Vec<String> {
     annotations
@@ -54,12 +52,6 @@ fn get_doc_strings(annotations: &[AnnotationAppl]) -> Vec<String> {
 
 #[test]
 fn test_struct_trailing_comment() {
-    use ic_parse::from_file;
-    use ic_preproc::ProcArgs;
-    use ic_syntax::Item;
-    use ic_vfs::SourceMap;
-
-    let mut vfs = SourceMap::default();
     let content = r"/// Leading comment for MyStruct
 struct MyStruct /** inline comment */ {
     ///< Trailing at start of struct
@@ -68,9 +60,7 @@ struct MyStruct /** inline comment */ {
     /// Should be dropped
 }; ///< Trailing after struct";
 
-    let file = vfs.embed(content);
-    let args = ProcArgs::default();
-    let parse_result = from_file(file, args, &mut vfs);
+    let parse_result = from_str(content);
 
     assert!(parse_result.errors.is_empty());
 
@@ -85,12 +75,7 @@ struct MyStruct /** inline comment */ {
 
     if let Item::StructValue(s) = &parse_result.tree[0] {
         let docs = get_doc_strings(&s.annotations);
-
-        // Verify struct has expected number of doc comments
         assert!(!docs.is_empty(), "Struct should have doc comments");
-
-        // The issue: we're expecting 4 comments but only getting 3
-        // Missing: "< Trailing after struct"
         assert_eq!(
             docs.len(),
             4,
@@ -110,8 +95,6 @@ struct MyStruct /** inline comment */ {
 #[test]
 #[allow(clippy::too_many_lines)]
 fn test_comprehensive_comment_attachment() {
-    let mut vfs = SourceMap::default();
-
     let content = r"/// Leading comment for MyStruct
 struct MyStruct /** inline comment */ {
     ///< Trailing at start of struct
@@ -220,11 +203,7 @@ module MyModule /** inline module */ {
 const float PI = 3.14159; ///< Trailing for PI
 ///< Extra trailing at end";
 
-    let file = vfs.embed(content);
-
-    // Parse using from_file
-    let args = ProcArgs::default();
-    let parse_result = from_file(file, args, &mut vfs);
+    let parse_result = from_str(content);
     assert!(
         parse_result.errors.is_empty(),
         "Parse errors: {:?}",
@@ -342,9 +321,6 @@ const float PI = 3.14159; ///< Trailing for PI
         assert!(docs.contains(&"inline interface".to_string()));
         assert!(docs.contains(&"Trailing at start of interface".to_string()));
         assert!(docs.contains(&"Trailing after interface".to_string()));
-
-        // Interface members (Prototype and Attribute) don't have annotations field
-        // so we can't check method comments
     } else {
         panic!("Expected MyInterface at index {item_idx}");
     }
@@ -401,8 +377,6 @@ const float PI = 3.14159; ///< Trailing for PI
         assert!(docs.contains(&"inline valuetype".to_string()));
         assert!(docs.contains(&"Trailing at start of valuetype".to_string()));
         assert!(docs.contains(&"Trailing after valuetype".to_string()));
-
-        // ValueMember elements don't have annotations field
     } else {
         panic!("Expected MyValueType at index {item_idx}");
     }
@@ -486,8 +460,6 @@ const float PI = 3.14159; ///< Trailing for PI
 
 #[test]
 fn test_comment_scoping() {
-    let mut vfs = SourceMap::default();
-
     // Test that comments don't leak between items
     let content = r"
 /// Comment for Struct1
@@ -501,9 +473,8 @@ struct Struct2 {
 };
 ";
 
-    let file = vfs.embed(content);
-    let args = ProcArgs::default();
-    let parse_result = from_file(file, args, &mut vfs);
+    let parse_result = from_str(content);
+
     assert!(parse_result.errors.is_empty());
 
     assert_eq!(parse_result.tree.len(), 2);
@@ -533,8 +504,6 @@ struct Struct2 {
 
 #[test]
 fn test_empty_body_comments() {
-    let mut vfs = SourceMap::default();
-
     let content = r"
 /// Empty struct with inline comment
 struct Empty /** inline */ {
@@ -547,9 +516,8 @@ enum EmptyEnum /** inline enum */ {
 }; ///< Trailing after enum
 ";
 
-    let file = vfs.embed(content);
-    let args = ProcArgs::default();
-    let parse_result = from_file(file, args, &mut vfs);
+    let parse_result = from_str(content);
+
     assert!(parse_result.errors.is_empty());
 
     // Check empty struct

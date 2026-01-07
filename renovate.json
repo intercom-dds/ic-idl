@@ -9,7 +9,8 @@
     {
       "matchManagers": ["cargo"],
       "groupName": "all cargo dependencies",
-      "automerge": true
+      "automerge": true,
+      "rangeStrategy": "bump"
     }
   ]
 }

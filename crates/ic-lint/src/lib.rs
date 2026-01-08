@@ -381,6 +381,8 @@ macro_rules! define_lints {
         #[must_use]
         pub fn all_lint_names() -> Vec<&'static str> {
             let mut names = vec![
+                // Pseudo-lints handled outside the lint framework
+                "ann-placement",
                 $(<$syntax_lint>::name(),)*
                 $(<$hir_lint>::name(),)*
             ];
@@ -401,6 +403,12 @@ macro_rules! define_lints {
         #[must_use]
         pub fn all_lints() -> Vec<LintInfo> {
             let mut lints = vec![
+                // Pseudo-lints handled outside the lint framework
+                LintInfo {
+                    name: "ann-placement",
+                    category: Category::Annotation,
+                    description: "Annotations not attached to any declaration",
+                },
                 $(LintInfo {
                     name: <$syntax_lint>::name(),
                     category: <$syntax_lint>::category(),

@@ -31,7 +31,7 @@ use std::collections::HashMap;
 use std::fmt::Write;
 
 use ic_cli::color::Colorize as _;
-use ic_diagnostic::{Diag, Label, error_span, warn_span};
+use ic_diagnostic::{Diag, Label, Level, error_span, warn_span};
 use ic_lexer::token::Kind;
 use ic_parse::Reason;
 use ic_vfs::{SourceMap, Span};
@@ -213,11 +213,17 @@ pub fn fmt_warnings(warnings: &[Diag], vfs: &SourceMap) -> String {
     buf
 }
 
-/// Creates a warning for an orphaned annotation.
-pub fn orphaned_annotation_warning(ann: &ic_syntax::AnnotationAppl) -> Diag {
-    warn_span(
+/// Creates a diagnostic for an orphaned annotation with the specified level.
+pub fn orphaned_annotation_diag(ann: &ic_syntax::AnnotationAppl, level: Level) -> Diag {
+    let diag_fn = if let Level::Error = level {
+        error_span
+    } else {
+        warn_span
+    };
+    diag_fn(
         "annotation has no effect in this context",
         Label::new(ann.span).message("misplaced annotation"),
     )
     .note("annotation is not attached to any declaration")
+    .code("ann-placement")
 }

@@ -462,11 +462,20 @@ impl Compiler {
             return Err(CompileError::Diagnostics(diagnostics));
         }
 
-        // Convert orphaned annotations to warnings
-        for ann in &ast.orphaned_annotations {
-            diagnostics
-                .warnings
-                .push(pretty::orphaned_annotation_warning(ann));
+        // Create lint config early so we can use it for pseudo-lints
+        let lint_config = self.options.warn.to_lint_config();
+
+        // Convert orphaned annotations to diagnostics based on lint config
+        let ann_level = lint_config.get_level("ann-placement", LintCategory::Annotation);
+        if ann_level != LintLevel::Disabled {
+            for ann in &ast.orphaned_annotations {
+                let diag = pretty::orphaned_annotation_diag(ann, ann_level);
+                match ann_level {
+                    LintLevel::Error => diagnostics.errors.push(diag.into()),
+                    LintLevel::Warning => diagnostics.warnings.push(diag),
+                    LintLevel::Disabled => unreachable!(),
+                }
+            }
         }
 
         // Collect preprocessor warnings if enabled
@@ -486,9 +495,6 @@ impl Compiler {
                 diagnostics.warnings.extend(preproc_diags);
             }
         }
-
-        // Convert to HIR without built-in annotations
-        let lint_config = self.options.warn.to_lint_config();
 
         // Run AST linting first
         if diagnostics.errors.is_empty() {
@@ -642,6 +648,7 @@ fn try_compile_to_ast(
     let mut all_errors = vec![];
     let mut all_warnings = vec![];
     let mut all_expansion_info = std::collections::HashMap::new();
+    let lint_config = options.warn.to_lint_config();
 
     // Parse all files to AST
     for file in &options.files {
@@ -656,9 +663,17 @@ fn try_compile_to_ast(
             }
         };
 
-        // Convert orphaned annotations to warnings
-        for ann in &ast.orphaned_annotations {
-            all_warnings.push(pretty::orphaned_annotation_warning(ann));
+        // Convert orphaned annotations to diagnostics based on lint config
+        let ann_level = lint_config.get_level("ann-placement", LintCategory::Annotation);
+        if ann_level != LintLevel::Disabled {
+            for ann in &ast.orphaned_annotations {
+                let diag = pretty::orphaned_annotation_diag(ann, ann_level);
+                match ann_level {
+                    LintLevel::Error => all_errors.push(diag.into()),
+                    LintLevel::Warning => all_warnings.push(diag),
+                    LintLevel::Disabled => unreachable!(),
+                }
+            }
         }
 
         // Collect preprocessor warnings if enabled

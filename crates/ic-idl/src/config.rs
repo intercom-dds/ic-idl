@@ -84,6 +84,12 @@ impl Warnings {
         self.preprocessor
     }
 
+    /// Check if preprocessor warnings should be treated as errors.
+    #[must_use]
+    pub fn preprocessor_error(&self) -> bool {
+        self.error || self.error_lints.contains_key("preprocessor")
+    }
+
     /// Build a LintConfig from the warning flags.
     pub fn to_lint_config(&self) -> LintConfig {
         let mut config = LintConfig::new();
@@ -122,9 +128,14 @@ impl Warnings {
             config.set_lint_level(lint_name.as_str(), level);
         }
 
-        // Apply lint-specific error settings
-        for lint_name in self.error_lints.keys() {
-            config.set_lint_level(lint_name.as_str(), Level::Error);
+        // Apply lint or category error settings
+        for name in self.error_lints.keys() {
+            if let Some(category) = parse_category(name) {
+                config.set_category_level(category, Level::Error);
+            } else if name != "preprocessor" {
+                // preprocessor is handled separately, not via LintConfig
+                config.set_lint_level(name.as_str(), Level::Error);
+            }
         }
 
         // If -Werror is set, upgrade all enabled warnings to errors
@@ -347,6 +358,18 @@ impl convert::Convert for Unstable {
     }
 }
 
+/// Try to parse a category name from a string.
+fn parse_category(name: &str) -> Option<Category> {
+    match name {
+        "annotation" => Some(Category::Annotation),
+        "extensions" => Some(Category::Extensions),
+        "pedantic" => Some(Category::Pedantic),
+        "unsupported" => Some(Category::Unsupported),
+        // preprocessor is not a lint category, handled separately
+        _ => None,
+    }
+}
+
 impl Default for Warnings {
     fn default() -> Self {
         Self {
@@ -371,14 +394,13 @@ impl convert::Convert for Warnings {
         let known_lints = ic_lint::all_lint_names();
 
         for arg in input {
-            // Handle error=lint_name syntax
-            if let Some(lint_name) = arg.strip_prefix("error=") {
-                if known_lints.contains(&lint_name) {
-                    warnings.error_lints.insert(lint_name.to_string(), true);
+            // Handle error=lint_name or error=category syntax
+            if let Some(name) = arg.strip_prefix("error=") {
+                let is_category = parse_category(name).is_some() || name == "preprocessor";
+                if known_lints.contains(&name) || is_category {
+                    warnings.error_lints.insert(name.to_string(), true);
                 } else {
-                    warnings
-                        .unknown_warnings
-                        .push(format!("-Werror={lint_name}"));
+                    warnings.unknown_warnings.push(format!("-Werror={name}"));
                 }
                 continue;
             }
@@ -482,6 +504,33 @@ mod tests {
         assert!(
             !parsed.unsupported,
             "-Wall -Wno-unsupported should disable unsupported"
+        );
+    }
+
+    #[test]
+    fn werror_category() {
+        let parsed = parse_warnings(&["error=annotation", "error=extensions"]);
+        assert!(parsed.error_lints.contains_key("annotation"));
+        assert!(parsed.error_lints.contains_key("extensions"));
+
+        let config = parsed.to_lint_config();
+        assert_eq!(
+            config.category_levels.get(&Category::Annotation),
+            Some(&Level::Error)
+        );
+        assert_eq!(
+            config.category_levels.get(&Category::Extensions),
+            Some(&Level::Error)
+        );
+    }
+
+    #[test]
+    fn werror_unknown() {
+        let parsed = parse_warnings(&["error=nonexistent"]);
+        assert!(
+            parsed
+                .unknown_warnings
+                .contains(&"-Werror=nonexistent".to_string())
         );
     }
 }

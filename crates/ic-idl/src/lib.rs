@@ -471,13 +471,20 @@ impl Compiler {
 
         // Collect preprocessor warnings if enabled
         if self.options.warn.preprocessor_enabled() {
-            diagnostics
-                .warnings
-                .extend(pretty::preproc_warnings_to_diags(
-                    &ast.preproc_warnings,
-                    &self.source_map,
-                    &diagnostics.expansion_info,
-                ));
+            let as_error = self.options.warn.preprocessor_error();
+            let preproc_diags = pretty::preproc_warnings_to_diags(
+                &ast.preproc_warnings,
+                &self.source_map,
+                &diagnostics.expansion_info,
+                as_error,
+            );
+            if as_error {
+                diagnostics
+                    .errors
+                    .extend(preproc_diags.into_iter().map(Into::into));
+            } else {
+                diagnostics.warnings.extend(preproc_diags);
+            }
         }
 
         // Convert to HIR without built-in annotations
@@ -656,11 +663,18 @@ fn try_compile_to_ast(
 
         // Collect preprocessor warnings if enabled
         if options.warn.preprocessor_enabled() {
-            all_warnings.extend(pretty::preproc_warnings_to_diags(
+            let as_error = options.warn.preprocessor_error();
+            let preproc_diags = pretty::preproc_warnings_to_diags(
                 &ast.preproc_warnings,
                 vfs,
                 &ast.expansion_info,
-            ));
+                as_error,
+            );
+            if as_error {
+                all_errors.extend(preproc_diags.into_iter().map(Into::into));
+            } else {
+                all_warnings.extend(preproc_diags);
+            }
         }
 
         all_expansion_info.extend(ast.expansion_info);

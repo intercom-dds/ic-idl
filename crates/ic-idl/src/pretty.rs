@@ -193,10 +193,11 @@ pub fn preproc_warnings_to_diags(
     warnings: &[ic_preproc::Error],
     vfs: &SourceMap,
     exp: &HashMap<Span, ic_preproc::ExpansionInfo>,
+    as_error: bool,
 ) -> Vec<Diag> {
     warnings
         .iter()
-        .map(|e| preproc_to_diag(e, vfs, true, exp))
+        .map(|e| preproc_to_diag(e, vfs, !as_error, exp))
         .collect()
 }
 

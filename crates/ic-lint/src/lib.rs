@@ -36,7 +36,8 @@
 //!
 //! - **Syntax**: Hard errors for malformed IDL constructs
 //! - **Semantic**: Errors for semantically invalid constructs
-//! - **Pedantic**: Warnings for non-standard language extensions
+//! - **Extensions**: Warnings for non-standard language extensions
+//! - **Pedantic**: Nitpicky style and quality warnings
 //! - **Unsupported**: Warnings for unsupported language features
 //! - **Annotation**: Warnings for annotation usage issues
 //! - **Deprecated**: Warnings for deprecated language features
@@ -127,6 +128,7 @@ use tracing::{debug, debug_span, trace};
 mod annotation;
 mod any_type;
 mod deprecated;
+mod extensions;
 mod pedantic;
 mod semantic;
 mod syntax;
@@ -153,7 +155,10 @@ pub enum Category {
     /// Unsupported language items
     Unsupported,
 
-    /// Lint for language extensions
+    /// Lints for non-standard language extensions
+    Extensions,
+
+    /// Nitpicky style and quality warnings
     Pedantic,
 
     // Syntax errors or other semantic issues that should always be hard errors
@@ -161,6 +166,21 @@ pub enum Category {
 
     // Semantic validation that should always be hard errors
     Semantic,
+}
+
+impl std::fmt::Display for Category {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let str = match self {
+            Self::Annotation => "annotation",
+            Self::Deprecated => "deprecated",
+            Self::Extensions => "extensions",
+            Self::Pedantic => "pedantic",
+            Self::Semantic => "semantic",
+            Self::Syntax => "syntax",
+            Self::Unsupported => "unsupported",
+        };
+        write!(f, "{str}")
+    }
 }
 
 /// Configuration for lint levels.
@@ -188,6 +208,9 @@ impl LintConfig {
         config
             .category_levels
             .insert(Category::Annotation, Level::Warning);
+        config
+            .category_levels
+            .insert(Category::Extensions, Level::Warning);
         config
             .category_levels
             .insert(Category::Pedantic, Level::Warning);
@@ -465,19 +488,19 @@ macro_rules! define_lints {
 define_lints! {
     syntax_lints: [
         annotation::decl::AnnotatedDecl,
-        pedantic::char_discriminator::CharDiscriminator,
+        extensions::array_param::ArrayParam,
+        extensions::assign_expr::AssignExpr,
+        extensions::bitmask_ann::BitmaskAnn,
+        extensions::char_arithmetic::CharArithmetic,
+        extensions::char_discriminator::CharDiscriminator,
+        extensions::complex_lit::ComplexLit,
+        extensions::empty_mod::EmptyMod,
+        extensions::lowercase_bool::LowercaseBool,
+        extensions::null::NullVariant,
+        extensions::omitted_in::OmittedIn,
+        extensions::scoped_lit::ScopedLit,
+        extensions::shift_bound::ShiftBound,
         pedantic::ambiguous_precedence::AmbiguousPrecedence,
-        pedantic::array_param::ArrayParam,
-        pedantic::assign_expr::AssignExpr,
-        pedantic::bitmask_ann::BitmaskAnn,
-        pedantic::char_arithmetic::CharArithmetic,
-        pedantic::complex_lit::ComplexLit,
-        pedantic::empty_mod::EmptyMod,
-        pedantic::lowercase_bool::LowercaseBool,
-        pedantic::null::NullVariant,
-        pedantic::omitted_in::OmittedIn,
-        pedantic::scoped_lit::ScopedLit,
-        pedantic::shift_bound::ShiftBound,
         semantic::ann_template::AnnTemplate,
         semantic::keywords::KwIdent,
         semantic::oneway::NonVoidOneway,
@@ -493,16 +516,17 @@ define_lints! {
         annotation::range_bound::RangeBound,
         annotation::unknown::UnknownAnnotation,
         any_type::AnyType,
-        pedantic::char_discriminator::CharDiscriminator,
-        pedantic::complex_key::ComplexMapKey,
+        extensions::char_discriminator::CharDiscriminator,
+        extensions::complex_key::ComplexMapKey,
         pedantic::invalid_array_size::InvalidArraySize,
         pedantic::large_union_variant::LargeUnionVariant,
         pedantic::prefer_enum_name::PreferEnumName,
+        pedantic::unused_include::UnusedInclude,
         semantic::bit_bound::BitBound,
         semantic::conflicting_annotations::ConflictingAnnotations,
         semantic::derived_struct_key::DerivedStructKey,
-        semantic::duplicate_bounds::DuplicateBounds,
         semantic::duplicate_annotations_hir::DuplicateAnnotations,
+        semantic::duplicate_bounds::DuplicateBounds,
         semantic::duplicate_case_labels::DuplicateCaseLabels,
         semantic::duplicate_enum_values::DuplicateEnumValues,
         semantic::duplicate_name::DuplicateName,
@@ -510,17 +534,16 @@ define_lints! {
         semantic::initializer_list_size::InitializerListSize,
         semantic::invalid_annotation_target::InvalidAnnotationTarget,
         semantic::invalid_enum_literal::InvalidEnumLiteral,
-        semantic::invalid_inheritance::InvalidInheritance,
         semantic::invalid_enum_value::InvalidEnumValue,
+        semantic::invalid_inheritance::InvalidInheritance,
         semantic::multiple_default_cases::MultipleDefaultCases,
         semantic::recursive_type::RecursiveType,
         semantic::union_case_label_range::UnionCaseLabelRange,
         semantic::union_case_type_mismatch::UnionCaseTypeMismatch,
         semantic::union_key::UnionKey,
         semantic::unreachable_union_cases::UnreachableUnionCases,
-        semantic::zero_bound::ZeroBound,
         semantic::void_ty::VoidTy,
-        pedantic::unused_include::UnusedInclude,
-        // unsupported::proto::Proto, // Commented out - too restrictive for non-proto3 IDL
+        semantic::zero_bound::ZeroBound,
+        // unsupported::proto::Proto,
     ],
 }

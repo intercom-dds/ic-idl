@@ -1,9 +1,8 @@
 ---
 source: crates/ic-lint/tests/unknown_annotation.rs
-assertion_line: 207
 expression: output
 ---
-warning[unknown-annotation]: unknown annotation `optoinal`
+warning[unknown-ann]: unknown annotation `optoinal`
    ┌ test.idl:3:14
    │
  2 │         struct TestStruct {

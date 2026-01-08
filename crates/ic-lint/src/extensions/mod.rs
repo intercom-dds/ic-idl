@@ -25,46 +25,18 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use ic_diagnostic::{Label, warn_span};
-use ic_syntax::Item;
-use ic_syntax::visit::{Visitor, walk_module, walk_tree};
+//! Collection of lints for non-standard language extensions (`-Wextensions`).
 
-use crate::{Category, Lint, LintCtx};
-
-/// Checks for empty module declarations.
-pub struct EmptyMod<'a> {
-    ctx: &'a LintCtx<'a>,
-}
-
-impl<'a> Visitor<'a> for EmptyMod<'a> {
-    fn visit_module(&mut self, def: &'a ic_syntax::ModuleDef) {
-        if def.definitions.is_empty() {
-            let diag = warn_span(
-                "empty module declarations are not standard",
-                Label::new(def.span),
-            )
-            .help("either remove the declaration or add an item to it");
-            Self::report(self.ctx, diag);
-        }
-        walk_module(self, def);
-    }
-}
-
-impl<'a> Lint<'a> for EmptyMod<'a> {
-    fn name() -> &'static str {
-        "empty-mod"
-    }
-
-    fn category() -> Category {
-        Category::Pedantic
-    }
-
-    fn description() -> &'static str {
-        "Module declarations that are empty"
-    }
-
-    fn check(ctx: &'a LintCtx<'_>, ast: &[Item]) {
-        let mut lint = Self { ctx };
-        walk_tree(&mut lint, ast);
-    }
-}
+pub mod array_param;
+pub mod assign_expr;
+pub mod bitmask_ann;
+pub mod char_arithmetic;
+pub mod char_discriminator;
+pub mod complex_key;
+pub mod complex_lit;
+pub mod empty_mod;
+pub mod lowercase_bool;
+pub mod null;
+pub mod omitted_in;
+pub mod scoped_lit;
+pub mod shift_bound;

@@ -72,18 +72,10 @@ pub fn warning_help() {
 
     for lint in lints {
         if current_category != Some(lint.category) {
-            let category_name = match lint.category {
-                ic_lint::Category::Annotation => "annotation",
-                ic_lint::Category::Deprecated => "deprecated",
-                ic_lint::Category::Pedantic => "pedantic",
-                ic_lint::Category::Semantic => "semantic",
-                ic_lint::Category::Syntax => "syntax",
-                ic_lint::Category::Unsupported => "unsupported",
-            };
             if current_category.is_some() {
                 println!();
             }
-            println!("  {}:", category_name.cyan());
+            println!("  {}:", lint.category.cyan());
             current_category = Some(lint.category);
         }
 

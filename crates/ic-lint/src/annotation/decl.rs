@@ -63,11 +63,11 @@ impl<'a> Lint<'a> for AnnotatedDecl<'_> {
     }
 
     fn category() -> Category {
-        Category::Pedantic
+        Category::Annotation
     }
 
     fn description() -> &'static str {
-        "Annotations placed on forward declarations"
+        "Annotations on forward declarations"
     }
 
     fn check(ctx: &'a LintCtx<'_>, tree: &[ic_syntax::Item]) {

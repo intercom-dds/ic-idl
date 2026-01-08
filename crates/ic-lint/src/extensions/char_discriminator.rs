@@ -47,7 +47,7 @@ impl<'a> Lint<'a> for CharDiscriminator<'a> {
     }
 
     fn category() -> Category {
-        Category::Pedantic
+        Category::Extensions
     }
 
     fn check(ctx: &'a LintCtx<'a>, ast: &[Item]) {

@@ -25,44 +25,78 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use ic_diagnostic::{Label, warn_span};
+use ic_diagnostic::{Color, Diag, Label, warn_span};
 use ic_syntax::visit::{Visitor, walk_tree};
+use ic_syntax::{ConstDef, Expr, Span, util};
 
 use crate::{Category, Lint, LintCtx};
 
-pub struct BitmaskAnn<'a> {
+/// Warns when an initializer list is used, e.g. for complex constants or
+/// complex default values.
+pub struct ComplexLit<'a> {
     ctx: &'a LintCtx<'a>,
 }
 
-impl<'a> Visitor<'a> for BitmaskAnn<'_> {
-    fn visit_annotation_field(&mut self, def: &'a ic_syntax::AnnotationField) {
-        if let ic_syntax::AnnotationField::Item(item) = def
-            && let ic_syntax::Item::BitmaskValue(bitmask) = item.as_ref()
-        {
+impl ComplexLit<'_> {
+    fn diagnose(&mut self, (diag, msg): (Span, &str), (label_span, label): (Span, &str)) {
+        let diag = Diag::warning("complex literals are non-standard")
+            .label(Label::new(diag).message(msg).color(Color::Yellow))
+            .label(Label::new(label_span).message(label).color(Color::Cyan))
+            .note("only literals of trivial types are allowed in standard IDL");
+
+        Self::report(self.ctx, diag);
+    }
+}
+
+impl<'a> Visitor<'a> for ComplexLit<'a> {
+    fn visit_annotation_appl(&mut self, def: &'a ic_syntax::AnnotationAppl) {
+        for arg in &def.args {
+            if let Expr::InitList(_) = &arg.value {
+                self.diagnose(
+                    (arg.value.span(), "complex default values are non-standard"),
+                    (util::path_span(&def.ident), "in this annotation"),
+                );
+            }
+        }
+    }
+
+    fn visit_const(&mut self, def: &'a ConstDef) {
+        if let Expr::InitList(_) = &def.value {
+            self.diagnose(
+                (def.value.span(), "complex constants are non-standard"),
+                (util::decl_span(&def.decl), "const defined here"),
+            );
+        }
+    }
+
+    // Fallback in case we ever end up with an initializer list in another
+    // place.
+    fn visit_expr(&mut self, expr: &'a ic_syntax::Expr) {
+        if let ic_syntax::Expr::InitList(_) = expr {
             let diag = warn_span(
-                "defining bitmasks in annotations is non-standard",
-                Label::new(bitmask.ident.span).message("defined here"),
+                "initializer lists are non-standard",
+                Label::new(expr.span()),
             );
             Self::report(self.ctx, diag);
         }
     }
 }
 
-impl<'a> Lint<'a> for BitmaskAnn<'_> {
+impl<'a> Lint<'a> for ComplexLit<'a> {
     fn name() -> &'static str {
-        "bitmask_ann"
+        "complex-lit"
     }
 
     fn category() -> Category {
-        Category::Pedantic
+        Category::Extensions
     }
 
     fn description() -> &'static str {
-        "Bitmasks defined inside annotations"
+        "Complex literals used in constants/annotations"
     }
 
     fn check(ctx: &'a LintCtx<'_>, tree: &[ic_syntax::Item]) {
-        let mut lint = BitmaskAnn { ctx };
+        let mut lint = Self { ctx };
         walk_tree(&mut lint, tree);
     }
 }

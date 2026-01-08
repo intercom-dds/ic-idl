@@ -25,54 +25,66 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use ic_cli::color::Colorize as _;
-use ic_diagnostic::Label;
-use ic_syntax::visit::{Visitor, walk_tree};
-use ic_syntax::{Item, Literal, LiteralValue};
+use ic_diagnostic::{Label, warn_span};
+use ic_hir::ResolvedGraph;
+use ic_hir::hir::{DefKind, Ty, TyKind};
+use ic_hir::visit::Visitor;
 
 use crate::{Category, Lint, LintCtx};
 
-/// Lint that checks for uses of lowercase `true` or `false`, neither of which
-/// are standard IDL. Only `TRUE` and `FALSE` are specified in the standard.
-pub struct LowercaseBool<'a> {
+/// Lint that checks if map keys are primitive types. Produces a warning when
+/// complex types are used.
+pub struct ComplexMapKey<'a> {
     ctx: &'a LintCtx<'a>,
+    hir: &'a ResolvedGraph,
 }
 
-impl<'a> Lint<'a> for LowercaseBool<'a> {
+impl<'a> Lint<'a> for ComplexMapKey<'a> {
     fn name() -> &'static str {
-        "lowercase-bool"
+        "complex-key"
     }
 
     fn category() -> Category {
-        Category::Pedantic
+        Category::Extensions
     }
 
     fn description() -> &'static str {
-        "Lowercase 'true' or 'false' used"
+        "Non-primitive types used as map keys"
     }
 
-    fn check(ctx: &'a LintCtx<'_>, ast: &[Item]) {
-        let mut lint = Self { ctx };
-        walk_tree(&mut lint, ast);
+    fn check_hir(ctx: &'a LintCtx<'_>, hir: &ic_hir::ResolvedGraph) {
+        let mut res = ComplexMapKey { ctx, hir };
+        ic_hir::visit::walk_tree(&mut res, hir);
     }
 }
 
-impl<'a> Visitor<'a> for LowercaseBool<'a> {
-    fn visit_literal(&mut self, num: &'a Literal) {
-        if let LiteralValue::Bool(_lit) = num.value {
-            let slice = self.ctx.slice(num.span);
-            if slice.chars().any(char::is_lowercase) {
-                let fixed = slice.to_uppercase().green();
-                if let Some(diag) = self.ctx.diag_span(
-                    Self::name(),
-                    Self::category(),
-                    "lowercase boolean literals are non-standard",
-                    Label::new(num.span).message("lowercase boolean literal"),
-                ) {
-                    let diag = diag.help(format!("use `{fixed}` instead"));
-                    Self::report(self.ctx, diag);
-                }
-            }
+fn is_complex(ctx: &ic_hir::Context, ty: &Ty) -> bool {
+    match &ty.kind {
+        TyKind::Primitive(_) | TyKind::String { .. } => false,
+        TyKind::Adt(id) => match &ctx.type_of(*id).kind {
+            DefKind::Enum(_) | DefKind::Bitmask(_) => false,
+            DefKind::Alias(v) => is_complex(ctx, &v.ty),
+            _ => true,
+        },
+        _ => true,
+    }
+}
+
+impl<'a> Visitor<'a> for ComplexMapKey<'a> {
+    fn context(&self) -> &'a ic_hir::Context {
+        &self.hir.context
+    }
+
+    fn visit_ty(&mut self, ty: &'a Ty) {
+        if let TyKind::Map { key, .. } = &ty.kind
+            && is_complex(&self.hir.context, key)
+        {
+            let diag = warn_span(
+                "complex types as map keys are not standard",
+                Label::new(key.span).message("non-primitive map key"),
+            )
+            .note("only integers, strings, and enums may be used as map keys");
+            Self::report(self.ctx, diag);
         }
     }
 }

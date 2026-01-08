@@ -45,7 +45,11 @@ pub struct Warnings {
     #[option(long)]
     annotation: bool,
 
-    /// Language extensions or implementation-defined behavior
+    /// Non-standard language extensions
+    #[option(long)]
+    extensions: bool,
+
+    /// Nitpicky style and quality warnings
     #[option(long)]
     pedantic: bool,
 
@@ -87,12 +91,17 @@ impl Warnings {
         // Start with all warnings disabled by default
         config.set_category_level(Category::Annotation, Level::Disabled);
         config.set_category_level(Category::Deprecated, Level::Disabled);
-        config.set_category_level(Category::Unsupported, Level::Disabled);
+        config.set_category_level(Category::Extensions, Level::Disabled);
         config.set_category_level(Category::Pedantic, Level::Disabled);
+        config.set_category_level(Category::Unsupported, Level::Disabled);
 
         // Enable specific categories if requested
         if self.annotation {
             config.set_category_level(Category::Annotation, Level::Warning);
+        }
+
+        if self.extensions {
+            config.set_category_level(Category::Extensions, Level::Warning);
         }
 
         if self.pedantic {
@@ -123,6 +132,9 @@ impl Warnings {
             // Upgrade category levels
             if config.category_levels.get(&Category::Annotation) == Some(&Level::Warning) {
                 config.set_category_level(Category::Annotation, Level::Error);
+            }
+            if config.category_levels.get(&Category::Extensions) == Some(&Level::Warning) {
+                config.set_category_level(Category::Extensions, Level::Error);
             }
             if config.category_levels.get(&Category::Pedantic) == Some(&Level::Warning) {
                 config.set_category_level(Category::Pedantic, Level::Error);
@@ -340,6 +352,7 @@ impl Default for Warnings {
         Self {
             all: false,
             annotation: false,
+            extensions: false,
             pedantic: false,
             preprocessor: true,
             unsupported: false,
@@ -380,11 +393,13 @@ impl convert::Convert for Warnings {
                 "all" => {
                     warnings.all = enabled;
                     warnings.annotation = enabled;
+                    warnings.extensions = enabled;
                     warnings.pedantic = enabled;
                     warnings.preprocessor = enabled;
                     warnings.unsupported = enabled;
                 }
                 "annotation" => warnings.annotation = enabled,
+                "extensions" => warnings.extensions = enabled,
                 "pedantic" => warnings.pedantic = enabled,
                 "preprocessor" => warnings.preprocessor = enabled,
                 "unsupported" => warnings.unsupported = enabled,
@@ -421,6 +436,7 @@ mod tests {
     fn wall_covers_all_categories() {
         let parsed = parse_warnings(&["all"]);
         assert!(parsed.annotation, "-Wall should enable annotation warnings");
+        assert!(parsed.extensions, "-Wall should enable extensions warnings");
         assert!(parsed.pedantic, "-Wall should enable pedantic warnings");
         assert!(
             parsed.preprocessor,
@@ -438,6 +454,10 @@ mod tests {
         assert!(
             !parsed.annotation,
             "-Wno-all should disable annotation warnings"
+        );
+        assert!(
+            !parsed.extensions,
+            "-Wno-all should disable extensions warnings"
         );
         assert!(
             !parsed.pedantic,

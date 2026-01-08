@@ -25,48 +25,54 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use ic_diagnostic::{Label, warn_span};
-use ic_syntax::Item;
-use ic_syntax::util::ty_span;
+use ic_cli::color::Colorize as _;
+use ic_diagnostic::Label;
 use ic_syntax::visit::{Visitor, walk_tree};
+use ic_syntax::{Item, Literal, LiteralValue};
 
 use crate::{Category, Lint, LintCtx};
 
-/// Warns when the `in` keyword is omitted in prototypes.
-pub struct OmittedIn<'a> {
+/// Lint that checks for uses of lowercase `true` or `false`, neither of which
+/// are standard IDL. Only `TRUE` and `FALSE` are specified in the standard.
+pub struct LowercaseBool<'a> {
     ctx: &'a LintCtx<'a>,
 }
 
-impl<'a> Visitor<'a> for OmittedIn<'a> {
-    fn visit_prototype_param(&mut self, def: &'a ic_syntax::Param) {
-        if def.kind.is_none() {
-            let diag = warn_span(
-                "parameters must be declared with `in`, `out`, or `inout`",
-                Label::new(ty_span(&def.ty))
-                    .message("expected parameter specifier before this type"),
-            )
-            .help("prefix the parameter with `in`");
-
-            Self::report(self.ctx, diag);
-        }
-    }
-}
-
-impl<'a> Lint<'a> for OmittedIn<'a> {
+impl<'a> Lint<'a> for LowercaseBool<'a> {
     fn name() -> &'static str {
-        "omitted-in"
+        "lowercase-bool"
     }
 
     fn category() -> Category {
-        Category::Pedantic
+        Category::Extensions
     }
 
     fn description() -> &'static str {
-        "Parameter direction omitted in prototypes"
+        "Lowercase 'true' or 'false' used"
     }
 
     fn check(ctx: &'a LintCtx<'_>, ast: &[Item]) {
         let mut lint = Self { ctx };
         walk_tree(&mut lint, ast);
+    }
+}
+
+impl<'a> Visitor<'a> for LowercaseBool<'a> {
+    fn visit_literal(&mut self, num: &'a Literal) {
+        if let LiteralValue::Bool(_lit) = num.value {
+            let slice = self.ctx.slice(num.span);
+            if slice.chars().any(char::is_lowercase) {
+                let fixed = slice.to_uppercase().green();
+                if let Some(diag) = self.ctx.diag_span(
+                    Self::name(),
+                    Self::category(),
+                    "lowercase boolean literals are non-standard",
+                    Label::new(num.span).message("lowercase boolean literal"),
+                ) {
+                    let diag = diag.help(format!("use `{fixed}` instead"));
+                    Self::report(self.ctx, diag);
+                }
+            }
+        }
     }
 }

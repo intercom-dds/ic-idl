@@ -63,7 +63,7 @@ warning[assign-expr]: assignment operator on bitmask flags is non-standard
     └──
  help: use the `@position` annotation instead
 
-warning[bitmask_ann]: defining bitmasks in annotations is non-standard
+warning[bitmask-ann]: defining bitmasks in annotations is non-standard
    ┌ test.idl:7:21
    │
  4 │                 string name;
@@ -75,7 +75,7 @@ warning[bitmask_ann]: defining bitmasks in annotations is non-standard
  9 │                 OPT_B = 2
    └──
 
-warning[bitmask_ann]: defining bitmasks in annotations is non-standard
+warning[bitmask-ann]: defining bitmasks in annotations is non-standard
     ┌ test.idl:12:21
     │
   9 │                 OPT_B = 2

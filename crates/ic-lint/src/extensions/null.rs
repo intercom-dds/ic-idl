@@ -1,4 +1,4 @@
-// Copyright 2026 KONGSBERG
+// Copyright 2024 KONGSBERG
 //
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions are met:
@@ -25,10 +25,44 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-//! Nitpicky style and quality warnings (`-Wpedantic`).
+use ic_diagnostic::{Label, warn_span};
+use ic_syntax::visit::{Visitor, walk_tree};
+use ic_syntax::{Item, UnionNull};
 
-pub mod ambiguous_precedence;
-pub mod invalid_array_size;
-pub mod large_union_variant;
-pub mod prefer_enum_name;
-pub mod unused_include;
+use crate::{Category, Lint, LintCtx};
+
+/// Warns when the `null` keyword is used as a union member.
+pub struct NullVariant<'a> {
+    ctx: &'a LintCtx<'a>,
+}
+
+impl<'a> Visitor<'a> for NullVariant<'a> {
+    fn visit_union_null(&mut self, def: &'a UnionNull) {
+        let diag = warn_span(
+            "`null` variants are non-standard",
+            Label::new(def.span).message("`null` is not standard"),
+        )
+        .note("all case labels must map to a value");
+
+        Self::report(self.ctx, diag);
+    }
+}
+
+impl<'a> Lint<'a> for NullVariant<'a> {
+    fn name() -> &'static str {
+        "null-variant"
+    }
+
+    fn category() -> Category {
+        Category::Extensions
+    }
+
+    fn description() -> &'static str {
+        "'null' used as a union member"
+    }
+
+    fn check(ctx: &'a LintCtx<'_>, ast: &[Item]) {
+        let mut lint = Self { ctx };
+        walk_tree(&mut lint, ast);
+    }
+}

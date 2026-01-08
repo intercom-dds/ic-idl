@@ -26,65 +26,45 @@
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use ic_diagnostic::{Label, warn_span};
-use ic_hir::ResolvedGraph;
-use ic_hir::hir::{DefKind, Ty, TyKind};
-use ic_hir::visit::Visitor;
+use ic_syntax::Item;
+use ic_syntax::visit::{Visitor, walk_module, walk_tree};
 
 use crate::{Category, Lint, LintCtx};
 
-/// Lint that checks if map keys are primitive types. Produces a warning when
-/// complex types are used.
-pub struct ComplexMapKey<'a> {
+/// Checks for empty module declarations.
+pub struct EmptyMod<'a> {
     ctx: &'a LintCtx<'a>,
-    hir: &'a ResolvedGraph,
 }
 
-impl<'a> Lint<'a> for ComplexMapKey<'a> {
+impl<'a> Visitor<'a> for EmptyMod<'a> {
+    fn visit_module(&mut self, def: &'a ic_syntax::ModuleDef) {
+        if def.definitions.is_empty() {
+            let diag = warn_span(
+                "empty module declarations are not standard",
+                Label::new(def.span),
+            )
+            .help("either remove the declaration or add an item to it");
+            Self::report(self.ctx, diag);
+        }
+        walk_module(self, def);
+    }
+}
+
+impl<'a> Lint<'a> for EmptyMod<'a> {
     fn name() -> &'static str {
-        "complex-key"
+        "empty-mod"
     }
 
     fn category() -> Category {
-        Category::Pedantic
+        Category::Extensions
     }
 
     fn description() -> &'static str {
-        "Non-primitive types used as map keys"
+        "Empty module declarations"
     }
 
-    fn check_hir(ctx: &'a LintCtx<'_>, hir: &ic_hir::ResolvedGraph) {
-        let mut res = ComplexMapKey { ctx, hir };
-        ic_hir::visit::walk_tree(&mut res, hir);
-    }
-}
-
-fn is_complex(ctx: &ic_hir::Context, ty: &Ty) -> bool {
-    match &ty.kind {
-        TyKind::Primitive(_) | TyKind::String { .. } => false,
-        TyKind::Adt(id) => match &ctx.type_of(*id).kind {
-            DefKind::Enum(_) | DefKind::Bitmask(_) => false,
-            DefKind::Alias(v) => is_complex(ctx, &v.ty),
-            _ => true,
-        },
-        _ => true,
-    }
-}
-
-impl<'a> Visitor<'a> for ComplexMapKey<'a> {
-    fn context(&self) -> &'a ic_hir::Context {
-        &self.hir.context
-    }
-
-    fn visit_ty(&mut self, ty: &'a Ty) {
-        if let TyKind::Map { key, .. } = &ty.kind
-            && is_complex(&self.hir.context, key)
-        {
-            let diag = warn_span(
-                "complex types as map keys are not standard",
-                Label::new(key.span).message("non-primitive map key"),
-            )
-            .note("only integers, strings, and enums may be used as map keys");
-            Self::report(self.ctx, diag);
-        }
+    fn check(ctx: &'a LintCtx<'_>, ast: &[Item]) {
+        let mut lint = Self { ctx };
+        walk_tree(&mut lint, ast);
     }
 }

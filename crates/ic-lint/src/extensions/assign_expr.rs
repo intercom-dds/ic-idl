@@ -68,7 +68,7 @@ impl<'a> Lint<'a> for AssignExpr<'a> {
     }
 
     fn category() -> Category {
-        Category::Pedantic
+        Category::Extensions
     }
 
     fn description() -> &'static str {

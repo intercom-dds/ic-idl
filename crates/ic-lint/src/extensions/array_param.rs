@@ -25,78 +25,44 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use ic_diagnostic::{Color, Diag, Label, warn_span};
+use ic_diagnostic::{Label, warn_span};
+use ic_syntax::Declarator;
 use ic_syntax::visit::{Visitor, walk_tree};
-use ic_syntax::{ConstDef, Expr, Span, util};
 
 use crate::{Category, Lint, LintCtx};
 
-/// Warns when an initializer list is used, e.g. for complex constants or
-/// complex default values.
-pub struct ComplexLit<'a> {
+pub struct ArrayParam<'a> {
     ctx: &'a LintCtx<'a>,
 }
 
-impl ComplexLit<'_> {
-    fn diagnose(&mut self, (diag, msg): (Span, &str), (label_span, label): (Span, &str)) {
-        let diag = Diag::warning("complex literals are non-standard")
-            .label(Label::new(diag).message(msg).color(Color::Yellow))
-            .label(Label::new(label_span).message(label).color(Color::Cyan))
-            .note("only literals of trivial types are allowed in standard IDL");
-
-        Self::report(self.ctx, diag);
-    }
-}
-
-impl<'a> Visitor<'a> for ComplexLit<'a> {
-    fn visit_annotation_appl(&mut self, def: &'a ic_syntax::AnnotationAppl) {
-        for arg in &def.args {
-            if let Expr::InitList(_) = &arg.value {
-                self.diagnose(
-                    (arg.value.span(), "complex default values are non-standard"),
-                    (util::path_span(&def.ident), "in this annotation"),
-                );
-            }
-        }
-    }
-
-    fn visit_const(&mut self, def: &'a ConstDef) {
-        if let Expr::InitList(_) = &def.value {
-            self.diagnose(
-                (def.value.span(), "complex constants are non-standard"),
-                (util::decl_span(&def.decl), "const defined here"),
-            );
-        }
-    }
-
-    // Fallback in case we ever end up with an initializer list in another
-    // place.
-    fn visit_expr(&mut self, expr: &'a ic_syntax::Expr) {
-        if let ic_syntax::Expr::InitList(_) = expr {
+impl<'a> Visitor<'a> for ArrayParam<'a> {
+    fn visit_prototype_param(&mut self, param: &'a ic_syntax::Param) {
+        if let Declarator::Array(decl) = &param.decl {
             let diag = warn_span(
-                "initializer lists are non-standard",
-                Label::new(expr.span()),
-            );
+                "using arrays as parameters in prototypes is not standard",
+                Label::new(decl.ident.span).message("this parameter is an array"),
+            )
+            .note("standard IDL does not permit arrays as parameters");
             Self::report(self.ctx, diag);
         }
     }
 }
 
-impl<'a> Lint<'a> for ComplexLit<'a> {
+impl<'a> Lint<'a> for ArrayParam<'_> {
     fn name() -> &'static str {
-        "complex-lit"
+        "array-param"
     }
 
     fn category() -> Category {
-        Category::Pedantic
+        Category::Extensions
     }
 
     fn description() -> &'static str {
-        "Complex literals used in constants/annotations"
+        "Arrays used as function parameters"
     }
 
     fn check(ctx: &'a LintCtx<'_>, tree: &[ic_syntax::Item]) {
-        let mut lint = Self { ctx };
+        let mut lint = ArrayParam { ctx };
         walk_tree(&mut lint, tree);
     }
 }

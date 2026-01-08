@@ -97,7 +97,7 @@ impl<'a> Lint<'a> for ShiftBound<'a> {
     }
 
     fn category() -> Category {
-        Category::Pedantic
+        Category::Extensions
     }
 
     fn description() -> &'static str {

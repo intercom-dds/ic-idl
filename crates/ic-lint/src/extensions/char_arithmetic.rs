@@ -45,7 +45,7 @@ impl<'a> Lint<'a> for CharArithmetic<'a> {
     }
 
     fn category() -> Category {
-        Category::Pedantic
+        Category::Extensions
     }
 
     fn check(ctx: &'a LintCtx<'a>, ast: &[Item]) {

@@ -2,6 +2,21 @@
 source: crates/ic-lint/tests/ambiguous_precedence.rs
 expression: test_lint(idl)
 ---
+warning[complex-lit]: complex literals are non-standard
+    ┌ test.idl:8:31
+    │
+  5 │ };
+  6 │ 
+  7 │ // In arrays
+  8 │ const long array[1 | 2 & 3] = { 0 };  // Should warn in array size
+    ·            ^^^^^              ^^^^^ complex constants are non-standard
+    ·            └─ const defined here
+  9 │ 
+ 10 │ // In enum values (if assignment expressions were supported)
+ 11 │ enum Flags {
+    └──
+ note: only literals of trivial types are allowed in standard IDL
+
 warning[ambiguous-precedence]: operator `|` has lower precedence than `&`
     ┌ test.idl:8:20
     │
@@ -66,18 +81,3 @@ warning[ambiguous-precedence]: operator `^` has lower precedence than `+`
     ·                                └─ this operator has lower precedence
     └──
  help: add parentheses to clarify the intended order of operations
-
-warning[complex-lit]: complex literals are non-standard
-    ┌ test.idl:8:31
-    │
-  5 │ };
-  6 │ 
-  7 │ // In arrays
-  8 │ const long array[1 | 2 & 3] = { 0 };  // Should warn in array size
-    ·            ^^^^^              ^^^^^ complex constants are non-standard
-    ·            └─ const defined here
-  9 │ 
- 10 │ // In enum values (if assignment expressions were supported)
- 11 │ enum Flags {
-    └──
- note: only literals of trivial types are allowed in standard IDL

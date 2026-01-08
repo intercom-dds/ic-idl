@@ -26,43 +26,43 @@
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use ic_diagnostic::{Label, warn_span};
-use ic_syntax::Declarator;
 use ic_syntax::visit::{Visitor, walk_tree};
 
 use crate::{Category, Lint, LintCtx};
 
-pub struct ArrayParam<'a> {
+pub struct BitmaskAnn<'a> {
     ctx: &'a LintCtx<'a>,
 }
 
-impl<'a> Visitor<'a> for ArrayParam<'a> {
-    fn visit_prototype_param(&mut self, param: &'a ic_syntax::Param) {
-        if let Declarator::Array(decl) = &param.decl {
+impl<'a> Visitor<'a> for BitmaskAnn<'_> {
+    fn visit_annotation_field(&mut self, def: &'a ic_syntax::AnnotationField) {
+        if let ic_syntax::AnnotationField::Item(item) = def
+            && let ic_syntax::Item::BitmaskValue(bitmask) = item.as_ref()
+        {
             let diag = warn_span(
-                "using arrays as parameters in prototypes is not standard",
-                Label::new(decl.ident.span).message("this parameter is an array"),
-            )
-            .note("standard IDL does not permit arrays as parameters");
+                "defining bitmasks in annotations is non-standard",
+                Label::new(bitmask.ident.span).message("defined here"),
+            );
             Self::report(self.ctx, diag);
         }
     }
 }
 
-impl<'a> Lint<'a> for ArrayParam<'_> {
+impl<'a> Lint<'a> for BitmaskAnn<'_> {
     fn name() -> &'static str {
-        "array-param"
+        "bitmask-ann"
     }
 
     fn category() -> Category {
-        Category::Pedantic
+        Category::Extensions
     }
 
     fn description() -> &'static str {
-        "Arrays used as function parameters"
+        "Bitmasks defined inside annotations"
     }
 
     fn check(ctx: &'a LintCtx<'_>, tree: &[ic_syntax::Item]) {
-        let mut lint = ArrayParam { ctx };
+        let mut lint = BitmaskAnn { ctx };
         walk_tree(&mut lint, tree);
     }
 }

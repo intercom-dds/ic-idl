@@ -26,39 +26,43 @@
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use ic_diagnostic::{Label, warn_span};
+use ic_syntax::Item;
+use ic_syntax::util::ty_span;
 use ic_syntax::visit::{Visitor, walk_tree};
-use ic_syntax::{Item, UnionNull};
 
 use crate::{Category, Lint, LintCtx};
 
-/// Warns when the `null` keyword is used as a union member.
-pub struct NullVariant<'a> {
+/// Warns when the `in` keyword is omitted in prototypes.
+pub struct OmittedIn<'a> {
     ctx: &'a LintCtx<'a>,
 }
 
-impl<'a> Visitor<'a> for NullVariant<'a> {
-    fn visit_union_null(&mut self, def: &'a UnionNull) {
-        let diag = warn_span(
-            "`null` variants are non-standard",
-            Label::new(def.span).message("`null` is not standard"),
-        )
-        .note("all case labels must map to a value");
+impl<'a> Visitor<'a> for OmittedIn<'a> {
+    fn visit_prototype_param(&mut self, def: &'a ic_syntax::Param) {
+        if def.kind.is_none() {
+            let diag = warn_span(
+                "parameters must be declared with `in`, `out`, or `inout`",
+                Label::new(ty_span(&def.ty))
+                    .message("expected parameter specifier before this type"),
+            )
+            .help("prefix the parameter with `in`");
 
-        Self::report(self.ctx, diag);
+            Self::report(self.ctx, diag);
+        }
     }
 }
 
-impl<'a> Lint<'a> for NullVariant<'a> {
+impl<'a> Lint<'a> for OmittedIn<'a> {
     fn name() -> &'static str {
-        "null-variant"
+        "omitted-in"
     }
 
     fn category() -> Category {
-        Category::Pedantic
+        Category::Extensions
     }
 
     fn description() -> &'static str {
-        "'null' used as a union member"
+        "Parameter direction omitted in prototypes"
     }
 
     fn check(ctx: &'a LintCtx<'_>, ast: &[Item]) {

@@ -35,7 +35,7 @@ use ic_cli::color::Colorize as _;
 use ic_cli::convert::{self, ConvertError};
 use ic_lint::{Category, Level, LintConfig};
 
-#[derive(Command, Debug, Default)]
+#[derive(Command, Debug)]
 pub struct Warnings {
     /// Enable all warnings
     #[option(long)]
@@ -329,12 +329,25 @@ impl convert::Convert for Unstable {
     }
 }
 
+impl Default for Warnings {
+    fn default() -> Self {
+        Self {
+            all: false,
+            annotation: false,
+            pedantic: false,
+            preprocessor: true,
+            error: false,
+            help: false,
+            specific_lints: HashMap::new(),
+            error_lints: HashMap::new(),
+            unknown_warnings: Vec::new(),
+        }
+    }
+}
+
 impl convert::Convert for Warnings {
     fn from_result(input: &[String]) -> convert::Result<Self> {
-        let mut warnings = Self {
-            preprocessor: true,
-            ..Self::default()
-        };
+        let mut warnings = Self::default();
         let known_lints = ic_lint::all_lint_names();
 
         for arg in input {

@@ -405,13 +405,11 @@ where
     }
 
     fn unary_expr(&mut self, context_span: Span) -> Result<Expr, Error> {
-        // Get the next token with macro expansion
         let lhs = self.next().ok_or(Error::Expr {
             message: "unexpected end of expression",
             span: context_span,
         })?;
 
-        // Check if it's 'defined' - if so, we need special handling
         if matches!(lhs.kind, Kind::Ident | Kind::Keyword(_))
             && self.source_of(lhs.span) == "defined"
         {
@@ -779,29 +777,29 @@ where
         let mut arg_map = FxHashMap::default();
         for (param, actual) in ctx.args.iter().zip(ctx.actual_args.iter()) {
             let param_name = self.source_of(param.span);
-            arg_map.insert(param_name, vec![actual]);
+            arg_map.insert(param_name, actual.as_slice());
         }
 
         // Handle variadic arguments
         let va_args;
         if ctx.variadic {
             // Collect all remaining arguments for __VA_ARGS__
-            va_args = ctx.actual_args[ctx.args.len()..]
-                .iter()
-                .enumerate()
-                .flat_map(|(i, arg)| {
-                    let mut tokens = vec![];
-                    if i > 0 {
-                        tokens.push(Token {
-                            kind: Kind::Comma,
-                            span: ctx.token.span, // Already using invocation span
-                        });
-                    }
-                    tokens.extend_from_slice(arg);
-                    tokens
-                })
-                .collect::<Vec<_>>();
-            arg_map.insert("__VA_ARGS__", vec![&va_args]);
+            let extra_args = &ctx.actual_args[ctx.args.len()..];
+            let total_len: usize =
+                extra_args.iter().map(Vec::len).sum::<usize>() + extra_args.len().saturating_sub(1);
+
+            let mut va_tokens = Vec::with_capacity(total_len);
+            for (i, arg) in extra_args.iter().enumerate() {
+                if i > 0 {
+                    va_tokens.push(Token {
+                        kind: Kind::Comma,
+                        span: ctx.token.span,
+                    });
+                }
+                va_tokens.extend_from_slice(arg);
+            }
+            va_args = va_tokens;
+            arg_map.insert("__VA_ARGS__", va_args.as_slice());
         }
 
         // Expand the macro definition with argument substitution
@@ -851,9 +849,7 @@ where
 
                 if let Some(replacement) = arg_map.get(name) {
                     // Replace parameter with actual argument
-                    for tokens in replacement {
-                        result_tokens.extend_from_slice(tokens);
-                    }
+                    result_tokens.extend_from_slice(replacement);
                 } else {
                     // Not a parameter, keep as is
                     result_tokens.push(*tok);
@@ -1205,8 +1201,6 @@ where
                     base: Base::Decimal,
                 };
             }
-            // If it contains non-digit characters after starting with a digit,
-            // it's an invalid identifier (but we'll treat it as one)
         }
 
         // Default to identifier
@@ -1227,8 +1221,6 @@ where
                     self.keyword();
                     continue 'outer;
                 }
-
-                // Don't expand macros - return raw token
                 return Some(tok);
             }
 
@@ -1365,24 +1357,17 @@ where
         }
     }
 
-    /// Stringify a list of token slices
-    fn stringify_tokens(&self, token_lists: &[&Vec<Token>]) -> String {
-        // Pre-calculate capacity to avoid reallocations
-        let estimated_capacity = token_lists
-            .iter()
-            .map(|tokens| tokens.len() * 10) // Estimate ~10 chars per token
-            .sum::<usize>()
-            + 2; // +2 for quotes
-
+    /// Stringify a single token slice
+    fn stringify_tokens(&self, tokens: &[Token]) -> String {
+        let estimated_capacity = tokens.len() * 10 + 2;
         let mut stringified = String::with_capacity(estimated_capacity);
+
         stringified.push('"');
-        for tokens in token_lists {
-            for (j, arg_tok) in tokens.iter().enumerate() {
-                if j > 0 {
-                    stringified.push(' ');
-                }
-                stringified.push_str(self.source_of(arg_tok.span));
+        for (j, arg_tok) in tokens.iter().enumerate() {
+            if j > 0 {
+                stringified.push(' ');
             }
+            stringified.push_str(self.source_of(arg_tok.span));
         }
         stringified.push('"');
         stringified

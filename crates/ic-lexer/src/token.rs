@@ -26,10 +26,8 @@
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use std::fmt;
-use std::sync::OnceLock;
 
 use ic_vfs::Span;
-use rustc_hash::{FxBuildHasher, FxHashMap};
 
 /// Represents a lexical token with its kind and source location.
 #[derive(Copy, Clone, Debug)]
@@ -294,62 +292,6 @@ impl fmt::Display for Kind {
     }
 }
 
-/// Returns the keyword map, initializing it on first use.
-fn keyword_map() -> &'static FxHashMap<&'static str, Kw> {
-    static KEYWORD_MAP: OnceLock<FxHashMap<&'static str, Kw>> = OnceLock::new();
-
-    KEYWORD_MAP.get_or_init(|| {
-        let mut map = FxHashMap::with_capacity_and_hasher(45, FxBuildHasher);
-        map.insert("@annotation", Kw::Annotation);
-        map.insert("module", Kw::Module);
-        map.insert("struct", Kw::Struct);
-        map.insert("const", Kw::Const);
-        map.insert("bitmask", Kw::Bitmask);
-        map.insert("bitset", Kw::Bitset);
-        map.insert("bitfield", Kw::Bitfield);
-        map.insert("enum", Kw::Enum);
-        map.insert("exception", Kw::Exception);
-        map.insert("typedef", Kw::Typedef);
-        map.insert("native", Kw::Native);
-        map.insert("fixed", Kw::Fixed);
-        map.insert("union", Kw::Union);
-        map.insert("switch", Kw::Switch);
-        map.insert("case", Kw::Case);
-        map.insert("default", Kw::Default);
-        map.insert("null", Kw::Null);
-        map.insert("valuetype", Kw::Valuetype);
-        map.insert("public", Kw::Public);
-        map.insert("private", Kw::Private);
-        map.insert("supports", Kw::Supports);
-        map.insert("factory", Kw::Factory);
-        map.insert("local", Kw::Local);
-        map.insert("interface", Kw::Interface);
-        map.insert("raises", Kw::Raises);
-        map.insert("getraises", Kw::GetRaises);
-        map.insert("setraises", Kw::SetRaises);
-        map.insert("attribute", Kw::Attribute);
-        map.insert("readonly", Kw::ReadOnly);
-        map.insert("oneway", Kw::Oneway);
-        map.insert("in", Kw::In);
-        map.insert("out", Kw::Out);
-        map.insert("inout", Kw::InOut);
-        map.insert("map", Kw::Map);
-        map.insert("sequence", Kw::Sequence);
-        map.insert("string", Kw::String);
-        map.insert("wstring", Kw::WString);
-        map.insert("unsigned", Kw::Unsigned);
-        map.insert("short", Kw::Short);
-        map.insert("long", Kw::Long);
-        map.insert("float", Kw::Float);
-        map.insert("double", Kw::Double);
-        map.insert("TRUE", Kw::True);
-        map.insert("true", Kw::True);
-        map.insert("FALSE", Kw::False);
-        map.insert("false", Kw::False);
-        map
-    })
-}
-
 impl Kw {
     /// Converts a string slice to a keyword if it matches one.
     ///
@@ -357,7 +299,53 @@ impl Kw {
     #[allow(clippy::should_implement_trait)]
     #[must_use]
     pub fn from_str(str: &str) -> Option<Self> {
-        keyword_map().get(str).copied()
+        Some(match str {
+            "@annotation" => Kw::Annotation,
+            "module" => Kw::Module,
+            "struct" => Kw::Struct,
+            "const" => Kw::Const,
+            "bitmask" => Kw::Bitmask,
+            "bitset" => Kw::Bitset,
+            "bitfield" => Kw::Bitfield,
+            "enum" => Kw::Enum,
+            "exception" => Kw::Exception,
+            "typedef" => Kw::Typedef,
+            "native" => Kw::Native,
+            "fixed" => Kw::Fixed,
+            "union" => Kw::Union,
+            "switch" => Kw::Switch,
+            "case" => Kw::Case,
+            "default" => Kw::Default,
+            "null" => Kw::Null,
+            "valuetype" => Kw::Valuetype,
+            "public" => Kw::Public,
+            "private" => Kw::Private,
+            "supports" => Kw::Supports,
+            "factory" => Kw::Factory,
+            "local" => Kw::Local,
+            "interface" => Kw::Interface,
+            "raises" => Kw::Raises,
+            "getraises" => Kw::GetRaises,
+            "setraises" => Kw::SetRaises,
+            "attribute" => Kw::Attribute,
+            "readonly" => Kw::ReadOnly,
+            "oneway" => Kw::Oneway,
+            "in" => Kw::In,
+            "out" => Kw::Out,
+            "inout" => Kw::InOut,
+            "map" => Kw::Map,
+            "sequence" => Kw::Sequence,
+            "string" => Kw::String,
+            "wstring" => Kw::WString,
+            "unsigned" => Kw::Unsigned,
+            "short" => Kw::Short,
+            "long" => Kw::Long,
+            "float" => Kw::Float,
+            "double" => Kw::Double,
+            "TRUE" | "true" => Kw::True,
+            "FALSE" | "false" => Kw::False,
+            _ => return None,
+        })
     }
 }
 
@@ -410,29 +398,5 @@ impl fmt::Display for Kw {
             Kw::False => "FALSE",
         };
         write!(f, "{str}")
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_keyword_map_completeness() {
-        let map = keyword_map();
-
-        // Test all keywords are present
-        assert_eq!(map.get("module"), Some(&Kw::Module));
-        assert_eq!(map.get("struct"), Some(&Kw::Struct));
-
-        // Test case sensitivity
-        assert_eq!(map.get("TRUE"), Some(&Kw::True));
-        assert_eq!(map.get("true"), Some(&Kw::True));
-        assert_eq!(map.get("FALSE"), Some(&Kw::False));
-        assert_eq!(map.get("false"), Some(&Kw::False));
-
-        // Test non-keywords
-        assert_eq!(map.get("foo"), None);
-        assert_eq!(map.get(""), None);
     }
 }

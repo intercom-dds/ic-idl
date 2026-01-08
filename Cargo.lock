@@ -564,7 +564,6 @@ dependencies = [
  "criterion",
  "ic-expr",
  "ic-vfs",
- "rustc-hash",
 ]
 
 [[package]]

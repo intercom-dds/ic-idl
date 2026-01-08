@@ -43,4 +43,5 @@ pub mod null;
 pub mod omitted_in;
 pub mod prefer_enum_name;
 pub mod scoped_lit;
+pub mod shift_bound;
 pub mod unused_include;

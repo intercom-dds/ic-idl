@@ -1,0 +1,12 @@
+---
+source: crates/ic-lint/tests/shift_bound.rs
+expression: test_lint(source)
+---
+warning[shift-bound]: bitshift expressions in template bounds are not portable
+   ┌ test.idl:2:26
+   │
+ 2 │         typedef string<1 << 10> BoundedString;
+   ·                          ^^ this shift operator
+   └──
+ help: consider using a constant instead
+ note: other IDL compilers may not support bitshift expressions in template bounds

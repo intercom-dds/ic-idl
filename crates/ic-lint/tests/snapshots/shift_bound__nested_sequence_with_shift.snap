@@ -1,0 +1,21 @@
+---
+source: crates/ic-lint/tests/shift_bound.rs
+expression: test_lint(source)
+---
+warning[shift-bound]: bitshift expressions in template bounds are not portable
+   ┌ test.idl:2:52
+   │
+ 2 │         typedef sequence<sequence<long, 1 << 4>, 1 << 8> NestedSeq;
+   ·                                                    ^^ this shift operator
+   └──
+ help: consider using a constant instead
+ note: other IDL compilers may not support bitshift expressions in template bounds
+
+warning[shift-bound]: bitshift expressions in template bounds are not portable
+   ┌ test.idl:2:43
+   │
+ 2 │         typedef sequence<sequence<long, 1 << 4>, 1 << 8> NestedSeq;
+   ·                                           ^^ this shift operator
+   └──
+ help: consider using a constant instead
+ note: other IDL compilers may not support bitshift expressions in template bounds

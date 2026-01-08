@@ -7,12 +7,12 @@
   },
   "platformAutomerge": true,
   "automergeType": "pr",
+  "rangeStrategy": "bump",
   "packageRules": [
     {
       "matchManagers": ["cargo"],
       "groupName": "all cargo dependencies",
       "automerge": true,
-      "rangeStrategy": "bump",
       "matchUpdateTypes": ["major", "minor"]
     },
     {

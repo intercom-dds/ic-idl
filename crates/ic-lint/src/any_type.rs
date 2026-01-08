@@ -27,7 +27,7 @@
 
 //! Lint that warns when the 'any' type is used
 
-use ic_diagnostic::{Label, warn_span};
+use ic_diagnostic::Label;
 use ic_hir::hir::{Ty, TyKind};
 use ic_hir::visit::{self, Visitor, walk_ty};
 
@@ -64,14 +64,15 @@ impl<'a> Visitor<'a> for AnyType<'a> {
     }
 
     fn visit_ty(&mut self, ty: &'a Ty) {
-        if matches!(ty.kind, TyKind::Any) {
-            let diag = warn_span(
+        if matches!(ty.kind, TyKind::Any)
+            && let Some(diag) = self.ctx.diag_span(
+                Self::name(),
+                Self::category(),
                 "the 'any' type is not fully supported",
                 Label::new(ty.span).message("'any' type used here"),
             )
-            .help("consider using a concrete type");
-
-            Self::report(self.ctx, diag);
+        {
+            Self::report(self.ctx, diag.help("consider using a concrete type"));
         }
 
         // Continue traversing nested types

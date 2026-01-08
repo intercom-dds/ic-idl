@@ -26,7 +26,7 @@
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use ic_cli::color::Color;
-use ic_diagnostic::{Label, warn_span};
+use ic_diagnostic::Label;
 use ic_syntax::visit::{Visitor, walk_tree};
 use ic_syntax::{Path, util};
 
@@ -41,18 +41,21 @@ impl<'a> Visitor<'a> for AnnotatedDecl<'a> {
         // only issue one diagnostic per decl
         if let Some(ann) = decl.annotations.iter().find(|v| !is_doc(&v.ident)) {
             let span = util::path_span(&ann.ident);
-            let diag = warn_span(
+            if let Some(diag) = self.ctx.diag_span(
+                Self::name(),
+                Self::category(),
                 "annotations on forward declarations are ignored",
                 Label::new(span).message("defined here"),
-            )
-            .label(
-                Label::new(decl.ident.span)
-                    .message("applied to this declaration")
-                    .color(Color::Cyan),
-            )
-            .help("move the annotation to the definition of the type");
-
-            Self::report(self.ctx, diag);
+            ) {
+                let diag = diag
+                    .label(
+                        Label::new(decl.ident.span)
+                            .message("applied to this declaration")
+                            .color(Color::Cyan),
+                    )
+                    .help("move the annotation to the definition of the type");
+                Self::report(self.ctx, diag);
+            }
         }
     }
 }

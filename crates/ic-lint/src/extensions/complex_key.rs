@@ -25,7 +25,7 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use ic_diagnostic::{Label, warn_span};
+use ic_diagnostic::Label;
 use ic_hir::ResolvedGraph;
 use ic_hir::hir::{DefKind, Ty, TyKind};
 use ic_hir::visit::Visitor;
@@ -78,13 +78,17 @@ impl<'a> Visitor<'a> for ComplexMapKey<'a> {
     fn visit_ty(&mut self, ty: &'a Ty) {
         if let TyKind::Map { key, .. } = &ty.kind
             && is_complex(&self.hir.context, key)
-        {
-            let diag = warn_span(
+            && let Some(diag) = self.ctx.diag_span(
+                Self::name(),
+                Self::category(),
                 "complex types as map keys are not standard",
                 Label::new(key.span).message("non-primitive map key"),
             )
-            .note("only integers, strings, and enums may be used as map keys");
-            Self::report(self.ctx, diag);
+        {
+            Self::report(
+                self.ctx,
+                diag.note("only integers, strings, and enums may be used as map keys"),
+            );
         }
     }
 }

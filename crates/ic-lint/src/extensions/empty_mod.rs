@@ -25,7 +25,7 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use ic_diagnostic::{Label, warn_span};
+use ic_diagnostic::Label;
 use ic_syntax::Item;
 use ic_syntax::visit::{Visitor, walk_module, walk_tree};
 
@@ -38,13 +38,18 @@ pub struct EmptyMod<'a> {
 
 impl<'a> Visitor<'a> for EmptyMod<'a> {
     fn visit_module(&mut self, def: &'a ic_syntax::ModuleDef) {
-        if def.definitions.is_empty() {
-            let diag = warn_span(
+        if def.definitions.is_empty()
+            && let Some(diag) = self.ctx.diag_span(
+                Self::name(),
+                Self::category(),
                 "empty module declarations are not standard",
                 Label::new(def.span),
             )
-            .help("either remove the declaration or add an item to it");
-            Self::report(self.ctx, diag);
+        {
+            Self::report(
+                self.ctx,
+                diag.help("either remove the declaration or add an item to it"),
+            );
         }
         walk_module(self, def);
     }

@@ -25,7 +25,7 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use ic_diagnostic::{Label, warn_span};
+use ic_diagnostic::Label;
 use ic_syntax::visit::{Visitor, walk_tree};
 use ic_syntax::{Item, UnionNull};
 
@@ -38,13 +38,14 @@ pub struct NullVariant<'a> {
 
 impl<'a> Visitor<'a> for NullVariant<'a> {
     fn visit_union_null(&mut self, def: &'a UnionNull) {
-        let diag = warn_span(
+        if let Some(diag) = self.ctx.diag_span(
+            Self::name(),
+            Self::category(),
             "`null` variants are non-standard",
             Label::new(def.span).message("`null` is not standard"),
-        )
-        .note("all case labels must map to a value");
-
-        Self::report(self.ctx, diag);
+        ) {
+            Self::report(self.ctx, diag.note("all case labels must map to a value"));
+        }
     }
 }
 

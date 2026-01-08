@@ -25,7 +25,7 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use ic_diagnostic::{Label, warn_span};
+use ic_diagnostic::Label;
 use ic_syntax::Declarator;
 use ic_syntax::visit::{Visitor, walk_tree};
 
@@ -37,13 +37,18 @@ pub struct ArrayParam<'a> {
 
 impl<'a> Visitor<'a> for ArrayParam<'a> {
     fn visit_prototype_param(&mut self, param: &'a ic_syntax::Param) {
-        if let Declarator::Array(decl) = &param.decl {
-            let diag = warn_span(
+        if let Declarator::Array(decl) = &param.decl
+            && let Some(diag) = self.ctx.diag_span(
+                Self::name(),
+                Self::category(),
                 "using arrays as parameters in prototypes is not standard",
                 Label::new(decl.ident.span).message("this parameter is an array"),
             )
-            .note("standard IDL does not permit arrays as parameters");
-            Self::report(self.ctx, diag);
+        {
+            Self::report(
+                self.ctx,
+                diag.note("standard IDL does not permit arrays as parameters"),
+            );
         }
     }
 }

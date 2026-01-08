@@ -25,7 +25,7 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use ic_diagnostic::{Label, warn_span};
+use ic_diagnostic::Label;
 use ic_preproc::Error;
 
 use crate::{Category, Lint, LintCtx, SyntaxInput};
@@ -51,11 +51,13 @@ impl<'a> Lint<'a> for PreprocExtraneous {
             if let Error::Extraneous {
                 directive, span, ..
             } = error
-            {
-                let diag = warn_span(
+                && let Some(diag) = ctx.diag_span(
+                    Self::name(),
+                    Self::category(),
                     format!("extra tokens after #{directive} directive"),
                     Label::new(*span).message("extraneous tokens"),
-                );
+                )
+            {
                 Self::report(ctx, diag);
             }
         }

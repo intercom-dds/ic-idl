@@ -25,7 +25,7 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use ic_diagnostic::{Label, warn_span};
+use ic_diagnostic::Label;
 use ic_syntax::visit::{Visitor, walk_tree};
 
 use crate::{Category, Lint, LintCtx};
@@ -38,11 +38,13 @@ impl<'a> Visitor<'a> for BitmaskAnn<'_> {
     fn visit_annotation_field(&mut self, def: &'a ic_syntax::AnnotationField) {
         if let ic_syntax::AnnotationField::Item(item) = def
             && let ic_syntax::Item::BitmaskValue(bitmask) = item.as_ref()
-        {
-            let diag = warn_span(
+            && let Some(diag) = self.ctx.diag_span(
+                Self::name(),
+                Self::category(),
                 "defining bitmasks in annotations is non-standard",
                 Label::new(bitmask.ident.span).message("defined here"),
-            );
+            )
+        {
             Self::report(self.ctx, diag);
         }
     }

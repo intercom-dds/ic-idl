@@ -25,7 +25,7 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use ic_diagnostic::{Label, warn_span};
+use ic_diagnostic::Label;
 use ic_syntax::visit::{Visitor, walk_tree};
 
 use crate::{Category, Lint, LintCtx};
@@ -38,26 +38,31 @@ pub struct AssignExpr<'a> {
 
 impl<'a> Visitor<'a> for AssignExpr<'a> {
     fn visit_bitmask_bit(&mut self, flag: &'a ic_syntax::Bit) {
-        if let Some(value) = &flag.value {
-            let diag = warn_span(
+        if let Some(value) = &flag.value
+            && let Some(diag) = self.ctx.diag_span(
+                Self::name(),
+                Self::category(),
                 "assignment operator on bitmask flags is non-standard",
                 Label::new(value.span()),
             )
-            .help("use the `@position` annotation instead");
-
-            Self::report(self.ctx, diag);
+        {
+            Self::report(
+                self.ctx,
+                diag.help("use the `@position` annotation instead"),
+            );
         }
     }
 
     fn visit_enum_variant(&mut self, variant: &'a ic_syntax::Enumerator) {
-        if let Some(value) = &variant.value {
-            let diag = warn_span(
+        if let Some(value) = &variant.value
+            && let Some(diag) = self.ctx.diag_span(
+                Self::name(),
+                Self::category(),
                 "assignment operator on enumerators is non-standard",
                 Label::new(value.span()),
             )
-            .help("use the `@value` annotation instead");
-
-            Self::report(self.ctx, diag);
+        {
+            Self::report(self.ctx, diag.help("use the `@value` annotation instead"));
         }
     }
 }

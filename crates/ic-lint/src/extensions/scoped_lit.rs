@@ -28,7 +28,7 @@
 use std::collections::HashMap;
 
 use ic_cli::color::Colorize as _;
-use ic_diagnostic::{Label, warn_span};
+use ic_diagnostic::Label;
 use ic_syntax::visit::{Visitor, walk_expr, walk_tree};
 use ic_syntax::{BitmaskDef, EnumDef, Expr, Item};
 
@@ -83,16 +83,19 @@ impl<'a> Visitor<'a> for ScopedLit<'a> {
                 } else {
                     path.segments.iter().map(|s| &s.name).join("::").green()
                 };
-                let label = warn_span(
+                if let Some(diag) = self.ctx.diag_span(
+                    Self::name(),
+                    Self::category(),
                     format!("scoped {ty}s are non-standard"),
                     Label::new(v.span).message("used here"),
-                )
-                .note(format!("{member} are registered in the parent scope"))
-                .help(format!(
-                    "use `{enumerator}` instead of `{enum_and_enumerator}`"
-                ));
-
-                Self::report(self.ctx, label);
+                ) {
+                    let diag = diag
+                        .note(format!("{member} are registered in the parent scope"))
+                        .help(format!(
+                            "use `{enumerator}` instead of `{enum_and_enumerator}`"
+                        ));
+                    Self::report(self.ctx, diag);
+                }
             }
         } else {
             // Continue traversal -- this may be a binary expression of bitmask

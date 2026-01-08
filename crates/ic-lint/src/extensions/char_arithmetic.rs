@@ -25,7 +25,7 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use ic_diagnostic::{Label, warn_span};
+use ic_diagnostic::Label;
 use ic_syntax::{Expr, Item, LiteralValue, OpKind};
 
 use crate::{Category, Lint, LintCtx};
@@ -75,25 +75,33 @@ impl<'a> ic_syntax::visit::Visitor<'a> for CharArithmetic<'a> {
                     // Check left operand
                     if let Expr::Literal(lit) = &binary.lhs
                         && let LiteralValue::Char(_) = lit.value
-                    {
-                        let diag = warn_span(
+                        && let Some(diag) = self.ctx.diag_span(
+                            Self::name(),
+                            Self::category(),
                             "char literal used in arithmetic expression",
                             Label::new(lit.span).message("char literal"),
                         )
-                        .help("consider converting to an integer value");
-                        Self::report(self.ctx, diag);
+                    {
+                        Self::report(
+                            self.ctx,
+                            diag.help("consider converting to an integer value"),
+                        );
                     }
 
                     // Check right operand
                     if let Expr::Literal(lit) = &binary.rhs
                         && let LiteralValue::Char(_) = lit.value
-                    {
-                        let diag = warn_span(
+                        && let Some(diag) = self.ctx.diag_span(
+                            Self::name(),
+                            Self::category(),
                             "char literal used in arithmetic expression",
                             Label::new(lit.span).message("char literal"),
                         )
-                        .help("consider converting to an integer value");
-                        Self::report(self.ctx, diag);
+                    {
+                        Self::report(
+                            self.ctx,
+                            diag.help("consider converting to an integer value"),
+                        );
                     }
                 }
             }
@@ -102,13 +110,17 @@ impl<'a> ic_syntax::visit::Visitor<'a> for CharArithmetic<'a> {
                 if matches!(unary.op.kind, OpKind::Not | OpKind::Sub | OpKind::Add)
                     && let Expr::Literal(lit) = &unary.expr
                     && let LiteralValue::Char(_) = lit.value
-                {
-                    let diag = warn_span(
+                    && let Some(diag) = self.ctx.diag_span(
+                        Self::name(),
+                        Self::category(),
                         "char literal used in arithmetic expression",
                         Label::new(lit.span).message("char literal"),
                     )
-                    .help("consider converting to an integer value");
-                    Self::report(self.ctx, diag);
+                {
+                    Self::report(
+                        self.ctx,
+                        diag.help("consider converting to an integer value"),
+                    );
                 }
             }
             _ => {}

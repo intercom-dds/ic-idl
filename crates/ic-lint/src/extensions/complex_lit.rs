@@ -25,7 +25,7 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use ic_diagnostic::{Color, Diag, Label, warn_span};
+use ic_diagnostic::{Color, Label};
 use ic_syntax::visit::{Visitor, walk_tree};
 use ic_syntax::{ConstDef, Expr, Span, util};
 
@@ -38,13 +38,18 @@ pub struct ComplexLit<'a> {
 }
 
 impl ComplexLit<'_> {
-    fn diagnose(&mut self, (diag, msg): (Span, &str), (label_span, label): (Span, &str)) {
-        let diag = Diag::warning("complex literals are non-standard")
-            .label(Label::new(diag).message(msg).color(Color::Yellow))
-            .label(Label::new(label_span).message(label).color(Color::Cyan))
-            .note("only literals of trivial types are allowed in standard IDL");
-
-        Self::report(self.ctx, diag);
+    fn diagnose(&mut self, (diag_span, msg): (Span, &str), (label_span, label): (Span, &str)) {
+        if let Some(diag) = self.ctx.diag_span(
+            Self::name(),
+            Self::category(),
+            "complex literals are non-standard",
+            Label::new(diag_span).message(msg),
+        ) {
+            let diag = diag
+                .label(Label::new(label_span).message(label).color(Color::Cyan))
+                .note("only literals of trivial types are allowed in standard IDL");
+            Self::report(self.ctx, diag);
+        }
     }
 }
 
@@ -72,11 +77,14 @@ impl<'a> Visitor<'a> for ComplexLit<'a> {
     // Fallback in case we ever end up with an initializer list in another
     // place.
     fn visit_expr(&mut self, expr: &'a ic_syntax::Expr) {
-        if let ic_syntax::Expr::InitList(_) = expr {
-            let diag = warn_span(
+        if let ic_syntax::Expr::InitList(_) = expr
+            && let Some(diag) = self.ctx.diag_span(
+                Self::name(),
+                Self::category(),
                 "initializer lists are non-standard",
                 Label::new(expr.span()),
-            );
+            )
+        {
             Self::report(self.ctx, diag);
         }
     }

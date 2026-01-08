@@ -25,7 +25,7 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use ic_diagnostic::{Label, warn_span};
+use ic_diagnostic::Label;
 
 use crate::{Category, Lint, LintCtx, SyntaxInput};
 
@@ -47,13 +47,17 @@ impl<'a> Lint<'a> for AnnPlacement {
 
     fn check_syntax(ctx: &'a LintCtx<'_>, input: &SyntaxInput<'_>) {
         for ann in input.orphaned_annotations {
-            let diag = warn_span(
+            if let Some(diag) = ctx.diag_span(
+                Self::name(),
+                Self::category(),
                 "annotation has no effect in this context",
                 Label::new(ann.span).message("misplaced annotation"),
-            )
-            .note("annotation is not attached to any declaration");
-
-            Self::report(ctx, diag);
+            ) {
+                Self::report(
+                    ctx,
+                    diag.note("annotation is not attached to any declaration"),
+                );
+            }
         }
     }
 }

@@ -25,7 +25,7 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use ic_diagnostic::{Label, warn_span};
+use ic_diagnostic::Label;
 
 use crate::{Category, Lint, LintCtx, SyntaxInput};
 
@@ -59,8 +59,14 @@ impl<'a> Lint<'a> for PreprocWarning {
                     format!("#warning directive: {text}")
                 };
 
-                let diag = warn_span(msg, Label::new(*span).message("here"));
-                Self::report(ctx, diag);
+                if let Some(diag) = ctx.diag_span(
+                    Self::name(),
+                    Self::category(),
+                    msg,
+                    Label::new(*span).message("here"),
+                ) {
+                    Self::report(ctx, diag);
+                }
             }
         }
     }

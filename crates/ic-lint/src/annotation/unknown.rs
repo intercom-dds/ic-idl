@@ -25,7 +25,7 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use ic_diagnostic::{Label, warn_span};
+use ic_diagnostic::Label;
 use ic_hir::hir::{Ann, DefKind};
 use ic_hir::visit::{self, Visitor};
 
@@ -81,16 +81,17 @@ impl<'a> Visitor<'a> for UnknownAnnotation<'a> {
     }
 
     fn visit_annotation(&mut self, ann: &'a Ann) {
-        if ann.def_id.is_none() {
-            let mut diag = warn_span(
+        if ann.def_id.is_none()
+            && let Some(mut diag) = self.ctx.diag_span(
+                Self::name(),
+                Self::category(),
                 format!("unknown annotation `{}`", ann.ident.name),
                 Label::new(ann.ident.span).message("annotation not found"),
-            );
-
+            )
+        {
             if let Some(suggestion) = find_similar(&ann.ident.name, &self.annotation_names) {
                 diag = diag.help(format!("did you mean `@{suggestion}`?"));
             }
-
             Self::report(self.ctx, diag);
         }
     }

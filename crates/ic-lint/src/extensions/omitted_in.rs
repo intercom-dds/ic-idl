@@ -25,7 +25,7 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use ic_diagnostic::{Label, warn_span};
+use ic_diagnostic::Label;
 use ic_syntax::Item;
 use ic_syntax::util::ty_span;
 use ic_syntax::visit::{Visitor, walk_tree};
@@ -39,15 +39,16 @@ pub struct OmittedIn<'a> {
 
 impl<'a> Visitor<'a> for OmittedIn<'a> {
     fn visit_prototype_param(&mut self, def: &'a ic_syntax::Param) {
-        if def.kind.is_none() {
-            let diag = warn_span(
+        if def.kind.is_none()
+            && let Some(diag) = self.ctx.diag_span(
+                Self::name(),
+                Self::category(),
                 "parameters must be declared with `in`, `out`, or `inout`",
                 Label::new(ty_span(&def.ty))
                     .message("expected parameter specifier before this type"),
             )
-            .help("prefix the parameter with `in`");
-
-            Self::report(self.ctx, diag);
+        {
+            Self::report(self.ctx, diag.help("prefix the parameter with `in`"));
         }
     }
 }

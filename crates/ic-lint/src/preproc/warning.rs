@@ -1,4 +1,4 @@
-// Copyright 2024 KONGSBERG
+// Copyright 2026 KONGSBERG
 //
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions are met:
@@ -25,11 +25,43 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-pub mod bit_bound;
-pub mod decl;
-pub mod deprecated_annotations;
-pub mod placement;
-pub mod range_bound;
-pub mod topic_nested;
-pub mod unknown;
-pub mod unnamed_args;
+use ic_diagnostic::{Label, warn_span};
+
+use crate::{Category, Lint, LintCtx, SyntaxInput};
+
+/// Lint for `#warning` directives.
+pub struct PreprocWarning;
+
+impl<'a> Lint<'a> for PreprocWarning {
+    fn name() -> &'static str {
+        "preproc-warning"
+    }
+
+    fn category() -> Category {
+        Category::Preprocessor
+    }
+
+    fn description() -> &'static str {
+        "#warning directives in preprocessor"
+    }
+
+    fn check_syntax(ctx: &'a LintCtx<'_>, input: &SyntaxInput<'_>) {
+        for error in input.preproc_warnings {
+            if let ic_preproc::Error::Note { span, tokens } = error {
+                let msg = if tokens.is_empty() {
+                    "#warning directive".to_string()
+                } else {
+                    let text = tokens
+                        .iter()
+                        .map(|t| ctx.slice(t.span))
+                        .collect::<Vec<_>>()
+                        .join(" ");
+                    format!("#warning directive: {text}")
+                };
+
+                let diag = warn_span(msg, Label::new(*span).message("here"));
+                Self::report(ctx, diag);
+            }
+        }
+    }
+}

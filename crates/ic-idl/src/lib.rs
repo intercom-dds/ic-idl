@@ -229,7 +229,12 @@ where
     let mut all_warnings = Vec::new();
 
     // Lint the user's AST
-    let report = ic_lint::lint_syntax_with_config(&ast_vec, source_map, lint_config);
+    let syntax_input = ic_lint::SyntaxInput {
+        tree: &ast_vec,
+        orphaned_annotations: &[],
+        preproc_warnings: &[],
+    };
+    let report = ic_lint::lint_syntax_with_config(&syntax_input, source_map, lint_config);
     all_errors.extend(report.errors.into_iter().map(Into::into));
     all_warnings.extend(report.warnings);
 
@@ -462,45 +467,19 @@ impl Compiler {
             return Err(CompileError::Diagnostics(diagnostics));
         }
 
-        // Create lint config early so we can use it for pseudo-lints
+        // Create lint config
         let lint_config = self.options.warn.to_lint_config();
 
-        // Convert orphaned annotations to diagnostics based on lint config
-        let ann_level = lint_config.get_level("ann-placement", LintCategory::Annotation);
-        if ann_level != LintLevel::Disabled {
-            for ann in &ast.orphaned_annotations {
-                let diag = pretty::orphaned_annotation_diag(ann, ann_level);
-                match ann_level {
-                    LintLevel::Error => diagnostics.errors.push(diag.into()),
-                    LintLevel::Warning => diagnostics.warnings.push(diag),
-                    LintLevel::Disabled => unreachable!(),
-                }
-            }
-        }
-
-        // Collect preprocessor warnings if enabled
-        if self.options.warn.preprocessor_enabled() {
-            let as_error = self.options.warn.preprocessor_error();
-            let preproc_diags = pretty::preproc_warnings_to_diags(
-                &ast.preproc_warnings,
-                &self.source_map,
-                &diagnostics.expansion_info,
-                as_error,
-            );
-            if as_error {
-                diagnostics
-                    .errors
-                    .extend(preproc_diags.into_iter().map(Into::into));
-            } else {
-                diagnostics.warnings.extend(preproc_diags);
-            }
-        }
-
-        // Run AST linting first
+        // Run AST linting with full syntax input (includes orphaned annotations and preproc warnings)
         if diagnostics.errors.is_empty() {
             let _lint_span = info_span!("lint_syntax").entered();
+            let syntax_input = ic_lint::SyntaxInput {
+                tree: &ast.tree,
+                orphaned_annotations: &ast.orphaned_annotations,
+                preproc_warnings: &ast.preproc_warnings,
+            };
             let report =
-                ic_lint::lint_syntax_with_config(&ast.tree, &self.source_map, &lint_config);
+                ic_lint::lint_syntax_with_config(&syntax_input, &self.source_map, &lint_config);
             diagnostics
                 .errors
                 .extend(report.errors.into_iter().map(Into::into));
@@ -663,34 +642,15 @@ fn try_compile_to_ast(
             }
         };
 
-        // Convert orphaned annotations to diagnostics based on lint config
-        let ann_level = lint_config.get_level("ann-placement", LintCategory::Annotation);
-        if ann_level != LintLevel::Disabled {
-            for ann in &ast.orphaned_annotations {
-                let diag = pretty::orphaned_annotation_diag(ann, ann_level);
-                match ann_level {
-                    LintLevel::Error => all_errors.push(diag.into()),
-                    LintLevel::Warning => all_warnings.push(diag),
-                    LintLevel::Disabled => unreachable!(),
-                }
-            }
-        }
-
-        // Collect preprocessor warnings if enabled
-        if options.warn.preprocessor_enabled() {
-            let as_error = options.warn.preprocessor_error();
-            let preproc_diags = pretty::preproc_warnings_to_diags(
-                &ast.preproc_warnings,
-                vfs,
-                &ast.expansion_info,
-                as_error,
-            );
-            if as_error {
-                all_errors.extend(preproc_diags.into_iter().map(Into::into));
-            } else {
-                all_warnings.extend(preproc_diags);
-            }
-        }
+        // Run syntax lints (handles orphaned annotations and preproc warnings via lint system)
+        let syntax_input = ic_lint::SyntaxInput {
+            tree: &ast.tree,
+            orphaned_annotations: &ast.orphaned_annotations,
+            preproc_warnings: &ast.preproc_warnings,
+        };
+        let report = ic_lint::lint_syntax_with_config(&syntax_input, vfs, &lint_config);
+        all_errors.extend(report.errors.into_iter().map(Into::into));
+        all_warnings.extend(report.warnings);
 
         all_expansion_info.extend(ast.expansion_info);
         all_asts.extend(ast.tree);

@@ -57,7 +57,6 @@ pub use ic_cli::color::Color;
 pub enum Level {
     Error,
     Warning,
-    /// Disabled - the diagnostic should not be emitted at all
     Disabled,
 }
 

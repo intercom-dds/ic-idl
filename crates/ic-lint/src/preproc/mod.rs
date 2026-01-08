@@ -1,4 +1,4 @@
-// Copyright 2024 KONGSBERG
+// Copyright 2026 KONGSBERG
 //
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions are met:
@@ -25,11 +25,7 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-pub mod bit_bound;
-pub mod decl;
-pub mod deprecated_annotations;
-pub mod placement;
-pub mod range_bound;
-pub mod topic_nested;
-pub mod unknown;
-pub mod unnamed_args;
+//! Preprocessor-related lints.
+
+pub mod extraneous;
+pub mod warning;

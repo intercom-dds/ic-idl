@@ -27,36 +27,12 @@
 
 use ic_cli::color::ColorMode;
 use ic_diagnostic::Level;
-use ic_lint::{Category, LintConfig, Report};
+use ic_lint::{Category, LintConfig, Report, SyntaxInput};
 use ic_vfs::SourceMap;
 
-#[allow(dead_code)]
-pub fn test_lint(source: &str) -> String {
-    ic_cli::color::set_color_override(ColorMode::Never);
-    let mut vfs = SourceMap::default();
-    let file_id = vfs.embed(source);
-
-    // Parse the IDL code
-    let ast = ic_parse::from_file(file_id, &vfs);
-
-    // Assert no parse errors in test code
-    assert!(
-        ast.errors.is_empty(),
-        "Parse errors in test code: {:?}",
-        ast.errors
-    );
-
-    // Configure lint to enable pedantic warnings
-    let mut config = LintConfig::new();
-    config.set_category_level(Category::Pedantic, Level::Warning);
-
-    // Run lints
-    let report = ic_lint::lint_syntax_with_config(&ast.tree, &vfs, &config);
-
-    // Format all diagnostics
+fn format_report(source: &str, report: &Report) -> String {
     let mut output = String::new();
 
-    // Emit errors
     for (i, diag) in report.errors.iter().enumerate() {
         if i > 0 {
             output.push('\n');
@@ -65,7 +41,6 @@ pub fn test_lint(source: &str) -> String {
             .expect("Failed to format diagnostic");
     }
 
-    // Emit warnings
     for (i, diag) in report.warnings.iter().enumerate() {
         if i > 0 || !report.errors.is_empty() {
             output.push('\n');
@@ -78,36 +53,83 @@ pub fn test_lint(source: &str) -> String {
 }
 
 #[allow(dead_code)]
-pub fn lint_hir(source: &str) -> Report {
+pub fn test_lint(source: &str) -> String {
+    ic_cli::color::set_color_override(ColorMode::Never);
+    let mut vfs = SourceMap::default();
+    let file_id = vfs.embed(source);
+    let ast = ic_parse::from_file(file_id, &vfs);
+
+    assert!(
+        ast.errors.is_empty(),
+        "Parse errors in test code: {:?}",
+        ast.errors
+    );
+
+    let mut config = LintConfig::new();
+    config.set_category_level(Category::Pedantic, Level::Warning);
+
+    let input = SyntaxInput {
+        tree: &ast.tree,
+        orphaned_annotations: &ast.orphaned_annotations,
+        preproc_warnings: &[],
+    };
+    let report = ic_lint::lint_syntax_with_config(&input, &vfs, &config);
+
+    format_report(source, &report)
+}
+
+#[allow(dead_code)]
+pub fn test_lint_preproc(source: &str) -> String {
     ic_cli::color::set_color_override(ColorMode::Never);
     let mut vfs = SourceMap::default();
     let file_id = vfs.embed(source);
 
-    // Parse the IDL code
+    let mut state = ic_preproc::State::new();
+    let tokens: Vec<_> = ic_preproc::with_state(
+        file_id,
+        ic_preproc::ProcArgs::default(),
+        &mut state,
+        &mut vfs,
+    )
+    .collect();
+    let ast = ic_parse::from_iter(tokens, &vfs);
+
+    let mut config = LintConfig::new();
+    config.set_category_level(Category::Preprocessor, Level::Warning);
+
+    let input = SyntaxInput {
+        tree: &ast.tree,
+        orphaned_annotations: &ast.orphaned_annotations,
+        preproc_warnings: state.warnings(),
+    };
+    let report = ic_lint::lint_syntax_with_config(&input, &vfs, &config);
+
+    format_report(source, &report)
+}
+
+#[allow(dead_code)]
+pub fn lint_hir(source: &str) -> Report {
+    ic_cli::color::set_color_override(ColorMode::Never);
+    let mut vfs = SourceMap::default();
+    let file_id = vfs.embed(source);
     let ast = ic_parse::from_file(file_id, &vfs);
 
-    // Parse built-in annotations (same as ic-idl does)
     let builtin_file_id = vfs.embed_with_name(
         "<builtin-annotations>",
         include_str!("../../../ic-idl/idl/annotations.idl"),
     );
     let builtin_parsed = ic_parse::from_file(builtin_file_id, &vfs);
 
-    // Lower to HIR with built-ins
     let hir = ic_hir_lower::from_ast(ic_hir_lower::AstInput::WithBuiltins {
         builtins: builtin_parsed.tree,
         user: ast.tree,
         include_in_output: false,
     });
 
-    // Configure lint to enable semantic errors
     let mut config = LintConfig::new();
     config.set_category_level(Category::Semantic, Level::Error);
 
-    // Run HIR lints
     let mut report = ic_lint::lint_hir_with_config(&hir, &vfs, &config);
-
-    // Add any HIR errors to the report
     report.errors.extend(hir.errors);
 
     report
@@ -118,18 +140,14 @@ pub fn test_lint_hir(source: &str) -> String {
     ic_cli::color::set_color_override(ColorMode::Never);
     let mut vfs = SourceMap::default();
     let file_id = vfs.embed(source);
-
-    // Parse the IDL code
     let ast = ic_parse::from_file(file_id, &vfs);
 
-    // Parse built-in annotations (same as ic-idl does)
     let builtin_file_id = vfs.embed_with_name(
         "<builtin-annotations>",
         include_str!("../../../ic-idl/idl/annotations.idl"),
     );
     let builtin_parsed = ic_parse::from_file(builtin_file_id, &vfs);
 
-    // Assert no parse errors in test code
     assert!(
         ast.errors.is_empty(),
         "Parse errors in test code: {:?}",
@@ -141,53 +159,25 @@ pub fn test_lint_hir(source: &str) -> String {
         builtin_parsed.errors
     );
 
-    // Lower to HIR with built-ins
     let hir = ic_hir_lower::from_ast(ic_hir_lower::AstInput::WithBuiltins {
         builtins: builtin_parsed.tree,
         user: ast.tree,
         include_in_output: false,
     });
 
-    // Assert that we have either definitions or errors
     assert!(
         !hir.order.is_empty() || !hir.errors.is_empty(),
-        "HIR has no definitions and no errors were reported. This indicates a bug in parsing or \
-         HIR construction."
+        "HIR has no definitions and no errors were reported"
     );
 
-    // Configure lint to enable semantic errors, pedantic warnings, and annotation warnings
     let mut config = LintConfig::new();
     config.set_category_level(Category::Semantic, Level::Error);
     config.set_category_level(Category::Pedantic, Level::Warning);
     config.set_category_level(Category::Annotation, Level::Warning);
     config.set_category_level(Category::Unsupported, Level::Warning);
 
-    // Run HIR lints
     let mut report = ic_lint::lint_hir_with_config(&hir, &vfs, &config);
-
-    // Add any HIR errors to the report
     report.errors.extend(hir.errors);
 
-    // Format all diagnostics
-    let mut output = String::new();
-
-    // Emit errors
-    for (i, diag) in report.errors.iter().enumerate() {
-        if i > 0 {
-            output.push('\n');
-        }
-        ic_diagnostic::emit_with_source(&mut output, "test.idl", source, diag)
-            .expect("Failed to format diagnostic");
-    }
-
-    // Emit warnings
-    for (i, diag) in report.warnings.iter().enumerate() {
-        if i > 0 || !report.errors.is_empty() {
-            output.push('\n');
-        }
-        ic_diagnostic::emit_with_source(&mut output, "test.idl", source, diag)
-            .expect("Failed to format diagnostic");
-    }
-
-    output
+    format_report(source, &report)
 }

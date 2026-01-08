@@ -31,7 +31,7 @@ use std::collections::HashMap;
 use std::fmt::Write;
 
 use ic_cli::color::Colorize as _;
-use ic_diagnostic::{Diag, Label, Level, error_span, warn_span};
+use ic_diagnostic::{Diag, Label, error_span, warn_span};
 use ic_lexer::token::Kind;
 use ic_parse::Reason;
 use ic_vfs::{SourceMap, Span};
@@ -186,21 +186,6 @@ fn preproc_to_diag(
     with_expansion(diag_fn(msg, Label::new(span).message(label)), span, exp).code("preprocessor")
 }
 
-/// Convert preprocessor warnings to diagnostics.
-#[must_use]
-#[allow(clippy::implicit_hasher)]
-pub fn preproc_warnings_to_diags(
-    warnings: &[ic_preproc::Error],
-    vfs: &SourceMap,
-    exp: &HashMap<Span, ic_preproc::ExpansionInfo>,
-    as_error: bool,
-) -> Vec<Diag> {
-    warnings
-        .iter()
-        .map(|e| preproc_to_diag(e, vfs, !as_error, exp))
-        .collect()
-}
-
 #[must_use]
 pub fn fmt_warnings(warnings: &[Diag], vfs: &SourceMap) -> String {
     let mut buf = String::new();
@@ -211,19 +196,4 @@ pub fn fmt_warnings(warnings: &[Diag], vfs: &SourceMap) -> String {
         _ = ic_diagnostic::emit_diagnostic(&mut buf, vfs, diag);
     }
     buf
-}
-
-/// Creates a diagnostic for an orphaned annotation with the specified level.
-pub fn orphaned_annotation_diag(ann: &ic_syntax::AnnotationAppl, level: Level) -> Diag {
-    let diag_fn = if let Level::Error = level {
-        error_span
-    } else {
-        warn_span
-    };
-    diag_fn(
-        "annotation has no effect in this context",
-        Label::new(ann.span).message("misplaced annotation"),
-    )
-    .note("annotation is not attached to any declaration")
-    .code("ann-placement")
 }

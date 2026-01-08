@@ -1,4 +1,4 @@
-// Copyright 2024 KONGSBERG
+// Copyright 2026 KONGSBERG
 //
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions are met:
@@ -25,11 +25,39 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-pub mod bit_bound;
-pub mod decl;
-pub mod deprecated_annotations;
-pub mod placement;
-pub mod range_bound;
-pub mod topic_nested;
-pub mod unknown;
-pub mod unnamed_args;
+use ic_diagnostic::{Label, warn_span};
+use ic_preproc::Error;
+
+use crate::{Category, Lint, LintCtx, SyntaxInput};
+
+/// Lint for extra tokens after preprocessor directives.
+pub struct PreprocExtraneous;
+
+impl<'a> Lint<'a> for PreprocExtraneous {
+    fn name() -> &'static str {
+        "extra-tokens"
+    }
+
+    fn category() -> Category {
+        Category::Preprocessor
+    }
+
+    fn description() -> &'static str {
+        "Extra tokens after preprocessor directives"
+    }
+
+    fn check_syntax(ctx: &'a LintCtx<'_>, input: &SyntaxInput<'_>) {
+        for error in input.preproc_warnings {
+            if let Error::Extraneous {
+                directive, span, ..
+            } = error
+            {
+                let diag = warn_span(
+                    format!("extra tokens after #{directive} directive"),
+                    Label::new(*span).message("extraneous tokens"),
+                );
+                Self::report(ctx, diag);
+            }
+        }
+    }
+}

@@ -117,11 +117,11 @@
 //! ```
 
 use std::cell::RefCell;
+use std::collections::HashMap;
 
-// Re-export Level for external use
 pub use ic_diagnostic::Level;
 use ic_diagnostic::{Diag, Label};
-use ic_syntax::{Item, Span};
+use ic_syntax::{AnnotationAppl, Item, Span};
 use ic_vfs::SourceMap;
 use tracing::{debug, debug_span, trace};
 
@@ -129,14 +129,25 @@ mod annotation;
 mod any_type;
 mod deprecated;
 mod extensions;
+mod iter;
 mod pedantic;
+mod preproc;
 mod semantic;
 mod syntax;
 mod unsupported;
 
-mod iter;
+/// Input for syntax-level linting, including AST and parse-time metadata.
+#[derive(Default)]
+pub struct SyntaxInput<'a> {
+    /// The parsed AST items
+    pub tree: &'a [Item],
 
-use std::collections::HashMap;
+    /// Annotations that weren't attached to any declaration
+    pub orphaned_annotations: &'a [AnnotationAppl],
+
+    /// Warnings from the preprocessor
+    pub preproc_warnings: &'a [ic_preproc::Error],
+}
 
 /// Create a diagnostic with a lint code.
 fn lint_diag<S: Into<String>>(level: Level, code: &str, msg: S, label: Label) -> Option<Diag> {
@@ -161,6 +172,9 @@ pub enum Category {
     /// Nitpicky style and quality warnings
     Pedantic,
 
+    /// Preprocessor-related warnings
+    Preprocessor,
+
     // Syntax errors or other semantic issues that should always be hard errors
     Syntax,
 
@@ -175,6 +189,7 @@ impl std::fmt::Display for Category {
             Self::Deprecated => "deprecated",
             Self::Extensions => "extensions",
             Self::Pedantic => "pedantic",
+            Self::Preprocessor => "preprocessor",
             Self::Semantic => "semantic",
             Self::Syntax => "syntax",
             Self::Unsupported => "unsupported",
@@ -214,6 +229,9 @@ impl LintConfig {
         config
             .category_levels
             .insert(Category::Pedantic, Level::Warning);
+        config
+            .category_levels
+            .insert(Category::Preprocessor, Level::Warning);
         config
             .category_levels
             .insert(Category::Unsupported, Level::Warning);
@@ -348,6 +366,14 @@ pub trait Lint<'a>: Sized {
     /// potential errors should be gracefully ignored.
     fn check(_ctx: &'a LintCtx<'_>, _ast: &[Item]) {}
 
+    /// Runs the lint on the full syntax input (AST + parse metadata).
+    ///
+    /// Override this for lints that need access to orphaned annotations or
+    /// preprocessor warnings. The default implementation calls `check`.
+    fn check_syntax(ctx: &'a LintCtx<'_>, input: &SyntaxInput<'_>) {
+        Self::check(ctx, input.tree);
+    }
+
     /// Runs the lint on the given HIR.
     ///
     /// A lint should never fail in a way that prevents further traversal. Any
@@ -381,8 +407,6 @@ macro_rules! define_lints {
         #[must_use]
         pub fn all_lint_names() -> Vec<&'static str> {
             let mut names = vec![
-                // Pseudo-lints handled outside the lint framework
-                "ann-placement",
                 $(<$syntax_lint>::name(),)*
                 $(<$hir_lint>::name(),)*
             ];
@@ -403,12 +427,6 @@ macro_rules! define_lints {
         #[must_use]
         pub fn all_lints() -> Vec<LintInfo> {
             let mut lints = vec![
-                // Pseudo-lints handled outside the lint framework
-                LintInfo {
-                    name: "ann-placement",
-                    category: Category::Annotation,
-                    description: "Annotations not attached to any declaration",
-                },
                 $(LintInfo {
                     name: <$syntax_lint>::name(),
                     category: <$syntax_lint>::category(),
@@ -430,11 +448,16 @@ macro_rules! define_lints {
         /// require more in-depth semantic analysis is typically done on the HIR with
         /// [`lint_hir`].
         pub fn lint_syntax(tree: &[Item], vfs: &SourceMap) -> Report {
-            lint_syntax_with_config(tree, vfs, &LintConfig::new())
+            let input = SyntaxInput {
+                tree,
+                orphaned_annotations: &[],
+                preproc_warnings: &[],
+            };
+            lint_syntax_with_config(&input, vfs, &LintConfig::new())
         }
 
         /// Traverses the AST with a custom lint configuration.
-        pub fn lint_syntax_with_config(tree: &[Item], vfs: &SourceMap, config: &LintConfig) -> Report {
+        pub fn lint_syntax_with_config(input: &SyntaxInput<'_>, vfs: &SourceMap, config: &LintConfig) -> Report {
             let _span = debug_span!("syntax_lints").entered();
             debug!("running syntax lints");
             let ctx = LintCtx {
@@ -447,7 +470,7 @@ macro_rules! define_lints {
             $(
                 if <$syntax_lint>::should_run(config) {
                     trace!(lint = <$syntax_lint>::name(), "running lint");
-                    <$syntax_lint>::check(&ctx, tree);
+                    <$syntax_lint>::check_syntax(&ctx, input);
                 }
             )*
 
@@ -496,6 +519,9 @@ macro_rules! define_lints {
 define_lints! {
     syntax_lints: [
         annotation::decl::AnnotatedDecl,
+        annotation::placement::AnnPlacement,
+        preproc::extraneous::PreprocExtraneous,
+        preproc::warning::PreprocWarning,
         extensions::array_param::ArrayParam,
         extensions::assign_expr::AssignExpr,
         extensions::bitmask_ann::BitmaskAnn,

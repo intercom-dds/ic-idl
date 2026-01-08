@@ -77,29 +77,20 @@ pub struct Warnings {
 }
 
 impl Warnings {
-    /// Check if preprocessor warnings should be emitted.
-    /// They are enabled by default unless explicitly disabled.
-    #[must_use]
-    pub fn preprocessor_enabled(&self) -> bool {
-        self.preprocessor
-    }
-
-    /// Check if preprocessor warnings should be treated as errors.
-    #[must_use]
-    pub fn preprocessor_error(&self) -> bool {
-        self.error || self.error_lints.contains_key("preprocessor")
-    }
-
     /// Build a LintConfig from the warning flags.
     pub fn to_lint_config(&self) -> LintConfig {
         let mut config = LintConfig::new();
 
-        // Start with all warnings disabled by default
+        // Start with most categories disabled by default
         config.set_category_level(Category::Annotation, Level::Disabled);
         config.set_category_level(Category::Deprecated, Level::Disabled);
         config.set_category_level(Category::Extensions, Level::Disabled);
         config.set_category_level(Category::Pedantic, Level::Disabled);
         config.set_category_level(Category::Unsupported, Level::Disabled);
+
+        if !self.preprocessor {
+            config.set_category_level(Category::Preprocessor, Level::Disabled);
+        }
 
         // Enable specific categories if requested
         if self.annotation {
@@ -132,15 +123,13 @@ impl Warnings {
         for name in self.error_lints.keys() {
             if let Some(category) = parse_category(name) {
                 config.set_category_level(category, Level::Error);
-            } else if name != "preprocessor" {
-                // preprocessor is handled separately, not via LintConfig
+            } else {
                 config.set_lint_level(name.as_str(), Level::Error);
             }
         }
 
         // If -Werror is set, upgrade all enabled warnings to errors
         if self.error {
-            // Upgrade category levels
             if config.category_levels.get(&Category::Annotation) == Some(&Level::Warning) {
                 config.set_category_level(Category::Annotation, Level::Error);
             }
@@ -149,6 +138,9 @@ impl Warnings {
             }
             if config.category_levels.get(&Category::Pedantic) == Some(&Level::Warning) {
                 config.set_category_level(Category::Pedantic, Level::Error);
+            }
+            if config.category_levels.get(&Category::Preprocessor) == Some(&Level::Warning) {
+                config.set_category_level(Category::Preprocessor, Level::Error);
             }
             if config.category_levels.get(&Category::Unsupported) == Some(&Level::Warning) {
                 config.set_category_level(Category::Unsupported, Level::Error);
@@ -364,8 +356,8 @@ fn parse_category(name: &str) -> Option<Category> {
         "annotation" => Some(Category::Annotation),
         "extensions" => Some(Category::Extensions),
         "pedantic" => Some(Category::Pedantic),
+        "preprocessor" => Some(Category::Preprocessor),
         "unsupported" => Some(Category::Unsupported),
-        // preprocessor is not a lint category, handled separately
         _ => None,
     }
 }
@@ -394,10 +386,9 @@ impl convert::Convert for Warnings {
         let known_lints = ic_lint::all_lint_names();
 
         for arg in input {
-            // Handle error=lint_name or error=category syntax
+            // Handle error=lint-name or error=category syntax
             if let Some(name) = arg.strip_prefix("error=") {
-                let is_category = parse_category(name).is_some() || name == "preprocessor";
-                if known_lints.contains(&name) || is_category {
+                if known_lints.contains(&name) || parse_category(name).is_some() {
                     warnings.error_lints.insert(name.to_string(), true);
                 } else {
                     warnings.unknown_warnings.push(format!("-Werror={name}"));

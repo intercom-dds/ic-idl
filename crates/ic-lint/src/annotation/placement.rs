@@ -1,4 +1,4 @@
-// Copyright 2024 KONGSBERG
+// Copyright 2026 KONGSBERG
 //
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions are met:
@@ -25,11 +25,35 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-pub mod bit_bound;
-pub mod decl;
-pub mod deprecated_annotations;
-pub mod placement;
-pub mod range_bound;
-pub mod topic_nested;
-pub mod unknown;
-pub mod unnamed_args;
+use ic_diagnostic::{Label, warn_span};
+
+use crate::{Category, Lint, LintCtx, SyntaxInput};
+
+/// Lint for annotations not attached to any declaration.
+pub struct AnnPlacement;
+
+impl<'a> Lint<'a> for AnnPlacement {
+    fn name() -> &'static str {
+        "ann-placement"
+    }
+
+    fn category() -> Category {
+        Category::Annotation
+    }
+
+    fn description() -> &'static str {
+        "Annotations not attached to any declaration"
+    }
+
+    fn check_syntax(ctx: &'a LintCtx<'_>, input: &SyntaxInput<'_>) {
+        for ann in input.orphaned_annotations {
+            let diag = warn_span(
+                "annotation has no effect in this context",
+                Label::new(ann.span).message("misplaced annotation"),
+            )
+            .note("annotation is not attached to any declaration");
+
+            Self::report(ctx, diag);
+        }
+    }
+}

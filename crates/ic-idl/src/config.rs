@@ -53,6 +53,10 @@ pub struct Warnings {
     #[option(long)]
     preprocessor: bool,
 
+    /// Unsupported language constructs
+    #[option(long)]
+    unsupported: bool,
+
     /// Upgrade warnings to errors
     #[option(long)]
     error: bool,
@@ -80,21 +84,23 @@ impl Warnings {
     pub fn to_lint_config(&self) -> LintConfig {
         let mut config = LintConfig::new();
 
-        // Start with all warnings disabled by default (unless -Wall is set)
-        if !self.all {
-            config.set_category_level(Category::Annotation, Level::Disabled);
-            config.set_category_level(Category::Pedantic, Level::Disabled);
-            config.set_category_level(Category::Unsupported, Level::Disabled);
-            config.set_category_level(Category::Deprecated, Level::Disabled);
-        }
+        // Start with all warnings disabled by default
+        config.set_category_level(Category::Annotation, Level::Disabled);
+        config.set_category_level(Category::Deprecated, Level::Disabled);
+        config.set_category_level(Category::Unsupported, Level::Disabled);
+        config.set_category_level(Category::Pedantic, Level::Disabled);
 
         // Enable specific categories if requested
-        if self.all || self.annotation {
+        if self.annotation {
             config.set_category_level(Category::Annotation, Level::Warning);
         }
 
-        if self.all || self.pedantic {
+        if self.pedantic {
             config.set_category_level(Category::Pedantic, Level::Warning);
+        }
+
+        if self.unsupported {
+            config.set_category_level(Category::Unsupported, Level::Warning);
         }
 
         // Apply specific lint settings
@@ -336,6 +342,7 @@ impl Default for Warnings {
             annotation: false,
             pedantic: false,
             preprocessor: true,
+            unsupported: false,
             error: false,
             help: false,
             specific_lints: HashMap::new(),
@@ -370,10 +377,17 @@ impl convert::Convert for Warnings {
             };
 
             match arg {
-                "all" => warnings.all = enabled,
+                "all" => {
+                    warnings.all = enabled;
+                    warnings.annotation = enabled;
+                    warnings.pedantic = enabled;
+                    warnings.preprocessor = enabled;
+                    warnings.unsupported = enabled;
+                }
                 "annotation" => warnings.annotation = enabled,
                 "pedantic" => warnings.pedantic = enabled,
                 "preprocessor" => warnings.preprocessor = enabled,
+                "unsupported" => warnings.unsupported = enabled,
                 "error" => warnings.error = enabled,
                 "help" => {
                     warnings.help = true;
@@ -391,5 +405,63 @@ impl convert::Convert for Warnings {
         }
 
         Ok(warnings)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn parse_warnings(args: &[&str]) -> Warnings {
+        let args: Vec<String> = args.iter().map(ToString::to_string).collect();
+        convert::Convert::from_result(&args).unwrap()
+    }
+
+    #[test]
+    fn wall_covers_all_categories() {
+        let parsed = parse_warnings(&["all"]);
+        assert!(parsed.annotation, "-Wall should enable annotation warnings");
+        assert!(parsed.pedantic, "-Wall should enable pedantic warnings");
+        assert!(
+            parsed.preprocessor,
+            "-Wall should enable preprocessor warnings"
+        );
+        assert!(
+            parsed.unsupported,
+            "-Wall should enable unsupported warnings"
+        );
+    }
+
+    #[test]
+    fn wno_all_disables_all_categories() {
+        let parsed = parse_warnings(&["no-all"]);
+        assert!(
+            !parsed.annotation,
+            "-Wno-all should disable annotation warnings"
+        );
+        assert!(
+            !parsed.pedantic,
+            "-Wno-all should disable pedantic warnings"
+        );
+        assert!(
+            !parsed.preprocessor,
+            "-Wno-all should disable preprocessor warnings"
+        );
+        assert!(
+            !parsed.unsupported,
+            "-Wno-all should disable unsupported warnings"
+        );
+    }
+
+    #[test]
+    fn wall_then_disable_specific() {
+        let parsed = parse_warnings(&["all", "no-unsupported"]);
+        assert!(parsed.annotation);
+        assert!(parsed.pedantic);
+        assert!(parsed.preprocessor);
+        assert!(
+            !parsed.unsupported,
+            "-Wall -Wno-unsupported should disable unsupported"
+        );
     }
 }

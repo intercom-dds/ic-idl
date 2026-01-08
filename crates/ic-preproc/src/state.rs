@@ -26,6 +26,7 @@
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use std::collections::VecDeque;
+use std::rc::Rc;
 
 use ic_lexer::token::Token;
 use ic_vfs::FileId;
@@ -40,14 +41,14 @@ pub struct ExpansionInfo {
     /// The span where the macro was invoked
     pub invocation_span: Span,
     /// The name of the macro that was expanded
-    pub macro_name: String,
+    pub macro_name: Rc<str>,
 }
 
 /// Preprocessor state containing macro definitions, error state, and token queue
 #[derive(Debug, Default)]
 pub struct State {
     /// Defined macros
-    pub defines: FxHashMap<String, Macro>,
+    pub defines: FxHashMap<Rc<str>, Rc<Macro>>,
 
     /// List of errors encountered during preprocessing
     pub errors: Vec<Error>,
@@ -88,12 +89,20 @@ impl State {
 
     /// Get a macro definition
     #[must_use]
-    pub fn get_macro(&self, name: &str) -> Option<&Macro> {
+    pub fn get_macro(&self, name: &str) -> Option<&Rc<Macro>> {
         self.defines.get(name)
     }
 
+    /// Get a macro definition along with its name (to reuse the Rc<str>)
+    #[must_use]
+    pub fn get_macro_with_name(&self, name: &str) -> Option<(Rc<str>, Rc<Macro>)> {
+        self.defines
+            .get_key_value(name)
+            .map(|(k, v)| (Rc::clone(k), Rc::clone(v)))
+    }
+
     /// Define a new macro
-    pub fn define(&mut self, name: String, macro_def: Macro) {
+    pub fn define(&mut self, name: Rc<str>, macro_def: Rc<Macro>) {
         self.defines.insert(name, macro_def);
     }
 

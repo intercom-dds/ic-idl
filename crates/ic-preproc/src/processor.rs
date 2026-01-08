@@ -695,14 +695,14 @@ where
         }
     }
 
-    fn expand_function_macro(
+    fn expand_fn_macro(
         &mut self,
         token: Token,
         args: &[Token],
         def: &[Token],
         variadic: bool,
         seen: &mut BTreeSet<&'a str>,
-        name: &'a str,
+        macro_name: Rc<str>,
     ) {
         // Function-like macros only expand if followed by '('
         // Check if next token is '('
@@ -713,7 +713,6 @@ where
         };
 
         if !next_is_lparen {
-            // Not a function call, treat as regular identifier
             self.state().queue.push_back(token);
             return;
         }
@@ -722,7 +721,6 @@ where
         if let Some(file) = self.stack.last_mut() {
             file.cursor.advance();
         } else {
-            // This shouldn't happen in normal operation - the stack should never be empty here
             self.state().errors.push(Error::Syntax {
                 message: "internal error: empty file stack",
                 span: token.span,
@@ -768,14 +766,14 @@ where
             variadic,
             actual_args: &actual_args,
         };
-        self.expand_function_macro_impl(&ctx, seen, name);
+        self.expand_function_macro_impl(&ctx, seen, macro_name);
     }
 
     fn expand_function_macro_impl(
         &mut self,
         ctx: &MacroExpansionContext<'_>,
         seen: &mut BTreeSet<&'a str>,
-        name: &'a str,
+        macro_name: Rc<str>,
     ) {
         // Build argument mapping for substitution
         let mut arg_map = FxHashMap::default();
@@ -875,7 +873,7 @@ where
         let invocation_span = ctx.token.span;
         let expansion_info = crate::state::ExpansionInfo {
             invocation_span,
-            macro_name: name.to_string(),
+            macro_name,
         };
 
         for tok in final_tokens {
@@ -901,7 +899,8 @@ where
             return;
         }
 
-        if let Some(v) = self.state.borrow().defines.get(name).cloned() {
+        let macro_entry = self.state.borrow().get_macro_with_name(name);
+        if let Some((macro_name, v)) = macro_entry {
             // Macros should not be recursively expanded
             if !seen.insert(name) {
                 self.state().queue.push_back(token);
@@ -919,20 +918,20 @@ where
 
             trace!(name = %name, depth = seen.len(), "expanding macro");
 
-            match &v {
+            match v.as_ref() {
                 Macro::Function {
                     args,
                     def,
                     variadic,
                     ..
                 } => {
-                    self.expand_function_macro(token, args, def, *variadic, seen, name);
+                    self.expand_fn_macro(token, args, def, *variadic, seen, macro_name);
                 }
                 Macro::Object { def, .. } => {
                     // Record expansion context for object macros
                     let expansion_info = crate::state::ExpansionInfo {
                         invocation_span: token.span,
-                        macro_name: name.to_string(),
+                        macro_name,
                     };
 
                     for &tok in def {
@@ -1355,7 +1354,7 @@ where
             if self
                 .state()
                 .defines
-                .insert(name.to_string(), definition)
+                .insert(Rc::from(name), Rc::new(definition))
                 .is_some()
             {
                 self.state().warnings.push(Error::Syntax {
@@ -1947,7 +1946,10 @@ mod tests {
         let mut vfs = SourceMap::default();
         let state = pp(&mut vfs, "#define foo bar 123");
 
-        let Some(Macro::Object { def, .. }) = state.get_macro("foo") else {
+        let Some(m) = state.get_macro("foo") else {
+            panic!();
+        };
+        let Macro::Object { def, .. } = m.as_ref() else {
             panic!();
         };
         assert_eq!(def.len(), 2);
@@ -1995,7 +1997,10 @@ mod tests {
             ",
         );
 
-        let Some(Macro::Object { def, .. }) = state.get_macro("foo") else {
+        let Some(m) = state.get_macro("foo") else {
+            panic!();
+        };
+        let Macro::Object { def, .. } = m.as_ref() else {
             panic!();
         };
 
@@ -2018,7 +2023,10 @@ mod tests {
             ",
         );
 
-        let Some(Macro::Object { def, .. }) = state.get_macro("foo") else {
+        let Some(m) = state.get_macro("foo") else {
+            panic!();
+        };
+        let Macro::Object { def, .. } = m.as_ref() else {
             panic!();
         };
 
@@ -2108,7 +2116,10 @@ mod tests {
         let mut vfs = SourceMap::default();
         let state = pp(&mut vfs, "#define foo <==>");
 
-        let Some(Macro::Object { def, .. }) = state.get_macro("foo") else {
+        let Some(m) = state.get_macro("foo") else {
+            panic!();
+        };
+        let Macro::Object { def, .. } = m.as_ref() else {
             panic!();
         };
 

@@ -131,6 +131,23 @@ fn try_compile(options: CompilerOptions) {
     // Create and run the compiler
     let mut compiler = Compiler::new(options);
 
+    // Handle preprocessor-only mode
+    if compiler.options().preprocessor_only {
+        let proc_args = compiler.proc_args();
+        for file in &compiler.options().files {
+            match parse::preprocess_only(file, proc_args.clone()) {
+                Ok(output) => {
+                    println!("{output}");
+                }
+                Err(e) => {
+                    error!("{e}");
+                    std::process::exit(1);
+                }
+            }
+        }
+        return;
+    }
+
     // Handle parse-only mode
     if compiler.options().unstable.parse_only {
         let proc_args = compiler.proc_args();

@@ -80,3 +80,21 @@ pub fn from_file(file_id: FileId, args: ProcArgs, vfs: &mut SourceMap) -> ParseR
         expansion_info: state.expansion_info.into_iter().collect(),
     }
 }
+
+/// Run preprocessor only and return the preprocessed source.
+///
+/// # Errors
+///
+/// Returns an I/O error if the file cannot be opened.
+#[allow(dead_code, clippy::print_stderr)]
+pub fn preprocess_only(path: &Path, args: ProcArgs) -> std::io::Result<String> {
+    let (output, errors) = ic_preproc::to_string(path, args)?;
+    if !errors.is_empty() {
+        for error in errors {
+            eprintln!("{error:?}");
+        }
+        std::process::exit(1);
+    }
+
+    Ok(output)
+}

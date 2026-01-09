@@ -1876,37 +1876,75 @@ pub fn preprocess<S: BorrowMut<State>>(
 }
 
 /// Preprocesses a file, inlines all includes and expands all macro definitions.
-/// This does not retain whitespace as we don't currently hold the necessary
-/// information to retain whitespace for macro expansion.
+/// Attempts to preserve formatting by using original byte offsets between tokens.
 pub fn to_string(
     file_id: FileId,
     args: ProcArgs,
     state: &mut State,
     vfs: &mut SourceMap,
-) -> (String, Vec<Error>) {
-    let src = vfs.source(file_id);
-    let mut iter = preprocess(file_id, args, state, vfs);
-    let mut buffer = String::with_capacity(src.len());
+) -> String {
+    let mut buffer = String::new();
     let mut last_id = file_id;
+    let mut last_end = None;
+    let mut last_invocation = None;
+    let tokens: Vec<_> = preprocess(file_id, args, &mut *state, vfs).collect();
 
-    while let Some(tok) = iter.next() {
+    for tok in tokens {
         if tok.kind == Kind::Eoi {
             break;
         }
 
-        if last_id != tok.span.start.file_id {
-            let path = iter.inner.vfs.path(tok.span.start.file_id);
-            _ = buffer.write_str(&format!("\n#line 1 {}\n", path.display()));
-            last_id = tok.span.start.file_id;
+        let expansion = state.expansion_info.get(&tok.span);
+        let pos_span = expansion.map_or(tok.span, |info| info.invocation_span);
+        let current_id = pos_span.start.file_id;
+
+        let same_invocation = expansion.is_some()
+            && last_invocation
+                .is_some_and(|last| expansion.is_some_and(|info| info.invocation_span == last));
+
+        if last_id != current_id {
+            let path = vfs.path(current_id);
+            _ = buffer.write_str(&format!("\n#line 1 \"{}\"\n", path.display()));
+            last_id = current_id;
+            write_token(&mut buffer, tok, vfs);
+            last_end = Some(pos_span.end.offset as usize);
+        } else if same_invocation {
+            _ = buffer.write_char(' ');
+            write_token(&mut buffer, tok, vfs);
+            last_end = Some(pos_span.end.offset as usize);
+        } else {
+            if let Some(prev_end) = last_end {
+                let source_full = vfs.source(current_id);
+                let curr_start = pos_span.start.offset as usize;
+                if curr_start > prev_end {
+                    let between = &source_full[prev_end..curr_start];
+                    if between.chars().all(char::is_whitespace) {
+                        _ = buffer.write_str(between);
+                    } else if !between.contains('\n') {
+                        _ = buffer.write_char(' ');
+                    }
+                } else if expansion.is_some() {
+                    _ = buffer.write_char(' ');
+                }
+            }
+            if tok.kind == Kind::Newline && !buffer.ends_with(|c: char| c.is_whitespace()) {
+                _ = buffer.write_char(' ');
+            }
+            write_token(&mut buffer, tok, vfs);
+            last_end = Some(pos_span.end.offset as usize);
         }
 
-        let slice = iter.source_of(tok.span);
-        _ = buffer.write_str(slice);
-        if tok.kind != Kind::Newline {
-            _ = buffer.write_char(' ');
-        }
+        last_invocation = expansion.map(|info| info.invocation_span);
     }
-    (buffer, iter.inner.state.errors.clone())
+    buffer.trim().to_string()
+}
+
+fn write_token(buffer: &mut String, tok: Token, vfs: &SourceMap) {
+    let text = tok.kind.as_str().unwrap_or_else(|| {
+        let src = vfs.source_str(tok.span.start.file_id);
+        &src[tok.span.start.offset as usize..tok.span.end.offset as usize]
+    });
+    _ = buffer.write_str(text);
 }
 
 #[cfg(test)]
@@ -1929,7 +1967,7 @@ mod tests {
         let mut vfs = SourceMap::default();
         let id = vfs.embed(input);
         let mut state = State::new();
-        let (output, _) = to_string(id, ProcArgs::default(), &mut state, &mut vfs);
+        let output = to_string(id, ProcArgs::default(), &mut state, &mut vfs);
         output.trim().to_string()
     }
 

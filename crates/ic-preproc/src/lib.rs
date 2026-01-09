@@ -185,5 +185,8 @@ where
     let mut vfs = SourceMap::default();
     let (file_id, _) = vfs.open(path, Include::Static)?;
     let mut state = State::new();
-    Ok(processor::to_string(file_id, args, &mut state, &mut vfs))
+    Ok((
+        processor::to_string(file_id, args, &mut state, &mut vfs),
+        state.errors,
+    ))
 }

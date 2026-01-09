@@ -241,6 +241,59 @@ pub enum Kind {
     Eoi,
 }
 
+impl Kind {
+    /// Returns the string representation of the token.
+    #[must_use]
+    pub fn as_str(&self) -> Option<&'static str> {
+        Some(match self {
+            Kind::Keyword(v) => v.as_str(),
+            Kind::Colon => ":",
+            Kind::DColon => "::",
+            Kind::Eq => "=",
+            Kind::Semi => ";",
+            Kind::Comma => ",",
+            Kind::Period => ".",
+            Kind::Lt => "<",
+            Kind::Gt => ">",
+            Kind::LtEq => "<=",
+            Kind::GtEq => ">=",
+            Kind::LBrace => "{",
+            Kind::RBrace => "}",
+            Kind::LParen => "(",
+            Kind::RParen => ")",
+            Kind::LBracket => "[",
+            Kind::RBracket => "]",
+            Kind::BitNot => "~",
+            Kind::BitAnd => "&",
+            Kind::BitOr => "|",
+            Kind::BitXor => "^",
+            Kind::Plus => "+",
+            Kind::Minus => "-",
+            Kind::Star => "*",
+            Kind::Slash => "/",
+            Kind::Modulo => "%",
+            Kind::Hash => "#",
+            Kind::EqEq => "==",
+            Kind::NotEq => "!=",
+            Kind::And => "&&",
+            Kind::Not => "!",
+            Kind::Or => "||",
+            Kind::Question => "?",
+            Kind::Backslash => "\\",
+            Kind::Newline => "\n",
+            Kind::At => "@",
+            Kind::Ident
+            | Kind::Comment { .. }
+            | Kind::Number { .. }
+            | Kind::String { .. }
+            | Kind::Float
+            | Kind::Char
+            | Kind::Unknown
+            | Kind::Eoi => return None,
+        })
+    }
+}
+
 impl fmt::Display for Kind {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
@@ -293,6 +346,57 @@ impl fmt::Display for Kind {
 }
 
 impl Kw {
+    /// Returns the string representation of the keyword.
+    #[must_use]
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            Kw::Annotation => "@annotation",
+            Kw::Module => "module",
+            Kw::Struct => "struct",
+            Kw::Const => "const",
+            Kw::Bitmask => "bitmask",
+            Kw::Bitset => "bitset",
+            Kw::Bitfield => "bitfield",
+            Kw::Enum => "enum",
+            Kw::Exception => "exception",
+            Kw::Typedef => "typedef",
+            Kw::Native => "native",
+            Kw::Fixed => "fixed",
+            Kw::Union => "union",
+            Kw::Switch => "switch",
+            Kw::Case => "case",
+            Kw::Default => "default",
+            Kw::Null => "null",
+            Kw::Valuetype => "valuetype",
+            Kw::Public => "public",
+            Kw::Private => "private",
+            Kw::Supports => "supports",
+            Kw::Factory => "factory",
+            Kw::Local => "local",
+            Kw::Interface => "interface",
+            Kw::Raises => "raises",
+            Kw::GetRaises => "getraises",
+            Kw::SetRaises => "setraises",
+            Kw::Attribute => "attribute",
+            Kw::ReadOnly => "readonly",
+            Kw::Oneway => "oneway",
+            Kw::In => "in",
+            Kw::Out => "out",
+            Kw::InOut => "inout",
+            Kw::Map => "map",
+            Kw::Sequence => "sequence",
+            Kw::String => "string",
+            Kw::WString => "wstring",
+            Kw::Unsigned => "unsigned",
+            Kw::Short => "short",
+            Kw::Long => "long",
+            Kw::Float => "float",
+            Kw::Double => "double",
+            Kw::True => "TRUE",
+            Kw::False => "FALSE",
+        }
+    }
+
     /// Converts a string slice to a keyword if it matches one.
     ///
     /// Returns `None` if the string is not a recognized keyword.
@@ -351,52 +455,6 @@ impl Kw {
 
 impl fmt::Display for Kw {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let str = match self {
-            Kw::Annotation => "@annotation",
-            Kw::Module => "module",
-            Kw::Struct => "struct",
-            Kw::Const => "const",
-            Kw::Bitmask => "bitmask",
-            Kw::Bitset => "bitset",
-            Kw::Bitfield => "bitfield",
-            Kw::Enum => "enum",
-            Kw::Exception => "exception",
-            Kw::Typedef => "typedef",
-            Kw::Native => "native",
-            Kw::Fixed => "fixed",
-            Kw::Union => "union",
-            Kw::Switch => "switch",
-            Kw::Case => "case",
-            Kw::Default => "default",
-            Kw::Null => "null",
-            Kw::Valuetype => "valuetype",
-            Kw::Public => "public",
-            Kw::Private => "private",
-            Kw::Supports => "supports",
-            Kw::Factory => "factory",
-            Kw::Local => "local",
-            Kw::Interface => "interface",
-            Kw::Raises => "raises",
-            Kw::GetRaises => "getraises",
-            Kw::SetRaises => "setraises",
-            Kw::Attribute => "attribute",
-            Kw::ReadOnly => "readonly",
-            Kw::Oneway => "oneway",
-            Kw::In => "in",
-            Kw::Out => "out",
-            Kw::InOut => "inout",
-            Kw::Map => "map",
-            Kw::Sequence => "sequence",
-            Kw::String => "string",
-            Kw::WString => "wstring",
-            Kw::Unsigned => "unsigned",
-            Kw::Short => "short",
-            Kw::Long => "long",
-            Kw::Float => "float",
-            Kw::Double => "double",
-            Kw::True => "TRUE",
-            Kw::False => "FALSE",
-        };
-        write!(f, "{str}")
+        write!(f, "{}", self.as_str())
     }
 }

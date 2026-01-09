@@ -34,7 +34,7 @@ use ic_hir::hir::{Def, DefFlags, DefId, DefKind, Numeric, ParamKind, PrimitiveTy
 
 use crate::RustOptions;
 use crate::helpers::{
-    is_copy, is_debug, is_eq, is_hash, is_optional, is_ord, is_trivial, log2, rust_primitive,
+    is_copy, is_debug, is_eq, is_hash, is_optional, is_ord, is_trivial, rust_primitive,
 };
 
 struct Module {
@@ -534,8 +534,8 @@ impl<'a> RustGen<'a> {
         for &flag_id in &bitmask_ty.flags {
             let flag_def = self.hir.context.definitions.get(flag_id);
             if let DefKind::Const(const_ty) = &flag_def.kind {
-                let log2_val = log2(&const_ty.value);
-                w!(w, flag_def, " = 1 << ", log2_val, ",\n");
+                let value = Self::format_numeric(&const_ty.value);
+                w!(w, flag_def, " = ", value, ",\n");
             }
         }
 

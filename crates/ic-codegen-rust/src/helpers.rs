@@ -25,10 +25,8 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#![allow(clippy::cast_sign_loss)]
-
 use ic_hir::annotation::{Optional, find_annotation};
-use ic_hir::hir::{Def, DefFlags, DefId, DefKind, Member, Numeric, PrimitiveTy, Ty, TyKind};
+use ic_hir::hir::{Def, DefFlags, DefId, DefKind, Member, PrimitiveTy, Ty, TyKind};
 
 use crate::codegen::RustGen;
 
@@ -214,26 +212,4 @@ pub fn rust_primitive(ty: PrimitiveTy) -> &'static str {
         PrimitiveTy::Float64 | PrimitiveTy::Float128 => "f64",
         PrimitiveTy::Char | PrimitiveTy::WChar => "char",
     }
-}
-
-pub fn log2(value: &Numeric) -> u64 {
-    let val = match value {
-        Numeric::UInt8(v) => u64::from(*v),
-        Numeric::UInt16(v) => u64::from(*v),
-        Numeric::UInt32(v) => u64::from(*v),
-        Numeric::UInt64(v) => *v,
-        Numeric::Int8(v) => *v as u64,
-        Numeric::Int16(v) => *v as u64,
-        Numeric::Int32(v) => *v as u64,
-        Numeric::Int64(v) => *v as u64,
-        _ => 0,
-    };
-
-    let mut res = 0;
-    let mut v = val;
-    while v > 1 {
-        v >>= 1;
-        res += 1;
-    }
-    res
 }

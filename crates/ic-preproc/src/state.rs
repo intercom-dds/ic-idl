@@ -25,7 +25,7 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use std::collections::VecDeque;
+use std::collections::{HashMap, VecDeque};
 use std::rc::Rc;
 
 use ic_lexer::token::Token;
@@ -40,6 +40,7 @@ use crate::macros::Macro;
 pub struct ExpansionInfo {
     /// The span where the macro was invoked
     pub invocation_span: Span,
+
     /// The name of the macro that was expanded
     pub macro_name: Rc<str>,
 }
@@ -64,7 +65,7 @@ pub struct State {
     pub parsed_files: FxHashSet<FileId>,
 
     /// Map from token spans to their macro expansion context
-    pub expansion_info: FxHashMap<Span, ExpansionInfo>,
+    pub expansion_info: HashMap<Span, ExpansionInfo>,
 }
 
 impl State {
@@ -77,7 +78,7 @@ impl State {
             warnings: Vec::new(),
             queue: VecDeque::new(),
             parsed_files: FxHashSet::default(),
-            expansion_info: FxHashMap::default(),
+            expansion_info: HashMap::default(),
         }
     }
 

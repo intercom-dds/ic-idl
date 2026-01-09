@@ -233,6 +233,7 @@ where
         tree: &ast_vec,
         orphaned_annotations: &[],
         preproc_warnings: &[],
+        expansion_info: None,
     };
     let report = ic_lint::lint_syntax_with_config(&syntax_input, source_map, lint_config);
     all_errors.extend(report.errors.into_iter().map(Into::into));
@@ -477,6 +478,7 @@ impl Compiler {
                 tree: &ast.tree,
                 orphaned_annotations: &ast.orphaned_annotations,
                 preproc_warnings: &ast.preproc_warnings,
+                expansion_info: Some(&diagnostics.expansion_info),
             };
             let report =
                 ic_lint::lint_syntax_with_config(&syntax_input, &self.source_map, &lint_config);
@@ -647,6 +649,7 @@ fn try_compile_to_ast(
             tree: &ast.tree,
             orphaned_annotations: &ast.orphaned_annotations,
             preproc_warnings: &ast.preproc_warnings,
+            expansion_info: Some(&ast.expansion_info),
         };
         let report = ic_lint::lint_syntax_with_config(&syntax_input, vfs, &lint_config);
         all_errors.extend(report.errors.into_iter().map(Into::into));

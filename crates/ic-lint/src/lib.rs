@@ -145,6 +145,9 @@ pub struct SyntaxInput<'a> {
 
     /// Warnings from the preprocessor
     pub preproc_warnings: &'a [ic_preproc::Error],
+
+    /// Map from token spans to their macro expansion context
+    pub expansion_info: Option<&'a HashMap<Span, ic_preproc::ExpansionInfo>>,
 }
 
 /// The supported lint categories.
@@ -447,6 +450,7 @@ macro_rules! define_lints {
                 tree,
                 orphaned_annotations: &[],
                 preproc_warnings: &[],
+                expansion_info: None,
             };
             lint_syntax_with_config(&input, vfs, &LintConfig::new())
         }

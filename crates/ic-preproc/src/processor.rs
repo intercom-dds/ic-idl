@@ -1660,6 +1660,7 @@ where
 
     fn dir_else(&mut self, span: Span) {
         trace!("processing #else");
+        self.warn_trailing(Directive::Else);
         match self.if_state().last_mut() {
             Some(v) => {
                 if let Err(e) = v.eval_else(span) {
@@ -1675,6 +1676,7 @@ where
 
     fn dir_endif(&mut self, span: Span) {
         trace!("processing #endif");
+        self.warn_trailing(Directive::Endif);
         if self.if_state().pop().is_none() {
             self.state().errors.push(Error::Syntax {
                 message: "#endif without #if",

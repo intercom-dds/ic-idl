@@ -35,9 +35,15 @@ mod annotations;
 mod from_hir;
 mod util;
 
+pub use from_hir::TypeObjectCache;
+
+/// Generates a `TypeDefinition` for the given type.
+///
+/// Intermediate objects are cached in the [`TypeObjectCache`], to reuse
+/// already-computed `TypeIdentifier`s and `TypeObject`s across calls.
 #[must_use]
-pub fn type_definition(ctx: &Context, def_id: DefId) -> TypeDefinition {
-    from_hir::type_definition(ctx, def_id)
+pub fn type_definition(def_id: DefId, cache: &mut TypeObjectCache<'_>) -> TypeDefinition {
+    from_hir::type_definition(def_id, cache)
 }
 
 /// Converts a HIR type definition to a serialized `TypeDefinition`.
@@ -47,6 +53,7 @@ pub fn type_definition(ctx: &Context, def_id: DefId) -> TypeDefinition {
 /// Panics if serialization fails.
 #[must_use]
 pub fn type_library(ctx: &Context, def_id: DefId) -> Vec<u8> {
-    let type_def = type_definition(ctx, def_id);
+    let mut cache = TypeObjectCache::new(ctx);
+    let type_def = type_definition(def_id, &mut cache);
     intercom_cts::cdr1::to_be_bytes(&type_def).expect("failed to serialize TypeDefinition")
 }

@@ -95,13 +95,40 @@ fn is_type_object_kind(kind: &DefKind) -> bool {
     )
 }
 
-struct TypeObjectBuilder<'ctx> {
+/// Cache for `TypeObject` generation, allowing reuse across multiple type
+/// definitions.
+pub struct TypeObjectCache<'ctx> {
     ctx: &'ctx Context,
     type_id_map: BTreeMap<DefId, TypeIdentifier>,
     complete_type_map: BTreeMap<TypeIdentifier, TypeObject>,
 }
 
-impl TypeObjectBuilder<'_> {
+impl<'ctx> TypeObjectCache<'ctx> {
+    /// Creates a new empty cache.
+    #[must_use]
+    pub fn new(ctx: &'ctx Context) -> Self {
+        Self {
+            ctx,
+            type_id_map: BTreeMap::new(),
+            complete_type_map: BTreeMap::new(),
+        }
+    }
+
+    /// Returns the calculated `TypeIdentifier` for a `DefId`, if it exists.
+    #[must_use]
+    pub fn type_identifier(&self, def_id: DefId) -> Option<&TypeIdentifier> {
+        self.type_id_map.get(&def_id)
+    }
+
+    /// Returns the cached `TypeObject` for a `DefId`, if it exists.
+    #[must_use]
+    pub fn type_object(&self, def_id: DefId) -> Option<&TypeObject> {
+        self.type_identifier(def_id)
+            .and_then(|v| self.complete_type_map.get(v))
+    }
+}
+
+impl TypeObjectCache<'_> {
     fn lookup_type_identifier(&mut self, ty: &Ty) -> TypeIdentifier {
         match &ty.kind {
             TyKind::Primitive(prim) => primitive_to_type_identifier(*prim),
@@ -1021,14 +1048,9 @@ fn collect_type_dependencies(
     }
 }
 
-pub fn type_definition(ctx: &Context, def_id: DefId) -> TypeDefinition {
-    let _span = debug_span!("typeobj", root = ?ctx.qualified_name(def_id)).entered();
-    let mut builder = TypeObjectBuilder {
-        ctx,
-        type_id_map: BTreeMap::new(),
-        complete_type_map: BTreeMap::new(),
-    };
-    let type_def = builder.build(def_id);
+pub(crate) fn type_definition(def_id: DefId, cache: &mut TypeObjectCache<'_>) -> TypeDefinition {
+    let _span = debug_span!("typeobj", root = %cache.ctx.qualified_name(def_id)).entered();
+    let type_def = cache.build(def_id);
     debug!(
         type_objects = type_def.type_objects.len(),
         "type definition complete",

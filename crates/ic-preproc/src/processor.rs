@@ -310,7 +310,19 @@ where
     }
 
     fn expr_and_eval(&mut self, context_span: Span) -> bool {
-        match self.expr(context_span).and_then(|v| is_true(&v, self)) {
+        let result = self.expr(context_span);
+        if let Some(tok) = self.state().queue.front().copied()
+            && tok.kind != Kind::Newline
+        {
+            self.state().errors.push(Error::Syntax {
+                message: "missing binary operator before this operand",
+                span: tok.span,
+            });
+            self.until_newline();
+            return false;
+        }
+
+        match result.and_then(|v| is_true(&v, self)) {
             Ok(v) => v,
             Err(e) => {
                 self.state().errors.push(e);
@@ -2359,6 +2371,19 @@ mod tests {
         );
         // Invalid expressions will always evaluate to 0.
         assert_eq!(output, "123");
+    }
+
+    #[test]
+    fn missing_operator() {
+        let mut vfs = SourceMap::default();
+        let state = pp(
+            &mut vfs,
+            r"
+                #if 1 2 3
+                #endif
+            ",
+        );
+        assert_eq!(state.errors().len(), 1);
     }
 
     #[test]

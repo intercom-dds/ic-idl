@@ -244,21 +244,9 @@ pub struct CodegenOptions {
     #[option(long, arg = "dir")]
     pub csharp_out: Option<PathBuf>,
 
-    /// Generate Rust files in <dir>
-    #[option(long, arg = "dir")]
-    pub rust_out: Option<PathBuf>,
-
-    /// Generate Python files in <dir>
-    #[option(long, arg = "dir")]
-    pub python_out: Option<PathBuf>,
-
     /// Generate IDL files in <dir>
     #[option(long, arg = "dir")]
     pub idl_out: Option<PathBuf>,
-
-    /// Generate Protobuf files in <dir>
-    #[option(long, arg = "dir")]
-    pub proto_out: Option<PathBuf>,
 
     /// Generate Java files in <dir>
     #[option(long, arg = "dir")]
@@ -272,13 +260,25 @@ pub struct CodegenOptions {
     #[option(long, arg = "dir")]
     pub json_schema_out: Option<PathBuf>,
 
-    /// Generate XML files in <dir>
+    /// Generate Protobuf files in <dir>
     #[option(long, arg = "dir")]
-    pub xml_out: Option<PathBuf>,
+    pub proto_out: Option<PathBuf>,
+
+    /// Generate Python files in <dir>
+    #[option(long, arg = "dir")]
+    pub python_out: Option<PathBuf>,
+
+    /// Generate Rust files in <dir>
+    #[option(long, arg = "dir")]
+    pub rust_out: Option<PathBuf>,
 
     /// Generate TypeScript files in <dir>
     #[option(long, arg = "dir")]
     pub typescript_out: Option<PathBuf>,
+
+    /// Generate XML files in <dir>
+    #[option(long, arg = "dir")]
+    pub xml_out: Option<PathBuf>,
 }
 
 #[derive(Command, Debug, Default)]

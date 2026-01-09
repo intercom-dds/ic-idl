@@ -1756,9 +1756,6 @@ where
         }
 
         self.warn_trailing(Directive::Line);
-
-        // For now, just parse and ignore #line directives
-        // Actual line number manipulation would require more infrastructure
     }
 }
 

@@ -95,8 +95,8 @@ impl UnreachableUnionCases<'_> {
         match ty_kind {
             TyKind::Primitive(prim) => match prim {
                 PrimitiveTy::Bool => Some((0, 1)),
-                PrimitiveTy::Char => Some((0, 127)), // ASCII range
-                PrimitiveTy::WChar => Some((0, 65535)), // Unicode BMP
+                PrimitiveTy::Char => Some((0, 127)),
+                PrimitiveTy::WChar => Some((0, 65535)),
                 PrimitiveTy::Int8 => Some((i64::from(i8::MIN), i64::from(i8::MAX))),
                 PrimitiveTy::Int16 => Some((i64::from(i16::MIN), i64::from(i16::MAX))),
                 PrimitiveTy::Int32 => Some((i64::from(i32::MIN), i64::from(i32::MAX))),
@@ -104,7 +104,7 @@ impl UnreachableUnionCases<'_> {
                 PrimitiveTy::UInt8 => Some((0, i64::from(u8::MAX))),
                 PrimitiveTy::UInt16 => Some((0, i64::from(u16::MAX))),
                 PrimitiveTy::UInt32 => Some((0, i64::from(u32::MAX))),
-                PrimitiveTy::UInt64 => Some((0, i64::MAX)), // Limited by i64
+                PrimitiveTy::UInt64 => Some((0, i64::MAX)),
                 _ => None,
             },
             TyKind::Adt(_) => {

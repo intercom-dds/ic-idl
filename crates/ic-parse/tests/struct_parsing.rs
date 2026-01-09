@@ -256,12 +256,8 @@ fn parse_annotation_with_keyword_name() {
 
 #[test]
 fn parse_annotation_between_struct_and_name() {
-    // The key test: annotation in an unusual position
     let result = from_str("struct @foo Point { long x; };");
     assert!(result.errors.is_empty(), "errors: {:?}", result.errors);
-
-    // The annotation should be attached to the struct (or the identifier)
-    // For now, let's just verify it parses without error
     assert_eq!(result.tree.len(), 1);
 }
 

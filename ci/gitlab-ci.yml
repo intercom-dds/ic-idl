@@ -52,6 +52,8 @@ lint:rustfmt:
 lint:clippy:
   stage: lint
   needs: []
+  tags:
+    - saas-linux-medium-amd64
   script:
     - rustup component add clippy
     - cargo clippy --workspace --all-targets -- -Dwarnings
@@ -71,5 +73,7 @@ lint:ipr:
 test:stable:
   stage: test
   needs: []
+  tags:
+    - saas-linux-medium-amd64
   script:
     - cargo nextest run --workspace --all-targets

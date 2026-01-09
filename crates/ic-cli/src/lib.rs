@@ -117,7 +117,7 @@ impl CommandLine {
         for opt in cmd.options.values_mut() {
             opt.section = Some(section.clone());
         }
-        self = self.opts(cmd.options.values().iter().cloned());
+        self = self.opts(cmd.options.values().cloned());
         self
     }
 
@@ -138,7 +138,7 @@ impl CommandLine {
 
     #[allow(clippy::needless_pass_by_value)]
     pub fn merge(self, command: CommandLine) -> Self {
-        self.opts(command.options.values().iter().cloned())
+        self.opts(command.options.values().cloned())
     }
 
     pub fn category(mut self, category: Category) -> Self {
@@ -313,7 +313,7 @@ impl CommandLine {
         {
             // Group options by their section
             let mut sections = IndexMap::<_, Vec<_>>::new();
-            let options = self.options.values().iter();
+            let options = self.options.values();
             for opt in options {
                 if let Some(v) = &opt.section {
                     if let Some(v) = sections.get_mut(v) {
@@ -393,7 +393,7 @@ impl CommandLine {
         P: FnMut(&&Opt) -> bool + Clone,
     {
         let mut lines = vec![];
-        let matches: Vec<_> = self.options.values().iter().filter(filter).collect();
+        let matches: Vec<_> = self.options.values().filter(filter).collect();
 
         // Check if this specific section has any short options
         let section_has_short_opts = matches
@@ -411,7 +411,6 @@ impl CommandLine {
         let max_width_with_indent = if self.align_sections {
             self.options
                 .values()
-                .iter()
                 .map(|v| match prefix {
                     Some(p) => display_width(&v.with_prefix(p)),
                     None => display_width(&v.formatted()),

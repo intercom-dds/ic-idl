@@ -25,12 +25,13 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+use std::collections::{BTreeMap, BTreeSet};
 use std::hash::Hash;
 
 use crate::index::{IndexMap, IndexSet};
 
 #[must_use]
-#[derive(Copy, Clone, Debug, Hash, Eq, PartialEq)]
+#[derive(Copy, Clone, Debug, Hash, Eq, PartialEq, Ord, PartialOrd)]
 pub struct VertexId(usize);
 
 /// A directed graph implementation.
@@ -93,14 +94,14 @@ where
     }
 
     #[must_use]
-    pub fn strongly_connected_components(&self) -> Vec<Vec<VertexId>> {
+    pub fn scc_tarjan(&self) -> Vec<Vec<VertexId>> {
         let mut state = TarjanState {
             index: 0,
-            stack: Vec::new(),
+            stack: vec![],
             indices: IndexMap::new(),
             lowlinks: IndexMap::new(),
             on_stack: IndexSet::new(),
-            components: Vec::new(),
+            components: vec![],
         };
 
         for i in 0..self.vertices.len() {
@@ -111,6 +112,55 @@ where
         }
 
         state.components
+    }
+
+    #[must_use]
+    pub fn scc_kosaraju(&self) -> Vec<Vec<VertexId>> {
+        let mut visited = BTreeSet::new();
+        let mut post_order = vec![];
+
+        for i in 0..self.vertices.len() {
+            let v = VertexId(i);
+            if !visited.contains(&v) {
+                self.dfs_post_order(v, &mut visited, &mut post_order);
+            }
+        }
+
+        let mut reverse_map: BTreeMap<VertexId, Vec<VertexId>> = BTreeMap::new();
+        for (u, neighbors) in &self.edges {
+            for &v in neighbors {
+                reverse_map.entry(v).or_default().push(*u);
+            }
+        }
+
+        visited.clear();
+        let mut components = vec![];
+
+        for &v in post_order.iter().rev() {
+            if !visited.contains(&v) {
+                let mut component = vec![];
+                dfs_reverse(v, &reverse_map, &mut visited, &mut component);
+                components.push(component);
+            }
+        }
+
+        components.reverse();
+        components
+    }
+
+    fn dfs_post_order(
+        &self,
+        v: VertexId,
+        visited: &mut BTreeSet<VertexId>,
+        post_order: &mut Vec<VertexId>,
+    ) {
+        visited.insert(v);
+        for w in self.neighbors(v) {
+            if !visited.contains(&w) {
+                self.dfs_post_order(w, visited, post_order);
+            }
+        }
+        post_order.push(v);
     }
 
     fn strong_connect(&self, v: VertexId, state: &mut TarjanState) {
@@ -136,7 +186,7 @@ where
         let v_lowlink = *state.lowlinks.get(&v).unwrap();
         let v_index = *state.indices.get(&v).unwrap();
         if v_lowlink == v_index {
-            let mut component = Vec::new();
+            let mut component = vec![];
             loop {
                 let w = state.stack.pop().expect("stack should not be empty");
                 state.on_stack.remove(&w);
@@ -157,6 +207,23 @@ struct TarjanState {
     lowlinks: IndexMap<VertexId, usize>,
     on_stack: IndexSet<VertexId>,
     components: Vec<Vec<VertexId>>,
+}
+
+fn dfs_reverse(
+    v: VertexId,
+    reverse_map: &BTreeMap<VertexId, Vec<VertexId>>,
+    visited: &mut BTreeSet<VertexId>,
+    component: &mut Vec<VertexId>,
+) {
+    visited.insert(v);
+    component.push(v);
+    if let Some(neighbors) = reverse_map.get(&v) {
+        for &w in neighbors {
+            if !visited.contains(&w) {
+                dfs_reverse(w, reverse_map, visited, component);
+            }
+        }
+    }
 }
 
 impl<T> Default for DiGraph<T> {
@@ -227,8 +294,6 @@ mod tests {
 
     #[test]
     fn test_vertex_id_traits() {
-        use std::collections::HashSet;
-
         let id1 = VertexId(1);
         let id2 = VertexId(2);
         let id1_copy = VertexId(1);
@@ -251,7 +316,7 @@ mod tests {
         assert!(debug_str.contains('1'));
 
         // Test Hash
-        let mut set = HashSet::new();
+        let mut set = BTreeSet::new();
         set.insert(id1);
         set.insert(id2);
         set.insert(id1_copy);
@@ -336,7 +401,7 @@ mod tests {
         graph.add_edge(v2, v3);
         graph.add_edge(v3, v4);
 
-        let sccs = graph.strongly_connected_components();
+        let sccs = graph.scc_tarjan();
         assert_eq!(sccs.len(), 4);
         for scc in &sccs {
             assert_eq!(scc.len(), 1);
@@ -354,7 +419,7 @@ mod tests {
         graph.add_edge(v2, v3);
         graph.add_edge(v3, v1);
 
-        let sccs = graph.strongly_connected_components();
+        let sccs = graph.scc_tarjan();
         assert_eq!(sccs.len(), 1);
         assert_eq!(sccs[0].len(), 3);
     }
@@ -376,7 +441,7 @@ mod tests {
         graph.add_edge(v5, v6);
         graph.add_edge(v6, v5);
 
-        let sccs = graph.strongly_connected_components();
+        let sccs = graph.scc_tarjan();
         assert_eq!(sccs.len(), 3);
 
         let mut sizes: Vec<usize> = sccs.iter().map(Vec::len).collect();
@@ -402,7 +467,7 @@ mod tests {
         graph.add_edge(v5, v6);
         graph.add_edge(v6, v4);
 
-        let sccs = graph.strongly_connected_components();
+        let sccs = graph.scc_tarjan();
         assert_eq!(sccs.len(), 2);
 
         let mut sizes: Vec<usize> = sccs.iter().map(Vec::len).collect();
@@ -420,7 +485,7 @@ mod tests {
         graph.add_edge(v1, v2);
         graph.add_edge(v2, v1);
 
-        let sccs = graph.strongly_connected_components();
+        let sccs = graph.scc_tarjan();
         assert_eq!(sccs.len(), 2);
 
         let mut sizes: Vec<usize> = sccs.iter().map(Vec::len).collect();

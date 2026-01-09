@@ -57,8 +57,8 @@ pub fn group_types_by_scc(hir: &ResolvedGraph, types: &[DefId]) -> Vec<TypeGroup
         }
     }
 
-    let sccs = graph.strongly_connected_components();
-    let mut groups = Vec::new();
+    let sccs = graph.scc_tarjan();
+    let mut groups = vec![];
 
     for scc in sccs {
         if scc.is_empty() {
@@ -66,7 +66,6 @@ pub fn group_types_by_scc(hir: &ResolvedGraph, types: &[DefId]) -> Vec<TypeGroup
         }
 
         let type_ids: Vec<DefId> = scc.iter().map(|&v| vertex_to_def[&v]).collect();
-
         groups.push(TypeGroup { types: type_ids });
     }
 

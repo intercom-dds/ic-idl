@@ -286,12 +286,11 @@ fn levenshtein(a: &str, b: &str) -> usize {
     column[len_a]
 }
 
-fn closest_match<'a>(input: &str, options: &'a [Opt]) -> Option<&'a str> {
+fn closest_match<'a>(input: &str, options: impl Iterator<Item = &'a Opt>) -> Option<&'a str> {
     let mut min = usize::MAX;
     let mut closest = None;
 
     let iter = options
-        .iter()
         .flat_map(|v| v.tokens.iter())
         .map(String::as_str)
         .filter(|v| v.len() > 1);
@@ -318,7 +317,7 @@ fn prefixed(name: &str) -> String {
     format!("{prefix}{name}").yellow().to_string()
 }
 
-fn did_you_mean(input: &str, options: &[Opt]) -> ParseError {
+fn did_you_mean<'a>(input: &str, options: impl Iterator<Item = &'a Opt>) -> ParseError {
     let err = if let Some(v) = closest_match(input, options) {
         format!(
             "unknown option '{}', did you mean '{}'?",

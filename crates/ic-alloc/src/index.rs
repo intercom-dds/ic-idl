@@ -34,47 +34,55 @@ use std::hash::Hash;
 #[must_use]
 #[derive(Debug, Clone)]
 pub struct IndexMap<K, V> {
-    keys: HashMap<K, usize>,
-    data: Vec<V>,
+    indices: HashMap<K, usize>,
+    entries: Vec<(K, V)>,
 }
 
 impl<K, V> IndexMap<K, V> {
     pub fn new() -> Self {
         Self {
-            keys: HashMap::new(),
-            data: vec![],
+            indices: HashMap::new(),
+            entries: Vec::new(),
         }
     }
 }
 
 impl<K, V> IndexMap<K, V>
 where
-    K: Hash + Eq,
+    K: Hash + Eq + Clone,
 {
     pub fn insert(&mut self, key: K, value: V) -> usize {
-        match self.keys.entry(key) {
+        match self.indices.entry(key.clone()) {
             Entry::Occupied(v) => {
-                let id = *v.get();
-                self.data[id] = value;
-                id
+                let idx = *v.get();
+                self.entries[idx].1 = value;
+                idx
             }
             Entry::Vacant(v) => {
-                let id = self.data.len();
-                self.data.push(value);
-                v.insert(id);
-                id
+                let idx = self.entries.len();
+                self.entries.push((key, value));
+                v.insert(idx);
+                idx
             }
         }
     }
 
+    /// Insert a value with multiple keys pointing to it.
+    ///
+    /// The first key in the iterator is stored in entries; all keys map to the same index.
     pub fn insert_multi<I>(&mut self, keys: I, value: V)
     where
         I: IntoIterator<Item = K>,
     {
-        self.data.push(value);
-        let idx = self.data.len() - 1;
+        let mut keys = keys.into_iter();
+        let Some(first_key) = keys.next() else {
+            return;
+        };
+        let idx = self.entries.len();
+        self.entries.push((first_key.clone(), value));
+        self.indices.insert(first_key, idx);
         for k in keys {
-            self.keys.insert(k, idx);
+            self.indices.insert(k, idx);
         }
     }
 
@@ -84,7 +92,7 @@ where
         K: Borrow<Q>,
         Q: ?Sized + Hash + Eq,
     {
-        self.keys.get(key).map(|&idx| &self.data[idx])
+        self.indices.get(key).map(|&idx| &self.entries[idx].1)
     }
 
     #[must_use]
@@ -93,7 +101,7 @@ where
         K: Borrow<Q>,
         Q: ?Sized + Hash + Eq,
     {
-        self.keys.get(key).map(|&idx| &mut self.data[idx])
+        self.indices.get(key).map(|&idx| &mut self.entries[idx].1)
     }
 
     #[must_use]
@@ -102,34 +110,31 @@ where
         K: Borrow<Q>,
         Q: ?Sized + Hash + Eq,
     {
-        self.keys.contains_key(key)
-    }
-
-    #[must_use]
-    pub fn values(&self) -> &Vec<V> {
-        &self.data
-    }
-
-    #[must_use]
-    pub fn values_mut(&mut self) -> &mut Vec<V> {
-        &mut self.data
+        self.indices.contains_key(key)
     }
 
     #[must_use]
     pub fn is_empty(&self) -> bool {
-        self.keys.is_empty()
+        self.entries.is_empty()
     }
 
     #[must_use]
     pub fn len(&self) -> usize {
-        self.keys.len()
+        self.entries.len()
     }
 
     pub fn iter(&self) -> IndexIter<'_, K, V> {
         IndexIter {
-            inner: self,
-            index: 0,
+            inner: self.entries.iter(),
         }
+    }
+
+    pub fn values(&self) -> impl Iterator<Item = &V> {
+        self.entries.iter().map(|(_, v)| v)
+    }
+
+    pub fn values_mut(&mut self) -> impl Iterator<Item = &mut V> {
+        self.entries.iter_mut().map(|(_, v)| v)
     }
 }
 
@@ -141,30 +146,26 @@ impl<K, V> Default for IndexMap<K, V> {
 
 #[must_use]
 pub struct IndexIter<'a, K, V> {
-    inner: &'a IndexMap<K, V>,
-    index: usize,
+    inner: std::slice::Iter<'a, (K, V)>,
 }
 
-impl<'a, K, V> Iterator for IndexIter<'a, K, V>
-where
-    K: Hash + Eq,
-{
+impl<'a, K, V> Iterator for IndexIter<'a, K, V> {
     type Item = (&'a K, &'a V);
 
     fn next(&mut self) -> Option<Self::Item> {
-        if self.index < self.inner.keys.len()
-            && let Some((key, index)) = self.inner.keys.iter().find(|&(_, v)| *v == self.index)
-        {
-            self.index += 1;
-            return Some((key, &self.inner.data[*index]));
-        }
-        None
+        self.inner.next().map(|(k, v)| (k, v))
+    }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        self.inner.size_hint()
     }
 }
 
+impl<K, V> ExactSizeIterator for IndexIter<'_, K, V> {}
+
 impl<'a, K, V> IntoIterator for &'a IndexMap<K, V>
 where
-    K: Hash + Eq,
+    K: Hash + Eq + Clone,
 {
     type IntoIter = IndexIter<'a, K, V>;
 
@@ -188,7 +189,7 @@ impl<T> IndexSet<T> {
 
 impl<T> IndexSet<T>
 where
-    T: Hash + Eq,
+    T: Hash + Eq + Clone,
 {
     pub fn insert(&mut self, value: T) -> usize {
         self.0.insert(value, ())
@@ -199,7 +200,7 @@ where
         T: Borrow<Q>,
         Q: ?Sized + Hash + Eq,
     {
-        self.0.keys.remove(value).is_some()
+        self.0.indices.remove(value).is_some()
     }
 
     #[must_use]
@@ -218,11 +219,27 @@ where
 
     #[must_use]
     pub fn len(&self) -> usize {
-        self.0.keys.len()
+        self.0.len()
     }
 
-    pub fn iter(&self) -> impl Iterator<Item = &T> {
-        self.0.keys.keys()
+    #[must_use]
+    pub fn iter(&self) -> IndexSetIter<'_, T> {
+        IndexSetIter {
+            inner: self.0.entries.iter(),
+        }
+    }
+}
+
+impl<'a, T> IntoIterator for &'a IndexSet<T>
+where
+    T: Hash + Eq + Clone,
+{
+    type Item = &'a T;
+
+    type IntoIter = IndexSetIter<'a, T>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.iter()
     }
 }
 
@@ -232,6 +249,24 @@ impl<T> Default for IndexSet<T> {
     }
 }
 
+pub struct IndexSetIter<'a, T> {
+    inner: std::slice::Iter<'a, (T, ())>,
+}
+
+impl<'a, T> Iterator for IndexSetIter<'a, T> {
+    type Item = &'a T;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        self.inner.next().map(|(k, _)| k)
+    }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        self.inner.size_hint()
+    }
+}
+
+impl<T> ExactSizeIterator for IndexSetIter<'_, T> {}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -240,7 +275,7 @@ mod tests {
     fn test_index_map_new() {
         let map: IndexMap<String, i32> = IndexMap::new();
         assert!(map.is_empty());
-        assert_eq!(map.values().len(), 0);
+        assert_eq!(map.len(), 0);
     }
 
     #[test]
@@ -276,7 +311,7 @@ mod tests {
         assert_eq!(idx1, 0);
         assert_eq!(idx2, 0); // Same index
         assert_eq!(map.get("key"), Some(&20)); // Updated value
-        assert_eq!(map.values().len(), 1); // Still only one entry
+        assert_eq!(map.len(), 1); // Still only one entry
     }
 
     #[test]
@@ -320,8 +355,8 @@ mod tests {
         map.insert("b", 2);
         map.insert("c", 3);
 
-        let values = map.values();
-        assert_eq!(values, &vec![1, 2, 3]);
+        let values: Vec<_> = map.values().copied().collect();
+        assert_eq!(values, vec![1, 2, 3]);
     }
 
     #[test]
@@ -331,8 +366,7 @@ mod tests {
         map.insert("b", 2);
         map.insert("c", 3);
 
-        let values = map.values_mut();
-        for v in values.iter_mut() {
+        for v in map.values_mut() {
             *v *= 2;
         }
 
@@ -385,6 +419,20 @@ mod tests {
 
         let debug_str = format!("{map:?}");
         assert!(debug_str.contains("IndexMap"));
+    }
+
+    #[test]
+    fn test_index_map_iter_order_is_insertion_order() {
+        let mut map = IndexMap::new();
+        map.insert("first", 1);
+        map.insert("second", 2);
+        map.insert("third", 3);
+
+        let items: Vec<_> = map.iter().collect();
+        assert_eq!(items.len(), 3);
+        assert_eq!(items[0].0, &"first");
+        assert_eq!(items[1].0, &"second");
+        assert_eq!(items[2].0, &"third");
     }
 
     #[test]
@@ -464,6 +512,17 @@ mod tests {
 
         let debug_str = format!("{set:?}");
         assert!(debug_str.contains("IndexSet"));
+    }
+
+    #[test]
+    fn test_index_set_iter_is_insertion_order() {
+        let mut set = IndexSet::new();
+        set.insert("alpha");
+        set.insert("beta");
+        set.insert("gamma");
+
+        let entries: Vec<_> = set.iter().copied().collect();
+        assert_eq!(entries, vec!["alpha", "beta", "gamma"]);
     }
 
     #[test]

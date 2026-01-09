@@ -595,6 +595,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "ic-omgidl"
+version = "0.3.9"
+dependencies = [
+ "intercom-cts",
+]
+
+[[package]]
 name = "ic-parse"
 version = "0.3.9"
 dependencies = [
@@ -653,6 +660,19 @@ dependencies = [
  "ic-alloc",
  "ic-vfs",
  "intercom-cts",
+]
+
+[[package]]
+name = "ic-typeobj"
+version = "0.3.9"
+dependencies = [
+ "ic-alloc",
+ "ic-hir",
+ "ic-omgidl",
+ "ic-syntax",
+ "ic-vfs",
+ "intercom-cts",
+ "tracing",
 ]
 
 [[package]]

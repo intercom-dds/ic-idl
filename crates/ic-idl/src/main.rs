@@ -37,6 +37,7 @@ use tracing::{Level, info, info_span};
 use tracing_subscriber::fmt;
 
 mod info;
+mod parse;
 mod unstable;
 
 macro_rules! error {
@@ -132,38 +133,37 @@ fn try_compile(options: CompilerOptions) {
 
     // Handle parse-only mode
     if compiler.options().unstable.parse_only {
-        match compiler.compile() {
-            Ok(result) => {
-                let warning_count = result.diagnostics.warnings.len();
-                if !result.diagnostics.warnings.is_empty() {
-                    emit_diagnostics(&compiler, &result.diagnostics);
-                }
-                if compiler.options().unstable.ast_dump {
-                    for item in &result.items {
-                        println!("{item:#?}");
+        let proc_args = compiler.proc_args();
+        for file in compiler.options().files.clone() {
+            match parse::from_path(&file, proc_args.clone(), compiler.source_map_mut()) {
+                Ok(ast) => {
+                    if !ast.errors.is_empty() {
+                        let formatted = ic_idl::pretty::fmt_errors(
+                            &ast.errors,
+                            compiler.source_map(),
+                            &ast.expansion_info,
+                        );
+                        eprintln!("{formatted}");
+                        info!(errors = ast.errors.len(), "failed");
+                        std::process::exit(1);
                     }
+
+                    if compiler.options().unstable.ast_dump {
+                        println!("{:#?}", ast.tree);
+                    }
+                    info!(errors = 0, "completed");
                 }
-                info!(errors = 0, warnings = warning_count, "completed");
-            }
-            Err(CompileError::Io(e)) => {
-                error!("{e}");
-                std::process::exit(1);
-            }
-            Err(CompileError::Diagnostics(diagnostics)) => {
-                emit_diagnostics(&compiler, &diagnostics);
-                info!(
-                    errors = diagnostics.errors.len(),
-                    warnings = diagnostics.warnings.len(),
-                    "failed"
-                );
-                std::process::exit(1);
+                Err(e) => {
+                    error!("{e}");
+                    std::process::exit(1);
+                }
             }
         }
         return;
     }
 
-    // Use the new compile_hir method which handles merging
-    let (hir, diagnostics) = match compiler.compile_hir() {
+    // Compile to HIR
+    let (hir, diagnostics) = match compiler.compile() {
         Ok((hir, diag)) => (hir, diag),
         Err(CompileError::Io(e)) => {
             error!("{e}");

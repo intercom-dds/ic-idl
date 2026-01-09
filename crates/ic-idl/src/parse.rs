@@ -37,6 +37,7 @@ use crate::util::Error;
 
 /// Result of parsing an IDL file with preprocessing.
 #[derive(Debug)]
+#[allow(dead_code)]
 pub struct ParseResult {
     pub tree: Vec<Item>,
     pub errors: Vec<Error>,

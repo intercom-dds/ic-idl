@@ -1,0 +1,11 @@
+---
+source: crates/ic-lint/tests/preproc_extraneous.rs
+expression: "test_lint_preproc(r#\"\n#line 100 extra\nstruct Foo {};\n\"#,)"
+---
+warning[extra-tokens]: extra tokens after #line directive
+   ┌ test.idl:2:11
+   │
+ 2 │ #line 100 extra
+   ·           ^^^^^ extraneous tokens
+ 3 │ struct Foo {};
+   └──

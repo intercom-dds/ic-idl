@@ -1,0 +1,11 @@
+---
+source: crates/ic-lint/tests/preproc_warning.rs
+expression: output
+---
+warning[preproc-warning]: #warning directive: "This is a warning"
+   ┌ test.idl:2:2
+   │
+ 2 │ #warning "This is a warning"
+   ·  ^^^^^^^ here
+ 3 │ struct Foo {};
+   └──

@@ -263,54 +263,36 @@ impl Context {
     }
 
     /// Resolves a numeric value to a signed integer, recursively following
-    /// `Const` references. Returns `None` if the value cannot be represented
-    /// as an integer.
+    /// `Const` references. Falls back to `0` if the value cannot be
+    /// represented as an integer.
     #[must_use]
-    pub fn integer_value(&self, numeric: &Numeric) -> Option<i64> {
-        match numeric {
-            Numeric::Int8(v) => Some(i64::from(*v)),
-            Numeric::Int16(v) => Some(i64::from(*v)),
-            Numeric::Int32(v) => Some(i64::from(*v)),
-            Numeric::Int64(v) => Some(*v),
-            Numeric::UInt8(v) => Some(i64::from(*v)),
-            Numeric::UInt16(v) => Some(i64::from(*v)),
-            Numeric::UInt32(v) => Some(i64::from(*v)),
-            Numeric::UInt64(v) => i64::try_from(*v).ok(),
-            Numeric::Const(def_id) => {
-                let def = self.type_of(*def_id);
-                if let DefKind::Const(const_def) = &def.kind {
-                    self.integer_value(&const_def.value)
-                } else {
-                    None
-                }
-            }
-            _ => None,
-        }
+    pub fn integer_value(&self, numeric: &Numeric) -> i64 {
+        self.unsigned_value(numeric) as i64
     }
 
     /// Resolves a numeric value to an unsigned integer, recursively following
-    /// `Const` references. Returns `None` if the value cannot be represented
-    /// as an unsigned integer.
+    /// `Const` references. Falls back to `0` if the value cannot be
+    /// represented as an unsigned integer.
     #[must_use]
-    pub fn unsigned_value(&self, numeric: &Numeric) -> Option<u64> {
+    pub fn unsigned_value(&self, numeric: &Numeric) -> u64 {
         match numeric {
-            Numeric::UInt8(v) => Some(u64::from(*v)),
-            Numeric::UInt16(v) => Some(u64::from(*v)),
-            Numeric::UInt32(v) => Some(u64::from(*v)),
-            Numeric::UInt64(v) => Some(*v),
-            Numeric::Int8(v) => u64::try_from(i64::from(*v)).ok(),
-            Numeric::Int16(v) => u64::try_from(i64::from(*v)).ok(),
-            Numeric::Int32(v) => u64::try_from(i64::from(*v)).ok(),
-            Numeric::Int64(v) => u64::try_from(*v).ok(),
+            Numeric::UInt8(v) => u64::from(*v),
+            Numeric::UInt16(v) => u64::from(*v),
+            Numeric::UInt32(v) => u64::from(*v),
+            Numeric::UInt64(v) => *v,
+            Numeric::Int8(v) => i64::from(*v) as u64,
+            Numeric::Int16(v) => i64::from(*v) as u64,
+            Numeric::Int32(v) => i64::from(*v) as u64,
+            Numeric::Int64(v) => *v as u64,
             Numeric::Const(def_id) => {
                 let def = self.type_of(*def_id);
                 if let DefKind::Const(const_def) = &def.kind {
                     self.unsigned_value(&const_def.value)
                 } else {
-                    None
+                    0
                 }
             }
-            _ => None,
+            _ => 0,
         }
     }
 

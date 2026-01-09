@@ -995,9 +995,8 @@ impl<'a> JavaGen<'a> {
             let field_def = self.hir.context.definitions.get(field_id);
             let field_name = &field_def.ident.name;
 
-            if let DefKind::Const(const_ty) = &field_def.kind
-                && let Some(val) = self.hir.context.integer_value(&const_ty.value)
-            {
+            if let DefKind::Const(const_ty) = &field_def.kind {
+                let val = self.hir.context.integer_value(&const_ty.value);
                 w.dedent();
                 w!(w, "case ", val, ":\n");
                 w.indent();
@@ -1266,7 +1265,7 @@ impl<'a> JavaGen<'a> {
         for label in &variant.labels {
             if is_bool {
                 // For boolean discriminators, we need to convert to 0/1 for switch
-                let val = self.bool_label_value(&label.value);
+                let val = self.hir.context.integer_value(&label.value);
                 w!(w, "case ", val, ":\n");
             } else {
                 let case_val = self.format_case_label(&label.value, disc_ty, def_id);
@@ -1277,22 +1276,6 @@ impl<'a> JavaGen<'a> {
             w!(w, "default:\n");
         }
         w.indent();
-    }
-
-    /// Get the integer value (0 or 1) for a boolean union case label.
-    fn bool_label_value(&self, value: &Numeric) -> i64 {
-        match value {
-            Numeric::Bool(b) => i64::from(*b),
-            Numeric::Const(def_id) => {
-                let def = self.hir.context.definitions.get(*def_id);
-                if let DefKind::Const(const_ty) = &def.kind {
-                    self.bool_label_value(&const_ty.value)
-                } else {
-                    0
-                }
-            }
-            _ => self.hir.context.integer_value(value).unwrap_or(0),
-        }
     }
 
     fn emit_variant_discriminator_check(
@@ -1362,9 +1345,8 @@ impl<'a> JavaGen<'a> {
         let mut used_values = HashSet::new();
         for variant in &union_ty.variants {
             for label in &variant.labels {
-                if let Some(val) = self.hir.context.integer_value(&label.value) {
-                    used_values.insert(val);
-                }
+                let val = self.hir.context.integer_value(&label.value);
+                used_values.insert(val);
             }
         }
 
@@ -1383,7 +1365,7 @@ impl<'a> JavaGen<'a> {
                     for &field_id in &enum_ty.fields {
                         let field_def = self.hir.context.definitions.get(field_id);
                         if let DefKind::Const(const_ty) = &field_def.kind
-                            && let Some(val) = self.hir.context.integer_value(&const_ty.value)
+                            && let val = self.hir.context.integer_value(&const_ty.value)
                             && !used_values.contains(&val)
                         {
                             // Use Numeric::Const to format as enum constant (e.g., MyEnum.ZERO)
@@ -1401,7 +1383,7 @@ impl<'a> JavaGen<'a> {
         for (i, flag_id) in fields.iter().enumerate() {
             let flag_def = self.hir.context.definitions.get(flag_id);
             if let DefKind::Const(const_ty) = &flag_def.kind {
-                let ordinal = self.hir.context.integer_value(&const_ty.value).unwrap_or(0);
+                let ordinal = self.hir.context.integer_value(&const_ty.value);
                 w!(w, flag_def, "(", ordinal, ")");
                 if i < fields.len() - 1 {
                     w!(w, ",\n");
@@ -1424,7 +1406,7 @@ impl<'a> JavaGen<'a> {
             let flag_def = self.hir.context.definitions.get(flag_id);
             if let DefKind::Const(const_ty) = &flag_def.kind {
                 // Bitmask flags are always integers, check if value exceeds int range
-                let value = self.hir.context.integer_value(&const_ty.value).unwrap_or(0);
+                let value = self.hir.context.integer_value(&const_ty.value);
                 if value > i64::from(i32::MAX) {
                     w!(w, "public static final long ", flag_def.ident.name, " = ", value, "L;\n");
                 } else {

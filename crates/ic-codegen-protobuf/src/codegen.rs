@@ -270,7 +270,7 @@ impl<'a> ProtoGen<'a> {
             let zero_field = enum_ty.fields.iter().find(|&&field_id| {
                 let field_def = self.hir.context.definitions.get(field_id);
                 if let DefKind::Const(const_ty) = &field_def.kind {
-                    self.hir.context.integer_value(&const_ty.value) == Some(0)
+                    self.hir.context.integer_value(&const_ty.value) == 0
                 } else {
                     false
                 }
@@ -290,7 +290,7 @@ impl<'a> ProtoGen<'a> {
 
                 let field_def = self.hir.context.definitions.get(*field_id);
                 if let DefKind::Const(const_ty) = &field_def.kind {
-                    let value = self.hir.context.integer_value(&const_ty.value).unwrap_or(0);
+                    let value = self.hir.context.integer_value(&const_ty.value);
                     let field_name = &field_def.ident.name;
                     w!(w, field_name, " = ", value, ";\n");
                 }

@@ -255,9 +255,8 @@ impl<'a> XmlGen<'a> {
             self.emit_annotations(&def.annotations, w);
             for &flag_id in &bitmask.flags {
                 let flag_def = self.hir.context.definitions.get(flag_id);
-                let position = if let DefKind::Const(const_ty) = &flag_def.kind
-                    && let Some(val) = self.hir.context.unsigned_value(&const_ty.value)
-                {
+                let position = if let DefKind::Const(const_ty) = &flag_def.kind {
+                    let val = self.hir.context.unsigned_value(&const_ty.value);
                     val.trailing_zeros().to_string()
                 } else {
                     String::from("0")

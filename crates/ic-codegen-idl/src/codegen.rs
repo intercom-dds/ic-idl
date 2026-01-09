@@ -600,8 +600,8 @@ impl<'a> IdlGen<'a> {
             w!(w, "\n");
             if flag_def.flags.contains(DefFlags::IS_ENUMERATED)
                 && let DefKind::Const(const_ty) = &flag_def.kind
-                && let Some(val) = self.hir.context.unsigned_value(&const_ty.value)
             {
+                let val = self.hir.context.unsigned_value(&const_ty.value);
                 let position = val.trailing_zeros();
                 w!(w, "@position(", position, ") ");
             }

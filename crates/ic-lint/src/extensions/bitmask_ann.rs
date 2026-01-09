@@ -38,13 +38,13 @@ impl<'a> Visitor<'a> for BitmaskAnn<'_> {
     fn visit_annotation_field(&mut self, def: &'a ic_syntax::AnnotationField) {
         if let ic_syntax::AnnotationField::Item(item) = def
             && let ic_syntax::Item::BitmaskValue(bitmask) = item.as_ref()
-            && let Some(diag) = self.ctx.diag_span(
+        {
+            let diag = self.ctx.diag_span(
                 Self::name(),
                 Self::category(),
                 "defining bitmasks in annotations is non-standard",
                 Label::new(bitmask.ident.span).message("defined here"),
-            )
-        {
+            );
             Self::report(self.ctx, diag);
         }
     }

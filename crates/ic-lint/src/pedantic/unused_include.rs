@@ -72,18 +72,17 @@ impl<'a> Lint<'a> for UnusedInclude {
         // Collect all FileIds whose definitions are referenced
         let used_files = collect_used_files(hir);
 
-        // For each include, check if it's used (directly or transitively)
         for include in includes {
-            // Check if this include (or any of its transitive includes) is used
-            if !is_include_used(include.included_file, &include_tree, &used_files)
-                && let Some(diag) = ctx.diag_span(
-                    Self::name(),
-                    Self::category(),
-                    format!("unused include `{}`", include.included_as),
-                    Label::new(include.path_span).message("unused include"),
-                )
-            {
-                Self::report(ctx, diag.help("remove this include if it is not needed"));
+            if !is_include_used(include.included_file, &include_tree, &used_files) {
+                let diag = ctx
+                    .diag_span(
+                        Self::name(),
+                        Self::category(),
+                        format!("unused include `{}`", include.included_as),
+                        Label::new(include.path_span).message("unused include"),
+                    )
+                    .help("remove this include if it is not needed");
+                Self::report(ctx, diag);
             }
         }
     }

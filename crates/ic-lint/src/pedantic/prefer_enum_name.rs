@@ -123,10 +123,8 @@ impl PreferEnumName<'_> {
             _ => return,
         };
 
-        // Use cached lookup
         if let Some(field_name) = self.get_enum_value_name(enum_id, int_value) {
-            // Found the matching enum member
-            if let Some(diag) = self.ctx.diag_span(
+            let diag = self.ctx.diag_span(
                 Self::name(),
                 Self::category(),
                 format!("prefer using enum member name '{field_name}' instead of numeric literal"),
@@ -134,9 +132,8 @@ impl PreferEnumName<'_> {
                     "consider using '{field_name}' instead of '{}'",
                     format_numeric_value(&const_ty.value)
                 )),
-            ) {
-                Self::report(self.ctx, diag);
-            }
+            );
+            Self::report(self.ctx, diag);
         }
     }
 }

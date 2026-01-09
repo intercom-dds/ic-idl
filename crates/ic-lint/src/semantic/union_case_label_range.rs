@@ -69,14 +69,13 @@ impl<'a> UnionCaseLabelRange<'a> {
                 _ => format!("case label value {}", format_numeric(resolved_value)),
             };
 
-            if let Some(diag) = self.ctx.diag_span(
+            let diag = self.ctx.diag_span(
                 Self::name(),
                 Self::category(),
                 format!("{label_desc} exceeds 32-bit range in union '{union_name}'"),
                 Label::new(span).message("value must fit in 32 bits"),
-            ) {
-                Self::report(self.ctx, diag);
-            }
+            );
+            Self::report(self.ctx, diag);
         }
     }
 

@@ -38,31 +38,32 @@ pub struct AssignExpr<'a> {
 
 impl<'a> Visitor<'a> for AssignExpr<'a> {
     fn visit_bitmask_bit(&mut self, flag: &'a ic_syntax::Bit) {
-        if let Some(value) = &flag.value
-            && let Some(diag) = self.ctx.diag_span(
-                Self::name(),
-                Self::category(),
-                "assignment operator on bitmask flags is non-standard",
-                Label::new(value.span()),
-            )
-        {
-            Self::report(
-                self.ctx,
-                diag.help("use the `@position` annotation instead"),
-            );
+        if let Some(value) = &flag.value {
+            let diag = self
+                .ctx
+                .diag_span(
+                    Self::name(),
+                    Self::category(),
+                    "assignment operator on bitmask flags is non-standard",
+                    Label::new(value.span()).message("non-standard assignment"),
+                )
+                .help("use the `@position` annotation instead");
+            Self::report(self.ctx, diag);
         }
     }
 
     fn visit_enum_variant(&mut self, variant: &'a ic_syntax::Enumerator) {
-        if let Some(value) = &variant.value
-            && let Some(diag) = self.ctx.diag_span(
-                Self::name(),
-                Self::category(),
-                "assignment operator on enumerators is non-standard",
-                Label::new(value.span()),
-            )
-        {
-            Self::report(self.ctx, diag.help("use the `@value` annotation instead"));
+        if let Some(value) = &variant.value {
+            let diag = self
+                .ctx
+                .diag_span(
+                    Self::name(),
+                    Self::category(),
+                    "assignment operator on enumerators is non-standard",
+                    Label::new(value.span()).message("non-standard assignment"),
+                )
+                .help("use the `@value` annotation instead");
+            Self::report(self.ctx, diag);
         }
     }
 }

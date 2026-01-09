@@ -7,7 +7,7 @@ warning[assign-expr]: assignment operator on bitmask flags is non-standard
    │
  2 │         bitmask Permissions {
  3 │             READ = 0x01,
-   ·                    ^^^^ 
+   ·                    ^^^^ non-standard assignment
  4 │             WRITE = 0x02,
  5 │             EXECUTE = 0x04
    └──
@@ -19,7 +19,7 @@ warning[assign-expr]: assignment operator on bitmask flags is non-standard
  2 │         bitmask Permissions {
  3 │             READ = 0x01,
  4 │             WRITE = 0x02,
-   ·                     ^^^^ 
+   ·                     ^^^^ non-standard assignment
  5 │             EXECUTE = 0x04
  6 │         };
    └──
@@ -31,7 +31,7 @@ warning[assign-expr]: assignment operator on bitmask flags is non-standard
  3 │             READ = 0x01,
  4 │             WRITE = 0x02,
  5 │             EXECUTE = 0x04
-   ·                       ^^^^ 
+   ·                       ^^^^ non-standard assignment
  6 │         };
  7 │ 
  8 │         const Permissions DEFAULT_PERMS = Permissions::READ | Permissions::WRITE;

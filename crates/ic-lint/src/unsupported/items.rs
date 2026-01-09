@@ -38,34 +38,32 @@ pub struct Unsupported<'a> {
 
 impl<'a> Visitor<'a> for Unsupported<'a> {
     fn visit_bitset(&mut self, bitset: &'a ic_syntax::BitsetDef) {
-        if let Some(diag) = self.ctx.diag_span(
-            Self::name(),
-            Self::category(),
-            "bitsets are not supported",
-            Label::new(bitset.ident.span).message("defined here"),
-        ) {
-            Self::report(
-                self.ctx,
-                diag.note("the bitset will be skipped during codegen"),
-            );
-        }
+        let diag = self
+            .ctx
+            .diag_span(
+                Self::name(),
+                Self::category(),
+                "bitsets are not supported",
+                Label::new(bitset.ident.span).message("defined here"),
+            )
+            .note("the bitset will be skipped during codegen");
+        Self::report(self.ctx, diag);
     }
 
     fn visit_path(&mut self, path: &'a ic_syntax::Path) {
         if path.segments.len() == 1 {
             let ty = &path.segments[0];
-            if ty.name == "long double"
-                && let Some(diag) = self.ctx.diag_span(
-                    Self::name(),
-                    Self::category(),
-                    "long double is not supported",
-                    Label::new(ty.span).message("used here"),
-                )
-            {
-                Self::report(
-                    self.ctx,
-                    diag.note("long double will be treated as a normal double during codegen"),
-                );
+            if ty.name == "long double" {
+                let diag = self
+                    .ctx
+                    .diag_span(
+                        Self::name(),
+                        Self::category(),
+                        "long double is not supported",
+                        Label::new(ty.span).message("used here"),
+                    )
+                    .note("long double will be treated as a normal double during codegen");
+                Self::report(self.ctx, diag);
             }
         }
     }

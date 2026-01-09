@@ -30,9 +30,28 @@ use ic_diagnostic::Level;
 use ic_lint::{Category, LintConfig, Report, SyntaxInput};
 use ic_vfs::SourceMap;
 
-fn format_report(source: &str, report: &Report) -> String {
-    let mut output = String::new();
+#[allow(dead_code)]
+pub fn test_lint(source: &str) -> String {
+    ic_cli::color::set_color_override(ColorMode::Never);
+    let mut vfs = SourceMap::default();
+    let file_id = vfs.embed(source);
+    let ast = ic_parse::from_file(file_id, &vfs);
+    assert!(
+        ast.errors.is_empty(),
+        "Parse errors in test code: {:?}",
+        ast.errors
+    );
 
+    let mut config = LintConfig::new();
+    config.set_category_level(Category::Pedantic, Level::Warning);
+    let input = SyntaxInput {
+        tree: &ast.tree,
+        orphaned_annotations: &ast.orphaned_annotations,
+        preproc_warnings: &[],
+    };
+    let report = ic_lint::lint_syntax_with_config(&input, &vfs, &config);
+
+    let mut output = String::new();
     for (i, diag) in report.errors.iter().enumerate() {
         if i > 0 {
             output.push('\n');

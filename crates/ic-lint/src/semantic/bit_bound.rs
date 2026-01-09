@@ -67,13 +67,13 @@ impl BitBound<'_> {
 
         if let Some(bit_pos) = Self::get_bit_position(ann)
             && bit_pos >= type_bits
-            && let Some(diag) = self.ctx.diag_span(
+        {
+            let diag = self.ctx.diag_span(
                 Self::name(),
                 Self::category(),
                 format!("@bit({bit_pos}) exceeds type bit width of {type_bits}"),
                 Label::new(ann.ident.span).message("bit position out of bounds"),
-            )
-        {
+            );
             Self::report(self.ctx, diag);
         }
     }

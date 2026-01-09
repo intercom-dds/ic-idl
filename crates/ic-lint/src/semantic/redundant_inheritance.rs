@@ -69,16 +69,14 @@ impl RedundantInheritance<'_> {
                 .join("::");
 
             if !seen.insert(parent_name.clone()) {
-                // This parent was already seen
-                if let Some(diag) = self.ctx.diag_span(
+                let diag = self.ctx.diag_span(
                     Self::name(),
                     Self::category(),
                     format!("{item_name} inherits from '{parent_name}' multiple times"),
                     Label::new(ic_syntax::util::path_span(parent_path))
                         .message("redundant inheritance"),
-                ) {
-                    Self::report(self.ctx, diag);
-                }
+                );
+                Self::report(self.ctx, diag);
             }
         }
     }

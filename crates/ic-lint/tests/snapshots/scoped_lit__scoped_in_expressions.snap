@@ -7,7 +7,7 @@ warning[assign-expr]: assignment operator on enumerators is non-standard
    │
  2 │         enum Level {
  3 │             LOW = 1,
-   ·                   ^ 
+   ·                   ^ non-standard assignment
  4 │             MEDIUM = 5,
  5 │             HIGH = 10
    └──
@@ -19,7 +19,7 @@ warning[assign-expr]: assignment operator on enumerators is non-standard
  2 │         enum Level {
  3 │             LOW = 1,
  4 │             MEDIUM = 5,
-   ·                      ^ 
+   ·                      ^ non-standard assignment
  5 │             HIGH = 10
  6 │         };
    └──
@@ -31,7 +31,7 @@ warning[assign-expr]: assignment operator on enumerators is non-standard
  3 │             LOW = 1,
  4 │             MEDIUM = 5,
  5 │             HIGH = 10
-   ·                    ^^ 
+   ·                    ^^ non-standard assignment
  6 │         };
  7 │ 
  8 │         const Level DEFAULT_LEVEL = Level::MEDIUM;

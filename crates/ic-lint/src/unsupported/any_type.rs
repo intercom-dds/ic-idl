@@ -1,4 +1,4 @@
-// Copyright 2024 KONGSBERG
+// Copyright 2025 KONGSBERG
 //
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions are met:
@@ -25,17 +25,55 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use std::fmt::Display;
+use ic_diagnostic::Label;
+use ic_hir::hir::{Ty, TyKind};
+use ic_hir::visit::{self, Visitor, walk_ty};
 
-pub trait IterExt: Iterator + Sized {
-    /// Joins all elements of an interator into a string with the specified
-    /// separator.
-    fn join(self, sep: &str) -> String
-    where
-        Self::Item: Display,
-    {
-        self.map(|v| v.to_string()).collect::<Vec<_>>().join(sep)
+use crate::{Category, Lint, LintCtx};
+
+pub struct AnyType<'a> {
+    ctx: &'a LintCtx<'a>,
+    hir: &'a ic_hir::ResolvedGraph,
+}
+
+impl<'a> Lint<'a> for AnyType<'a> {
+    fn name() -> &'static str {
+        "any-type"
+    }
+
+    fn description() -> &'static str {
+        "Checks for uses of the 'any' type"
+    }
+
+    fn category() -> Category {
+        Category::Unsupported
+    }
+
+    fn check_hir(ctx: &'a LintCtx<'a>, hir: &'a ic_hir::ResolvedGraph) {
+        let mut visitor = Self { ctx, hir };
+        visit::walk_tree(&mut visitor, hir);
     }
 }
 
-impl<T: Iterator> IterExt for T {}
+impl<'a> Visitor<'a> for AnyType<'a> {
+    fn context(&self) -> &'a ic_hir::Context {
+        &self.hir.context
+    }
+
+    fn visit_ty(&mut self, ty: &'a Ty) {
+        if matches!(ty.kind, TyKind::Any) {
+            let diag = self
+                .ctx
+                .diag_span(
+                    Self::name(),
+                    Self::category(),
+                    "the 'any' type is not fully supported",
+                    Label::new(ty.span).message("'any' type used here"),
+                )
+                .help("consider using a concrete type");
+            Self::report(self.ctx, diag);
+        }
+
+        walk_ty(self, ty);
+    }
+}

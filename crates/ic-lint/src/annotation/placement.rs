@@ -29,7 +29,6 @@ use ic_diagnostic::Label;
 
 use crate::{Category, Lint, LintCtx, SyntaxInput};
 
-/// Lint for annotations not attached to any declaration.
 pub struct AnnPlacement;
 
 impl<'a> Lint<'a> for AnnPlacement {
@@ -47,17 +46,15 @@ impl<'a> Lint<'a> for AnnPlacement {
 
     fn check_syntax(ctx: &'a LintCtx<'_>, input: &SyntaxInput<'_>) {
         for ann in input.orphaned_annotations {
-            if let Some(diag) = ctx.diag_span(
-                Self::name(),
-                Self::category(),
-                "annotation has no effect in this context",
-                Label::new(ann.span).message("misplaced annotation"),
-            ) {
-                Self::report(
-                    ctx,
-                    diag.note("annotation is not attached to any declaration"),
-                );
-            }
+            let diag = ctx
+                .diag_span(
+                    Self::name(),
+                    Self::category(),
+                    "annotation has no effect in this context",
+                    Label::new(ann.span).message("misplaced annotation"),
+                )
+                .note("annotation is not attached to any declaration");
+            Self::report(ctx, diag);
         }
     }
 }

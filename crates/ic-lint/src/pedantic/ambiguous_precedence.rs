@@ -56,18 +56,17 @@ impl AmbiguousPrecedence<'_> {
             end: util::expr_span(&child_expr.rhs).end,
         };
 
-        if let Some(diag) = self.ctx.diag_span(
-            Self::name(),
-            Self::category(),
-            format!("operator `{parent_name}` has lower precedence than `{child_name}`"),
-            Label::new(parent_op.span).message("this operator has lower precedence"),
-        ) {
-            let diag = diag
-                .label(Label::new(child_span).message("than this expression"))
-                .help("add parentheses to clarify the intended order of operations");
-
-            Self::report(self.ctx, diag);
-        }
+        let diag = self
+            .ctx
+            .diag_span(
+                Self::name(),
+                Self::category(),
+                format!("operator `{parent_name}` has lower precedence than `{child_name}`"),
+                Label::new(parent_op.span).message("this operator has lower precedence"),
+            )
+            .label(Label::new(child_span).message("than this expression"))
+            .help("add parentheses to clarify the intended order of operations");
+        Self::report(self.ctx, diag);
     }
 }
 

@@ -1,11 +1,11 @@
 ---
 source: crates/ic-lint/tests/preproc_warning.rs
-expression: "test_lint_preproc(r#\"\n#warning\nstruct Foo {};\n\"#,)"
+expression: "test_lint_preproc(r\"\n#warning\nstruct Foo {};\n\",)"
 ---
 warning[preproc-warning]: #warning directive
    ┌ test.idl:2:2
    │
  2 │ #warning
-   ·  ^^^^^^^ here
+   ·  ^^^^^^^ 
  3 │ struct Foo {};
    └──

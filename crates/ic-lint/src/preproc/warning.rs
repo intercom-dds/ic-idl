@@ -29,7 +29,6 @@ use ic_diagnostic::Label;
 
 use crate::{Category, Lint, LintCtx, SyntaxInput};
 
-/// Lint for `#warning` directives.
 pub struct PreprocWarning;
 
 impl<'a> Lint<'a> for PreprocWarning {
@@ -59,14 +58,8 @@ impl<'a> Lint<'a> for PreprocWarning {
                     format!("#warning directive: {text}")
                 };
 
-                if let Some(diag) = ctx.diag_span(
-                    Self::name(),
-                    Self::category(),
-                    msg,
-                    Label::new(*span).message("here"),
-                ) {
-                    Self::report(ctx, diag);
-                }
+                let diag = ctx.diag_span(Self::name(), Self::category(), msg, Label::new(*span));
+                Self::report(ctx, diag);
             }
         }
     }

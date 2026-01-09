@@ -32,7 +32,6 @@ use ic_diagnostic::Label;
 use ic_syntax::visit::{Visitor, walk_expr, walk_tree};
 use ic_syntax::{BitmaskDef, EnumDef, Expr, Item};
 
-use crate::iter::IterExt;
 use crate::{Category, Lint, LintCtx};
 
 #[derive(Copy, Clone)]
@@ -67,39 +66,36 @@ impl<'a> Visitor<'a> for ScopedLit<'a> {
                     Kind::Enum => ("enum", "enumerators"),
                 };
 
-                // Get just the enumerator name (last segment)
                 let enumerator = path.segments.last().map_or("", |s| s.name.as_str()).green();
-                // Get enum::enumerator (last two segments)
-                let enum_and_enumerator = if path.segments.len() >= 2 {
-                    let last_two: Vec<&str> = path
-                        .segments
+                let qualified = if path.segments.len() >= 2 {
+                    path.segments
                         .iter()
                         .rev()
                         .take(2)
                         .rev()
                         .map(|s| s.name.as_str())
-                        .collect();
-                    last_two.join("::").green()
+                        .collect()
                 } else {
-                    path.segments.iter().map(|s| &s.name).join("::").green()
+                    path.segments
+                        .iter()
+                        .map(|s| s.name.as_str())
+                        .collect::<Vec<_>>()
                 };
-                if let Some(diag) = self.ctx.diag_span(
-                    Self::name(),
-                    Self::category(),
-                    format!("scoped {ty}s are non-standard"),
-                    Label::new(v.span).message("used here"),
-                ) {
-                    let diag = diag
-                        .note(format!("{member} are registered in the parent scope"))
-                        .help(format!(
-                            "use `{enumerator}` instead of `{enum_and_enumerator}`"
-                        ));
-                    Self::report(self.ctx, diag);
-                }
+
+                let qualified = qualified.join("::").green();
+                let diag = self
+                    .ctx
+                    .diag_span(
+                        Self::name(),
+                        Self::category(),
+                        format!("scoped {ty}s are non-standard"),
+                        Label::new(v.span).message("used here"),
+                    )
+                    .note(format!("{member} are registered in the parent scope"))
+                    .help(format!("use `{enumerator}` instead of `{qualified}`"));
+                Self::report(self.ctx, diag);
             }
         } else {
-            // Continue traversal -- this may be a binary expression of bitmask
-            // flags, so we'll want to check those as well.
             walk_expr(self, expr);
         }
     }

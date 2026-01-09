@@ -112,7 +112,7 @@ impl<'a> Visitor<'a> for LargeUnionVariant<'a> {
             && largest_size - avg_except_largest >= MIN_SIZE_DIFFERENCE
             && let Some(largest) = largest_variant
         {
-            let diag = self.ctx.diag_span(
+            let mut diag = self.ctx.diag_span(
                 Self::name(),
                 Self::category(),
                 format!(
@@ -124,21 +124,17 @@ impl<'a> Visitor<'a> for LargeUnionVariant<'a> {
                     .message(format!("large variant ({largest_size} bytes)")),
             );
 
-            if let Some(mut diag) = diag {
-                // Add notes about other variants for context
-                for (variant, size) in &variant_sizes {
-                    if variant.ident.name != largest.ident.name {
-                        diag = diag
-                            .label(Label::new(variant.ident.span).message(format!("{size} bytes")));
-                    }
+            for (variant, size) in &variant_sizes {
+                if variant.ident.name != largest.ident.name {
+                    diag =
+                        diag.label(Label::new(variant.ident.span).message(format!("{size} bytes")));
                 }
-
-                diag = diag.note(
-                    "consider annotating large variants with `@shared` to heap allocate them",
-                );
-
-                Self::report(self.ctx, diag);
             }
+
+            diag = diag
+                .note("consider annotating large variants with `@shared` to heap allocate them");
+
+            Self::report(self.ctx, diag);
         }
 
         // Continue visiting

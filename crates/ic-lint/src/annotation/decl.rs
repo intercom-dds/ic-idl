@@ -38,24 +38,23 @@ pub struct AnnotatedDecl<'a> {
 
 impl<'a> Visitor<'a> for AnnotatedDecl<'a> {
     fn visit_forward_decl(&mut self, decl: &'a ic_syntax::Decl) {
-        // only issue one diagnostic per decl
         if let Some(ann) = decl.annotations.iter().find(|v| !is_doc(&v.ident)) {
             let span = util::path_span(&ann.ident);
-            if let Some(diag) = self.ctx.diag_span(
-                Self::name(),
-                Self::category(),
-                "annotations on forward declarations are ignored",
-                Label::new(span).message("defined here"),
-            ) {
-                let diag = diag
-                    .label(
-                        Label::new(decl.ident.span)
-                            .message("applied to this declaration")
-                            .color(Color::Cyan),
-                    )
-                    .help("move the annotation to the definition of the type");
-                Self::report(self.ctx, diag);
-            }
+            let diag = self
+                .ctx
+                .diag_span(
+                    Self::name(),
+                    Self::category(),
+                    "annotations on forward declarations are ignored",
+                    Label::new(span).message("defined here"),
+                )
+                .label(
+                    Label::new(decl.ident.span)
+                        .message("applied to this declaration")
+                        .color(Color::Cyan),
+                )
+                .help("move the annotation to the definition of the type");
+            Self::report(self.ctx, diag);
         }
     }
 }

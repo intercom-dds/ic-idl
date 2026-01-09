@@ -73,8 +73,8 @@ impl UnreachableUnionCases<'_> {
                                 value
                             };
 
-                        if (effective_value < min || effective_value > max)
-                            && let Some(diag) = self.ctx.diag_span(
+                        if effective_value < min || effective_value > max {
+                            let diag = self.ctx.diag_span(
                                 Self::name(),
                                 Self::category(),
                                 format!(
@@ -82,8 +82,7 @@ impl UnreachableUnionCases<'_> {
                                      the discriminator type"
                                 ),
                                 Label::new(label.span).message("case label out of range"),
-                            )
-                        {
+                            );
                             Self::report(self.ctx, diag);
                         }
                     }

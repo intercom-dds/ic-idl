@@ -136,14 +136,13 @@ impl InvalidAnnotationTarget<'_> {
     }
 
     fn report_invalid_target(&mut self, ann: &Ann, message: &str) {
-        if let Some(diag) = self.ctx.diag_span(
+        let diag = self.ctx.diag_span(
             Self::name(),
             Self::category(),
             message,
             Label::new(ann.ident.span).message("invalid annotation target"),
-        ) {
-            Self::report(self.ctx, diag);
-        }
+        );
+        Self::report(self.ctx, diag);
     }
 }
 

@@ -38,14 +38,16 @@ pub struct NullVariant<'a> {
 
 impl<'a> Visitor<'a> for NullVariant<'a> {
     fn visit_union_null(&mut self, def: &'a UnionNull) {
-        if let Some(diag) = self.ctx.diag_span(
-            Self::name(),
-            Self::category(),
-            "`null` variants are non-standard",
-            Label::new(def.span).message("`null` is not standard"),
-        ) {
-            Self::report(self.ctx, diag.note("all case labels must map to a value"));
-        }
+        let diag = self
+            .ctx
+            .diag_span(
+                Self::name(),
+                Self::category(),
+                "`null` variants are non-standard",
+                Label::new(def.span).message("`null` is not standard"),
+            )
+            .note("all case labels must map to a value");
+        Self::report(self.ctx, diag);
     }
 }
 

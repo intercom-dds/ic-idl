@@ -8,7 +8,7 @@ warning[assign-expr]: assignment operator on bitmask flags is non-standard
  2 │         @annotation MyAnnotation {
  3 │             bitmask Flags {
  4 │                 FLAG_A = 0x01,
-   ·                          ^^^^ 
+   ·                          ^^^^ non-standard assignment
  5 │                 FLAG_B = 0x02,
  6 │                 FLAG_C = 0x04
    └──
@@ -20,7 +20,7 @@ warning[assign-expr]: assignment operator on bitmask flags is non-standard
  3 │             bitmask Flags {
  4 │                 FLAG_A = 0x01,
  5 │                 FLAG_B = 0x02,
-   ·                          ^^^^ 
+   ·                          ^^^^ non-standard assignment
  6 │                 FLAG_C = 0x04
  7 │             };
    └──
@@ -32,7 +32,7 @@ warning[assign-expr]: assignment operator on bitmask flags is non-standard
  4 │                 FLAG_A = 0x01,
  5 │                 FLAG_B = 0x02,
  6 │                 FLAG_C = 0x04
-   ·                          ^^^^ 
+   ·                          ^^^^ non-standard assignment
  7 │             };
  8 │             unsigned long default_flags;
    └──

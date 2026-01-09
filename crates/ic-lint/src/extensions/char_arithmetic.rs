@@ -58,7 +58,6 @@ impl<'a> ic_syntax::visit::Visitor<'a> for CharArithmetic<'a> {
     fn visit_expr(&mut self, expr: &'a Expr) {
         match expr {
             Expr::Binary(binary) => {
-                // Check if this is an arithmetic operation
                 if matches!(
                     binary.op.kind,
                     OpKind::Add
@@ -72,55 +71,52 @@ impl<'a> ic_syntax::visit::Visitor<'a> for CharArithmetic<'a> {
                         | OpKind::Lshift
                         | OpKind::Rshift
                 ) {
-                    // Check left operand
                     if let Expr::Literal(lit) = &binary.lhs
                         && let LiteralValue::Char(_) = lit.value
-                        && let Some(diag) = self.ctx.diag_span(
-                            Self::name(),
-                            Self::category(),
-                            "char literal used in arithmetic expression",
-                            Label::new(lit.span).message("char literal"),
-                        )
                     {
-                        Self::report(
-                            self.ctx,
-                            diag.help("consider converting to an integer value"),
-                        );
+                        let diag = self
+                            .ctx
+                            .diag_span(
+                                Self::name(),
+                                Self::category(),
+                                "char literal used in arithmetic expression",
+                                Label::new(lit.span).message("char literal"),
+                            )
+                            .help("consider converting to an integer value");
+                        Self::report(self.ctx, diag);
                     }
 
-                    // Check right operand
                     if let Expr::Literal(lit) = &binary.rhs
                         && let LiteralValue::Char(_) = lit.value
-                        && let Some(diag) = self.ctx.diag_span(
-                            Self::name(),
-                            Self::category(),
-                            "char literal used in arithmetic expression",
-                            Label::new(lit.span).message("char literal"),
-                        )
                     {
-                        Self::report(
-                            self.ctx,
-                            diag.help("consider converting to an integer value"),
-                        );
+                        let diag = self
+                            .ctx
+                            .diag_span(
+                                Self::name(),
+                                Self::category(),
+                                "char literal used in arithmetic expression",
+                                Label::new(lit.span).message("char literal"),
+                            )
+                            .help("consider converting to an integer value");
+                        Self::report(self.ctx, diag);
                     }
                 }
             }
             Expr::Unary(unary) => {
-                // Check if this is an arithmetic operation (unary minus, plus, or bitwise NOT)
                 if matches!(unary.op.kind, OpKind::Not | OpKind::Sub | OpKind::Add)
                     && let Expr::Literal(lit) = &unary.expr
                     && let LiteralValue::Char(_) = lit.value
-                    && let Some(diag) = self.ctx.diag_span(
-                        Self::name(),
-                        Self::category(),
-                        "char literal used in arithmetic expression",
-                        Label::new(lit.span).message("char literal"),
-                    )
                 {
-                    Self::report(
-                        self.ctx,
-                        diag.help("consider converting to an integer value"),
-                    );
+                    let diag = self
+                        .ctx
+                        .diag_span(
+                            Self::name(),
+                            Self::category(),
+                            "char literal used in arithmetic expression",
+                            Label::new(lit.span).message("char literal"),
+                        )
+                        .help("consider converting to an integer value");
+                    Self::report(self.ctx, diag);
                 }
             }
             _ => {}

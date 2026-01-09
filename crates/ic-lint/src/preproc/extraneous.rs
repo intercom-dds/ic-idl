@@ -30,7 +30,6 @@ use ic_preproc::Error;
 
 use crate::{Category, Lint, LintCtx, SyntaxInput};
 
-/// Lint for extra tokens after preprocessor directives.
 pub struct PreprocExtraneous;
 
 impl<'a> Lint<'a> for PreprocExtraneous {
@@ -51,13 +50,13 @@ impl<'a> Lint<'a> for PreprocExtraneous {
             if let Error::Extraneous {
                 directive, span, ..
             } = error
-                && let Some(diag) = ctx.diag_span(
+            {
+                let diag = ctx.diag_span(
                     Self::name(),
                     Self::category(),
                     format!("extra tokens after #{directive} directive"),
                     Label::new(*span).message("extraneous tokens"),
-                )
-            {
+                );
                 Self::report(ctx, diag);
             }
         }

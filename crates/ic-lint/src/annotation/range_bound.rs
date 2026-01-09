@@ -86,31 +86,32 @@ impl RangeBound<'_> {
     fn check_value_in_bounds(&mut self, value: i64, ty: &Ty, ann: &Ann, annotation_type: &str) {
         if let Some((min_bound, max_bound)) = Self::get_type_bounds(ty) {
             if value < min_bound {
-                if let Some(diag) = self.ctx.diag_span(
-                    Self::name(),
-                    Self::category(),
-                    format!(
-                        "@{annotation_type} value {value} is less than type minimum {min_bound}"
-                    ),
-                    Label::new(ann.ident.span).message("value out of bounds"),
-                ) {
-                    Self::report(
-                        self.ctx,
-                        diag.help(format!("valid range is {min_bound}..{max_bound}")),
-                    );
-                }
-            } else if value > max_bound
-                && let Some(diag) = self.ctx.diag_span(
-                    Self::name(),
-                    Self::category(),
-                    format!("@{annotation_type} value {value} exceeds type maximum {max_bound}"),
-                    Label::new(ann.ident.span).message("value out of bounds"),
-                )
-            {
-                Self::report(
-                    self.ctx,
-                    diag.help(format!("valid range is {min_bound}..{max_bound}")),
-                );
+                let diag = self
+                    .ctx
+                    .diag_span(
+                        Self::name(),
+                        Self::category(),
+                        format!(
+                            "@{annotation_type} value {value} is less than type minimum \
+                             {min_bound}"
+                        ),
+                        Label::new(ann.ident.span).message("value out of bounds"),
+                    )
+                    .help(format!("valid range is {min_bound}..{max_bound}"));
+                Self::report(self.ctx, diag);
+            } else if value > max_bound {
+                let diag = self
+                    .ctx
+                    .diag_span(
+                        Self::name(),
+                        Self::category(),
+                        format!(
+                            "@{annotation_type} value {value} exceeds type maximum {max_bound}"
+                        ),
+                        Label::new(ann.ident.span).message("value out of bounds"),
+                    )
+                    .help(format!("valid range is {min_bound}..{max_bound}"));
+                Self::report(self.ctx, diag);
             }
         }
     }
@@ -135,41 +136,42 @@ impl RangeBound<'_> {
 
                 // Validate the range values
                 if let (Some(min), Some(max)) = (range.min, range.max) {
-                    if min > max
-                        && let Some(diag) = self.ctx.diag_span(
+                    if min > max {
+                        let diag = self
+                            .ctx
+                            .diag_span(
+                                Self::name(),
+                                Self::category(),
+                                format!(
+                                    "@range min value ({min}) is greater than max value ({max})"
+                                ),
+                                Label::new(ann.ident.span).message("invalid range"),
+                            )
+                            .help("swap min and max values");
+                        Self::report(self.ctx, diag);
+                    }
+                } else if range.min.is_none() && range.max.is_none() {
+                    let diag = self
+                        .ctx
+                        .diag_span(
                             Self::name(),
                             Self::category(),
-                            format!("@range min value ({min}) is greater than max value ({max})"),
-                            Label::new(ann.ident.span).message("invalid range"),
+                            "@range annotation requires at least one of min or max",
+                            Label::new(ann.ident.span).message("empty range"),
                         )
-                    {
-                        Self::report(self.ctx, diag.help("swap min and max values"));
-                    }
-                } else if range.min.is_none()
-                    && range.max.is_none()
-                    && let Some(diag) = self.ctx.diag_span(
-                        Self::name(),
-                        Self::category(),
-                        "@range annotation requires at least one of min or max",
-                        Label::new(ann.ident.span).message("empty range"),
-                    )
-                {
-                    Self::report(
-                        self.ctx,
-                        diag.help("specify either min=value, max=value, or both"),
-                    );
+                        .help("specify either min=value, max=value, or both");
+                    Self::report(self.ctx, diag);
                 }
             }
             Err(err) => {
                 // Report deserialization errors
-                if let Some(diag) = self.ctx.diag_span(
+                let diag = self.ctx.diag_span(
                     Self::name(),
                     Self::category(),
                     format!("invalid @range annotation: {err}"),
                     Label::new(ann.ident.span).message("malformed annotation"),
-                ) {
-                    Self::report(self.ctx, diag);
-                }
+                );
+                Self::report(self.ctx, diag);
             }
         }
     }
@@ -191,14 +193,13 @@ impl RangeBound<'_> {
                         min_ann = Some(ann);
                     }
                     Err(err) => {
-                        if let Some(diag) = self.ctx.diag_span(
+                        let diag = self.ctx.diag_span(
                             Self::name(),
                             Self::category(),
                             format!("invalid @min annotation: {err}"),
                             Label::new(ann.ident.span).message("malformed annotation"),
-                        ) {
-                            Self::report(self.ctx, diag);
-                        }
+                        );
+                        Self::report(self.ctx, diag);
                     }
                 },
                 "max" => match ann.unmarshal::<Max>("max") {
@@ -208,14 +209,13 @@ impl RangeBound<'_> {
                         max_ann = Some(ann);
                     }
                     Err(err) => {
-                        if let Some(diag) = self.ctx.diag_span(
+                        let diag = self.ctx.diag_span(
                             Self::name(),
                             Self::category(),
                             format!("invalid @max annotation: {err}"),
                             Label::new(ann.ident.span).message("malformed annotation"),
-                        ) {
-                            Self::report(self.ctx, diag);
-                        }
+                        );
+                        Self::report(self.ctx, diag);
                     }
                 },
                 _ => {}
@@ -236,18 +236,18 @@ impl RangeBound<'_> {
         if let (Some(min), Some(max), Some(min_sp), Some(max_sp)) =
             (min_value, max_value, min_span, max_span)
             && min > max
-            && let Some(diag) = self.ctx.diag_span(
-                Self::name(),
-                Self::category(),
-                format!("@min value ({min}) is greater than @max value ({max})"),
-                Label::new(min_sp).message("min value here"),
-            )
         {
-            Self::report(
-                self.ctx,
-                diag.label(Label::new(max_sp).message("max value here"))
-                    .help("ensure @min is less than or equal to @max"),
-            );
+            let diag = self
+                .ctx
+                .diag_span(
+                    Self::name(),
+                    Self::category(),
+                    format!("@min value ({min}) is greater than @max value ({max})"),
+                    Label::new(min_sp).message("min value here"),
+                )
+                .label(Label::new(max_sp).message("max value here"))
+                .help("ensure @min is less than or equal to @max");
+            Self::report(self.ctx, diag);
         }
     }
 

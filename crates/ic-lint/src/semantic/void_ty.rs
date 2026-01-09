@@ -44,18 +44,16 @@ impl<'a> Visitor<'a> for VoidTy<'a> {
     }
 
     fn visit_ty(&mut self, ty: &'a hir::Ty) {
-        if let TyKind::Primitive(PrimitiveTy::Void) = ty.kind
-            && let Some(diag) = self.ctx.diag_span(
+        if let TyKind::Primitive(PrimitiveTy::Void) = ty.kind {
+            let diag = self.ctx.diag_span(
                 Self::name(),
                 Self::category(),
                 "`void` is only allowed as a return type in prototypes",
                 Label::new(ty.span).message("invalid use of `void`"),
-            )
-        {
+            );
             Self::report(self.ctx, diag);
         }
 
-        // Continue visiting nested types
         ic_hir::visit::walk_ty(self, ty);
     }
 

@@ -42,18 +42,17 @@ pub struct ShiftBound<'a> {
 
 impl ShiftBound<'_> {
     fn check_expr(&self, expr: &Expr) {
-        if let Some(shift_op) = find_shift_op(expr)
-            && let Some(diag) = self.ctx.diag_span(
-                Self::name(),
-                Self::category(),
-                "bitshift expressions in template bounds are not portable",
-                Label::new(shift_op.span).message("this shift operator"),
-            )
-        {
-            let diag = diag
+        if let Some(shift_op) = find_shift_op(expr) {
+            let diag = self
+                .ctx
+                .diag_span(
+                    Self::name(),
+                    Self::category(),
+                    "bitshift expressions in template bounds are not portable",
+                    Label::new(shift_op.span).message("this shift operator"),
+                )
                 .note("other IDL compilers may not support bitshift expressions in template bounds")
                 .help("consider using a constant instead");
-
             Self::report(self.ctx, diag);
         }
     }

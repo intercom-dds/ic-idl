@@ -105,8 +105,8 @@ impl InvalidEnumLiteral<'_> {
                 }
             }
 
-            if !found
-                && let Some(diag) = self.ctx.diag_span(
+            if !found {
+                let diag = self.ctx.diag_span(
                     Self::name(),
                     Self::category(),
                     format!(
@@ -115,8 +115,7 @@ impl InvalidEnumLiteral<'_> {
                     ),
                     Label::new(const_def.ident.span)
                         .message("this constant evaluates to an invalid value"),
-                )
-            {
+                );
                 Self::report(self.ctx, diag);
             }
         }

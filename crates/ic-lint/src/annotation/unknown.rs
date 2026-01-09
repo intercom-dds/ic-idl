@@ -31,7 +31,6 @@ use ic_hir::visit::{self, Visitor};
 
 use crate::{Category, Lint, LintCtx};
 
-/// Lint that warns about unknown annotations.
 pub struct UnknownAnnotation<'a> {
     ctx: &'a LintCtx<'a>,
     hir: &'a ic_hir::ResolvedGraph,
@@ -81,14 +80,13 @@ impl<'a> Visitor<'a> for UnknownAnnotation<'a> {
     }
 
     fn visit_annotation(&mut self, ann: &'a Ann) {
-        if ann.def_id.is_none()
-            && let Some(mut diag) = self.ctx.diag_span(
+        if ann.def_id.is_none() {
+            let mut diag = self.ctx.diag_span(
                 Self::name(),
                 Self::category(),
                 format!("unknown annotation `{}`", ann.ident.name),
                 Label::new(ann.ident.span).message("annotation not found"),
-            )
-        {
+            );
             if let Some(suggestion) = find_similar(&ann.ident.name, &self.annotation_names) {
                 diag = diag.help(format!("did you mean `@{suggestion}`?"));
             }

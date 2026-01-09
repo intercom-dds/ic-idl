@@ -126,10 +126,8 @@ use ic_vfs::SourceMap;
 use tracing::{debug, debug_span, trace};
 
 mod annotation;
-mod any_type;
 mod deprecated;
 mod extensions;
-mod iter;
 mod pedantic;
 mod preproc;
 mod semantic;
@@ -147,11 +145,6 @@ pub struct SyntaxInput<'a> {
 
     /// Warnings from the preprocessor
     pub preproc_warnings: &'a [ic_preproc::Error],
-}
-
-/// Create a diagnostic with a lint code.
-fn lint_diag<S: Into<String>>(level: Level, code: &str, msg: S, label: Label) -> Option<Diag> {
-    Diag::with_level(level, msg).map(|d| d.code(code).label(label))
 }
 
 /// The supported lint categories.
@@ -276,14 +269,15 @@ pub struct LintCtx<'a> {
 impl LintCtx<'_> {
     /// Report a diagnostic with the appropriate level based on lint configuration.
     pub fn report(&self, lint_name: &'static str, category: Category, mut diag: Diag) {
-        // Add the lint code to the diagnostic
-        diag = diag.code(lint_name);
-
         // Semantic and Syntax lints are always errors
         let level = match category {
             Category::Semantic | Category::Syntax => Level::Error,
             _ => self.config.get_level(lint_name, category),
         };
+
+        // Update the diagnostic with additional info
+        diag = diag.code(lint_name);
+
         match level {
             Level::Error => {
                 trace!(lint = lint_name, level = "error", "lint triggered");
@@ -293,33 +287,34 @@ impl LintCtx<'_> {
                 trace!(lint = lint_name, level = "warning", "lint triggered");
                 self.warnings.borrow_mut().push(diag);
             }
-            Level::Disabled => {} // Don't emit disabled diagnostics
+            Level::Disabled => {}
         }
     }
 
     /// Create a diagnostic with the appropriate level for this lint.
-    /// Returns None if the lint is disabled.
     pub fn diag_span<S: Into<String>>(
         &self,
         lint_name: &'static str,
         category: Category,
         msg: S,
         label: Label,
-    ) -> Option<Diag> {
-        // Semantic and Syntax lints are always errors
+    ) -> Diag {
         let level = match category {
             Category::Semantic | Category::Syntax => Level::Error,
             _ => self.config.get_level(lint_name, category),
         };
 
-        // Apply color based on level
         let color = match level {
             Level::Error => ic_diagnostic::Color::Red,
-            Level::Warning => ic_diagnostic::Color::Purple,
-            Level::Disabled => return None,
+            Level::Warning | Level::Disabled => ic_diagnostic::Color::Purple,
         };
 
-        lint_diag(level, lint_name, msg, label.color(color))
+        let diag = match level {
+            Level::Error => Diag::error(msg),
+            Level::Warning | Level::Disabled => Diag::warning(msg),
+        };
+
+        diag.label(label.color(color))
     }
 
     /// Returns a slice of the given span.
@@ -549,7 +544,6 @@ define_lints! {
         annotation::deprecated_annotations::DeprecatedAnnotations,
         annotation::range_bound::RangeBound,
         annotation::unknown::UnknownAnnotation,
-        any_type::AnyType,
         extensions::char_discriminator::CharDiscriminator,
         extensions::complex_key::ComplexMapKey,
         pedantic::invalid_array_size::InvalidArraySize,
@@ -578,6 +572,7 @@ define_lints! {
         semantic::unreachable_union_cases::UnreachableUnionCases,
         semantic::void_ty::VoidTy,
         semantic::zero_bound::ZeroBound,
+        unsupported::any_type::AnyType,
         // unsupported::proto::Proto,
     ],
 }

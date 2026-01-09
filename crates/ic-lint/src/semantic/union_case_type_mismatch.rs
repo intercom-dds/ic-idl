@@ -87,10 +87,10 @@ impl UnionCaseTypeMismatch<'_> {
                     if let Some(parent_id) = const_def.parent {
                         let parent_def = self.context().definitions.get(parent_id);
 
-                        // Check if the parent is an enum and if it matches the discriminator
                         if matches!(parent_def.kind, DefKind::Enum(_))
                             && parent_id != *expected_enum_id
-                            && let Some(diag) = self.ctx.diag_span(
+                        {
+                            let diag = self.ctx.diag_span(
                                 Self::name(),
                                 Self::category(),
                                 format!(
@@ -101,8 +101,7 @@ impl UnionCaseTypeMismatch<'_> {
                                     expected_enum.ident.name,
                                 ),
                                 Label::new(label.span).message("mismatched case label"),
-                            )
-                        {
+                            );
                             Self::report(self.ctx, diag);
                         }
                     }

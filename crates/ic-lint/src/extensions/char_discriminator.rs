@@ -72,17 +72,17 @@ impl<'a> ic_syntax::visit::Visitor<'a> for CharCaseLabelChecker<'a> {
             for label in &element.labels {
                 if let ic_syntax::Label::Case(ic_syntax::Expr::Literal(lit)) = &label
                     && let ic_syntax::LiteralValue::Char(_) = lit.value
-                    && let Some(diag) = self.ctx.diag_span(
-                        CharDiscriminator::name(),
-                        CharDiscriminator::category(),
-                        "char literals should not be used in union case labels",
-                        Label::new(lit.span).message("char literal"),
-                    )
                 {
-                    CharDiscriminator::report(
-                        self.ctx,
-                        diag.help("consider using an integer or enum instead"),
-                    );
+                    let diag = self
+                        .ctx
+                        .diag_span(
+                            CharDiscriminator::name(),
+                            CharDiscriminator::category(),
+                            "char literals should not be used in union case labels",
+                            Label::new(lit.span).message("char literal"),
+                        )
+                        .help("consider using an integer or enum instead");
+                    CharDiscriminator::report(self.ctx, diag);
                 }
             }
         }
@@ -96,18 +96,17 @@ impl<'a> ic_hir::visit::Visitor<'a> for CharDiscriminator<'a> {
     }
 
     fn visit_union(&mut self, _def: &'a Def, union_ty: &'a UnionTy) {
-        if let TyKind::Primitive(PrimitiveTy::Char) = &union_ty.disc.ty.kind
-            && let Some(diag) = self.ctx.diag_span(
-                Self::name(),
-                Self::category(),
-                "char types should not be used as union discriminators",
-                Label::new(union_ty.disc.ty.span).message("char type"),
-            )
-        {
-            Self::report(
-                self.ctx,
-                diag.help("consider using an integer or enum value instead"),
-            );
+        if let TyKind::Primitive(PrimitiveTy::Char) = &union_ty.disc.ty.kind {
+            let diag = self
+                .ctx
+                .diag_span(
+                    Self::name(),
+                    Self::category(),
+                    "char types should not be used as union discriminators",
+                    Label::new(union_ty.disc.ty.span).message("char type"),
+                )
+                .help("consider using an integer or enum value instead");
+            Self::report(self.ctx, diag);
         }
     }
 }

@@ -39,16 +39,18 @@ pub struct OmittedIn<'a> {
 
 impl<'a> Visitor<'a> for OmittedIn<'a> {
     fn visit_prototype_param(&mut self, def: &'a ic_syntax::Param) {
-        if def.kind.is_none()
-            && let Some(diag) = self.ctx.diag_span(
-                Self::name(),
-                Self::category(),
-                "parameters must be declared with `in`, `out`, or `inout`",
-                Label::new(ty_span(&def.ty))
-                    .message("expected parameter specifier before this type"),
-            )
-        {
-            Self::report(self.ctx, diag.help("prefix the parameter with `in`"));
+        if def.kind.is_none() {
+            let diag = self
+                .ctx
+                .diag_span(
+                    Self::name(),
+                    Self::category(),
+                    "parameters must be declared with `in`, `out`, or `inout`",
+                    Label::new(ty_span(&def.ty))
+                        .message("expected parameter specifier before this type"),
+                )
+                .help("prefix the parameter with `in`");
+            Self::report(self.ctx, diag);
         }
     }
 }

@@ -81,9 +81,8 @@ impl InvalidEnumValue<'_> {
                     _ => continue,
                 };
 
-                // Check if value is in range
-                if (value < min || value > max)
-                    && let Some(diag) = self.ctx.diag_span(
+                if value < min || value > max {
+                    let diag = self.ctx.diag_span(
                         Self::name(),
                         Self::category(),
                         format!(
@@ -91,8 +90,7 @@ impl InvalidEnumValue<'_> {
                              underlying type"
                         ),
                         Label::new(field_def.ident.span).message("value out of range"),
-                    )
-                {
+                    );
                     Self::report(self.ctx, diag);
                 }
             }

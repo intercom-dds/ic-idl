@@ -56,19 +56,18 @@ impl<'a> Lint<'a> for AnnTemplate<'a> {
 impl AnnTemplate<'_> {
     fn report_invalid_annotation(&self, ann: &ic_syntax::AnnotationAppl, kind: &str) {
         let span = ic_syntax::util::path_span(&ann.ident);
-        if let Some(diag) = self.ctx.diag_span(
-            Self::name(),
-            Self::category(),
-            format!("{kind} types cannot be annotated"),
-            Label::new(span).message("invalid use of annotation"),
-        ) {
-            Self::report(
-                self.ctx,
-                diag.help(format!(
-                    "create a typedef for the {kind} type and apply the annotation there"
-                )),
-            );
-        }
+        let diag = self
+            .ctx
+            .diag_span(
+                Self::name(),
+                Self::category(),
+                format!("{kind} types cannot be annotated"),
+                Label::new(span).message("invalid use of annotation"),
+            )
+            .help(format!(
+                "create a typedef for the {kind} type and apply the annotation there"
+            ));
+        Self::report(self.ctx, diag);
     }
 }
 

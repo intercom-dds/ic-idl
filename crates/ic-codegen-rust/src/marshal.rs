@@ -30,7 +30,7 @@ use ic_emit::w;
 use ic_hir::hir::{Def, DefKind, PrimitiveTy, TyKind};
 
 use crate::codegen::RustGen;
-use crate::helpers::rust_primitive;
+use crate::helpers::{is_optional, rust_primitive};
 
 fn primitive_type_kind(prim: PrimitiveTy) -> &'static str {
     match prim {
@@ -122,24 +122,21 @@ impl RustGen<'_> {
             .iter()
             .enumerate()
             .map(|(i, m)| {
-                let is_optional = members
-                    .get(i)
-                    .map(|mem| self.is_optional(mem))
-                    .unwrap_or(false);
+                let is_optional = members.get(i).is_some_and(is_optional);
                 (m.ident.name.as_str(), i, is_optional)
             })
             .collect();
         Self::emit_member_info_array(&member_info, w);
     }
 
-    pub(crate) fn emit_marshal_impl<'c, I>(&self, def: &Def, members: I, w: &mut Twine)
+    pub(crate) fn emit_marshal_impl<'c, I>(def: &Def, members: I, w: &mut Twine)
     where
         I: IntoIterator<Item = &'c ic_hir::hir::Member>,
     {
         let member_data: Vec<_> = members
             .into_iter()
             .enumerate()
-            .map(|(i, m)| (m.ident.name.clone(), i, self.is_optional(m)))
+            .map(|(i, m)| (m.ident.name.clone(), i, is_optional(m)))
             .collect();
 
         w!(w, "impl ::intercom_cts::Marshal for ", def, " {\n");
@@ -167,7 +164,7 @@ impl RustGen<'_> {
         w!(w, "}\n\n");
     }
 
-    pub(crate) fn emit_unmarshal_impl<'c, I>(&self, def: &Def, members: I, w: &mut Twine)
+    pub(crate) fn emit_unmarshal_impl<'c, I>(def: &Def, members: I, w: &mut Twine)
     where
         I: IntoIterator<Item = &'c ic_hir::hir::Member>,
     {

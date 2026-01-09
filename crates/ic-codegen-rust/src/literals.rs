@@ -140,7 +140,7 @@ impl RustGen<'_> {
     fn emit_struct_literal(
         &self,
         struct_id: DefId,
-        fields: &[(ic_hir::hir::Ident, Numeric)],
+        fields: &[Numeric],
         ctx_id: DefId,
         w: &mut Twine,
     ) {
@@ -150,7 +150,7 @@ impl RustGen<'_> {
         let struct_def = self.hir.context.definitions.get(struct_id);
         if let DefKind::Struct(struct_ty) = &struct_def.kind {
             let members = self.struct_members(struct_ty);
-            for (member, (_, field_value)) in members.iter().zip(fields.iter()) {
+            for (member, field_value) in members.iter().zip(fields.iter()) {
                 w!(w, member.ident.name, ": ");
                 self.emit_const_value(field_value, &member.ty, ctx_id, w);
                 w!(w, ",\n");

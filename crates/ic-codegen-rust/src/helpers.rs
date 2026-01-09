@@ -27,7 +27,8 @@
 
 #![allow(clippy::cast_sign_loss)]
 
-use ic_hir::hir::{Def, DefFlags, DefId, DefKind, Numeric, PrimitiveTy, Ty, TyKind};
+use ic_hir::annotation::{Optional, find_annotation};
+use ic_hir::hir::{Def, DefFlags, DefId, DefKind, Member, Numeric, PrimitiveTy, Ty, TyKind};
 
 use crate::codegen::RustGen;
 
@@ -171,6 +172,13 @@ pub fn is_eq(def: &Def) -> bool {
 
 pub fn is_hash(def: &Def) -> bool {
     is_ord(def)
+}
+
+/// Check if a member has the @optional annotation
+pub fn is_optional(member: &Member) -> bool {
+    find_annotation::<Optional>(&member.annotations, "optional")
+        .and_then(Result::ok)
+        .is_some_and(|opt| opt.value)
 }
 
 pub fn format_integer(val: i128) -> String {

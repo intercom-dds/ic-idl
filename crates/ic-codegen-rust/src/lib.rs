@@ -33,7 +33,7 @@ mod marshal;
 use ic_cli::Command;
 use ic_emit::File;
 use ic_emit::case::Case;
-use ic_hir_xform::rename;
+use ic_hir_xform::{Convention, rename};
 
 const RUST_KEYWORDS: &[&str] = &[
     "as", "break", "const", "continue", "crate", "else", "enum", "extern", "false", "fn", "for",
@@ -103,22 +103,24 @@ pub fn codegen_rust(hir: &ic_hir::ResolvedGraph, options: RustOptions) -> Vec<Fi
     // Keep a copy of the HIR before renaming to preserve original names
     let original_hir = hir.clone();
 
-    // Strip prefixes from enumerators
-    let hir = ic_hir_xform::enum_prefix::transform(hir);
-
     // Rename `DDS::XTypes` to `DDS::xtypes`
     let hir = ic_hir_xform::rename_xtypes::transform(hir);
 
     // Rename all nodes to conform to Rust's naming convention
+    let convention = if options.no_rename {
+        Convention::default()
+    } else {
+        RUST_CONVENTION
+    };
+
     let hir = ic_hir_xform::rename::transform(
         hir,
         &rename::Target {
-            convention: RUST_CONVENTION,
+            convention,
             keyword_escape: Some(escape_rust_keyword),
             moved_defs,
-        }
-    };
-    let hir = ic_hir_xform::rename::transform(hir, &target);
+        },
+    );
 
     // Generate using native Rust backend
     codegen::RustGen::new(&hir, &original_hir, options).generate()

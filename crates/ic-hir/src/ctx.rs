@@ -199,7 +199,7 @@ impl Context {
     /// sequences, and maps, this will return the element type if it points to
     /// a definition.
     #[must_use]
-    #[allow(clippy::self_only_used_in_recursion)]
+    #[allow(clippy::only_used_in_recursion)]
     pub fn def_of(&self, ty: &Ty) -> Option<DefId> {
         match &ty.kind {
             TyKind::Array { ty, .. }

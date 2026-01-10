@@ -76,12 +76,16 @@ impl From<Span> for Range<usize> {
 }
 
 const _: () = {
+    impl ::intercom_cts::type_info::TypeDescriptor for Location {
+        const TYPE_INFO: &'static ::intercom_cts::TypeInfo<'static> = &TYPE_INFO;
+    }
+
     const TYPE_INFO: ::intercom_cts::TypeInfo<'static> = ::intercom_cts::TypeInfo {
         name: "ast::Location",
         flags: ::intercom_cts::TypeFlag::IS_APPENDABLE.union(::intercom_cts::TypeFlag::IS_NESTED),
         kind: ::intercom_cts::TypeKind::Struct,
-        key_kind: ::intercom_cts::TypeKind::None,
-        element_kind: ::intercom_cts::TypeKind::None,
+        key_info: None,
+        element_info: None,
     };
 
     const MEMBER_INFO: &[::intercom_cts::MemberInfo<'static>] = &[
@@ -89,18 +93,20 @@ const _: () = {
             name: "offset",
             member_id: 0,
             flags: ::intercom_cts::MemberFlag::nil(),
+            type_info: ::intercom_cts::type_info::<u32>(),
         },
         ::intercom_cts::MemberInfo {
             name: "file_id",
             member_id: 1,
             flags: ::intercom_cts::MemberFlag::nil(),
+            type_info: ::intercom_cts::type_info::<usize>(),
         },
     ];
 
     impl ::intercom_cts::Marshal for Location {
-        fn marshal<S>(&self, ar: S) -> ::std::result::Result<S::Ok, S::Error>
+        fn marshal<'a, S>(&self, ar: S) -> ::std::result::Result<S::Ok, S::Error>
         where
-            S: ::intercom_cts::encode::Serializer,
+            S: ::intercom_cts::encode::Serializer<'a>,
         {
             use ::intercom_cts::encode::StructSerializer as _;
             let file_id = usize::from(self.file_id);
@@ -113,9 +119,9 @@ const _: () = {
     }
 
     impl ::intercom_cts::Unmarshal for Location {
-        fn unmarshal_mut<D>(&mut self, ar: D) -> ::std::result::Result<(), D::Error>
+        fn unmarshal_mut<'de, D>(&mut self, ar: D) -> ::std::result::Result<(), D::Error>
         where
-            D: ::intercom_cts::decode::Deserializer,
+            D: ::intercom_cts::decode::Deserializer<'de>,
         {
             use ::intercom_cts::decode::StructDeserializer as _;
             let mut file_id: usize = 0;
@@ -130,12 +136,16 @@ const _: () = {
 };
 
 const _: () = {
+    impl ::intercom_cts::type_info::TypeDescriptor for Span {
+        const TYPE_INFO: &'static ::intercom_cts::TypeInfo<'static> = &TYPE_INFO;
+    }
+
     const TYPE_INFO: ::intercom_cts::TypeInfo<'static> = ::intercom_cts::TypeInfo {
         name: "ast::Span",
         flags: ::intercom_cts::TypeFlag::IS_APPENDABLE.union(::intercom_cts::TypeFlag::IS_NESTED),
         kind: ::intercom_cts::TypeKind::Struct,
-        key_kind: ::intercom_cts::TypeKind::None,
-        element_kind: ::intercom_cts::TypeKind::None,
+        key_info: None,
+        element_info: None,
     };
 
     const MEMBER_INFO: &[::intercom_cts::MemberInfo<'static>] = &[
@@ -143,18 +153,20 @@ const _: () = {
             name: "start",
             member_id: 0,
             flags: ::intercom_cts::MemberFlag::nil(),
+            type_info: ::intercom_cts::type_info::<Location>(),
         },
         ::intercom_cts::MemberInfo {
             name: "end",
             member_id: 1,
             flags: ::intercom_cts::MemberFlag::nil(),
+            type_info: ::intercom_cts::type_info::<Location>(),
         },
     ];
 
     impl ::intercom_cts::Marshal for Span {
-        fn marshal<S>(&self, ar: S) -> ::std::result::Result<S::Ok, S::Error>
+        fn marshal<'a, S>(&self, ar: S) -> ::std::result::Result<S::Ok, S::Error>
         where
-            S: ::intercom_cts::encode::Serializer,
+            S: ::intercom_cts::encode::Serializer<'a>,
         {
             use ::intercom_cts::encode::StructSerializer as _;
 
@@ -166,9 +178,9 @@ const _: () = {
     }
 
     impl ::intercom_cts::Unmarshal for Span {
-        fn unmarshal_mut<D>(&mut self, ar: D) -> ::std::result::Result<(), D::Error>
+        fn unmarshal_mut<'de, D>(&mut self, ar: D) -> ::std::result::Result<(), D::Error>
         where
-            D: ::intercom_cts::decode::Deserializer,
+            D: ::intercom_cts::decode::Deserializer<'de>,
         {
             use ::intercom_cts::decode::StructDeserializer as _;
 

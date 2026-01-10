@@ -27,77 +27,59 @@
 
 use ic_emit::printer::Twine;
 use ic_emit::w;
-use ic_hir::hir::{Def, DefKind, PrimitiveTy, TyKind};
+use ic_hir::hir::{Def, DefKind, TyKind};
 
 use crate::codegen::RustGen;
 use crate::helpers::{is_optional, rust_primitive};
 
-fn primitive_type_kind(prim: PrimitiveTy) -> &'static str {
-    match prim {
-        PrimitiveTy::Int8 => "I8",
-        PrimitiveTy::UInt8 => "U8",
-        PrimitiveTy::Int16 => "I16",
-        PrimitiveTy::UInt16 => "U16",
-        PrimitiveTy::UInt32 => "U32",
-        PrimitiveTy::UInt64 => "U64",
-        _ => "I32",
-    }
-}
-
 impl RustGen<'_> {
     pub(crate) fn emit_type_info(&self, def: &Def, w: &mut Twine) {
         let full_name = self.original_qualified_name(def.id);
-        let (kind, element_kind) = match &def.kind {
-            DefKind::Union(_) => ("Union", "None"),
-            DefKind::Enum(enum_ty) => {
-                let elem = primitive_type_kind(enum_ty.ty);
-                ("Enum", elem)
-            }
+        let kind = match &def.kind {
+            DefKind::Union(_) => "Union",
+            DefKind::Enum(_) => "Enum",
+            DefKind::Bitmask(_) => "Bitmask",
             DefKind::Struct(_)
             | DefKind::Valuetype(_)
             | DefKind::Except(_)
             | DefKind::Module(_)
             | DefKind::Const(_)
-            | DefKind::Bitmask(_)
             | DefKind::Bitset(_)
             | DefKind::Alias(_)
             | DefKind::Interface(_)
             | DefKind::Annotation(_)
-            | DefKind::Decl(_) => ("Struct", "None"),
+            | DefKind::Decl(_) => "Struct",
+        };
+
+        let element_info = match &def.kind {
+            DefKind::Enum(enum_ty) => Some(rust_primitive(enum_ty.ty)),
+            DefKind::Bitmask(bitmask_ty) => Some(rust_primitive(bitmask_ty.ty)),
+            _ => None,
         };
 
         w!(w, "const _: () = {\n");
+        Self::emit_type_descriptor(def, w);
         w!(w, "const TYPE_INFO: ::intercom_cts::TypeInfo<'static> = ::intercom_cts::TypeInfo {\n");
         w!(w, "name: \"", full_name, "\",\n");
         w!(w, "flags: ::intercom_cts::TypeFlag::IS_APPENDABLE,\n");
         w!(w, "kind: ::intercom_cts::TypeKind::", kind, ",\n");
-        w!(w, "key_kind: ::intercom_cts::TypeKind::None,\n");
-        w!(w, "element_kind: ::intercom_cts::TypeKind::", element_kind, ",\n");
+        w!(w, "key_info: None,\n");
+        if let Some(elem_ty) = element_info {
+            w!(w, "element_info: Some(::intercom_cts::type_info::<", elem_ty, ">()),\n");
+        } else {
+            w!(w, "element_info: None,\n");
+        }
         w!(w, "};\n\n");
+    }
+
+    fn emit_type_descriptor(def: &Def, w: &mut Twine) {
+        w!(w, "impl ::intercom_cts::type_info::TypeDescriptor for ", def, " {\n");
+        w!(w, "const TYPE_INFO: &'static ::intercom_cts::TypeInfo<'static> = &TYPE_INFO;\n");
+        w!(w, "}\n\n");
     }
 
     pub(crate) fn emit_type_info_close(w: &mut Twine) {
         w!(w, "};\n\n");
-    }
-
-    fn emit_member_info_array(members: &[(&str, usize, bool)], w: &mut Twine) {
-        if members.is_empty() {
-            return;
-        }
-
-        w!(w, "const MEMBER_INFO: &[::intercom_cts::MemberInfo<'static>] = &[\n");
-        for (name, id, is_optional) in members {
-            w!(w, "::intercom_cts::MemberInfo {\n");
-            w!(w, "name: \"", name, "\",\n");
-            w!(w, "member_id: ", id.to_string(), ",\n");
-            if *is_optional {
-                w!(w, "flags: ::intercom_cts::MemberFlag::IS_OPTIONAL,\n");
-            } else {
-                w!(w, "flags: ::intercom_cts::MemberFlag::nil(),\n");
-            }
-            w!(w, "},\n");
-        }
-        w!(w, "];\n\n");
     }
 
     pub(crate) fn emit_member_info(&self, def_id: ic_hir::hir::DefId, w: &mut Twine) {
@@ -109,7 +91,7 @@ impl RustGen<'_> {
             _ => vec![],
         };
 
-        // Get the regular (renamed) members to check for optional annotations
+        // Get the regular (renamed) members to check for optional annotations and types
         let def = self.hir.context.definitions.get(def_id);
         let members = match &def.kind {
             DefKind::Struct(s) => self.struct_members(s),
@@ -118,15 +100,26 @@ impl RustGen<'_> {
             _ => vec![],
         };
 
-        let member_info: Vec<_> = original_members
-            .iter()
-            .enumerate()
-            .map(|(i, m)| {
-                let is_optional = members.get(i).is_some_and(is_optional);
-                (m.ident.name.as_str(), i, is_optional)
-            })
-            .collect();
-        Self::emit_member_info_array(&member_info, w);
+        if members.is_empty() {
+            return;
+        }
+
+        w!(w, "const MEMBER_INFO: &[::intercom_cts::MemberInfo<'static>] = &[\n");
+        for (i, (orig_member, member)) in original_members.iter().zip(members.iter()).enumerate() {
+            let is_opt = is_optional(member);
+            let type_str = self.rust_type(&member.ty, def_id);
+            w!(w, "::intercom_cts::MemberInfo {\n");
+            w!(w, "name: \"", orig_member.ident.name, "\",\n");
+            w!(w, "member_id: ", i.to_string(), ",\n");
+            if is_opt {
+                w!(w, "flags: ::intercom_cts::MemberFlag::IS_OPTIONAL,\n");
+            } else {
+                w!(w, "flags: ::intercom_cts::MemberFlag::nil(),\n");
+            }
+            w!(w, "type_info: ::intercom_cts::type_info::<", type_str, ">(),\n");
+            w!(w, "},\n");
+        }
+        w!(w, "];\n\n");
     }
 
     pub(crate) fn emit_marshal_impl<'c, I>(def: &Def, members: I, w: &mut Twine)
@@ -140,9 +133,9 @@ impl RustGen<'_> {
             .collect();
 
         w!(w, "impl ::intercom_cts::Marshal for ", def, " {\n");
-        w!(w, "fn marshal<S>(&self, ar: S) -> ::std::result::Result<S::Ok, S::Error>\n");
+        w!(w, "fn marshal<'a, S>(&self, ar: S) -> ::std::result::Result<S::Ok, S::Error>\n");
         w!(w, "where\n");
-        w!(w, "\tS: ::intercom_cts::encode::Serializer,\n");
+        w!(w, "\tS: ::intercom_cts::encode::Serializer<'a>,\n");
         w!(w, "{\n");
         w!(w, "use ::intercom_cts::encode::StructSerializer as _;\n\n");
 
@@ -175,9 +168,9 @@ impl RustGen<'_> {
             .collect();
 
         w!(w, "impl ::intercom_cts::Unmarshal for ", def, " {\n");
-        w!(w, "fn unmarshal_mut<D>(&mut self, ar: D) -> ::std::result::Result<(), D::Error>\n");
+        w!(w, "fn unmarshal_mut<'a, D>(&mut self, ar: D) -> ::std::result::Result<(), D::Error>\n");
         w!(w, "where\n");
-        w!(w, "\tD: ::intercom_cts::decode::Deserializer,\n");
+        w!(w, "\tD: ::intercom_cts::decode::Deserializer<'a>,\n");
         w!(w, "{\n");
         w!(w, "use ::intercom_cts::decode::StructDeserializer as _;\n\n");
 
@@ -203,16 +196,79 @@ impl RustGen<'_> {
         w: &mut Twine,
     ) {
         let full_name = self.original_qualified_name(def.id);
-        let element_ty = primitive_type_kind(enum_ty.ty);
+        let element_ty = rust_primitive(enum_ty.ty);
 
         w!(w, "const _: () = {\n");
+        Self::emit_type_descriptor(def, w);
         w!(w, "const TYPE_INFO: ::intercom_cts::TypeInfo<'static> = ::intercom_cts::TypeInfo {\n");
         w!(w, "name: \"", full_name, "\",\n");
         w!(w, "flags: ::intercom_cts::TypeFlag::IS_APPENDABLE,\n");
         w!(w, "kind: ::intercom_cts::TypeKind::Enum,\n");
-        w!(w, "key_kind: ::intercom_cts::TypeKind::None,\n");
-        w!(w, "element_kind: ::intercom_cts::TypeKind::", element_ty, ",\n");
+        w!(w, "key_info: None,\n");
+        w!(w, "element_info: Some(::intercom_cts::type_info::<", element_ty, ">()),\n");
         w!(w, "};\n\n");
+    }
+
+    pub(crate) fn emit_bitmask_type_info(
+        &self,
+        def: &Def,
+        bitmask_ty: &ic_hir::hir::BitmaskTy,
+        w: &mut Twine,
+    ) {
+        let full_name = self.original_qualified_name(def.id);
+        let element_ty = rust_primitive(bitmask_ty.ty);
+
+        w!(w, "const _: () = {\n");
+        Self::emit_type_descriptor(def, w);
+        w!(w, "const TYPE_INFO: ::intercom_cts::TypeInfo<'static> = ::intercom_cts::TypeInfo {\n");
+        w!(w, "name: \"", full_name, "\",\n");
+        w!(w, "flags: ::intercom_cts::TypeFlag::IS_APPENDABLE,\n");
+        w!(w, "kind: ::intercom_cts::TypeKind::Bitmask,\n");
+        w!(w, "key_info: None,\n");
+        w!(w, "element_info: Some(::intercom_cts::type_info::<", element_ty, ">()),\n");
+        w!(w, "};\n\n");
+    }
+
+    pub(crate) fn emit_bitmask_member_info(
+        &self,
+        def: &Def,
+        bitmask_ty: &ic_hir::hir::BitmaskTy,
+        w: &mut Twine,
+    ) {
+        let scoped_name = self.scoped_name(def.id, def.id);
+
+        w!(w, "const MEMBER_INFO: &[::intercom_cts::MemberInfo<'static>] = &[\n");
+        for (i, &flag_id) in bitmask_ty.flags.iter().enumerate() {
+            let original_flag_def = self.original_hir.context.definitions.get(flag_id);
+            w!(w, "::intercom_cts::MemberInfo {\n");
+            w!(w, "name: \"", original_flag_def.ident.name, "\",\n");
+            w!(w, "member_id: ", i.to_string(), ",\n");
+            w!(w, "flags: ::intercom_cts::MemberFlag::nil(),\n");
+            w!(w, "type_info: ::intercom_cts::type_info::<", scoped_name, ">(),\n");
+            w!(w, "},\n");
+        }
+        w!(w, "];\n\n");
+    }
+
+    pub(crate) fn emit_enum_member_info(
+        &self,
+        def: &Def,
+        enum_ty: &ic_hir::hir::EnumTy,
+        w: &mut Twine,
+    ) {
+        let scoped_name = self.scoped_name(def.id, def.id);
+
+        w!(w, "const MEMBER_INFO: &[::intercom_cts::MemberInfo<'static>] = &[\n");
+        for (i, &field_id) in enum_ty.fields.iter().enumerate() {
+            let original_field_def = self.original_hir.context.definitions.get(field_id);
+            w!(w, "::intercom_cts::MemberInfo {\n");
+            w!(w, "name: \"", original_field_def.ident.name, "\",\n");
+            w!(w, "member_id: ", i.to_string(), ",\n");
+            w!(w, "flags: ::intercom_cts::MemberFlag::nil(),\n");
+            w!(w, "type_info: ::intercom_cts::type_info::<", scoped_name, ">(),\n");
+            w!(w, "},\n");
+        }
+        w!(w, "];\n\n");
     }
 
     pub(crate) fn emit_enum_marshal_impl(
@@ -224,9 +280,9 @@ impl RustGen<'_> {
         let rust_ty = rust_primitive(enum_ty.ty);
 
         w!(w, "impl ::intercom_cts::Marshal for ", def, " {\n");
-        w!(w, "fn marshal<S>(&self, ar: S) -> ::std::result::Result<S::Ok, S::Error>\n");
+        w!(w, "fn marshal<'a, S>(&self, ar: S) -> ::std::result::Result<S::Ok, S::Error>\n");
         w!(w, "where\n");
-        w!(w, "\tS: ::intercom_cts::encode::Serializer,\n");
+        w!(w, "\tS: ::intercom_cts::encode::Serializer<'a>,\n");
         w!(w, "{\n");
         w!(w, "use ::intercom_cts::encode::EnumSerializer as _;\n\n");
         w!(w, "let state = ar.encode_enum(TYPE_INFO.name)?;\n");
@@ -255,9 +311,9 @@ impl RustGen<'_> {
         let qual = self.hir.context.qualified_name(def.id);
 
         w!(w, "impl ::intercom_cts::Unmarshal for ", def, " {\n");
-        w!(w, "fn unmarshal_mut<D>(&mut self, ar: D) -> ::std::result::Result<(), D::Error>\n");
+        w!(w, "fn unmarshal_mut<'a, D>(&mut self, ar: D) -> ::std::result::Result<(), D::Error>\n");
         w!(w, "where\n");
-        w!(w, "\tD: ::intercom_cts::decode::Deserializer,\n");
+        w!(w, "\tD: ::intercom_cts::decode::Deserializer<'a>,\n");
         w!(w, "{\n");
         w!(w, "use ::intercom_cts::decode::EnumDeserializer as _;\n\n");
         w!(w, "let state = ar.decode_enum(TYPE_INFO.name)?;\n");
@@ -267,9 +323,9 @@ impl RustGen<'_> {
         w!(w, "}\n\n");
 
         w!(w, "impl ::intercom_cts::decode::EnumVisitor for ", def, " {\n");
-        w!(w, "fn member_id<D>(self, de: D) -> ::std::result::Result<Self, D::Error>\n");
+        w!(w, "fn member_id<'a, D>(self, de: D) -> ::std::result::Result<Self, D::Error>\n");
         w!(w, "where\n");
-        w!(w, "\tD: ::intercom_cts::decode::Deserializer,\n");
+        w!(w, "\tD: ::intercom_cts::decode::Deserializer<'a>,\n");
         w!(w, "{\n");
         w!(w, "use ::intercom_cts::error::Error as _;\n\n");
         w!(w, "let value = match de.decode_", rust_ty, "()? {\n");
@@ -285,9 +341,9 @@ impl RustGen<'_> {
         w!(w, "Ok(value)\n");
         w!(w, "}\n\n");
 
-        w!(w, "fn member_field<D>(self, name: &str) -> ::std::result::Result<Self, D::Error>\n");
+        w!(w, "fn member_field<'a, D>(self, name: &str) -> ::std::result::Result<Self, D::Error>\n");
         w!(w, "where\n");
-        w!(w, "\tD: ::intercom_cts::decode::Deserializer,\n");
+        w!(w, "\tD: ::intercom_cts::decode::Deserializer<'a>,\n");
         w!(w, "{\n");
         w!(w, "use ::intercom_cts::error::Error as _;\n\n");
         w!(w, "let value = match name {\n");
@@ -317,21 +373,29 @@ impl RustGen<'_> {
             _ => union_ty,
         };
 
-        // Discriminator has member_id 0, so start at 1 for members
-        let mut member_id = 1;
-        let member_info: Vec<_> = union_ty
+        let variants: Vec<_> = union_ty
             .variants
             .iter()
             .zip(&original_union.variants)
             .filter(|(v, _)| !matches!(v.ty.kind, TyKind::Null))
-            .map(|(_, orig_v)| {
-                let id = member_id;
-                member_id += 1;
-                (orig_v.ident.name.as_str(), id, false) // Union variants are never optional
-            })
             .collect();
 
-        Self::emit_member_info_array(&member_info, w);
+        if variants.is_empty() {
+            return;
+        }
+
+        w!(w, "const MEMBER_INFO: &[::intercom_cts::MemberInfo<'static>] = &[\n");
+        // Discriminator has member_id 0, so start at 1 for members
+        for (i, (variant, orig_variant)) in variants.iter().enumerate() {
+            let type_str = self.rust_type(&variant.ty, def.id);
+            w!(w, "::intercom_cts::MemberInfo {\n");
+            w!(w, "name: \"", orig_variant.ident.name, "\",\n");
+            w!(w, "member_id: ", (i + 1).to_string(), ",\n");
+            w!(w, "flags: ::intercom_cts::MemberFlag::nil(),\n");
+            w!(w, "type_info: ::intercom_cts::type_info::<", type_str, ">(),\n");
+            w!(w, "},\n");
+        }
+        w!(w, "];\n\n");
     }
 
     pub(crate) fn emit_union_marshal_impl(
@@ -341,9 +405,9 @@ impl RustGen<'_> {
         w: &mut Twine,
     ) {
         w!(w, "impl ::intercom_cts::Marshal for ", def, " {\n");
-        w!(w, "fn marshal<S>(&self, ar: S) -> ::std::result::Result<S::Ok, S::Error>\n");
+        w!(w, "fn marshal<'a, S>(&self, ar: S) -> ::std::result::Result<S::Ok, S::Error>\n");
         w!(w, "where\n");
-        w!(w, "\tS: ::intercom_cts::encode::Serializer,\n");
+        w!(w, "\tS: ::intercom_cts::encode::Serializer<'a>,\n");
         w!(w, "{\n");
 
         w!(w, "use ::intercom_cts::encode::UnionSerializer as _;\n\n");
@@ -403,9 +467,9 @@ impl RustGen<'_> {
         let disc_ty = self.rust_type(&union_ty.disc.ty, def.id);
 
         w!(w, "impl ::intercom_cts::Unmarshal for ", def, " {\n");
-        w!(w, "fn unmarshal_mut<D>(&mut self, ar: D) -> ::std::result::Result<(), D::Error>\n");
+        w!(w, "fn unmarshal_mut<'a, D>(&mut self, ar: D) -> ::std::result::Result<(), D::Error>\n");
         w!(w, "where\n");
-        w!(w, "\tD: ::intercom_cts::decode::Deserializer,\n");
+        w!(w, "\tD: ::intercom_cts::decode::Deserializer<'a>,\n");
         w!(w, "{\n");
 
         w!(w, "use ::intercom_cts::decode::UnionDeserializer as _;\n\n");

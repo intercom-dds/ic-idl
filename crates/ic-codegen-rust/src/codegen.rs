@@ -517,7 +517,8 @@ impl<'a> RustGen<'a> {
         w!(w, "match self {\n");
         for &field_id in &enum_ty.fields {
             let field_def = self.hir.context.definitions.get(field_id);
-            w!(w, "Self::", field_def, " => f.write_str(\"", field_def, "\"),\n");
+            let original_name = self.original_name(field_id);
+            w!(w, "Self::", field_def, " => f.write_str(\"", original_name, "\"),\n");
         }
         w!(w, "}\n");
         w!(w, "}\n");
@@ -709,6 +710,7 @@ impl<'a> RustGen<'a> {
                 self.emit_enum_impl(def, enum_ty, w);
                 Self::emit_default_impl(def, w);
                 self.emit_enum_type_info(def, enum_ty, w);
+                self.emit_enum_member_info(def, enum_ty, w);
                 self.emit_enum_marshal_impl(def, enum_ty, w);
                 self.emit_enum_unmarshal_impl(def, enum_ty, w);
                 Self::emit_type_info_close(w);
@@ -717,6 +719,9 @@ impl<'a> RustGen<'a> {
                 self.emit_bitmask(def, bitmask_ty, w);
                 self.emit_bitmask_impl(def, w);
                 Self::emit_default_impl(def, w);
+                self.emit_bitmask_type_info(def, bitmask_ty, w);
+                self.emit_bitmask_member_info(def, bitmask_ty, w);
+                Self::emit_type_info_close(w);
             }
             DefKind::Alias(alias_ty) => {
                 self.emit_alias(def, alias_ty, w);

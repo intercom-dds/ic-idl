@@ -35,6 +35,7 @@ use std::collections::HashMap;
 
 use ic_diagnostic::{Color, Diag, Label as DiagLabel};
 use ic_syntax::Span;
+use tracing::{debug, debug_span};
 
 use crate::hir::{
     AliasTy, Ann, AnnArg, AnnotationTy, Attribute, BitmaskTy, BitsetField, BitsetTy, ConstTy, Decl,
@@ -44,7 +45,6 @@ use crate::hir::{
 use crate::scope::ScopeId;
 use crate::{Context, ResolvedGraph};
 
-/// Represents the result of merging multiple HIR trees.
 pub struct MergedGraph {
     pub context: Context,
     pub order: Vec<DefId>,
@@ -68,6 +68,9 @@ type ScopeIdMap = HashMap<ScopeId, ScopeId>;
 /// A new `MergedGraph` containing the unified HIR tree.
 #[must_use]
 pub fn merge_hir_trees(graphs: &[ResolvedGraph]) -> MergedGraph {
+    let _span = debug_span!("merge_hir_trees", graph_count = graphs.len()).entered();
+    debug!("merging {} HIR trees", graphs.len());
+
     if graphs.is_empty() {
         return MergedGraph {
             context: Context::new(),
@@ -81,7 +84,14 @@ pub fn merge_hir_trees(graphs: &[ResolvedGraph]) -> MergedGraph {
     for graph in graphs {
         merger.add_graph(graph);
     }
-    merger.finish()
+
+    let result = merger.finish();
+    debug!(
+        defs = result.context.definitions.len(),
+        merged_order = ?result.order,
+        "merged",
+    );
+    result
 }
 
 /// Internal state for the HIR merging process.
@@ -188,17 +198,14 @@ impl HirMerger {
 
         // Check if all parameters match in order
         for (p1, p2) in ann1.params.iter().zip(ann2.params.iter()) {
-            // Parameter names must match
             if p1.ident.name != p2.ident.name {
                 return false;
             }
 
-            // Parameter types must match
             if !Self::types_are_identical(&p1.ty, &p2.ty) {
                 return false;
             }
 
-            // Default values must match
             match (&p1.default, &p2.default) {
                 (None, None) => {}
                 (Some(v1), Some(v2)) => {
@@ -347,56 +354,80 @@ impl HirMerger {
     /// to avoid redundant work on deduplicated definitions.
     fn add_graph(&mut self, graph: &ResolvedGraph) {
         let graph_index = self.def_id_maps.len();
+        let _span = debug_span!("add_graph", graph_index).entered();
+        debug!(
+            def_count = graph.context.definitions.len(),
+            scope_count = graph.context.scopes.scopes.len(),
+            "merging graph"
+        );
+
         self.def_id_maps.push(HashMap::new());
         self.scope_id_maps.push(HashMap::new());
 
         // Phase 1: Copy scope structure
-        self.copy_scopes(graph_index, &graph.context);
+        {
+            let _phase_span = debug_span!("phase", phase = 1, name = "copy_scopes").entered();
+            self.copy_scopes(graph_index, &graph.context);
+        }
 
         // Phase 2: Copy all definitions
-        let all_def_ids: Vec<DefId> = graph.context.definitions.iter().map(|(id, _)| id).collect();
-        let mut parent_fixups: Vec<(DefId, Option<DefId>)> = Vec::new();
-        let mut scope_parent_fixups: Vec<(DefId, ScopeId)> = Vec::new();
+        {
+            let _phase_span = debug_span!("phase", phase = 2, name = "copy_definitions").entered();
+            let all_def_ids: Vec<DefId> =
+                graph.context.definitions.iter().map(|(id, _)| id).collect();
+            let mut parent_fixups: Vec<(DefId, Option<DefId>)> = Vec::new();
+            let mut scope_parent_fixups: Vec<(DefId, ScopeId)> = Vec::new();
 
-        for old_def_id in all_def_ids {
-            let old_scope = graph
-                .context
-                .scopes
-                .find_scope_containing_def(old_def_id)
-                .unwrap_or(graph.context.scopes.root());
+            for old_def_id in all_def_ids {
+                let old_scope = graph
+                    .context
+                    .scopes
+                    .find_scope_containing_def(old_def_id)
+                    .unwrap_or(graph.context.scopes.root());
 
-            let new_def_id =
-                self.copy_definition(graph_index, &graph.context, old_def_id, old_scope);
+                let new_def_id =
+                    self.copy_definition(graph_index, &graph.context, old_def_id, old_scope);
 
-            let old_def = graph.context.definitions.get(old_def_id);
-            if old_def.parent.is_some() {
-                parent_fixups.push((new_def_id, old_def.parent));
-            } else if old_scope != graph.context.scopes.root() {
-                let old_scope_data = &graph.context.scopes.scopes[old_scope.0];
-                if old_scope_data.def_id.is_some() {
-                    scope_parent_fixups.push((new_def_id, old_scope));
+                let old_def = graph.context.definitions.get(old_def_id);
+                if old_def.parent.is_some() {
+                    parent_fixups.push((new_def_id, old_def.parent));
+                } else if old_scope != graph.context.scopes.root() {
+                    let old_scope_data = &graph.context.scopes.scopes[old_scope.0];
+                    if old_scope_data.def_id.is_some() {
+                        scope_parent_fixups.push((new_def_id, old_scope));
+                    }
                 }
+            }
+
+            // Phase 3: Fix parent relationships
+            for (new_def_id, old_scope) in scope_parent_fixups {
+                self.fix_scope_parent(graph_index, &graph.context, new_def_id, old_scope);
+            }
+            for (new_def_id, original_parent) in parent_fixups {
+                self.fix_parent_relationship(graph_index, new_def_id, original_parent);
             }
         }
 
-        // Phase 3: Fix parent relationships
-        for (new_def_id, old_scope) in scope_parent_fixups {
-            self.fix_scope_parent(graph_index, &graph.context, new_def_id, old_scope);
-        }
-        for (new_def_id, original_parent) in parent_fixups {
-            self.fix_parent_relationship(graph_index, new_def_id, original_parent);
-        }
-
         // Phase 4: Update definition order
-        self.add_to_order(graph_index, &graph.order);
-        self.add_to_builtin_order(graph_index, &graph.builtin_order);
+        {
+            let _phase_span = debug_span!("phase", phase = 4, name = "update_order").entered();
+            self.add_to_order(graph_index, &graph.order);
+            self.add_to_builtin_order(graph_index, &graph.builtin_order);
+        }
 
         // Phase 5: Update scope metadata
-        self.update_scope_def_ids(graph_index);
-        self.update_scope_def_id_fields(graph_index, &graph.context);
+        {
+            let _phase_span =
+                debug_span!("phase", phase = 5, name = "update_scope_metadata").entered();
+            self.update_scope_def_ids(graph_index);
+            self.update_scope_def_id_fields(graph_index, &graph.context);
+        }
 
         // Phase 6: Update internal references
-        self.update_references(graph_index);
+        {
+            let _phase_span = debug_span!("phase", phase = 6, name = "update_references").entered();
+            self.update_references(graph_index);
+        }
     }
 
     fn fix_scope_parent(
@@ -536,9 +567,7 @@ impl HirMerger {
             return None;
         }
 
-        let compatible = Self::are_compatible_defs(&old_def.kind, &existing_def.kind);
-
-        if compatible {
+        if Self::are_compatible_defs(&old_def.kind, &existing_def.kind) {
             let is_decl_and_def = matches!(
                 (&old_def.kind, &existing_def.kind),
                 (
@@ -836,13 +865,10 @@ impl HirMerger {
 
     /// Updates all references within a definition to point to the new merged definitions
     fn update_def_references(&mut self, graph_index: usize, new_def_id: DefId) {
-        // Check if this definition was created in this graph (not deduplicated)
-        // A definition was created in this graph if it doesn't appear in any earlier graph's values
         let was_created_in_this_graph = !self.def_id_maps[..graph_index]
             .iter()
             .any(|earlier_map| earlier_map.values().any(|&id| id == new_def_id));
 
-        // Only update if this definition was created in this graph
         if !was_created_in_this_graph {
             return;
         }

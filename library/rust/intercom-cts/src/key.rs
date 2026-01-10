@@ -1,29 +1,10 @@
-// Copyright 2025 KONGSBERG
-//
-// Redistribution and use in source and binary forms, with or without
-// modification, are permitted provided that the following conditions are met:
-//
-// 1. Redistributions of source code must retain the above copyright notice,
-//    this list of conditions and the following disclaimer.
-//
-// 2. Redistributions in binary form must reproduce the above copyright notice,
-//    this list of conditions and the following disclaimer in the documentation
-//    and/or other materials provided with the distribution.
-//
-// 3. Neither the name of the copyright holder nor the names of its contributors
-//    may be used to endorse or promote products derived from this software
-//    without specific prior written permission.
-//
-// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
-// ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
-// WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
-// DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
-// FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
-// DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
-// SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
-// CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
-// OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
-// OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+// KONGSBERG PROPRIETARY - This software, related documentation and its accompanying elements,
+// contain information which is proprietary and confidential to KONGSBERG or its licensors.
+// Any disclosure, copying, distribution or use is prohibited if not otherwise explicitly agreed
+// with KONGSBERG in writing. It is strictly prohibited to modify, reverse engineer, decompile,
+// or disassemble the software, unless such acts are allowed under applicable mandatory law or
+// explicitly agreed with KONGSBERG in writing. Any authorized reproduction, in whole or in part,
+// must include this legend. (C) 2025 KONGSBERG - All rights reserved
 
 //! Machinery for key-only serialization.
 
@@ -37,9 +18,9 @@ struct Key<T> {
 }
 
 impl<T: Marshal> Marshal for Key<T> {
-    fn marshal<S>(&self, archive: S) -> Result<S::Ok, S::Error>
+    fn marshal<'a, S>(&self, archive: S) -> Result<S::Ok, S::Error>
     where
-        S: Serializer,
+        S: Serializer<'a>,
     {
         let adapter = KeyAdapter {
             inner: archive,
@@ -51,9 +32,9 @@ impl<T: Marshal> Marshal for Key<T> {
 }
 
 impl<T: Unmarshal> Unmarshal for Key<T> {
-    fn unmarshal_mut<D>(&mut self, archive: D) -> Result<(), D::Error>
+    fn unmarshal_mut<'a, D>(&mut self, archive: D) -> Result<(), D::Error>
     where
-        D: Deserializer,
+        D: Deserializer<'a>,
     {
         let adapter = KeyAdapter {
             inner: archive,
@@ -82,7 +63,7 @@ impl<S> KeyAdapter<S> {
     }
 }
 
-impl<S: Serializer> Serializer for KeyAdapter<S> {
+impl<'a, S: Serializer<'a>> Serializer<'a> for KeyAdapter<S> {
     type Ok = S::Ok;
     type Error = S::Error;
     type Struct = KeyAdapter<S::Struct>;
@@ -176,7 +157,7 @@ impl<S: Serializer> Serializer for KeyAdapter<S> {
     }
 
     #[inline]
-    fn encode_struct(self, info: &TypeInfo<'_>) -> Result<Self::Struct, Self::Error> {
+    fn encode_struct(self, info: &TypeInfo<'a>) -> Result<Self::Struct, Self::Error> {
         let implicit =
             self.implicit || (self.depth > 0 && !info.flags.contains(TypeFlag::IS_KEYED));
         self.inner.encode_struct(info).map(|inner| KeyAdapter {
@@ -187,7 +168,7 @@ impl<S: Serializer> Serializer for KeyAdapter<S> {
     }
 
     #[inline]
-    fn encode_union(self, info: &TypeInfo<'_>) -> Result<Self::Union, Self::Error> {
+    fn encode_union(self, info: &TypeInfo<'a>) -> Result<Self::Union, Self::Error> {
         let implicit = self.implicit || info.flags.contains(TypeFlag::IS_KEYED);
         self.inner.encode_union(info).map(|inner| KeyAdapter {
             inner,
@@ -217,12 +198,12 @@ impl<S: Serializer> Serializer for KeyAdapter<S> {
     }
 }
 
-impl<S: StructSerializer> StructSerializer for KeyAdapter<S> {
+impl<'a, S: StructSerializer<'a>> StructSerializer<'a> for KeyAdapter<S> {
     type Ok = S::Ok;
     type Error = S::Error;
 
     #[inline]
-    fn encode_field<T>(&mut self, info: &MemberInfo<'_>, value: &T) -> Result<(), Self::Error>
+    fn encode_field<T>(&mut self, info: &MemberInfo<'a>, value: &T) -> Result<(), Self::Error>
     where
         T: Marshal,
     {
@@ -238,7 +219,7 @@ impl<S: StructSerializer> StructSerializer for KeyAdapter<S> {
         Ok(())
     }
 
-    fn encode_optional<T>(&mut self, _: &MemberInfo<'_>, _: &Option<T>) -> Result<(), Self::Error>
+    fn encode_optional<T>(&mut self, _: &MemberInfo<'a>, _: &Option<T>) -> Result<(), Self::Error>
     where
         T: Marshal,
     {
@@ -251,7 +232,7 @@ impl<S: StructSerializer> StructSerializer for KeyAdapter<S> {
     }
 }
 
-impl<S: UnionSerializer> UnionSerializer for KeyAdapter<S> {
+impl<'a, S: UnionSerializer<'a>> UnionSerializer<'a> for KeyAdapter<S> {
     type Ok = S::Ok;
     type Error = S::Error;
 
@@ -264,7 +245,7 @@ impl<S: UnionSerializer> UnionSerializer for KeyAdapter<S> {
     }
 
     #[inline]
-    fn encode_variant<V>(self, _: &MemberInfo<'_>, _: &V) -> Result<Self::Ok, Self::Error>
+    fn encode_variant<V>(self, _: &MemberInfo<'a>, _: &V) -> Result<Self::Ok, Self::Error>
     where
         V: Marshal,
     {
@@ -277,7 +258,7 @@ impl<S: UnionSerializer> UnionSerializer for KeyAdapter<S> {
     }
 }
 
-impl<D: Deserializer> Deserializer for KeyAdapter<D> {
+impl<'a, D: Deserializer<'a>> Deserializer<'a> for KeyAdapter<D> {
     type Error = D::Error;
     type Struct = KeyAdapter<D::Struct>;
     type Union = D::Union;
@@ -285,6 +266,7 @@ impl<D: Deserializer> Deserializer for KeyAdapter<D> {
     type Sequence = D::Sequence;
     type Array = D::Array;
     type Map = D::Map;
+    type Option = D::Option;
 
     #[inline]
     fn decode_bool(self) -> Result<bool, Self::Error> {
@@ -362,23 +344,7 @@ impl<D: Deserializer> Deserializer for KeyAdapter<D> {
     }
 
     #[inline]
-    fn decode_option<T>(self) -> Result<Option<T>, Self::Error>
-    where
-        T: Unmarshal + Default,
-    {
-        self.inner.decode_option()
-    }
-
-    #[inline]
-    fn decode_option_mut<T>(self, value: &mut T) -> Result<bool, Self::Error>
-    where
-        T: Unmarshal,
-    {
-        self.inner.decode_option_mut(value)
-    }
-
-    #[inline]
-    fn decode_struct(self, info: &TypeInfo<'_>) -> Result<Self::Struct, Self::Error> {
+    fn decode_struct(self, info: &TypeInfo<'a>) -> Result<Self::Struct, Self::Error> {
         let implicit =
             self.implicit || (self.depth > 0 && !info.flags.contains(TypeFlag::IS_KEYED));
         self.inner.decode_struct(info).map(|inner| KeyAdapter {
@@ -389,7 +355,7 @@ impl<D: Deserializer> Deserializer for KeyAdapter<D> {
     }
 
     #[inline]
-    fn decode_union(self, info: &TypeInfo<'_>) -> Result<Self::Union, Self::Error> {
+    fn decode_union(self, info: &TypeInfo<'a>) -> Result<Self::Union, Self::Error> {
         self.inner.decode_union(info)
     }
 
@@ -412,14 +378,19 @@ impl<D: Deserializer> Deserializer for KeyAdapter<D> {
     fn decode_map(self) -> Result<Self::Map, Self::Error> {
         self.inner.decode_map()
     }
+
+    #[inline]
+    fn begin_decode_option(self) -> Result<Self::Option, Self::Error> {
+        self.inner.begin_decode_option()
+    }
 }
 
-impl<D: StructDeserializer> StructDeserializer for KeyAdapter<D> {
+impl<'a, D: StructDeserializer<'a>> StructDeserializer<'a> for KeyAdapter<D> {
     type Ok = D::Ok;
     type Error = D::Error;
 
     #[inline]
-    fn decode_field<T>(&mut self, info: &MemberInfo<'_>, value: &mut T) -> Result<(), Self::Error>
+    fn decode_field<T>(&mut self, info: &MemberInfo<'a>, value: &mut T) -> Result<(), Self::Error>
     where
         T: Unmarshal,
     {

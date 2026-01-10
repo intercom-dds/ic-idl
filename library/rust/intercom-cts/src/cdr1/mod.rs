@@ -1,40 +1,23 @@
-// Copyright 2025 KONGSBERG
-//
-// Redistribution and use in source and binary forms, with or without
-// modification, are permitted provided that the following conditions are met:
-//
-// 1. Redistributions of source code must retain the above copyright notice,
-//    this list of conditions and the following disclaimer.
-//
-// 2. Redistributions in binary form must reproduce the above copyright notice,
-//    this list of conditions and the following disclaimer in the documentation
-//    and/or other materials provided with the distribution.
-//
-// 3. Neither the name of the copyright holder nor the names of its contributors
-//    may be used to endorse or promote products derived from this software
-//    without specific prior written permission.
-//
-// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
-// ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
-// WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
-// DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
-// FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
-// DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
-// SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
-// CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
-// OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
-// OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+// KONGSBERG PROPRIETARY - This software, related documentation and its accompanying elements,
+// contain information which is proprietary and confidential to KONGSBERG or its licensors.
+// Any disclosure, copying, distribution or use is prohibited if not otherwise explicitly agreed
+// with KONGSBERG in writing. It is strictly prohibited to modify, reverse engineer, decompile,
+// or disassemble the software, unless such acts are allowed under applicable mandatory law or
+// explicitly agreed with KONGSBERG in writing. Any authorized reproduction, in whole or in part,
+// must include this legend. (C) 2024 KONGSBERG - All rights reserved
 
 mod de;
 mod ser;
 
-pub use de::{from_be_bytes, from_bytes, from_bytes_mut, from_le_bytes};
-pub use ser::{to_be_bytes, to_bytes, to_le_bytes};
+pub use de::{CdrReader, from_be_bytes, from_bytes, from_bytes_mut, from_le_bytes};
+pub use ser::{CdrWriter, to_be_bytes, to_buffer, to_bytes, to_le_bytes};
 
-use crate::cdr::Error;
+use crate::buf::Buffer;
+use crate::buf::endian::Endian;
+pub use crate::cdr::Error;
 
 #[derive(Copy, Clone, Debug, PartialEq)]
-enum Encoding {
+pub enum Encoding {
     /// Plain CDR encoding, typically used for final types.
     Plain,
 
@@ -70,12 +53,6 @@ crate::bitmask! {
     }
 }
 
-#[derive(Copy, Clone, Debug)]
-pub struct Encapsulation {
-    pub scheme: Scheme,
-    pub len: usize,
-}
-
 #[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum Scheme {
     CdrBe = 0,
@@ -91,6 +68,26 @@ pub enum Scheme {
     PlCdr2Le = 11,
     PlainCdrBe = 128,
     PlainCdrLe = 129,
+}
+
+impl Scheme {
+    #[must_use]
+    pub fn is_le(&self) -> bool {
+        matches!(
+            self,
+            Scheme::CdrLe
+                | Scheme::PlCdrLe
+                | Scheme::Cdr2Le
+                | Scheme::DelimitedCdr2Le
+                | Scheme::PlCdr2Le
+                | Scheme::PlainCdrLe
+        )
+    }
+
+    #[must_use]
+    pub fn is_be(&self) -> bool {
+        !self.is_le()
+    }
 }
 
 impl TryFrom<u8> for Scheme {
@@ -116,16 +113,23 @@ impl TryFrom<u8> for Scheme {
     }
 }
 
-pub fn encapsulation(bytes: &[u8]) -> Result<Encapsulation, Error> {
+pub fn encapsulation(bytes: &[u8]) -> Result<(Scheme, &[u8]), Error> {
     if bytes.len() >= 4 {
         let scheme = Scheme::try_from(bytes[1])?;
         let padding = usize::from(bytes[3] & 3);
 
         if bytes.len() >= 4 + padding {
             let len = bytes.len() - 4 - padding;
-            return Ok(Encapsulation { scheme, len });
+            return Ok((scheme, &bytes[4..4 + len]));
         }
     }
 
     Err(Error::InvalidLen)
+}
+
+pub fn write_encapsulation<E: Endian>(buffer: &mut Buffer<E>, scheme: Scheme) {
+    buffer.write_u8(0);
+    buffer.write_u8(scheme as u8);
+    buffer.write_u8(0);
+    buffer.write_u8(0);
 }

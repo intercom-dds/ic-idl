@@ -1,36 +1,17 @@
-// Copyright 2025 KONGSBERG
-//
-// Redistribution and use in source and binary forms, with or without
-// modification, are permitted provided that the following conditions are met:
-//
-// 1. Redistributions of source code must retain the above copyright notice,
-//    this list of conditions and the following disclaimer.
-//
-// 2. Redistributions in binary form must reproduce the above copyright notice,
-//    this list of conditions and the following disclaimer in the documentation
-//    and/or other materials provided with the distribution.
-//
-// 3. Neither the name of the copyright holder nor the names of its contributors
-//    may be used to endorse or promote products derived from this software
-//    without specific prior written permission.
-//
-// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
-// ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
-// WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
-// DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
-// FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
-// DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
-// SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
-// CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
-// OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
-// OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+// KONGSBERG PROPRIETARY - This software, related documentation and its accompanying elements,
+// contain information which is proprietary and confidential to KONGSBERG or its licensors.
+// Any disclosure, copying, distribution or use is prohibited if not otherwise explicitly agreed
+// with KONGSBERG in writing. It is strictly prohibited to modify, reverse engineer, decompile,
+// or disassemble the software, unless such acts are allowed under applicable mandatory law or
+// explicitly agreed with KONGSBERG in writing. Any authorized reproduction, in whole or in part,
+// must include this legend. (C) 2023 KONGSBERG - All rights reserved
 
 use super::Error;
 use crate::decode::Deserializer;
 use crate::encode::{EnumSerializer, Serializer};
 use crate::error::Error as Err;
 use crate::infallible::Never;
-use crate::{Marshal, TypeInfo, Unmarshal};
+use crate::{Marshal, TypeInfo};
 
 pub struct KeySerializer;
 
@@ -38,7 +19,7 @@ fn invalid<T, E: Err>() -> Result<T, E> {
     Err(Err::custom("map keys must be strings, integers or enums"))
 }
 
-impl Serializer for KeySerializer {
+impl Serializer<'_> for KeySerializer {
     type Ok = String;
     type Error = Error;
 
@@ -132,7 +113,7 @@ impl Serializer for KeySerializer {
         invalid()
     }
 
-    fn encode_array(self, _: usize) -> Result<<Self as Serializer>::Array, Self::Error> {
+    fn encode_array(self, _: usize) -> Result<Self::Array, Self::Error> {
         invalid()
     }
 
@@ -153,9 +134,9 @@ impl EnumSerializer for KeySerializer {
     }
 }
 
-pub struct KeyDeserializer<D: Deserializer>(pub D);
+pub struct KeyDeserializer<D>(pub D);
 
-impl<D: Deserializer> Deserializer for KeyDeserializer<D> {
+impl<'a, D: Deserializer<'a>> Deserializer<'a> for KeyDeserializer<D> {
     type Error = D::Error;
 
     type Struct = Never<(), Self::Error>;
@@ -164,6 +145,7 @@ impl<D: Deserializer> Deserializer for KeyDeserializer<D> {
     type Map = Never<(), Self::Error>;
     type Sequence = Never<(), Self::Error>;
     type Array = Never<(), Self::Error>;
+    type Option = Never<(), Self::Error>;
 
     fn decode_bool(self) -> Result<bool, Self::Error> {
         self.0.decode_bool()
@@ -225,20 +207,6 @@ impl<D: Deserializer> Deserializer for KeyDeserializer<D> {
         invalid()
     }
 
-    fn decode_option<T>(self) -> Result<Option<T>, Self::Error>
-    where
-        T: Unmarshal + Default,
-    {
-        invalid()
-    }
-
-    fn decode_option_mut<T>(self, _: &mut T) -> Result<bool, Self::Error>
-    where
-        T: Unmarshal,
-    {
-        invalid()
-    }
-
     fn decode_struct(self, _: &TypeInfo<'_>) -> Result<Self::Struct, Self::Error> {
         invalid()
     }
@@ -260,6 +228,10 @@ impl<D: Deserializer> Deserializer for KeyDeserializer<D> {
     }
 
     fn decode_map(self) -> Result<Self::Map, Self::Error> {
+        invalid()
+    }
+
+    fn begin_decode_option(self) -> Result<Self::Option, Self::Error> {
         invalid()
     }
 }

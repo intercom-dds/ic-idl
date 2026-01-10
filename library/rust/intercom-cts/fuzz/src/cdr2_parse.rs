@@ -4,17 +4,14 @@
 // with KONGSBERG in writing. It is strictly prohibited to modify, reverse engineer, decompile,
 // or disassemble the software, unless such acts are allowed under applicable mandatory law or
 // explicitly agreed with KONGSBERG in writing. Any authorized reproduction, in whole or in part,
-// must include this legend. (C) 2023 KONGSBERG - All rights reserved
+// must include this legend. (C) 2025 KONGSBERG - All rights reserved
 
-mod de;
-mod error;
-mod ser;
+#![no_main]
 
-pub use de::{from_be_bytes, from_bytes, from_bytes_mut, from_le_bytes};
-pub use error::Error;
-pub use ser::{to_be_bytes, to_le_bytes};
+use intercom_cts::cdr2::from_le_bytes;
+use intercom_cts::cdr2::mutable::SeqType;
+use libfuzzer_sys::fuzz_target;
 
-/// Alias for a `Result` with the error type [`cdr::Error`].
-///
-/// [`cdr::Error`]: Error
-pub type Result<T> = std::result::Result<T, Error>;
+fuzz_target!(|data: &[u8]| {
+    _ = from_le_bytes::<SeqType>(data);
+});

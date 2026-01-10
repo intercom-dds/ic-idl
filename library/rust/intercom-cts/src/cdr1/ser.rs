@@ -1,31 +1,12 @@
-// Copyright 2025 KONGSBERG
-//
-// Redistribution and use in source and binary forms, with or without
-// modification, are permitted provided that the following conditions are met:
-//
-// 1. Redistributions of source code must retain the above copyright notice,
-//    this list of conditions and the following disclaimer.
-//
-// 2. Redistributions in binary form must reproduce the above copyright notice,
-//    this list of conditions and the following disclaimer in the documentation
-//    and/or other materials provided with the distribution.
-//
-// 3. Neither the name of the copyright holder nor the names of its contributors
-//    may be used to endorse or promote products derived from this software
-//    without specific prior written permission.
-//
-// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
-// ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
-// WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
-// DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
-// FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
-// DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
-// SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
-// CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
-// OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
-// OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+// KONGSBERG PROPRIETARY - This software, related documentation and its accompanying elements,
+// contain information which is proprietary and confidential to KONGSBERG or its licensors.
+// Any disclosure, copying, distribution or use is prohibited if not otherwise explicitly agreed
+// with KONGSBERG in writing. It is strictly prohibited to modify, reverse engineer, decompile,
+// or disassemble the software, unless such acts are allowed under applicable mandatory law or
+// explicitly agreed with KONGSBERG in writing. Any authorized reproduction, in whole or in part,
+// must include this legend. (C) 2024 KONGSBERG - All rights reserved
 
-#![allow(dead_code, clippy::cast_possible_truncation)]
+#![allow(clippy::cast_possible_truncation)]
 
 use super::TypeFlag;
 use crate::buf::Buffer;
@@ -33,24 +14,24 @@ use crate::buf::endian::{Big, Endian, Little};
 use crate::cdr::Error;
 use crate::cdr1::{Encoding, MemberFlag};
 use crate::encode::{
-    ArraySerializer, EnumSerializer, MapSerializer, Marshal, MemberInfo, SeqSerializer, Serializer,
+    ArraySerializer, EnumSerializer, MapSerializer, Marshal, SeqSerializer, Serializer,
     StructSerializer, UnionSerializer,
 };
-use crate::{DISC_INFO, TypeInfo};
+use crate::{DISC_INFO, MemberInfo, TypeInfo};
 
 const PID_EXTENDED: u16 = 0x3F01;
 const PID_LIST_END: u16 = 0x3F02;
 const FLAG_MUST_UNDERSTAND: u16 = 0x4000;
 const FLAG_IMPL_EXTENSION: u16 = 0x8000;
 
-struct CdrWriter<'a, E: Endian> {
+pub struct CdrWriter<'a, E: Endian> {
     buf: &'a mut Buffer<E>,
     enc: Encoding,
     align_base: usize,
 }
 
 impl<'a, E: Endian> CdrWriter<'a, E> {
-    const fn new(buf: &'a mut Buffer<E>) -> Self {
+    pub const fn new(buf: &'a mut Buffer<E>) -> Self {
         Self {
             buf,
             enc: Encoding::Delimited,
@@ -97,16 +78,6 @@ impl<'a, E: Endian> CdrWriter<'a, E> {
     #[inline]
     fn write_u64(&mut self, value: u64) {
         self.aligned_write(Buffer::write_u64, value);
-    }
-
-    #[inline]
-    fn is_final(&self) -> bool {
-        self.encoding() == Encoding::Plain
-    }
-
-    #[inline]
-    fn is_appendable(&self) -> bool {
-        self.encoding() == Encoding::Delimited
     }
 
     #[inline]
@@ -208,14 +179,13 @@ impl<'a, E: Endian> CdrWriter<'a, E> {
     }
 }
 
-impl<E: Endian> Serializer for &mut CdrWriter<'_, E> {
+impl<E: Endian> Serializer<'_> for &mut CdrWriter<'_, E> {
     type Ok = ();
     type Error = Error;
     type Struct = Self;
     type Union = Self;
     type Enum = Self;
     type Sequence = Self;
-
     type Array = Self;
     type Map = Self;
 
@@ -318,11 +288,15 @@ impl<E: Endian> Serializer for &mut CdrWriter<'_, E> {
     }
 
     #[inline]
-    fn encode_option<T>(self, _: &Option<T>) -> Result<Self::Ok, Self::Error>
+    fn encode_option<T>(self, value: &Option<T>) -> Result<Self::Ok, Self::Error>
     where
         T: Marshal,
     {
-        Err(Error::UnsupportedType)
+        self.encode_bool(value.is_some())?;
+        if let Some(v) = value {
+            v.marshal(self)?;
+        }
+        Ok(())
     }
 
     #[inline]
@@ -359,11 +333,11 @@ impl<E: Endian> Serializer for &mut CdrWriter<'_, E> {
     }
 }
 
-impl<E: Endian> StructSerializer for &mut CdrWriter<'_, E> {
+impl<'a, E: Endian> StructSerializer<'a> for &mut CdrWriter<'_, E> {
     type Ok = ();
     type Error = Error;
 
-    fn encode_field<T>(&mut self, info: &MemberInfo<'_>, value: &T) -> Result<Self::Ok, Self::Error>
+    fn encode_field<T>(&mut self, info: &MemberInfo<'a>, value: &T) -> Result<Self::Ok, Self::Error>
     where
         T: Marshal,
     {
@@ -427,7 +401,7 @@ impl<E: Endian> EnumSerializer for &mut CdrWriter<'_, E> {
     }
 }
 
-impl<E: Endian> UnionSerializer for &mut CdrWriter<'_, E> {
+impl<'a, E: Endian> UnionSerializer<'a> for &mut CdrWriter<'_, E> {
     type Ok = ();
     type Error = Error;
 
@@ -440,7 +414,7 @@ impl<E: Endian> UnionSerializer for &mut CdrWriter<'_, E> {
 
     fn encode_variant<V>(
         mut self,
-        info: &MemberInfo<'_>,
+        info: &MemberInfo<'a>,
         value: &V,
     ) -> Result<Self::Ok, Self::Error>
     where
@@ -512,9 +486,18 @@ where
     T: Marshal + ?Sized,
 {
     let mut buf = Buffer::<E>::new();
-    let mut writer = CdrWriter::new(&mut buf);
+    to_buffer(&mut buf, value)?;
+    Ok(buf.to_vec())
+}
+
+pub fn to_buffer<T, E>(buffer: &mut Buffer<E>, value: &T) -> Result<(), Error>
+where
+    E: Endian,
+    T: Marshal + ?Sized,
+{
+    let mut writer = CdrWriter::new(buffer);
     value.marshal(&mut writer)?;
-    Ok(buf.bytes())
+    Ok(())
 }
 
 /// Serialize the given data structore using the specified CDR encoding with

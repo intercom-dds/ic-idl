@@ -1,29 +1,10 @@
-// Copyright 2025 KONGSBERG
-//
-// Redistribution and use in source and binary forms, with or without
-// modification, are permitted provided that the following conditions are met:
-//
-// 1. Redistributions of source code must retain the above copyright notice,
-//    this list of conditions and the following disclaimer.
-//
-// 2. Redistributions in binary form must reproduce the above copyright notice,
-//    this list of conditions and the following disclaimer in the documentation
-//    and/or other materials provided with the distribution.
-//
-// 3. Neither the name of the copyright holder nor the names of its contributors
-//    may be used to endorse or promote products derived from this software
-//    without specific prior written permission.
-//
-// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
-// ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
-// WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
-// DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
-// FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
-// DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
-// SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
-// CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
-// OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
-// OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+// KONGSBERG PROPRIETARY - This software, related documentation and its accompanying elements,
+// contain information which is proprietary and confidential to KONGSBERG or its licensors.
+// Any disclosure, copying, distribution or use is prohibited if not otherwise explicitly agreed
+// with KONGSBERG in writing. It is strictly prohibited to modify, reverse engineer, decompile,
+// or disassemble the software, unless such acts are allowed under applicable mandatory law or
+// explicitly agreed with KONGSBERG in writing. Any authorized reproduction, in whole or in part,
+// must include this legend. (C) 2023 KONGSBERG - All rights reserved
 
 use std::io::Write;
 use std::ops::{Deref, DerefMut};
@@ -35,7 +16,7 @@ use crate::encode::{
     StructSerializer, UnionSerializer,
 };
 use crate::error::Error as _;
-use crate::{DISC_INFO, MemberInfo, TypeInfo};
+use crate::type_info::{DISC_INFO, MemberInfo, TypeInfo};
 
 struct JsonWriter<W: Write> {
     w: W,
@@ -81,21 +62,7 @@ impl<W: Write> JsonWriter<W> {
 
     fn write_str(&mut self, value: &str) -> Result<(), Error> {
         self.write("\"")?;
-        for c in value.chars() {
-            match c {
-                '"' => self.write("\\\"")?,
-                '\\' => self.write("\\\\")?,
-                '\x08' => self.write("\\b")?,
-                '\x0C' => self.write("\\f")?,
-                '\n' => self.write("\\n")?,
-                '\r' => self.write("\\r")?,
-                '\t' => self.write("\\t")?,
-                c if c.is_control() => {
-                    self.write(format!("\\u{:04x}", c as u32))?;
-                }
-                c => self.write(c.to_string())?,
-            }
-        }
+        self.write(value.escape_default().to_string())?;
         self.write("\"")
     }
 
@@ -104,7 +71,7 @@ impl<W: Write> JsonWriter<W> {
     }
 }
 
-impl<'a, W: Write> Serializer for &'a mut JsonWriter<W> {
+impl<'a, W: Write> Serializer<'a> for &'a mut JsonWriter<W> {
     type Ok = ();
     type Error = Error;
 
@@ -121,8 +88,7 @@ impl<'a, W: Write> Serializer for &'a mut JsonWriter<W> {
     }
 
     fn encode_char(self, value: char) -> Result<Self::Ok, Self::Error> {
-        let s = value.to_string();
-        self.write_str(&s)
+        self.write_str(&value.to_string())
     }
 
     fn encode_wchar(self, value: char) -> Result<Self::Ok, Self::Error> {
@@ -267,7 +233,7 @@ impl<W: Write> DerefMut for JsonObject<'_, W> {
     }
 }
 
-impl<W: Write> StructSerializer for JsonObject<'_, W> {
+impl<W: Write> StructSerializer<'_> for JsonObject<'_, W> {
     type Ok = ();
     type Error = Error;
 
@@ -299,7 +265,7 @@ impl<W: Write> StructSerializer for JsonObject<'_, W> {
     }
 }
 
-impl<W: Write> UnionSerializer for JsonObject<'_, W> {
+impl<W: Write> UnionSerializer<'_> for JsonObject<'_, W> {
     type Ok = ();
     type Error = Error;
 

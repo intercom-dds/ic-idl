@@ -707,19 +707,7 @@ dependencies = [
 
 [[package]]
 name = "intercom-cts"
-version = "0.1.0"
-dependencies = [
- "intercom-derive",
-]
-
-[[package]]
-name = "intercom-derive"
-version = "0.1.0"
-dependencies = [
- "proc-macro2",
- "quote",
- "syn",
-]
+version = "0.4.0"
 
 [[package]]
 name = "itertools"

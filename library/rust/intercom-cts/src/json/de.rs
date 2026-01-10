@@ -1,29 +1,10 @@
-// Copyright 2025 KONGSBERG
-//
-// Redistribution and use in source and binary forms, with or without
-// modification, are permitted provided that the following conditions are met:
-//
-// 1. Redistributions of source code must retain the above copyright notice,
-//    this list of conditions and the following disclaimer.
-//
-// 2. Redistributions in binary form must reproduce the above copyright notice,
-//    this list of conditions and the following disclaimer in the documentation
-//    and/or other materials provided with the distribution.
-//
-// 3. Neither the name of the copyright holder nor the names of its contributors
-//    may be used to endorse or promote products derived from this software
-//    without specific prior written permission.
-//
-// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
-// ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
-// WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
-// DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
-// FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
-// DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
-// SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
-// CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
-// OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
-// OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+// KONGSBERG PROPRIETARY - This software, related documentation and its accompanying elements,
+// contain information which is proprietary and confidential to KONGSBERG or its licensors.
+// Any disclosure, copying, distribution or use is prohibited if not otherwise explicitly agreed
+// with KONGSBERG in writing. It is strictly prohibited to modify, reverse engineer, decompile,
+// or disassemble the software, unless such acts are allowed under applicable mandatory law or
+// explicitly agreed with KONGSBERG in writing. Any authorized reproduction, in whole or in part,
+// must include this legend. (C) 2023 KONGSBERG - All rights reserved
 
 use std::collections::btree_map;
 use std::{mem, vec};
@@ -33,7 +14,7 @@ use super::parse::parse;
 use super::{Error, Number, Value};
 use crate::decode::{
     ArrayDeserializer, Deserializer, EnumDeserializer, EnumVisitor, MapDeserializer,
-    SeqDeserializer, StructDeserializer, Type, UnionDeserializer, Unmarshal,
+    OptionDeserializer, SeqDeserializer, StructDeserializer, Type, UnionDeserializer, Unmarshal,
 };
 use crate::error::Error as _;
 use crate::{DISC_INFO, MemberInfo, TypeInfo};
@@ -42,13 +23,14 @@ pub struct JsonReader {
     value: Value,
 }
 
-impl Deserializer for &mut JsonReader {
+impl<'a> Deserializer<'a> for &'a mut JsonReader {
     type Struct = Self;
     type Union = Self;
     type Enum = Self;
     type Map = Indexed<btree_map::IntoIter<String, Value>>;
     type Sequence = Indexed<vec::IntoIter<Value>>;
     type Array = Self::Sequence;
+    type Option = Self;
     type Error = Error;
 
     fn peek(&self) -> Result<Option<Type>, Self::Error> {
@@ -157,31 +139,6 @@ impl Deserializer for &mut JsonReader {
         self.decode_string()
     }
 
-    fn decode_option<T>(self) -> Result<Option<T>, Self::Error>
-    where
-        T: Unmarshal + Default,
-    {
-        let value = if self.value.is_null() {
-            None
-        } else {
-            Some(T::unmarshal(&mut *self)?)
-        };
-        Ok(value)
-    }
-
-    fn decode_option_mut<T>(self, value: &mut T) -> Result<bool, Self::Error>
-    where
-        T: Unmarshal,
-    {
-        let res = if self.value.is_null() {
-            false
-        } else {
-            value.unmarshal_mut(self)?;
-            true
-        };
-        Ok(res)
-    }
-
     fn decode_struct(self, _: &TypeInfo<'_>) -> Result<Self::Struct, Self::Error> {
         Ok(self)
     }
@@ -213,9 +170,29 @@ impl Deserializer for &mut JsonReader {
             Err(Error::custom("expected object"))
         }
     }
+
+    #[inline]
+    fn begin_decode_option(self) -> Result<Self::Option, Self::Error> {
+        Ok(self)
+    }
 }
 
-impl StructDeserializer for &mut JsonReader {
+impl OptionDeserializer for &mut JsonReader {
+    type Error = Error;
+
+    fn is_some(&mut self) -> bool {
+        !self.value.is_null()
+    }
+
+    fn decode_some<T>(self, value: &mut T) -> Result<(), Self::Error>
+    where
+        T: Unmarshal,
+    {
+        value.unmarshal_mut(self)
+    }
+}
+
+impl StructDeserializer<'_> for &mut JsonReader {
     type Ok = ();
     type Error = Error;
 
@@ -241,7 +218,7 @@ impl StructDeserializer for &mut JsonReader {
     }
 }
 
-impl UnionDeserializer for &mut JsonReader {
+impl UnionDeserializer<'_> for &mut JsonReader {
     type Ok = ();
     type Error = Error;
 

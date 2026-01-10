@@ -1,29 +1,10 @@
-// Copyright 2025 KONGSBERG
-//
-// Redistribution and use in source and binary forms, with or without
-// modification, are permitted provided that the following conditions are met:
-//
-// 1. Redistributions of source code must retain the above copyright notice,
-//    this list of conditions and the following disclaimer.
-//
-// 2. Redistributions in binary form must reproduce the above copyright notice,
-//    this list of conditions and the following disclaimer in the documentation
-//    and/or other materials provided with the distribution.
-//
-// 3. Neither the name of the copyright holder nor the names of its contributors
-//    may be used to endorse or promote products derived from this software
-//    without specific prior written permission.
-//
-// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
-// ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
-// WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
-// DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
-// FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
-// DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
-// SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
-// CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
-// OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
-// OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+// KONGSBERG PROPRIETARY - This software, related documentation and its accompanying elements,
+// contain information which is proprietary and confidential to KONGSBERG or its licensors.
+// Any disclosure, copying, distribution or use is prohibited if not otherwise explicitly agreed
+// with KONGSBERG in writing. It is strictly prohibited to modify, reverse engineer, decompile,
+// or disassemble the software, unless such acts are allowed under applicable mandatory law or
+// explicitly agreed with KONGSBERG in writing. Any authorized reproduction, in whole or in part,
+// must include this legend. (C) 2023 KONGSBERG - All rights reserved
 
 use super::Error;
 use crate::buf::Buffer;
@@ -34,19 +15,19 @@ use crate::encode::{
 };
 use crate::{MemberInfo, TypeInfo};
 
-struct CdrWriter<E: Endian> {
+pub struct CdrWriter<E: Endian> {
     buf: Buffer<E>,
 }
 
 impl<E: Endian> CdrWriter<E> {
-    fn new() -> Self {
+    pub fn new() -> Self {
         Self {
             buf: Buffer::with_capacity(64),
         }
     }
 
-    fn bytes(self) -> Vec<u8> {
-        self.buf.bytes()
+    pub fn bytes(self) -> Vec<u8> {
+        self.buf.to_vec()
     }
 
     #[inline]
@@ -86,7 +67,13 @@ impl<E: Endian> CdrWriter<E> {
     }
 }
 
-impl<E: Endian> Serializer for &mut CdrWriter<E> {
+impl<E: Endian> Default for CdrWriter<E> {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl<'a, E: Endian> Serializer<'a> for &mut CdrWriter<E> {
     type Struct = Self;
     type Union = Self;
     type Enum = Self;
@@ -208,12 +195,12 @@ impl<E: Endian> Serializer for &mut CdrWriter<E> {
     }
 
     #[inline]
-    fn encode_struct(self, _: &TypeInfo<'_>) -> Result<Self::Struct, Self::Error> {
+    fn encode_struct(self, _: &TypeInfo<'a>) -> Result<Self::Struct, Self::Error> {
         Ok(self)
     }
 
     #[inline]
-    fn encode_union(self, _: &TypeInfo<'_>) -> Result<Self::Union, Self::Error> {
+    fn encode_union(self, _: &TypeInfo<'a>) -> Result<Self::Union, Self::Error> {
         Ok(self)
     }
 
@@ -240,11 +227,11 @@ impl<E: Endian> Serializer for &mut CdrWriter<E> {
     }
 }
 
-impl<E: Endian> StructSerializer for &mut CdrWriter<E> {
+impl<'a, E: Endian> StructSerializer<'a> for &mut CdrWriter<E> {
     type Ok = ();
     type Error = Error;
 
-    fn encode_field<T>(&mut self, _: &MemberInfo<'_>, value: &T) -> Result<(), Self::Error>
+    fn encode_field<T>(&mut self, _: &MemberInfo<'a>, value: &T) -> Result<(), Self::Error>
     where
         T: Marshal,
     {
@@ -306,7 +293,7 @@ impl<E: Endian> EnumSerializer for &mut CdrWriter<E> {
     }
 }
 
-impl<E: Endian> UnionSerializer for &mut CdrWriter<E> {
+impl<'a, E: Endian> UnionSerializer<'a> for &mut CdrWriter<E> {
     type Ok = ();
     type Error = Error;
 
@@ -319,7 +306,7 @@ impl<E: Endian> UnionSerializer for &mut CdrWriter<E> {
     }
 
     #[inline]
-    fn encode_variant<V>(self, _: &MemberInfo<'_>, value: &V) -> Result<Self::Ok, Self::Error>
+    fn encode_variant<V>(self, _: &MemberInfo<'a>, value: &V) -> Result<Self::Ok, Self::Error>
     where
         V: Marshal,
     {

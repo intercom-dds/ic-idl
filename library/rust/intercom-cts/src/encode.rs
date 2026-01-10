@@ -1,29 +1,10 @@
-// Copyright 2025 KONGSBERG
-//
-// Redistribution and use in source and binary forms, with or without
-// modification, are permitted provided that the following conditions are met:
-//
-// 1. Redistributions of source code must retain the above copyright notice,
-//    this list of conditions and the following disclaimer.
-//
-// 2. Redistributions in binary form must reproduce the above copyright notice,
-//    this list of conditions and the following disclaimer in the documentation
-//    and/or other materials provided with the distribution.
-//
-// 3. Neither the name of the copyright holder nor the names of its contributors
-//    may be used to endorse or promote products derived from this software
-//    without specific prior written permission.
-//
-// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
-// ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
-// WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
-// DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
-// FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
-// DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
-// SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
-// CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
-// OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
-// OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+// KONGSBERG PROPRIETARY - This software, related documentation and its accompanying elements,
+// contain information which is proprietary and confidential to KONGSBERG or its licensors.
+// Any disclosure, copying, distribution or use is prohibited if not otherwise explicitly agreed
+// with KONGSBERG in writing. It is strictly prohibited to modify, reverse engineer, decompile,
+// or disassemble the software, unless such acts are allowed under applicable mandatory law or
+// explicitly agreed with KONGSBERG in writing. Any authorized reproduction, in whole or in part,
+// must include this legend. (C) 2023 KONGSBERG - All rights reserved
 
 #![allow(unused_variables)]
 
@@ -31,10 +12,10 @@ use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
 use std::hash::BuildHasher;
 
 use super::error::Error;
-use crate::cdr1::MemberFlag;
-use crate::{TypeFlag, WChar, WString};
+use crate::type_info::{MemberInfo, TypeInfo};
+use crate::{WChar, WString};
 
-pub trait Serializer: Sized {
+pub trait Serializer<'a>: Sized {
     /// The type returned by the serializer once serialization has finished.
     type Ok;
 
@@ -42,10 +23,10 @@ pub trait Serializer: Sized {
     type Error: Error;
 
     /// Serializer used to serialize `struct`s.
-    type Struct: StructSerializer<Ok = Self::Ok, Error = Self::Error>;
+    type Struct: StructSerializer<'a, Ok = Self::Ok, Error = Self::Error>;
 
     /// Serializer used to serialize complex `enum`s.
-    type Union: UnionSerializer<Ok = Self::Ok, Error = Self::Error>;
+    type Union: UnionSerializer<'a, Ok = Self::Ok, Error = Self::Error>;
 
     /// Serializer used to serialize plain, C-like `enum`s.
     type Enum: EnumSerializer<Ok = Self::Ok, Error = Self::Error>;
@@ -69,9 +50,9 @@ pub trait Serializer: Sized {
     /// struct Value(bool);
     ///
     /// impl Marshal for Value {
-    ///     fn marshal<S>(&self, archive: S) -> Result<S::Ok, S::Error>
+    ///     fn marshal<'a, S>(&self, archive: S) -> Result<S::Ok, S::Error>
     ///     where
-    ///         S: Serializer,
+    ///         S: Serializer<'a>,
     ///     {
     ///         archive.encode_bool(self.0)
     ///     }
@@ -89,9 +70,9 @@ pub trait Serializer: Sized {
     /// struct Value(char);
     ///
     /// impl Marshal for Value {
-    ///     fn marshal<S>(&self, archive: S) -> Result<S::Ok, S::Error>
+    ///     fn marshal<'a, S>(&self, archive: S) -> Result<S::Ok, S::Error>
     ///     where
-    ///         S: Serializer,
+    ///         S: Serializer<'a>,
     ///     {
     ///         archive.encode_char(self.0)
     ///     }
@@ -111,9 +92,9 @@ pub trait Serializer: Sized {
     /// struct Value(char);
     ///
     /// impl Marshal for Value {
-    ///     fn marshal<S>(&self, archive: S) -> Result<S::Ok, S::Error>
+    ///     fn marshal<'a, S>(&self, archive: S) -> Result<S::Ok, S::Error>
     ///     where
-    ///         S: Serializer,
+    ///         S: Serializer<'a>,
     ///     {
     ///         archive.encode_wchar(self.0)
     ///     }
@@ -131,9 +112,9 @@ pub trait Serializer: Sized {
     /// struct Value(i8);
     ///
     /// impl Marshal for Value {
-    ///     fn marshal<S>(&self, archive: S) -> Result<S::Ok, S::Error>
+    ///     fn marshal<'a, S>(&self, archive: S) -> Result<S::Ok, S::Error>
     ///     where
-    ///         S: Serializer,
+    ///         S: Serializer<'a>,
     ///     {
     ///         archive.encode_i8(self.0)
     ///     }
@@ -151,9 +132,9 @@ pub trait Serializer: Sized {
     /// struct Value(u8);
     ///
     /// impl Marshal for Value {
-    ///     fn marshal<S>(&self, archive: S) -> Result<S::Ok, S::Error>
+    ///     fn marshal<'a, S>(&self, archive: S) -> Result<S::Ok, S::Error>
     ///     where
-    ///         S: Serializer,
+    ///         S: Serializer<'a>,
     ///     {
     ///         archive.encode_u8(self.0)
     ///     }
@@ -171,9 +152,9 @@ pub trait Serializer: Sized {
     /// struct Value(i16);
     ///
     /// impl Marshal for Value {
-    ///     fn marshal<S>(&self, archive: S) -> Result<S::Ok, S::Error>
+    ///     fn marshal<'a, S>(&self, archive: S) -> Result<S::Ok, S::Error>
     ///     where
-    ///         S: Serializer,
+    ///         S: Serializer<'a>,
     ///     {
     ///         archive.encode_i16(self.0)
     ///     }
@@ -191,9 +172,9 @@ pub trait Serializer: Sized {
     /// struct Value(u16);
     ///
     /// impl Marshal for Value {
-    ///     fn marshal<S>(&self, archive: S) -> Result<S::Ok, S::Error>
+    ///     fn marshal<'a, S>(&self, archive: S) -> Result<S::Ok, S::Error>
     ///     where
-    ///         S: Serializer,
+    ///         S: Serializer<'a>,
     ///     {
     ///         archive.encode_u16(self.0)
     ///     }
@@ -211,9 +192,9 @@ pub trait Serializer: Sized {
     /// struct Value(i32);
     ///
     /// impl Marshal for Value {
-    ///     fn marshal<S>(&self, archive: S) -> Result<S::Ok, S::Error>
+    ///     fn marshal<'a, S>(&self, archive: S) -> Result<S::Ok, S::Error>
     ///     where
-    ///         S: Serializer,
+    ///         S: Serializer<'a>,
     ///     {
     ///         archive.encode_i32(self.0)
     ///     }
@@ -231,9 +212,9 @@ pub trait Serializer: Sized {
     /// struct Value(u32);
     ///
     /// impl Marshal for Value {
-    ///     fn marshal<S>(&self, archive: S) -> Result<S::Ok, S::Error>
+    ///     fn marshal<'a, S>(&self, archive: S) -> Result<S::Ok, S::Error>
     ///     where
-    ///         S: Serializer,
+    ///         S: Serializer<'a>,
     ///     {
     ///         archive.encode_u32(self.0)
     ///     }
@@ -251,9 +232,9 @@ pub trait Serializer: Sized {
     /// struct Value(i64);
     ///
     /// impl Marshal for Value {
-    ///     fn marshal<S>(&self, archive: S) -> Result<S::Ok, S::Error>
+    ///     fn marshal<'a, S>(&self, archive: S) -> Result<S::Ok, S::Error>
     ///     where
-    ///         S: Serializer,
+    ///         S: Serializer<'a>,
     ///     {
     ///         archive.encode_i64(self.0)
     ///     }
@@ -271,9 +252,9 @@ pub trait Serializer: Sized {
     /// struct Value(u64);
     ///
     /// impl Marshal for Value {
-    ///     fn marshal<S>(&self, archive: S) -> Result<S::Ok, S::Error>
+    ///     fn marshal<'a, S>(&self, archive: S) -> Result<S::Ok, S::Error>
     ///     where
-    ///         S: Serializer,
+    ///         S: Serializer<'a>,
     ///     {
     ///         archive.encode_u64(self.0)
     ///     }
@@ -291,9 +272,9 @@ pub trait Serializer: Sized {
     /// struct Value(f32);
     ///
     /// impl Marshal for Value {
-    ///     fn marshal<S>(&self, archive: S) -> Result<S::Ok, S::Error>
+    ///     fn marshal<'a, S>(&self, archive: S) -> Result<S::Ok, S::Error>
     ///     where
-    ///         S: Serializer,
+    ///         S: Serializer<'a>,
     ///     {
     ///         archive.encode_f32(self.0)
     ///     }
@@ -311,9 +292,9 @@ pub trait Serializer: Sized {
     /// struct Value(f64);
     ///
     /// impl Marshal for Value {
-    ///     fn marshal<S>(&self, archive: S) -> Result<S::Ok, S::Error>
+    ///     fn marshal<'a, S>(&self, archive: S) -> Result<S::Ok, S::Error>
     ///     where
-    ///         S: Serializer,
+    ///         S: Serializer<'a>,
     ///     {
     ///         archive.encode_f64(self.0)
     ///     }
@@ -331,9 +312,9 @@ pub trait Serializer: Sized {
     /// struct Value(String);
     ///
     /// impl Marshal for Value {
-    ///     fn marshal<S>(&self, archive: S) -> Result<S::Ok, S::Error>
+    ///     fn marshal<'a, S>(&self, archive: S) -> Result<S::Ok, S::Error>
     ///     where
-    ///         S: Serializer,
+    ///         S: Serializer<'a>,
     ///     {
     ///         archive.encode_string(self.0.as_str())
     ///     }
@@ -352,9 +333,9 @@ pub trait Serializer: Sized {
     /// struct Value(String);
     ///
     /// impl Marshal for Value {
-    ///     fn marshal<S>(&self, archive: S) -> Result<S::Ok, S::Error>
+    ///     fn marshal<'a, S>(&self, archive: S) -> Result<S::Ok, S::Error>
     ///     where
-    ///         S: Serializer,
+    ///         S: Serializer<'a>,
     ///     {
     ///         archive.encode_wstring(self.0.as_str())
     ///     }
@@ -373,9 +354,9 @@ pub trait Serializer: Sized {
     /// struct Value<T>(Option<T>);
     ///
     /// impl<T: Marshal> Marshal for Value<T> {
-    ///     fn marshal<S>(&self, archive: S) -> Result<S::Ok, S::Error>
+    ///     fn marshal<'a, S>(&self, archive: S) -> Result<S::Ok, S::Error>
     ///     where
-    ///         S: Serializer,
+    ///         S: Serializer<'a>,
     ///     {
     ///         archive.encode_option(&self.0)
     ///     }
@@ -386,10 +367,10 @@ pub trait Serializer: Sized {
         T: Marshal;
 
     /// Serialize a struct.
-    fn encode_struct(self, info: &TypeInfo<'_>) -> Result<Self::Struct, Self::Error>;
+    fn encode_struct(self, info: &TypeInfo<'a>) -> Result<Self::Struct, Self::Error>;
 
     /// Serialize a complex enum.
-    fn encode_union(self, info: &TypeInfo<'_>) -> Result<Self::Union, Self::Error>;
+    fn encode_union(self, info: &TypeInfo<'a>) -> Result<Self::Union, Self::Error>;
 
     /// Serialize a plain, C-like enum.
     ///
@@ -405,9 +386,9 @@ pub trait Serializer: Sized {
     /// }
     ///
     /// impl Marshal for Value {
-    ///     fn marshal<S>(&self, archive: S) -> Result<S::Ok, S::Error>
+    ///     fn marshal<'a, S>(&self, archive: S) -> Result<S::Ok, S::Error>
     ///     where
-    ///         S: Serializer,
+    ///         S: Serializer<'a>,
     ///     {
     ///         let state = archive.encode_enum("Value")?;
     ///         match self {
@@ -435,9 +416,9 @@ pub trait Serializer: Sized {
     ///     T: Marshal,
     /// {
     ///     #[inline]
-    ///     fn marshal<S>(&self, archive: S) -> Result<S::Ok, S::Error>
+    ///     fn marshal<'a, S>(&self, archive: S) -> Result<S::Ok, S::Error>
     ///     where
-    ///         S: Serializer,
+    ///         S: Serializer<'a>,
     ///     {
     ///         let mut state = archive.encode_sequence(self.0.len())?;
     ///         for val in &self.0 {
@@ -463,9 +444,9 @@ pub trait Serializer: Sized {
     ///     T: Marshal,
     /// {
     ///     #[inline]
-    ///     fn marshal<S>(&self, archive: S) -> Result<S::Ok, S::Error>
+    ///     fn marshal<'a, S>(&self, archive: S) -> Result<S::Ok, S::Error>
     ///     where
-    ///         S: Serializer,
+    ///         S: Serializer<'a>,
     ///     {
     ///         let mut state = archive.encode_array(self.0.len())?;
     ///         for val in &self.0 {
@@ -492,9 +473,9 @@ pub trait Serializer: Sized {
     ///     T: Marshal,
     /// {
     ///     #[inline]
-    ///     fn marshal<S>(&self, archive: S) -> Result<S::Ok, S::Error>
+    ///     fn marshal<'a, S>(&self, archive: S) -> Result<S::Ok, S::Error>
     ///     where
-    ///         S: Serializer,
+    ///         S: Serializer<'a>,
     ///     {
     ///         let mut state = archive.encode_map(self.0.len())?;
     ///         for (key, value) in &self.0 {
@@ -506,69 +487,17 @@ pub trait Serializer: Sized {
     fn encode_map(self, len: usize) -> Result<Self::Map, Self::Error>;
 }
 
-#[derive(Debug)]
-pub struct MemberInfo<'a> {
-    pub name: &'a str,
-    pub member_id: u32,
-    pub flags: MemberFlag,
-}
-
-#[derive(Debug)]
-pub struct TypeInfo<'a> {
-    pub name: &'a str,
-    pub flags: TypeFlag,
-    pub kind: TypeKind,
-    pub key_kind: TypeKind,
-    pub element_kind: TypeKind,
-}
-
-#[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub enum TypeKind {
-    None,
-    Bool,
-    I8,
-    U8,
-    I16,
-    U16,
-    I32,
-    U32,
-    I64,
-    U64,
-    F32,
-    F64,
-    Char8,
-    Char16,
-    Alias,
-    Struct,
-    Union,
-    Bitmask,
-    Enum,
-    String8,
-    String16,
-    Annotation,
-    Array,
-    Map,
-    Sequence,
-}
-
-#[doc(hidden)]
-pub const DISC_INFO: MemberInfo<'static> = MemberInfo {
-    name: "$discriminator",
-    member_id: 0,
-    flags: MemberFlag::IS_MUST_UNDERSTAND,
-};
-
-pub trait StructSerializer {
+pub trait StructSerializer<'a> {
     type Ok;
     type Error: Error;
 
-    fn encode_field<T>(&mut self, info: &MemberInfo<'_>, value: &T) -> Result<(), Self::Error>
+    fn encode_field<T>(&mut self, info: &MemberInfo<'a>, value: &T) -> Result<(), Self::Error>
     where
         T: Marshal;
 
     fn encode_optional<T>(
         &mut self,
-        info: &MemberInfo<'_>,
+        info: &MemberInfo<'a>,
         value: &Option<T>,
     ) -> Result<(), Self::Error>
     where
@@ -580,7 +509,7 @@ pub trait StructSerializer {
     fn end(self) -> Result<Self::Ok, Self::Error>;
 }
 
-pub trait UnionSerializer {
+pub trait UnionSerializer<'a> {
     type Ok;
     type Error: Error;
 
@@ -588,7 +517,7 @@ pub trait UnionSerializer {
     where
         D: Marshal;
 
-    fn encode_variant<V>(self, info: &MemberInfo<'_>, value: &V) -> Result<Self::Ok, Self::Error>
+    fn encode_variant<V>(self, info: &MemberInfo<'a>, value: &V) -> Result<Self::Ok, Self::Error>
     where
         V: Marshal;
 
@@ -639,16 +568,17 @@ pub trait MapSerializer {
 }
 
 pub trait Marshal {
-    fn marshal<S>(&self, archive: S) -> Result<S::Ok, S::Error>
+    /// Serialize this value using the serializer
+    fn marshal<'a, S>(&self, archive: S) -> Result<S::Ok, S::Error>
     where
-        S: Serializer;
+        S: Serializer<'a>;
 }
 
 impl Marshal for bool {
     #[inline]
-    fn marshal<S>(&self, archive: S) -> Result<S::Ok, S::Error>
+    fn marshal<'a, S>(&self, archive: S) -> Result<S::Ok, S::Error>
     where
-        S: Serializer,
+        S: Serializer<'a>,
     {
         archive.encode_bool(*self)
     }
@@ -656,9 +586,9 @@ impl Marshal for bool {
 
 impl Marshal for char {
     #[inline]
-    fn marshal<S>(&self, archive: S) -> Result<S::Ok, S::Error>
+    fn marshal<'a, S>(&self, archive: S) -> Result<S::Ok, S::Error>
     where
-        S: Serializer,
+        S: Serializer<'a>,
     {
         archive.encode_char(*self)
     }
@@ -666,9 +596,9 @@ impl Marshal for char {
 
 impl Marshal for i8 {
     #[inline]
-    fn marshal<S>(&self, archive: S) -> Result<S::Ok, S::Error>
+    fn marshal<'a, S>(&self, archive: S) -> Result<S::Ok, S::Error>
     where
-        S: Serializer,
+        S: Serializer<'a>,
     {
         archive.encode_i8(*self)
     }
@@ -676,9 +606,9 @@ impl Marshal for i8 {
 
 impl Marshal for u8 {
     #[inline]
-    fn marshal<S>(&self, archive: S) -> Result<S::Ok, S::Error>
+    fn marshal<'a, S>(&self, archive: S) -> Result<S::Ok, S::Error>
     where
-        S: Serializer,
+        S: Serializer<'a>,
     {
         archive.encode_u8(*self)
     }
@@ -686,9 +616,9 @@ impl Marshal for u8 {
 
 impl Marshal for i16 {
     #[inline]
-    fn marshal<S>(&self, archive: S) -> Result<S::Ok, S::Error>
+    fn marshal<'a, S>(&self, archive: S) -> Result<S::Ok, S::Error>
     where
-        S: Serializer,
+        S: Serializer<'a>,
     {
         archive.encode_i16(*self)
     }
@@ -696,9 +626,9 @@ impl Marshal for i16 {
 
 impl Marshal for u16 {
     #[inline]
-    fn marshal<S>(&self, archive: S) -> Result<S::Ok, S::Error>
+    fn marshal<'a, S>(&self, archive: S) -> Result<S::Ok, S::Error>
     where
-        S: Serializer,
+        S: Serializer<'a>,
     {
         archive.encode_u16(*self)
     }
@@ -706,9 +636,9 @@ impl Marshal for u16 {
 
 impl Marshal for i32 {
     #[inline]
-    fn marshal<S>(&self, archive: S) -> Result<S::Ok, S::Error>
+    fn marshal<'a, S>(&self, archive: S) -> Result<S::Ok, S::Error>
     where
-        S: Serializer,
+        S: Serializer<'a>,
     {
         archive.encode_i32(*self)
     }
@@ -716,9 +646,9 @@ impl Marshal for i32 {
 
 impl Marshal for u32 {
     #[inline]
-    fn marshal<S>(&self, archive: S) -> Result<S::Ok, S::Error>
+    fn marshal<'a, S>(&self, archive: S) -> Result<S::Ok, S::Error>
     where
-        S: Serializer,
+        S: Serializer<'a>,
     {
         archive.encode_u32(*self)
     }
@@ -726,9 +656,9 @@ impl Marshal for u32 {
 
 impl Marshal for i64 {
     #[inline]
-    fn marshal<S>(&self, archive: S) -> Result<S::Ok, S::Error>
+    fn marshal<'a, S>(&self, archive: S) -> Result<S::Ok, S::Error>
     where
-        S: Serializer,
+        S: Serializer<'a>,
     {
         archive.encode_i64(*self)
     }
@@ -736,9 +666,9 @@ impl Marshal for i64 {
 
 impl Marshal for u64 {
     #[inline]
-    fn marshal<S>(&self, archive: S) -> Result<S::Ok, S::Error>
+    fn marshal<'a, S>(&self, archive: S) -> Result<S::Ok, S::Error>
     where
-        S: Serializer,
+        S: Serializer<'a>,
     {
         archive.encode_u64(*self)
     }
@@ -746,9 +676,9 @@ impl Marshal for u64 {
 
 impl Marshal for f32 {
     #[inline]
-    fn marshal<S>(&self, archive: S) -> Result<S::Ok, S::Error>
+    fn marshal<'a, S>(&self, archive: S) -> Result<S::Ok, S::Error>
     where
-        S: Serializer,
+        S: Serializer<'a>,
     {
         archive.encode_f32(*self)
     }
@@ -756,9 +686,9 @@ impl Marshal for f32 {
 
 impl Marshal for f64 {
     #[inline]
-    fn marshal<S>(&self, archive: S) -> Result<S::Ok, S::Error>
+    fn marshal<'a, S>(&self, archive: S) -> Result<S::Ok, S::Error>
     where
-        S: Serializer,
+        S: Serializer<'a>,
     {
         archive.encode_f64(*self)
     }
@@ -766,9 +696,9 @@ impl Marshal for f64 {
 
 impl Marshal for isize {
     #[inline]
-    fn marshal<S>(&self, archive: S) -> Result<S::Ok, S::Error>
+    fn marshal<'a, S>(&self, archive: S) -> Result<S::Ok, S::Error>
     where
-        S: Serializer,
+        S: Serializer<'a>,
     {
         archive.encode_i64((*self).try_into().map_err(S::Error::custom)?)
     }
@@ -776,9 +706,9 @@ impl Marshal for isize {
 
 impl Marshal for usize {
     #[inline]
-    fn marshal<S>(&self, archive: S) -> Result<S::Ok, S::Error>
+    fn marshal<'a, S>(&self, archive: S) -> Result<S::Ok, S::Error>
     where
-        S: Serializer,
+        S: Serializer<'a>,
     {
         archive.encode_u64((*self).try_into().map_err(S::Error::custom)?)
     }
@@ -786,9 +716,9 @@ impl Marshal for usize {
 
 impl Marshal for str {
     #[inline]
-    fn marshal<S>(&self, archive: S) -> Result<S::Ok, S::Error>
+    fn marshal<'a, S>(&self, archive: S) -> Result<S::Ok, S::Error>
     where
-        S: Serializer,
+        S: Serializer<'a>,
     {
         archive.encode_string(self)
     }
@@ -796,9 +726,9 @@ impl Marshal for str {
 
 impl Marshal for String {
     #[inline]
-    fn marshal<S>(&self, archive: S) -> Result<S::Ok, S::Error>
+    fn marshal<'a, S>(&self, archive: S) -> Result<S::Ok, S::Error>
     where
-        S: Serializer,
+        S: Serializer<'a>,
     {
         archive.encode_string(self.as_str())
     }
@@ -806,9 +736,9 @@ impl Marshal for String {
 
 impl Marshal for WChar<&char> {
     #[inline]
-    fn marshal<S>(&self, archive: S) -> Result<S::Ok, S::Error>
+    fn marshal<'a, S>(&self, archive: S) -> Result<S::Ok, S::Error>
     where
-        S: Serializer,
+        S: Serializer<'a>,
     {
         archive.encode_wchar(*self.0)
     }
@@ -816,9 +746,9 @@ impl Marshal for WChar<&char> {
 
 impl Marshal for WString<&str> {
     #[inline]
-    fn marshal<S>(&self, archive: S) -> Result<S::Ok, S::Error>
+    fn marshal<'a, S>(&self, archive: S) -> Result<S::Ok, S::Error>
     where
-        S: Serializer,
+        S: Serializer<'a>,
     {
         archive.encode_wstring(self.0)
     }
@@ -826,9 +756,9 @@ impl Marshal for WString<&str> {
 
 impl Marshal for WString<&String> {
     #[inline]
-    fn marshal<S>(&self, archive: S) -> Result<S::Ok, S::Error>
+    fn marshal<'a, S>(&self, archive: S) -> Result<S::Ok, S::Error>
     where
-        S: Serializer,
+        S: Serializer<'a>,
     {
         archive.encode_wstring(self.0)
     }
@@ -839,9 +769,9 @@ where
     T: Marshal,
 {
     #[inline]
-    fn marshal<S>(&self, archive: S) -> Result<S::Ok, S::Error>
+    fn marshal<'a, S>(&self, archive: S) -> Result<S::Ok, S::Error>
     where
-        S: Serializer,
+        S: Serializer<'a>,
     {
         archive.encode_option(self)
     }
@@ -852,9 +782,9 @@ where
     T: Marshal,
 {
     #[inline]
-    fn marshal<S>(&self, archive: S) -> Result<S::Ok, S::Error>
+    fn marshal<'a, S>(&self, archive: S) -> Result<S::Ok, S::Error>
     where
-        S: Serializer,
+        S: Serializer<'a>,
     {
         self.as_ref().marshal(archive)
     }
@@ -865,9 +795,9 @@ where
     T: ?Sized + Marshal,
 {
     #[inline]
-    fn marshal<S>(&self, archive: S) -> Result<S::Ok, S::Error>
+    fn marshal<'a, S>(&self, archive: S) -> Result<S::Ok, S::Error>
     where
-        S: Serializer,
+        S: Serializer<'a>,
     {
         (**self).marshal(archive)
     }
@@ -878,9 +808,9 @@ where
     T: Marshal,
 {
     #[inline]
-    fn marshal<S>(&self, archive: S) -> Result<S::Ok, S::Error>
+    fn marshal<'a, S>(&self, archive: S) -> Result<S::Ok, S::Error>
     where
-        S: Serializer,
+        S: Serializer<'a>,
     {
         let mut state = archive.encode_sequence(self.len())?;
         for val in self {
@@ -895,9 +825,9 @@ where
     T: Marshal,
 {
     #[inline]
-    fn marshal<S>(&self, archive: S) -> Result<S::Ok, S::Error>
+    fn marshal<'a, S>(&self, archive: S) -> Result<S::Ok, S::Error>
     where
-        S: Serializer,
+        S: Serializer<'a>,
     {
         let mut state = archive.encode_sequence(self.len())?;
         self.iter().try_for_each(|v| state.encode_next(v))?;
@@ -910,9 +840,9 @@ where
     T: Marshal,
 {
     #[inline]
-    fn marshal<S>(&self, archive: S) -> Result<S::Ok, S::Error>
+    fn marshal<'a, S>(&self, archive: S) -> Result<S::Ok, S::Error>
     where
-        S: Serializer,
+        S: Serializer<'a>,
     {
         let mut state = archive.encode_array(N)?;
         self.iter().try_for_each(|v| state.encode_next(v))?;
@@ -925,9 +855,9 @@ where
     T: Marshal,
 {
     #[inline]
-    fn marshal<S>(&self, archive: S) -> Result<S::Ok, S::Error>
+    fn marshal<'a, S>(&self, archive: S) -> Result<S::Ok, S::Error>
     where
-        S: Serializer,
+        S: Serializer<'a>,
     {
         let mut state = archive.encode_sequence(self.len())?;
         for elem in self {
@@ -943,9 +873,9 @@ where
     V: Marshal,
 {
     #[inline]
-    fn marshal<S>(&self, archive: S) -> Result<S::Ok, S::Error>
+    fn marshal<'a, S>(&self, archive: S) -> Result<S::Ok, S::Error>
     where
-        S: Serializer,
+        S: Serializer<'a>,
     {
         let mut state = archive.encode_map(self.len())?;
         for (key, value) in self {
@@ -961,9 +891,9 @@ where
     H: BuildHasher,
 {
     #[inline]
-    fn marshal<S>(&self, archive: S) -> Result<S::Ok, S::Error>
+    fn marshal<'a, S>(&self, archive: S) -> Result<S::Ok, S::Error>
     where
-        S: Serializer,
+        S: Serializer<'a>,
     {
         let mut state = archive.encode_sequence(self.len())?;
         for elem in self {
@@ -980,9 +910,9 @@ where
     H: BuildHasher,
 {
     #[inline]
-    fn marshal<S>(&self, archive: S) -> Result<S::Ok, S::Error>
+    fn marshal<'a, S>(&self, archive: S) -> Result<S::Ok, S::Error>
     where
-        S: Serializer,
+        S: Serializer<'a>,
     {
         let mut state = archive.encode_map(self.len())?;
         for (key, value) in self {

@@ -1,36 +1,18 @@
-// Copyright 2025 KONGSBERG
-//
-// Redistribution and use in source and binary forms, with or without
-// modification, are permitted provided that the following conditions are met:
-//
-// 1. Redistributions of source code must retain the above copyright notice,
-//    this list of conditions and the following disclaimer.
-//
-// 2. Redistributions in binary form must reproduce the above copyright notice,
-//    this list of conditions and the following disclaimer in the documentation
-//    and/or other materials provided with the distribution.
-//
-// 3. Neither the name of the copyright holder nor the names of its contributors
-//    may be used to endorse or promote products derived from this software
-//    without specific prior written permission.
-//
-// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
-// ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
-// WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
-// DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
-// FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
-// DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
-// SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
-// CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
-// OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
-// OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+// KONGSBERG PROPRIETARY - This software, related documentation and its accompanying elements,
+// contain information which is proprietary and confidential to KONGSBERG or its licensors.
+// Any disclosure, copying, distribution or use is prohibited if not otherwise explicitly agreed
+// with KONGSBERG in writing. It is strictly prohibited to modify, reverse engineer, decompile,
+// or disassemble the software, unless such acts are allowed under applicable mandatory law or
+// explicitly agreed with KONGSBERG in writing. Any authorized reproduction, in whole or in part,
+// must include this legend. (C) 2023 KONGSBERG - All rights reserved
 
 use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
 use std::hash::{BuildHasher, Hash};
 use std::mem;
 
 use super::error::Error;
-use crate::{MemberInfo, TypeInfo, WChar, WString};
+use crate::type_info::{MemberInfo, TypeInfo};
+use crate::{WChar, WString};
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum Type {
@@ -50,15 +32,15 @@ pub enum Type {
     Map,
 }
 
-pub trait Deserializer {
+pub trait Deserializer<'a> {
     /// Error produced by the deserializer.
     type Error: Error;
 
     /// Deserializer used to deserialize `struct`s.
-    type Struct: StructDeserializer<Error = Self::Error>;
+    type Struct: StructDeserializer<'a, Error = Self::Error>;
 
     /// Deserializer used to deserialize complex `enum`s.
-    type Union: UnionDeserializer<Error = Self::Error>;
+    type Union: UnionDeserializer<'a, Error = Self::Error>;
 
     /// Deserializer used to deserialize plain, C-like `enums`s.
     type Enum: EnumDeserializer<Error = Self::Error>;
@@ -71,6 +53,9 @@ pub trait Deserializer {
 
     /// Deserializer used to deserialize maps.
     type Map: MapDeserializer<Error = Self::Error>;
+
+    /// Deserializer used to deserialize optional values.
+    type Option: OptionDeserializer<Error = Self::Error>;
 
     /// Deserializers for self-described formats like `JSON`, `TOML`, etc. can
     /// use this function as a way to tell the unmarshaller what comes next.
@@ -92,9 +77,9 @@ pub trait Deserializer {
     /// }
     ///
     /// impl Unmarshal for Value {
-    ///     fn unmarshal_mut<D>(&mut self, archive: D) -> Result<(), D::Error>
+    ///     fn unmarshal_mut<'a, D>(&mut self, archive: D) -> Result<(), D::Error>
     ///     where
-    ///         D: Deserializer,
+    ///         D: Deserializer<'a>,
     ///     {
     ///         if let Some(next) = archive.peek()? {
     ///             match next {
@@ -124,9 +109,9 @@ pub trait Deserializer {
     /// struct Value(bool);
     ///
     /// impl Unmarshal for Value {
-    ///     fn unmarshal_mut<D>(&mut self, archive: D) -> Result<(), D::Error>
+    ///     fn unmarshal_mut<'a, D>(&mut self, archive: D) -> Result<(), D::Error>
     ///     where
-    ///         D: Deserializer,
+    ///         D: Deserializer<'a>,
     ///     {
     ///         self.0 = archive.decode_bool()?;
     ///         Ok(())
@@ -145,9 +130,9 @@ pub trait Deserializer {
     /// struct Value(char);
     ///
     /// impl Unmarshal for Value {
-    ///     fn unmarshal_mut<D>(&mut self, archive: D) -> Result<(), D::Error>
+    ///     fn unmarshal_mut<'a, D>(&mut self, archive: D) -> Result<(), D::Error>
     ///     where
-    ///         D: Deserializer,
+    ///         D: Deserializer<'a>,
     ///     {
     ///         self.0 = archive.decode_char()?;
     ///         Ok(())
@@ -167,9 +152,9 @@ pub trait Deserializer {
     /// struct Value(char);
     ///
     /// impl Unmarshal for Value {
-    ///     fn unmarshal_mut<D>(&mut self, archive: D) -> Result<(), D::Error>
+    ///     fn unmarshal_mut<'a, D>(&mut self, archive: D) -> Result<(), D::Error>
     ///     where
-    ///         D: Deserializer,
+    ///         D: Deserializer<'a>,
     ///     {
     ///         self.0 = archive.decode_wchar()?;
     ///         Ok(())
@@ -188,9 +173,9 @@ pub trait Deserializer {
     /// struct Value(i8);
     ///
     /// impl Unmarshal for Value {
-    ///     fn unmarshal_mut<D>(&mut self, archive: D) -> Result<(), D::Error>
+    ///     fn unmarshal_mut<'a, D>(&mut self, archive: D) -> Result<(), D::Error>
     ///     where
-    ///         D: Deserializer,
+    ///         D: Deserializer<'a>,
     ///     {
     ///         self.0 = archive.decode_i8()?;
     ///         Ok(())
@@ -209,9 +194,9 @@ pub trait Deserializer {
     /// struct Value(u8);
     ///
     /// impl Unmarshal for Value {
-    ///     fn unmarshal_mut<D>(&mut self, archive: D) -> Result<(), D::Error>
+    ///     fn unmarshal_mut<'a, D>(&mut self, archive: D) -> Result<(), D::Error>
     ///     where
-    ///         D: Deserializer,
+    ///         D: Deserializer<'a>,
     ///     {
     ///         self.0 = archive.decode_u8()?;
     ///         Ok(())
@@ -230,9 +215,9 @@ pub trait Deserializer {
     /// struct Value(i16);
     ///
     /// impl Unmarshal for Value {
-    ///     fn unmarshal_mut<D>(&mut self, archive: D) -> Result<(), D::Error>
+    ///     fn unmarshal_mut<'a, D>(&mut self, archive: D) -> Result<(), D::Error>
     ///     where
-    ///         D: Deserializer,
+    ///         D: Deserializer<'a>,
     ///     {
     ///         self.0 = archive.decode_i16()?;
     ///         Ok(())
@@ -251,9 +236,9 @@ pub trait Deserializer {
     /// struct Value(u16);
     ///
     /// impl Unmarshal for Value {
-    ///     fn unmarshal_mut<D>(&mut self, archive: D) -> Result<(), D::Error>
+    ///     fn unmarshal_mut<'a, D>(&mut self, archive: D) -> Result<(), D::Error>
     ///     where
-    ///         D: Deserializer,
+    ///         D: Deserializer<'a>,
     ///     {
     ///         self.0 = archive.decode_u16()?;
     ///         Ok(())
@@ -272,9 +257,9 @@ pub trait Deserializer {
     /// struct Value(i32);
     ///
     /// impl Unmarshal for Value {
-    ///     fn unmarshal_mut<D>(&mut self, archive: D) -> Result<(), D::Error>
+    ///     fn unmarshal_mut<'a, D>(&mut self, archive: D) -> Result<(), D::Error>
     ///     where
-    ///         D: Deserializer,
+    ///         D: Deserializer<'a>,
     ///     {
     ///         self.0 = archive.decode_i32()?;
     ///         Ok(())
@@ -293,9 +278,9 @@ pub trait Deserializer {
     /// struct Value(u32);
     ///
     /// impl Unmarshal for Value {
-    ///     fn unmarshal_mut<D>(&mut self, archive: D) -> Result<(), D::Error>
+    ///     fn unmarshal_mut<'a, D>(&mut self, archive: D) -> Result<(), D::Error>
     ///     where
-    ///         D: Deserializer,
+    ///         D: Deserializer<'a>,
     ///     {
     ///         self.0 = archive.decode_u32()?;
     ///         Ok(())
@@ -314,9 +299,9 @@ pub trait Deserializer {
     /// struct Value(i64);
     ///
     /// impl Unmarshal for Value {
-    ///     fn unmarshal_mut<D>(&mut self, archive: D) -> Result<(), D::Error>
+    ///     fn unmarshal_mut<'a, D>(&mut self, archive: D) -> Result<(), D::Error>
     ///     where
-    ///         D: Deserializer,
+    ///         D: Deserializer<'a>,
     ///     {
     ///         self.0 = archive.decode_i64()?;
     ///         Ok(())
@@ -335,9 +320,9 @@ pub trait Deserializer {
     /// struct Value(u64);
     ///
     /// impl Unmarshal for Value {
-    ///     fn unmarshal_mut<D>(&mut self, archive: D) -> Result<(), D::Error>
+    ///     fn unmarshal_mut<'a, D>(&mut self, archive: D) -> Result<(), D::Error>
     ///     where
-    ///         D: Deserializer,
+    ///         D: Deserializer<'a>,
     ///     {
     ///         self.0 = archive.decode_u64()?;
     ///         Ok(())
@@ -356,9 +341,9 @@ pub trait Deserializer {
     /// struct Value(f32);
     ///
     /// impl Unmarshal for Value {
-    ///     fn unmarshal_mut<D>(&mut self, archive: D) -> Result<(), D::Error>
+    ///     fn unmarshal_mut<'a, D>(&mut self, archive: D) -> Result<(), D::Error>
     ///     where
-    ///         D: Deserializer,
+    ///         D: Deserializer<'a>,
     ///     {
     ///         self.0 = archive.decode_f32()?;
     ///         Ok(())
@@ -377,9 +362,9 @@ pub trait Deserializer {
     /// struct Value(f64);
     ///
     /// impl Unmarshal for Value {
-    ///     fn unmarshal_mut<D>(&mut self, archive: D) -> Result<(), D::Error>
+    ///     fn unmarshal_mut<'a, D>(&mut self, archive: D) -> Result<(), D::Error>
     ///     where
-    ///         D: Deserializer,
+    ///         D: Deserializer<'a>,
     ///     {
     ///         self.0 = archive.decode_f64()?;
     ///         Ok(())
@@ -398,9 +383,9 @@ pub trait Deserializer {
     /// struct Value(String);
     ///
     /// impl Unmarshal for Value {
-    ///     fn unmarshal_mut<D>(&mut self, archive: D) -> Result<(), D::Error>
+    ///     fn unmarshal_mut<'a, D>(&mut self, archive: D) -> Result<(), D::Error>
     ///     where
-    ///         D: Deserializer,
+    ///         D: Deserializer<'a>,
     ///     {
     ///         self.0 = archive.decode_string()?;
     ///         Ok(())
@@ -421,9 +406,9 @@ pub trait Deserializer {
     /// struct Value(String);
     ///
     /// impl Unmarshal for Value {
-    ///     fn unmarshal_mut<D>(&mut self, archive: D) -> Result<(), D::Error>
+    ///     fn unmarshal_mut<'a, D>(&mut self, archive: D) -> Result<(), D::Error>
     ///     where
-    ///         D: Deserializer,
+    ///         D: Deserializer<'a>,
     ///     {
     ///         self.0 = archive.decode_wstring()?;
     ///         Ok(())
@@ -432,12 +417,21 @@ pub trait Deserializer {
     /// ```
     fn decode_wstring(self) -> Result<String, Self::Error>;
 
-    /// Deserialize an optional value.
+    /// Deserialize a struct.
+    fn decode_struct(self, info: &TypeInfo<'a>) -> Result<Self::Struct, Self::Error>;
+
+    /// Deserialize a complex enum.
+    fn decode_union(self, info: &TypeInfo<'a>) -> Result<Self::Union, Self::Error>;
+
+    /// Deserialize a plain, C-like enum.
+    fn decode_enum(self, name: &str) -> Result<Self::Enum, Self::Error>;
+
+    /// Begin deserializing an optional value.
     ///
     /// # Example
     ///
     /// ```
-    /// # use intercom_cts::{decode::Deserializer, Unmarshal};
+    /// # use intercom_cts::{decode::Deserializer, decode::OptionDeserializer, Unmarshal};
     /// #
     /// struct Value<T>(Option<T>);
     ///
@@ -445,31 +439,22 @@ pub trait Deserializer {
     /// where
     ///     T: Unmarshal + Default,
     /// {
-    ///     fn unmarshal_mut<D>(&mut self, archive: D) -> Result<(), D::Error>
+    ///     fn unmarshal_mut<'a, D>(&mut self, archive: D) -> Result<(), D::Error>
     ///     where
-    ///         D: Deserializer,
+    ///         D: Deserializer<'a>,
     ///     {
-    ///         self.0 = archive.decode_option()?;
+    ///         let mut de = archive.begin_decode_option()?;
+    ///         if de.is_some() {
+    ///             let v = self.0.get_or_insert_with(Default::default);
+    ///             de.decode_some(v)?;
+    ///         } else {
+    ///             self.0 = None;
+    ///         }
     ///         Ok(())
     ///     }
     /// }
     /// ```
-    fn decode_option<T>(self) -> Result<Option<T>, Self::Error>
-    where
-        T: Unmarshal + Default;
-
-    /// Deserialize an optional value using in-place, stateful unmarshaling.
-    fn decode_option_mut<T>(self, value: &mut T) -> Result<bool, Self::Error>
-    where
-        T: Unmarshal;
-
-    /// Deserialize a struct.
-    fn decode_struct(self, info: &TypeInfo<'_>) -> Result<Self::Struct, Self::Error>;
-
-    /// Deserialize a complex enum.
-    fn decode_union(self, info: &TypeInfo<'_>) -> Result<Self::Union, Self::Error>;
-
-    fn decode_enum(self, name: &str) -> Result<Self::Enum, Self::Error>;
+    fn begin_decode_option(self) -> Result<Self::Option, Self::Error>;
 
     /// Deserialize a sequence.
     ///
@@ -485,9 +470,9 @@ pub trait Deserializer {
     /// where
     ///     T: Unmarshal + Default,
     /// {
-    ///     fn unmarshal_mut<D>(&mut self, archive: D) -> Result<(), D::Error>
+    ///     fn unmarshal_mut<'a, D>(&mut self, archive: D) -> Result<(), D::Error>
     ///     where
-    ///         D: Deserializer,
+    ///         D: Deserializer<'a>,
     ///     {
     ///         let mut state = archive.decode_sequence()?;
     ///         let mut value = T::default();
@@ -511,9 +496,9 @@ pub trait Deserializer {
     /// struct Value<T>([T; 128]);
     ///
     /// impl<T: Unmarshal> Unmarshal for Value<T> {
-    ///     fn unmarshal_mut<D>(&mut self, archive: D) -> Result<(), D::Error>
+    ///     fn unmarshal_mut<'a, D>(&mut self, archive: D) -> Result<(), D::Error>
     ///     where
-    ///         D: Deserializer,
+    ///         D: Deserializer<'a>,
     ///     {
     ///         let mut state = archive.decode_array(128)?;
     ///         for elem in &mut self.0 {
@@ -541,9 +526,9 @@ pub trait Deserializer {
     /// where
     ///     T: Unmarshal + Default,
     /// {
-    ///     fn unmarshal_mut<D>(&mut self, archive: D) -> Result<(), D::Error>
+    ///     fn unmarshal_mut<'a, D>(&mut self, archive: D) -> Result<(), D::Error>
     ///     where
-    ///         D: Deserializer,
+    ///         D: Deserializer<'a>,
     ///     {
     ///         let mut state = archive.decode_map()?;
     ///         let mut key = String::default();
@@ -557,18 +542,18 @@ pub trait Deserializer {
     fn decode_map(self) -> Result<Self::Map, Self::Error>;
 }
 
-pub trait StructDeserializer {
+pub trait StructDeserializer<'a> {
     type Ok;
     type Error: Error;
 
-    fn decode_field<T>(&mut self, info: &MemberInfo<'_>, value: &mut T) -> Result<(), Self::Error>
+    fn decode_field<T>(&mut self, info: &MemberInfo<'a>, value: &mut T) -> Result<(), Self::Error>
     where
         T: Unmarshal;
 
     fn end(self) -> Result<Self::Ok, Self::Error>;
 }
 
-pub trait UnionDeserializer {
+pub trait UnionDeserializer<'a> {
     type Ok;
     type Error: Error;
 
@@ -578,7 +563,7 @@ pub trait UnionDeserializer {
 
     fn decode_variant<T>(
         self,
-        info: &MemberInfo<'_>,
+        info: &MemberInfo<'a>,
         value: &mut T,
     ) -> Result<Self::Ok, Self::Error>
     where
@@ -586,15 +571,15 @@ pub trait UnionDeserializer {
 }
 
 pub trait EnumVisitor {
-    fn member_id<D>(self, de: D) -> Result<Self, D::Error>
+    fn member_id<'a, D>(self, de: D) -> Result<Self, D::Error>
     where
         Self: Sized,
-        D: Deserializer;
+        D: Deserializer<'a>;
 
-    fn member_field<D>(self, name: &str) -> Result<Self, D::Error>
+    fn member_field<'a, D>(self, name: &str) -> Result<Self, D::Error>
     where
         Self: Sized,
-        D: Deserializer;
+        D: Deserializer<'a>;
 }
 
 pub trait EnumDeserializer {
@@ -603,6 +588,16 @@ pub trait EnumDeserializer {
     fn decode_enumerator<T>(self, visitor: T) -> Result<T, Self::Error>
     where
         T: Unmarshal + EnumVisitor;
+}
+
+pub trait OptionDeserializer {
+    type Error: Error;
+
+    fn is_some(&mut self) -> bool;
+
+    fn decode_some<T>(self, value: &mut T) -> Result<(), Self::Error>
+    where
+        T: Unmarshal;
 }
 
 pub trait SeqDeserializer {
@@ -637,9 +632,9 @@ pub trait MapDeserializer {
 pub trait Unmarshal {
     /// Stateless unmarshaling that produces a new value of type T. Values that
     /// were not specified in the input will be default constructed.
-    fn unmarshal<D>(archive: D) -> Result<Self, D::Error>
+    fn unmarshal<'a, D>(archive: D) -> Result<Self, D::Error>
     where
-        D: Deserializer,
+        D: Deserializer<'a>,
         Self: Default,
     {
         let mut value = Self::default();
@@ -657,16 +652,16 @@ pub trait Unmarshal {
     /// unmarshal a type solely based on its definition. One such example is
     /// `DynamicData`, whose description is defined at run-time by an
     /// associated `DynamicType`.
-    fn unmarshal_mut<D>(&mut self, archive: D) -> Result<(), D::Error>
+    fn unmarshal_mut<'a, D>(&mut self, archive: D) -> Result<(), D::Error>
     where
-        D: Deserializer;
+        D: Deserializer<'a>;
 }
 
 impl Unmarshal for bool {
     #[inline]
-    fn unmarshal_mut<D>(&mut self, archive: D) -> Result<(), D::Error>
+    fn unmarshal_mut<'a, D>(&mut self, archive: D) -> Result<(), D::Error>
     where
-        D: Deserializer,
+        D: Deserializer<'a>,
     {
         *self = archive.decode_bool()?;
         Ok(())
@@ -675,9 +670,9 @@ impl Unmarshal for bool {
 
 impl Unmarshal for char {
     #[inline]
-    fn unmarshal_mut<D>(&mut self, archive: D) -> Result<(), D::Error>
+    fn unmarshal_mut<'a, D>(&mut self, archive: D) -> Result<(), D::Error>
     where
-        D: Deserializer,
+        D: Deserializer<'a>,
     {
         *self = archive.decode_char()?;
         Ok(())
@@ -686,9 +681,9 @@ impl Unmarshal for char {
 
 impl Unmarshal for i8 {
     #[inline]
-    fn unmarshal_mut<D>(&mut self, archive: D) -> Result<(), D::Error>
+    fn unmarshal_mut<'a, D>(&mut self, archive: D) -> Result<(), D::Error>
     where
-        D: Deserializer,
+        D: Deserializer<'a>,
     {
         *self = archive.decode_i8()?;
         Ok(())
@@ -697,9 +692,9 @@ impl Unmarshal for i8 {
 
 impl Unmarshal for u8 {
     #[inline]
-    fn unmarshal_mut<D>(&mut self, archive: D) -> Result<(), D::Error>
+    fn unmarshal_mut<'a, D>(&mut self, archive: D) -> Result<(), D::Error>
     where
-        D: Deserializer,
+        D: Deserializer<'a>,
     {
         *self = archive.decode_u8()?;
         Ok(())
@@ -708,9 +703,9 @@ impl Unmarshal for u8 {
 
 impl Unmarshal for i16 {
     #[inline]
-    fn unmarshal_mut<D>(&mut self, archive: D) -> Result<(), D::Error>
+    fn unmarshal_mut<'a, D>(&mut self, archive: D) -> Result<(), D::Error>
     where
-        D: Deserializer,
+        D: Deserializer<'a>,
     {
         *self = archive.decode_i16()?;
         Ok(())
@@ -719,9 +714,9 @@ impl Unmarshal for i16 {
 
 impl Unmarshal for u16 {
     #[inline]
-    fn unmarshal_mut<D>(&mut self, archive: D) -> Result<(), D::Error>
+    fn unmarshal_mut<'a, D>(&mut self, archive: D) -> Result<(), D::Error>
     where
-        D: Deserializer,
+        D: Deserializer<'a>,
     {
         *self = archive.decode_u16()?;
         Ok(())
@@ -730,9 +725,9 @@ impl Unmarshal for u16 {
 
 impl Unmarshal for i32 {
     #[inline]
-    fn unmarshal_mut<D>(&mut self, archive: D) -> Result<(), D::Error>
+    fn unmarshal_mut<'a, D>(&mut self, archive: D) -> Result<(), D::Error>
     where
-        D: Deserializer,
+        D: Deserializer<'a>,
     {
         *self = archive.decode_i32()?;
         Ok(())
@@ -741,9 +736,9 @@ impl Unmarshal for i32 {
 
 impl Unmarshal for u32 {
     #[inline]
-    fn unmarshal_mut<D>(&mut self, archive: D) -> Result<(), D::Error>
+    fn unmarshal_mut<'a, D>(&mut self, archive: D) -> Result<(), D::Error>
     where
-        D: Deserializer,
+        D: Deserializer<'a>,
     {
         *self = archive.decode_u32()?;
         Ok(())
@@ -752,9 +747,9 @@ impl Unmarshal for u32 {
 
 impl Unmarshal for i64 {
     #[inline]
-    fn unmarshal_mut<D>(&mut self, archive: D) -> Result<(), D::Error>
+    fn unmarshal_mut<'a, D>(&mut self, archive: D) -> Result<(), D::Error>
     where
-        D: Deserializer,
+        D: Deserializer<'a>,
     {
         *self = archive.decode_i64()?;
         Ok(())
@@ -763,9 +758,9 @@ impl Unmarshal for i64 {
 
 impl Unmarshal for u64 {
     #[inline]
-    fn unmarshal_mut<D>(&mut self, archive: D) -> Result<(), D::Error>
+    fn unmarshal_mut<'a, D>(&mut self, archive: D) -> Result<(), D::Error>
     where
-        D: Deserializer,
+        D: Deserializer<'a>,
     {
         archive.decode_u64().map(|v| *self = v)
     }
@@ -773,9 +768,9 @@ impl Unmarshal for u64 {
 
 impl Unmarshal for isize {
     #[inline]
-    fn unmarshal_mut<D>(&mut self, archive: D) -> Result<(), D::Error>
+    fn unmarshal_mut<'a, D>(&mut self, archive: D) -> Result<(), D::Error>
     where
-        D: Deserializer,
+        D: Deserializer<'a>,
     {
         archive
             .decode_i64()?
@@ -787,9 +782,9 @@ impl Unmarshal for isize {
 
 impl Unmarshal for usize {
     #[inline]
-    fn unmarshal_mut<D>(&mut self, archive: D) -> Result<(), D::Error>
+    fn unmarshal_mut<'a, D>(&mut self, archive: D) -> Result<(), D::Error>
     where
-        D: Deserializer,
+        D: Deserializer<'a>,
     {
         archive
             .decode_u64()?
@@ -801,9 +796,9 @@ impl Unmarshal for usize {
 
 impl Unmarshal for f32 {
     #[inline]
-    fn unmarshal_mut<D>(&mut self, archive: D) -> Result<(), D::Error>
+    fn unmarshal_mut<'a, D>(&mut self, archive: D) -> Result<(), D::Error>
     where
-        D: Deserializer,
+        D: Deserializer<'a>,
     {
         archive.decode_f32().map(|v| *self = v)
     }
@@ -811,9 +806,9 @@ impl Unmarshal for f32 {
 
 impl Unmarshal for f64 {
     #[inline]
-    fn unmarshal_mut<D>(&mut self, archive: D) -> Result<(), D::Error>
+    fn unmarshal_mut<'a, D>(&mut self, archive: D) -> Result<(), D::Error>
     where
-        D: Deserializer,
+        D: Deserializer<'a>,
     {
         archive.decode_f64().map(|v| *self = v)
     }
@@ -821,9 +816,9 @@ impl Unmarshal for f64 {
 
 impl Unmarshal for String {
     #[inline]
-    fn unmarshal_mut<D>(&mut self, archive: D) -> Result<(), D::Error>
+    fn unmarshal_mut<'a, D>(&mut self, archive: D) -> Result<(), D::Error>
     where
-        D: Deserializer,
+        D: Deserializer<'a>,
     {
         archive.decode_string().map(|v| *self = v)
     }
@@ -831,9 +826,9 @@ impl Unmarshal for String {
 
 impl Unmarshal for WChar<&mut char> {
     #[inline]
-    fn unmarshal_mut<D>(&mut self, archive: D) -> Result<(), D::Error>
+    fn unmarshal_mut<'a, D>(&mut self, archive: D) -> Result<(), D::Error>
     where
-        D: Deserializer,
+        D: Deserializer<'a>,
     {
         archive.decode_wchar().map(|v| *self.0 = v)
     }
@@ -841,9 +836,9 @@ impl Unmarshal for WChar<&mut char> {
 
 impl Unmarshal for WString<&mut String> {
     #[inline]
-    fn unmarshal_mut<D>(&mut self, archive: D) -> Result<(), D::Error>
+    fn unmarshal_mut<'a, D>(&mut self, archive: D) -> Result<(), D::Error>
     where
-        D: Deserializer,
+        D: Deserializer<'a>,
     {
         archive.decode_wstring().map(|v| *self.0 = v)
     }
@@ -858,9 +853,9 @@ impl<T> Unmarshal for Vec<T>
 where
     T: Unmarshal + Default,
 {
-    fn unmarshal_mut<D>(&mut self, archive: D) -> Result<(), D::Error>
+    fn unmarshal_mut<'a, D>(&mut self, archive: D) -> Result<(), D::Error>
     where
-        D: Deserializer,
+        D: Deserializer<'a>,
     {
         self.clear();
         let mut state = archive.decode_sequence()?;
@@ -879,20 +874,33 @@ where
     T: Unmarshal + Default,
 {
     #[inline]
-    fn unmarshal<D>(archive: D) -> Result<Self, D::Error>
+    fn unmarshal<'a, D>(archive: D) -> Result<Self, D::Error>
     where
-        D: Deserializer,
+        D: Deserializer<'a>,
         Self: Default,
     {
-        archive.decode_option()
+        let mut state = archive.begin_decode_option()?;
+        if state.is_some() {
+            let mut value = T::default();
+            state.decode_some(&mut value)?;
+            Ok(Some(value))
+        } else {
+            Ok(None)
+        }
     }
 
     #[inline]
-    fn unmarshal_mut<D>(&mut self, archive: D) -> Result<(), D::Error>
+    fn unmarshal_mut<'a, D>(&mut self, archive: D) -> Result<(), D::Error>
     where
-        D: Deserializer,
+        D: Deserializer<'a>,
     {
-        *self = archive.decode_option()?;
+        let mut state = archive.begin_decode_option()?;
+        if state.is_some() {
+            let value = self.get_or_insert_with(T::default);
+            state.decode_some(value)?;
+        } else {
+            *self = None;
+        }
         Ok(())
     }
 }
@@ -902,9 +910,9 @@ where
     T: Unmarshal,
 {
     #[inline]
-    fn unmarshal_mut<D>(&mut self, archive: D) -> Result<(), D::Error>
+    fn unmarshal_mut<'a, D>(&mut self, archive: D) -> Result<(), D::Error>
     where
-        D: Deserializer,
+        D: Deserializer<'a>,
     {
         (**self).unmarshal_mut(archive)
     }
@@ -915,9 +923,9 @@ where
     T: ?Sized + Unmarshal,
 {
     #[inline]
-    fn unmarshal_mut<D>(&mut self, archive: D) -> Result<(), D::Error>
+    fn unmarshal_mut<'a, D>(&mut self, archive: D) -> Result<(), D::Error>
     where
-        D: Deserializer,
+        D: Deserializer<'a>,
     {
         (**self).unmarshal_mut(archive)
     }
@@ -927,9 +935,9 @@ impl<T, const N: usize> Unmarshal for [T; N]
 where
     T: Unmarshal,
 {
-    fn unmarshal<D>(archive: D) -> Result<Self, D::Error>
+    fn unmarshal<'a, D>(archive: D) -> Result<Self, D::Error>
     where
-        D: Deserializer,
+        D: Deserializer<'a>,
         Self: Default,
     {
         let mut value = Self::default();
@@ -937,9 +945,9 @@ where
         Ok(value)
     }
 
-    fn unmarshal_mut<D>(&mut self, archive: D) -> Result<(), D::Error>
+    fn unmarshal_mut<'a, D>(&mut self, archive: D) -> Result<(), D::Error>
     where
-        D: Deserializer,
+        D: Deserializer<'a>,
     {
         let mut state = archive.decode_array(N)?;
         for elem in self.iter_mut() {
@@ -956,9 +964,9 @@ where
     T: Unmarshal + Hash + Eq + Default,
     S: BuildHasher + Default,
 {
-    fn unmarshal_mut<D>(&mut self, archive: D) -> Result<(), D::Error>
+    fn unmarshal_mut<'a, D>(&mut self, archive: D) -> Result<(), D::Error>
     where
-        D: Deserializer,
+        D: Deserializer<'a>,
     {
         self.clear();
         let mut state = archive.decode_sequence()?;
@@ -978,9 +986,9 @@ where
     V: Unmarshal + Default,
     S: BuildHasher + Default,
 {
-    fn unmarshal_mut<D>(&mut self, archive: D) -> Result<(), D::Error>
+    fn unmarshal_mut<'a, D>(&mut self, archive: D) -> Result<(), D::Error>
     where
-        D: Deserializer,
+        D: Deserializer<'a>,
     {
         self.clear();
         let mut state = archive.decode_map()?;
@@ -1000,9 +1008,9 @@ where
     K: Unmarshal + Ord + Default,
     V: Unmarshal + Default,
 {
-    fn unmarshal_mut<D>(&mut self, archive: D) -> Result<(), D::Error>
+    fn unmarshal_mut<'a, D>(&mut self, archive: D) -> Result<(), D::Error>
     where
-        D: Deserializer,
+        D: Deserializer<'a>,
     {
         self.clear();
         let mut state = archive.decode_map()?;
@@ -1023,9 +1031,9 @@ impl<T> Unmarshal for BTreeSet<T>
 where
     T: Unmarshal + Ord + Default,
 {
-    fn unmarshal_mut<D>(&mut self, archive: D) -> Result<(), D::Error>
+    fn unmarshal_mut<'a, D>(&mut self, archive: D) -> Result<(), D::Error>
     where
-        D: Deserializer,
+        D: Deserializer<'a>,
     {
         self.clear();
         let mut value = T::default();

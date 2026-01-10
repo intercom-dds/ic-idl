@@ -1,29 +1,10 @@
-// Copyright 2025 KONGSBERG
-//
-// Redistribution and use in source and binary forms, with or without
-// modification, are permitted provided that the following conditions are met:
-//
-// 1. Redistributions of source code must retain the above copyright notice,
-//    this list of conditions and the following disclaimer.
-//
-// 2. Redistributions in binary form must reproduce the above copyright notice,
-//    this list of conditions and the following disclaimer in the documentation
-//    and/or other materials provided with the distribution.
-//
-// 3. Neither the name of the copyright holder nor the names of its contributors
-//    may be used to endorse or promote products derived from this software
-//    without specific prior written permission.
-//
-// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
-// ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
-// WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
-// DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
-// FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
-// DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
-// SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
-// CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
-// OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
-// OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+// KONGSBERG PROPRIETARY - This software, related documentation and its accompanying elements,
+// contain information which is proprietary and confidential to KONGSBERG or its licensors.
+// Any disclosure, copying, distribution or use is prohibited if not otherwise explicitly agreed
+// with KONGSBERG in writing. It is strictly prohibited to modify, reverse engineer, decompile,
+// or disassemble the software, unless such acts are allowed under applicable mandatory law or
+// explicitly agreed with KONGSBERG in writing. Any authorized reproduction, in whole or in part,
+// must include this legend. (C) 2023 KONGSBERG - All rights reserved
 
 use std::collections::BTreeMap;
 
@@ -88,11 +69,11 @@ where
     }
 
     fn expect(&mut self, c: char) -> Result<()> {
-        if let Some(next) = self.skip() {
-            if c == next {
-                self.advance();
-                return Ok(());
-            }
+        if let Some(next) = self.skip()
+            && c == next
+        {
+            self.advance();
+            return Ok(());
         }
         Err(error!(self, "expected '{c}'"))
     }
@@ -180,85 +161,20 @@ where
     }
 
     fn string(&mut self) -> Result<String> {
-        self.expect('"')?;
-        let mut out = String::new();
-        loop {
-            let c = self
-                .get()
-                .ok_or_else(|| error!(self, "unterminated string"))?;
-            match c {
-                '"' => {
-                    self.advance();
-                    break;
-                }
-                '\\' => {
-                    out.push(self.read_escape()?);
-                    self.advance();
-                }
-                c if c < '\u{20}' => return Err(error!(self, "unescaped control character")),
-                _ => {
-                    out.push(c);
-                    self.advance();
-                }
+        let mut str = String::new();
+        while let Some(c) = self.next() {
+            if c == '"' {
+                break;
             }
+            str.push(c);
         }
 
-        Ok(out)
+        self.expect('"')
+            .map_err(|_| error!(self, "unterminated string"))?;
+        Ok(str)
     }
 
-    fn read_escape(&mut self) -> Result<char> {
-        let e = self
-            .next()
-            .ok_or_else(|| error!(self, "incomplete escape"))?;
-        Ok(match e {
-            '"' | '\\' | '/' => e,
-            'b' => '\u{0008}',
-            'f' => '\u{000C}',
-            'n' => '\n',
-            'r' => '\r',
-            't' => '\t',
-            'u' => return self.read_unicode_escape(),
-            _ => return Err(error!(self, "invalid escape")),
-        })
-    }
-
-    fn read_unicode_escape(&mut self) -> Result<char> {
-        let hi = self.read_hex4()? as u32;
-
-        // High surrogate -> must be followed by \uDC00–\uDFFF
-        if (0xD800..=0xDBFF).contains(&hi) {
-            self.expect('\\')?;
-            self.expect('u')?;
-            let lo = self.read_hex4()? as u32;
-            if !(0xDC00..=0xDFFF).contains(&lo) {
-                return Err(error!(self, "invalid low surrogate"));
-            }
-            let cp = 0x10000 + (((hi - 0xD800) << 10) | (lo - 0xDC00));
-            return char::from_u32(cp).ok_or_else(|| error!(self, "invalid code point"));
-        }
-
-        // Lone low surrogate is invalid
-        if (0xDC00..=0xDFFF).contains(&hi) {
-            return Err(error!(self, "unexpected low surrogate"));
-        }
-
-        char::from_u32(hi).ok_or_else(|| error!(self, "invalid code point"))
-    }
-
-    fn read_hex4(&mut self) -> Result<u16> {
-        let mut v: u16 = 0;
-        for _ in 0..4 {
-            let c = self
-                .next()
-                .ok_or_else(|| error!(self, "incomplete unicode escape"))?;
-            let d = c
-                .to_digit(16)
-                .ok_or_else(|| error!(self, "invalid unicode escape"))?;
-            v = (v << 4) | (d as u16);
-        }
-        Ok(v)
-    }
-
+    // TODO: leading zeroes are not permitted
     fn integer(&mut self) -> Option<u64> {
         let mut value: u64 = 0;
         while let Some(c) = self.get() {
@@ -287,9 +203,6 @@ where
             .integer()
             .ok_or_else(|| error!(self, "invalid number"))?;
 
-        let mut float_value: Option<f64> = None;
-
-        // Parse fractional part if present
         if self.get() == Some('.') {
             self.advance();
 
@@ -305,48 +218,14 @@ where
                     _ => break,
                 }
             }
-            float_value = Some(value as f64 + frac);
+            return Ok(Number::Float(value as f64 + frac));
         }
 
-        // Parse exponent part if present (e.g., e-10, E+5)
-        if matches!(self.get(), Some('e') | Some('E')) {
-            self.advance();
-
-            let exp_neg = match self.get() {
-                Some('+') => {
-                    self.advance();
-                    false
-                }
-                Some('-') => {
-                    self.advance();
-                    true
-                }
-                _ => false,
-            };
-
-            let exp = self
-                .integer()
-                .ok_or_else(|| error!(self, "invalid exponent"))?;
-
-            // Apply exponent: base * 10^exp
-            let base = float_value.unwrap_or(value as f64);
-            let exponent = if exp_neg { -(exp as f64) } else { exp as f64 };
-
-            let result = base * 10_f64.powf(exponent);
-            return Ok(Number::Float(if neg { -result } else { result }));
-        }
-
-        // If we have a float value (from decimal), return it with sign
-        if let Some(f) = float_value {
-            return Ok(Number::Float(if neg { -f } else { f }));
-        }
-
-        // Otherwise return integer with sign
         if neg {
             if value > i64::MAX as u64 + 1 {
                 Err(error!(self, "invalid number"))
             } else {
-                Ok(Number::Signed(i64::try_from(value).unwrap().wrapping_neg()))
+                Ok(Number::Signed((value as i64).wrapping_neg()))
             }
         } else {
             Ok(Number::Unsigned(value))

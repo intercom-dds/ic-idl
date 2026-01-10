@@ -1,29 +1,10 @@
-// Copyright 2025 KONGSBERG
-//
-// Redistribution and use in source and binary forms, with or without
-// modification, are permitted provided that the following conditions are met:
-//
-// 1. Redistributions of source code must retain the above copyright notice,
-//    this list of conditions and the following disclaimer.
-//
-// 2. Redistributions in binary form must reproduce the above copyright notice,
-//    this list of conditions and the following disclaimer in the documentation
-//    and/or other materials provided with the distribution.
-//
-// 3. Neither the name of the copyright holder nor the names of its contributors
-//    may be used to endorse or promote products derived from this software
-//    without specific prior written permission.
-//
-// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
-// ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
-// WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
-// DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
-// FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
-// DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
-// SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
-// CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
-// OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
-// OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+// KONGSBERG PROPRIETARY - This software, related documentation and its accompanying elements,
+// contain information which is proprietary and confidential to KONGSBERG or its licensors.
+// Any disclosure, copying, distribution or use is prohibited if not otherwise explicitly agreed
+// with KONGSBERG in writing. It is strictly prohibited to modify, reverse engineer, decompile,
+// or disassemble the software, unless such acts are allowed under applicable mandatory law or
+// explicitly agreed with KONGSBERG in writing. Any authorized reproduction, in whole or in part,
+// must include this legend. (C) 2023 KONGSBERG - All rights reserved
 
 /// Helper macro for defining newtype bitmasks.
 ///
@@ -134,20 +115,8 @@ macro_rules! bitmask {
                 Self(self.0 | rhs.0)
             }
 
-            /// Sets the specified bits in the bitmask.
             #[inline]
-            pub const fn set(&mut self, rhs: Self) {
-                self.0 |= rhs.0
-            }
-
-            /// Clears the specified bits in the bitmask.
-            #[inline]
-            pub const fn unset(&mut self, rhs: Self) {
-                self.0 &= !rhs.0;
-            }
-
-            #[inline]
-            pub const fn clear(&mut self) {
+            pub fn clear(&mut self) {
                 self.0 = 0
             }
         }
@@ -226,18 +195,18 @@ macro_rules! bitmask {
         }
 
         impl $crate::Marshal for $name {
-            fn marshal<S>(&self, archive: S) -> ::std::result::Result<S::Ok, S::Error>
+            fn marshal<'a, S>(&self, archive: S) -> ::std::result::Result<S::Ok, S::Error>
             where
-                S: $crate::encode::Serializer,
+                S: $crate::encode::Serializer<'a>,
             {
                 self.0.marshal(archive)
             }
         }
 
         impl $crate::Unmarshal for $name {
-            fn unmarshal_mut<D>(&mut self, archive: D) -> ::std::result::Result<(), D::Error>
+            fn unmarshal_mut<'a, D>(&mut self, archive: D) -> ::std::result::Result<(), D::Error>
             where
-                D: $crate::decode::Deserializer,
+                D: $crate::decode::Deserializer<'a>,
             {
                 self.0 = <$type>::unmarshal(archive)?;
                 Ok(())

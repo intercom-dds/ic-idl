@@ -1,29 +1,10 @@
-// Copyright 2025 KONGSBERG
-//
-// Redistribution and use in source and binary forms, with or without
-// modification, are permitted provided that the following conditions are met:
-//
-// 1. Redistributions of source code must retain the above copyright notice,
-//    this list of conditions and the following disclaimer.
-//
-// 2. Redistributions in binary form must reproduce the above copyright notice,
-//    this list of conditions and the following disclaimer in the documentation
-//    and/or other materials provided with the distribution.
-//
-// 3. Neither the name of the copyright holder nor the names of its contributors
-//    may be used to endorse or promote products derived from this software
-//    without specific prior written permission.
-//
-// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
-// ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
-// WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
-// DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
-// FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
-// DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
-// SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
-// CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
-// OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
-// OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+// KONGSBERG PROPRIETARY - This software, related documentation and its accompanying elements,
+// contain information which is proprietary and confidential to KONGSBERG or its licensors.
+// Any disclosure, copying, distribution or use is prohibited if not otherwise explicitly agreed
+// with KONGSBERG in writing. It is strictly prohibited to modify, reverse engineer, decompile,
+// or disassemble the software, unless such acts are allowed under applicable mandatory law or
+// explicitly agreed with KONGSBERG in writing. Any authorized reproduction, in whole or in part,
+// must include this legend. (C) 2023 KONGSBERG - All rights reserved
 
 use std::collections::BTreeMap;
 use std::fmt;
@@ -38,6 +19,10 @@ use crate::encode::{
 use crate::error::Error as _;
 use crate::json::to_string;
 use crate::{DISC_INFO, Marshal, MemberInfo, TypeInfo, Unmarshal};
+
+pub type Array = Vec<Value>;
+
+pub type Object = BTreeMap<String, Value>;
 
 #[derive(Copy, Clone, Debug, PartialEq, PartialOrd)]
 pub enum Number {
@@ -79,42 +64,34 @@ pub enum Value {
 }
 
 impl Value {
-    #[must_use]
     pub fn is_null(&self) -> bool {
         matches!(self, Value::Null)
     }
 
-    #[must_use]
     pub fn is_bool(&self) -> bool {
         matches!(self, Value::Bool(_))
     }
 
-    #[must_use]
     pub fn is_integer(&self) -> bool {
         matches!(self, Value::Number(Number::Signed(_) | Number::Unsigned(_)))
     }
 
-    #[must_use]
     pub fn is_float(&self) -> bool {
         matches!(self, Value::Number(Number::Float(_)))
     }
 
-    #[must_use]
     pub fn is_string(&self) -> bool {
         matches!(self, Value::String(_))
     }
 
-    #[must_use]
     pub fn is_array(&self) -> bool {
         matches!(self, Value::Array(_))
     }
 
-    #[must_use]
     pub fn is_object(&self) -> bool {
         matches!(self, Value::Object(_))
     }
 
-    #[must_use]
     pub fn as_bool(&self) -> Option<bool> {
         if let Self::Bool(v) = self {
             Some(*v)
@@ -123,7 +100,6 @@ impl Value {
         }
     }
 
-    #[must_use]
     pub fn as_u64(&self) -> Option<u64> {
         if let Self::Number(Number::Unsigned(v)) = self {
             Some(*v)
@@ -132,7 +108,6 @@ impl Value {
         }
     }
 
-    #[must_use]
     pub fn as_i64(&self) -> Option<i64> {
         if let Self::Number(Number::Signed(v)) = self {
             Some(*v)
@@ -141,7 +116,6 @@ impl Value {
         }
     }
 
-    #[must_use]
     pub fn as_f64(&self) -> Option<f64> {
         if let Self::Number(Number::Float(v)) = self {
             Some(*v)
@@ -150,7 +124,6 @@ impl Value {
         }
     }
 
-    #[must_use]
     pub fn as_str(&self) -> Option<&str> {
         if let Self::String(v) = self {
             Some(v)
@@ -178,7 +151,6 @@ impl Value {
 
 #[allow(clippy::derivable_impls)]
 impl Default for Value {
-    #[allow(clippy::derivable_impls)]
     fn default() -> Self {
         Self::Null
     }
@@ -215,6 +187,24 @@ impl From<String> for Value {
     }
 }
 
+impl From<Number> for Value {
+    fn from(value: Number) -> Self {
+        Self::Number(value)
+    }
+}
+
+impl From<Array> for Value {
+    fn from(value: Array) -> Self {
+        Self::Array(value)
+    }
+}
+
+impl From<Object> for Value {
+    fn from(value: Object) -> Self {
+        Self::Object(value)
+    }
+}
+
 impl<T> From<Option<T>> for Value
 where
     T: Into<Value>,
@@ -224,16 +214,10 @@ where
     }
 }
 
-impl From<Number> for Value {
-    fn from(value: Number) -> Self {
-        Self::Number(value)
-    }
-}
-
 impl Marshal for Value {
-    fn marshal<S>(&self, archive: S) -> Result<S::Ok, S::Error>
+    fn marshal<'a, S>(&self, archive: S) -> Result<S::Ok, S::Error>
     where
-        S: Serializer,
+        S: Serializer<'a>,
     {
         match self {
             Value::Null => archive.encode_option::<Value>(&None),
@@ -247,9 +231,9 @@ impl Marshal for Value {
 }
 
 impl Unmarshal for Value {
-    fn unmarshal_mut<D>(&mut self, archive: D) -> Result<(), D::Error>
+    fn unmarshal_mut<'a, D>(&mut self, archive: D) -> Result<(), D::Error>
     where
-        D: Deserializer,
+        D: Deserializer<'a>,
     {
         if let Some(next) = archive.peek()? {
             *self = match next {
@@ -265,9 +249,9 @@ impl Unmarshal for Value {
 }
 
 impl Marshal for Number {
-    fn marshal<S>(&self, archive: S) -> Result<S::Ok, S::Error>
+    fn marshal<'a, S>(&self, archive: S) -> Result<S::Ok, S::Error>
     where
-        S: Serializer,
+        S: Serializer<'a>,
     {
         match self {
             Number::Signed(v) => v.marshal(archive),
@@ -278,9 +262,9 @@ impl Marshal for Number {
 }
 
 impl Unmarshal for Number {
-    fn unmarshal_mut<D>(&mut self, archive: D) -> Result<(), D::Error>
+    fn unmarshal_mut<'a, D>(&mut self, archive: D) -> Result<(), D::Error>
     where
-        D: Deserializer,
+        D: Deserializer<'a>,
     {
         if let Some(next) = archive.peek()? {
             *self = match next {
@@ -350,7 +334,7 @@ pub use value;
 
 struct S(Value);
 
-impl Serializer for S {
+impl Serializer<'_> for S {
     type Ok = Value;
     type Error = Error;
 
@@ -452,7 +436,7 @@ impl Serializer for S {
         Ok(Self(Value::Array(Vec::new())))
     }
 
-    fn encode_array(self, len: usize) -> Result<<Self as Serializer>::Array, Self::Error> {
+    fn encode_array(self, len: usize) -> Result<Self::Array, Self::Error> {
         self.encode_sequence(len)
     }
 
@@ -461,7 +445,7 @@ impl Serializer for S {
     }
 }
 
-impl StructSerializer for S {
+impl StructSerializer<'_> for S {
     type Ok = Value;
     type Error = Error;
 
@@ -480,7 +464,7 @@ impl StructSerializer for S {
     }
 }
 
-impl UnionSerializer for S {
+impl UnionSerializer<'_> for S {
     type Ok = Value;
     type Error = Error;
 

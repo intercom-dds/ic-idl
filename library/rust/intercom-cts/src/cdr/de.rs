@@ -1,29 +1,10 @@
-// Copyright 2025 KONGSBERG
-//
-// Redistribution and use in source and binary forms, with or without
-// modification, are permitted provided that the following conditions are met:
-//
-// 1. Redistributions of source code must retain the above copyright notice,
-//    this list of conditions and the following disclaimer.
-//
-// 2. Redistributions in binary form must reproduce the above copyright notice,
-//    this list of conditions and the following disclaimer in the documentation
-//    and/or other materials provided with the distribution.
-//
-// 3. Neither the name of the copyright holder nor the names of its contributors
-//    may be used to endorse or promote products derived from this software
-//    without specific prior written permission.
-//
-// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
-// ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
-// WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
-// DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
-// FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
-// DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
-// SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
-// CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
-// OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
-// OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+// KONGSBERG PROPRIETARY - This software, related documentation and its accompanying elements,
+// contain information which is proprietary and confidential to KONGSBERG or its licensors.
+// Any disclosure, copying, distribution or use is prohibited if not otherwise explicitly agreed
+// with KONGSBERG in writing. It is strictly prohibited to modify, reverse engineer, decompile,
+// or disassemble the software, unless such acts are allowed under applicable mandatory law or
+// explicitly agreed with KONGSBERG in writing. Any authorized reproduction, in whole or in part,
+// must include this legend. (C) 2023 KONGSBERG - All rights reserved
 
 use std::marker::PhantomData;
 
@@ -32,7 +13,7 @@ use crate::buf::Cursor;
 use crate::buf::endian::{Big, Endian, Little};
 use crate::decode::{
     ArrayDeserializer, Deserializer, EnumDeserializer, EnumVisitor, MapDeserializer,
-    SeqDeserializer, StructDeserializer, UnionDeserializer, Unmarshal,
+    OptionDeserializer, SeqDeserializer, StructDeserializer, UnionDeserializer, Unmarshal,
 };
 use crate::{MemberInfo, TypeInfo};
 
@@ -50,31 +31,29 @@ impl<'a, E: Endian> CdrReader<'a, E> {
     }
 
     #[inline]
-    fn aligned_read<F, T>(&mut self, f: F) -> Result<T, Error>
-    where
-        F: Fn(&[u8]) -> T,
-    {
+    fn aligned_read<T>(&mut self, f: unsafe fn(*const u8) -> T) -> Result<T, Error> {
         self.buf.align_to::<T>();
         if self.buf.unread_bytes() >= size_of::<T>() {
-            let val = f(self.buf.as_ref());
             // SAFETY: bounds checked
             unsafe {
-                self.buf.advance(size_of::<T>());
+                let val = f(self.buf.read_ptr());
+                self.buf.advance_unchecked(size_of::<T>());
+                Ok(val)
             }
-            Ok(val)
         } else {
             Err(Error::InvalidLen)
         }
     }
 }
 
-impl<'a, 'de, E: Endian> Deserializer for &'a mut CdrReader<'de, E> {
+impl<'a, 'de, E: Endian> Deserializer<'a> for &'a mut CdrReader<'de, E> {
     type Struct = Self;
     type Union = Self;
     type Enum = Self;
     type Map = MemberSeq<'a, 'de, E>;
     type Sequence = MemberSeq<'a, 'de, E>;
     type Array = MemberSeq<'a, 'de, E>;
+    type Option = Self;
 
     type Error = Error;
 
@@ -101,7 +80,7 @@ impl<'a, 'de, E: Endian> Deserializer for &'a mut CdrReader<'de, E> {
 
     #[inline]
     fn decode_u8(self) -> Result<u8, Self::Error> {
-        self.aligned_read(E::read_u8)
+        self.aligned_read(E::read_u8_raw)
     }
 
     #[inline]
@@ -111,7 +90,7 @@ impl<'a, 'de, E: Endian> Deserializer for &'a mut CdrReader<'de, E> {
 
     #[inline]
     fn decode_u16(self) -> Result<u16, Self::Error> {
-        self.aligned_read(E::read_u16)
+        self.aligned_read(E::read_u16_raw)
     }
 
     #[inline]
@@ -121,20 +100,17 @@ impl<'a, 'de, E: Endian> Deserializer for &'a mut CdrReader<'de, E> {
 
     #[inline]
     fn decode_u32(self) -> Result<u32, Self::Error> {
-        self.aligned_read(E::read_u32)
+        self.aligned_read(E::read_u32_raw)
     }
 
     #[inline]
     fn decode_i64(self) -> Result<i64, Self::Error> {
-        self.decode_u64().map(|v| {
-            // Safe reinterpretation of u64 bits as i64 for decoding
-            i64::from_ne_bytes(v.to_ne_bytes())
-        })
+        self.decode_u64().map(|v| v as i64)
     }
 
     #[inline]
     fn decode_u64(self) -> Result<u64, Self::Error> {
-        self.aligned_read(E::read_u64)
+        self.aligned_read(E::read_u64_raw)
     }
 
     #[inline]
@@ -157,7 +133,7 @@ impl<'a, 'de, E: Endian> Deserializer for &'a mut CdrReader<'de, E> {
                 let slice = unsafe {
                     // skip null terminator
                     let bytes = self.buf.slice(len - 1);
-                    self.buf.advance(len);
+                    self.buf.advance_unchecked(len);
                     bytes
                 };
 
@@ -177,7 +153,7 @@ impl<'a, 'de, E: Endian> Deserializer for &'a mut CdrReader<'de, E> {
                 // SAFETY: bounds checked
                 let slice = unsafe {
                     let bytes = self.buf.slice(len);
-                    self.buf.advance(len);
+                    self.buf.advance_unchecked(len);
                     bytes
                 };
 
@@ -190,39 +166,12 @@ impl<'a, 'de, E: Endian> Deserializer for &'a mut CdrReader<'de, E> {
     }
 
     #[inline]
-    fn decode_option<T>(self) -> Result<Option<T>, Self::Error>
-    where
-        T: Unmarshal + Default,
-    {
-        let value = if self.decode_bool()? {
-            Some(T::unmarshal(&mut *self)?)
-        } else {
-            None
-        };
-        Ok(value)
-    }
-
-    #[inline]
-    fn decode_option_mut<T>(self, value: &mut T) -> Result<bool, Self::Error>
-    where
-        T: Unmarshal,
-    {
-        let res = if self.decode_bool()? {
-            value.unmarshal_mut(&mut *self)?;
-            true
-        } else {
-            false
-        };
-        Ok(res)
-    }
-
-    #[inline]
-    fn decode_struct(self, _: &TypeInfo<'_>) -> Result<Self::Struct, Self::Error> {
+    fn decode_struct(self, _: &TypeInfo<'a>) -> Result<Self::Struct, Self::Error> {
         Ok(self)
     }
 
     #[inline]
-    fn decode_union(self, _: &TypeInfo<'_>) -> Result<Self::Union, Self::Error> {
+    fn decode_union(self, _: &TypeInfo<'a>) -> Result<Self::Union, Self::Error> {
         Ok(self)
     }
 
@@ -246,14 +195,34 @@ impl<'a, 'de, E: Endian> Deserializer for &'a mut CdrReader<'de, E> {
     fn decode_map(self) -> Result<Self::Map, Self::Error> {
         self.decode_sequence()
     }
-}
-
-impl<E: Endian> StructDeserializer for &mut CdrReader<'_, E> {
-    type Ok = ();
-    type Error = <Self as Deserializer>::Error;
 
     #[inline]
-    fn decode_field<T>(&mut self, _: &MemberInfo<'_>, value: &mut T) -> Result<(), Self::Error>
+    fn begin_decode_option(self) -> Result<Self::Option, Self::Error> {
+        Ok(self)
+    }
+}
+
+impl<E: Endian> OptionDeserializer for &mut CdrReader<'_, E> {
+    type Error = Error;
+
+    fn is_some(&mut self) -> bool {
+        self.decode_bool().unwrap_or(false)
+    }
+
+    fn decode_some<T>(self, value: &mut T) -> Result<(), Self::Error>
+    where
+        T: Unmarshal,
+    {
+        value.unmarshal_mut(self)
+    }
+}
+
+impl<'a, E: Endian> StructDeserializer<'a> for &mut CdrReader<'_, E> {
+    type Ok = ();
+    type Error = Error;
+
+    #[inline]
+    fn decode_field<T>(&mut self, _: &MemberInfo<'a>, value: &mut T) -> Result<(), Self::Error>
     where
         T: Unmarshal,
     {
@@ -267,9 +236,9 @@ impl<E: Endian> StructDeserializer for &mut CdrReader<'_, E> {
     }
 }
 
-impl<E: Endian> UnionDeserializer for &mut CdrReader<'_, E> {
+impl<'a, E: Endian> UnionDeserializer<'a> for &mut CdrReader<'_, E> {
     type Ok = Self;
-    type Error = <Self as Deserializer>::Error;
+    type Error = Error;
 
     #[inline]
     fn decode_discriminant<T>(&mut self, value: &mut T) -> Result<(), Self::Error>
@@ -280,7 +249,7 @@ impl<E: Endian> UnionDeserializer for &mut CdrReader<'_, E> {
     }
 
     #[inline]
-    fn decode_variant<T>(self, _: &MemberInfo<'_>, value: &mut T) -> Result<Self::Ok, Self::Error>
+    fn decode_variant<T>(self, _: &MemberInfo<'a>, value: &mut T) -> Result<Self::Ok, Self::Error>
     where
         T: Unmarshal,
     {
@@ -290,7 +259,7 @@ impl<E: Endian> UnionDeserializer for &mut CdrReader<'_, E> {
 }
 
 impl<E: Endian> EnumDeserializer for &mut CdrReader<'_, E> {
-    type Error = <Self as Deserializer>::Error;
+    type Error = Error;
 
     #[inline]
     fn decode_enumerator<V>(self, visitor: V) -> Result<V, Self::Error>

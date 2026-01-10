@@ -1,0 +1,24 @@
+# KONGSBERG PROPRIETARY - This software, related documentation and its accompanying elements,
+# contain information which is proprietary and confidential to KONGSBERG or its licensors.
+# Any disclosure, copying, distribution or use is prohibited if not otherwise explicitly agreed
+# with KONGSBERG in writing. It is strictly prohibited to modify, reverse engineer, decompile,
+# or disassemble the software, unless such acts are allowed under applicable mandatory law or
+# explicitly agreed with KONGSBERG in writing. Any authorized reproduction, in whole or in part,
+# must include this legend. (C) 2025 KONGSBERG - All rights reserved
+
+[package]
+name = "fuzz"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+libfuzzer-sys = "0.4"
+intercom-cts = { path = "../", features = ["derive"] }
+
+[workspace]
+
+[[bin]]
+name = "cdr2_parse"
+path = "src/cdr2_parse.rs"
+test = false
+doc = false

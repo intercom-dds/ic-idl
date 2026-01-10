@@ -4,17 +4,12 @@
 // with KONGSBERG in writing. It is strictly prohibited to modify, reverse engineer, decompile,
 // or disassemble the software, unless such acts are allowed under applicable mandatory law or
 // explicitly agreed with KONGSBERG in writing. Any authorized reproduction, in whole or in part,
-// must include this legend. (C) 2023 KONGSBERG - All rights reserved
+// must include this legend. (C) 2024 KONGSBERG - All rights reserved
+
+//! XCDR2 serialization module with context-aware type handling.
 
 mod de;
-mod error;
 mod ser;
 
 pub use de::{from_be_bytes, from_bytes, from_bytes_mut, from_le_bytes};
-pub use error::Error;
-pub use ser::{to_be_bytes, to_le_bytes};
-
-/// Alias for a `Result` with the error type [`cdr::Error`].
-///
-/// [`cdr::Error`]: Error
-pub type Result<T> = std::result::Result<T, Error>;
+pub use ser::{to_be_bytes, to_buffer, to_bytes, to_le_bytes};

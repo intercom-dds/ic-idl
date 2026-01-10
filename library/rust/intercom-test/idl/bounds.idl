@@ -1,0 +1,77 @@
+// Copyright 2026 KONGSBERG
+//
+// Redistribution and use in source and binary forms, with or without
+// modification, are permitted provided that the following conditions are met:
+//
+// 1. Redistributions of source code must retain the above copyright notice,
+//    this list of conditions and the following disclaimer.
+//
+// 2. Redistributions in binary form must reproduce the above copyright notice,
+//    this list of conditions and the following disclaimer in the documentation
+//    and/or other materials provided with the distribution.
+//
+// 3. Neither the name of the copyright holder nor the names of its contributors
+//    may be used to endorse or promote products derived from this software
+//    without specific prior written permission.
+//
+// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
+// ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+// WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+// DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
+// FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+// DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+// SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+// CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+// OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+// OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+module bounds {
+    @nested
+    struct MinType {
+        @min(0) int8 min_i8;
+        @min(128) uint16 min_u16;
+        @min(1024) uint32 min_u32;
+        @min(4096) int64 min_i64;
+    };
+
+    @nested
+    struct MaxType {
+        @max(0) int8 max_i8;
+        @max(128) uint16 max_u16;
+        @max(1024) uint32 max_u32;
+        @max(4096) int64 max_i64;
+    };
+
+    @nested
+    struct BoundedCollections {
+        sequence<int32, 3> bounded_seq;
+        map<string, string, 3> bounded_map;
+        string<3> bounded_str;
+        wstring<3> bounded_wstr;
+    };
+
+    @nested
+    struct RangedType {
+        @range(min=0, max=10) int8 range_i8;
+        @range(min=128, max=1024) uint16 range_u16;
+        @range(min=1024, max=4095) uint32 range_u32;
+        @range(min=4096, max=8192) int64 range_i64;
+    };
+};
+
+module not_zero {
+    enum ZeroInvalidEnum {
+        NINE = 9,
+        TEN
+    };
+
+    struct ZeroInvalid {
+        @range(min=10, max=55) int64 my_int;
+        ZeroInvalidEnum my_enum;
+    };
+
+    struct KeyedZeroInvalid {
+        @key @range(min=10, max=55) int64 my_int;
+        @key ZeroInvalidEnum my_enum;
+    };
+};

@@ -1,0 +1,284 @@
+// Copyright 2026 KONGSBERG
+//
+// Redistribution and use in source and binary forms, with or without
+// modification, are permitted provided that the following conditions are met:
+//
+// 1. Redistributions of source code must retain the above copyright notice,
+//    this list of conditions and the following disclaimer.
+//
+// 2. Redistributions in binary form must reproduce the above copyright notice,
+//    this list of conditions and the following disclaimer in the documentation
+//    and/or other materials provided with the distribution.
+//
+// 3. Neither the name of the copyright holder nor the names of its contributors
+//    may be used to endorse or promote products derived from this software
+//    without specific prior written permission.
+//
+// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
+// ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+// WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+// DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
+// FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+// DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+// SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+// CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+// OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+// OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+module cdr2_corner_cases {
+
+    // Test 1: Nested appendable structs with different field sizes
+    // This tests align_base tracking through multiple DHEADER contexts
+    @appendable
+    struct InnerAppendable {
+        octet a;           // offset 0
+        long b;            // offset 4 (needs alignment)
+        octet c;           // offset 8
+    };
+
+    @appendable
+    struct NestedAppendable {
+        octet x;                    // offset 0 of outer DHEADER
+        InnerAppendable inner;      // has its own DHEADER, align_base switches here
+        short y;                    // back to outer align_base
+    };
+
+    // Test 2: Sequence of appendable structs
+    // Each element gets its own DHEADER and align_base
+    @appendable
+    struct SeqElement {
+        octet id;
+        long long value;    // needs 4-byte alignment within element's DHEADER
+    };
+
+    @appendable
+    struct WithSeqOfAppendable {
+        short prefix;
+        sequence<SeqElement> elements;
+        octet suffix;
+    };
+
+    // Test 3: Mixed final and appendable in sequence
+    // Final structs don't have DHEADER, appendable do
+    @final
+    struct FinalInSeq {
+        octet a;
+        long b;
+    };
+
+    @appendable
+    struct AppendableInSeq {
+        octet a;
+        long b;
+    };
+
+    @appendable
+    struct MixedSeq {
+        sequence<FinalInSeq> finals;
+        sequence<AppendableInSeq> appendables;
+    };
+
+    // Test 4: Optional members with alignment-sensitive types
+    @appendable
+    struct OptionalAlignment {
+        @optional octet maybe_byte;
+        @optional long long maybe_long;    // 4-byte aligned if present
+        octet after;
+    };
+
+    // Test 5: Deeply nested mutable structs with EMHEADER
+    @mutable
+    struct InnerMutable {
+        @id(1) octet a;
+        @id(2) long long b;    // EMHEADER + 4-byte alignment
+    };
+
+    @mutable
+    struct OuterMutable {
+        @id(1) short x;
+        @id(2) InnerMutable inner;    // Nested DHEADER
+        @id(3) octet y;
+    };
+
+    // Test 6: Sequence of strings (strings have built-in length, no field DHEADER)
+    @appendable
+    struct StringSequence {
+        octet marker;
+        sequence<string> strings;
+        short trailer;
+    };
+
+    // Test 7: Map with complex keys and values
+    @appendable
+    struct MapKey {
+        long id;
+    };
+
+    @appendable
+    struct MapValue {
+        octet data;
+        long long timestamp;
+    };
+
+    @appendable
+    struct ComplexMap {
+        sequence<long> prefix_seq;    // sequence before map
+        map<MapKey, MapValue> entries;
+        octet suffix;
+    };
+
+    // Test 8: Arrays vs sequences with same element type
+    @appendable
+    struct ArrayVsSeq {
+        octet header;
+        InnerAppendable fixed_array[3];      // fixed array
+        sequence<InnerAppendable> variable;  // variable sequence
+    };
+
+    // Test 9: Optional sequence of appendable structs
+    @appendable
+    struct OptionalSeq {
+        @optional sequence<InnerAppendable> maybe_seq;
+        long marker;
+    };
+
+    // Test 10: Mutable with long parameter list (uses NEXTINT)
+    @mutable
+    struct LongParamList {
+        @id(1) octet f1;
+        @id(2) short f2;
+        @id(3) long f3;
+        @id(4) long long f4;
+        @id(5) float f5;
+        @id(6) double f6;
+        @id(7) boolean f7;
+        @id(8) string f8;
+    };
+
+    // Test 11: Alternating small and large fields (alignment stress test)
+    @appendable
+    struct AlignmentStress {
+        octet b1;
+        long long ll1;
+        octet b2;
+        long l1;
+        octet b3;
+        short s1;
+        octet b4;
+    };
+
+    // Test 12: Empty sequences and optional fields
+    @appendable
+    struct EmptyCollections {
+        sequence<long> empty_seq;
+        @optional long missing;
+        sequence<string> empty_strings;
+    };
+
+    // Test 13: Nested optional appendable structs
+    @appendable
+    struct OptionalNested {
+        @optional InnerAppendable maybe_inner;
+        @optional OuterMutable maybe_outer;
+    };
+
+    // Test 14: String followed by aligned field
+    @appendable
+    struct StringAlignment {
+        string text;      // variable length, ends with NUL byte
+        long long value;  // needs 4-byte alignment after string
+    };
+
+    // Test 15: Sequence of sequences (nested collections)
+    @appendable
+    struct NestedSequences {
+        sequence<sequence<long>> matrix;
+        octet marker;
+    };
+
+    // Test 16: Mixed extensibility in nested structures
+    @final
+    struct FinalOuter {
+        octet x;
+        InnerAppendable appendable_member;  // appendable inside final
+        short y;
+    };
+
+    // Test 17: Large alignment gap scenario
+    @appendable
+    struct LargeGap {
+        octet tiny;
+        long long big;    // creates 3-byte padding gap
+        octet tiny2;
+        long long big2;   // another gap
+    };
+
+    // Test 18: Map with primitive keys and struct values
+    @appendable
+    struct MapPrimitiveKey {
+        map<long, InnerAppendable> entries;
+    };
+
+    // Test 19: Union in appendable struct
+    union SimpleUnion switch(long) {
+        case 1: octet byte_val;
+        case 2: long long long_val;
+        case 3: string str_val;
+    };
+
+    @appendable
+    struct WithUnion {
+        SimpleUnion choice;
+        octet after;
+    };
+
+    // Test 20: Optional member at end (tests boundary conditions)
+    @appendable
+    struct OptionalAtEnd {
+        long a;
+        short b;
+        @optional long long optional_last;
+    };
+
+    // Test 21: Final union
+    @final
+    union FinalUnion switch(long) {
+        case 1: octet byte_val;
+        case 2: long long long_val;
+        case 3: string str_val;
+    };
+
+    @appendable
+    struct WithFinalUnion {
+        FinalUnion choice;
+        octet after;
+    };
+
+    // Test 22: Mutable union
+    @mutable
+    union MutableUnion switch(long) {
+        case 1: octet byte_val;
+        case 2: long long long_val;
+        case 3: string str_val;
+    };
+
+    @appendable
+    struct WithMutableUnion {
+        MutableUnion choice;
+        octet after;
+    };
+
+    // Test 23: Union in final struct
+    @final
+    struct FinalWithUnion {
+        SimpleUnion choice;
+        octet after;
+    };
+
+    // Test 24: Union in mutable struct
+    @mutable
+    struct MutableWithUnion {
+        @id(1) SimpleUnion choice;
+        @id(2) octet after;
+    };
+};

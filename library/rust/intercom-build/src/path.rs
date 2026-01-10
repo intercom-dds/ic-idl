@@ -38,6 +38,10 @@ pub fn user_path() -> Vec<PathBuf> {
 }
 
 /// Returns a list of all paths that should be searched for executables.
+///
+/// Note: The `IC_IDL_EXE` environment variable is checked separately in [`find_exe`]
+/// before searching these directories. Set `IC_IDL_EXE` to the full path of the
+/// `ic-idl` binary to bypass directory searching.
 pub fn search_dirs() -> Vec<PathBuf> {
     let mut paths = Vec::new();
 
@@ -76,6 +80,16 @@ pub fn search_dirs() -> Vec<PathBuf> {
 
 /// Attempts to locate an executable with the specified name.
 pub fn find_exe(name: &str) -> Option<PathBuf> {
+    // Check IC_IDL_EXE environment variable first (direct path to binary)
+    if name == "ic-idl" {
+        if let Ok(path) = env::var("IC_IDL_EXE") {
+            let path = PathBuf::from(path);
+            if path.is_file() {
+                return Some(path);
+            }
+        }
+    }
+
     let dirs = search_dirs();
     let name_exe = format!("{name}{}", env::consts::EXE_SUFFIX);
 

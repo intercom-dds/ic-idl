@@ -1,0 +1,117 @@
+// Copyright 2026 KONGSBERG
+//
+// Redistribution and use in source and binary forms, with or without
+// modification, are permitted provided that the following conditions are met:
+//
+// 1. Redistributions of source code must retain the above copyright notice,
+//    this list of conditions and the following disclaimer.
+//
+// 2. Redistributions in binary form must reproduce the above copyright notice,
+//    this list of conditions and the following disclaimer in the documentation
+//    and/or other materials provided with the distribution.
+//
+// 3. Neither the name of the copyright holder nor the names of its contributors
+//    may be used to endorse or promote products derived from this software
+//    without specific prior written permission.
+//
+// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
+// ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+// WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+// DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
+// FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+// DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+// SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+// CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+// OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+// OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+interface CordA {
+    void x(in int32 value);
+};
+
+interface CordY {
+    void y(in int32 value);
+};
+
+interface CordZ {
+    void z(in int32 value);
+};
+
+interface Vector3 : CordA, CordY, CordZ {};
+
+exception MyException {
+    string what;
+};
+
+exception MyOtherException {
+    string what2;
+};
+
+interface Methods {
+    @static
+    void my_static_method(in string value);
+
+    @mutable
+    void set_value(in int32 value);
+
+    void get_value(out int32 value);
+
+    void raises_exception() raises(MyException);
+
+    void multiple_exceptions() raises(MyException, MyOtherException);
+};
+
+interface Top {
+    struct Nested {};
+
+    enum MyEnum {
+        ONE
+    };
+};
+
+interface ContainsTypes {
+    const int32 MY_INT = 0;
+
+    struct Scoped {
+        string my_str;
+    };
+
+    const Top::MyEnum MY_ENUM_CONST = Top::MyEnum::ONE;
+};
+
+interface InParameters {
+    void in_string(in string my_str);
+
+    void in_seq(in sequence<string> my_seq);
+
+    typedef sequence<string> StringSeq;
+    void in_seq_typedef(StringSeq my_seq);
+};
+
+interface PassByValueParams {
+    void in_int(int32 my_param);
+
+    void inout_int(inout int32 my_param);
+
+    void out_int(out int32 my_param);
+};
+
+module exceptions {
+    exception Foo {};
+    exception Bar {};
+
+    local interface LocalInterface {
+        @static void static_ret_void();
+        void ret_void(in LocalInterface other);
+        void ret_void_error(in LocalInterface other) raises(Foo);
+        void ret_void_multiple_errors(in LocalInterface other) raises(Foo, Bar);
+
+        int32 ret_prim(in LocalInterface other);
+        int32 ret_prim_error(in LocalInterface other) raises(Foo);
+        int32 ret_prim_multiple_errors(in LocalInterface other) raises(Foo, Bar);
+
+        LocalInterface ret_interface(in LocalInterface other);
+        LocalInterface ret_interface_error(in LocalInterface other) raises(Foo);
+        LocalInterface ret_interface_multiple_errors(in LocalInterface other) raises(Foo, Bar);
+    };
+};

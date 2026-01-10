@@ -85,7 +85,7 @@ impl Codegen {
         }
     }
 
-    /// List of input files that will be compiled by CIDL.
+    /// List of input files that will be compiled by ic-idl.
     pub fn input<I>(mut self, iter: I) -> Self
     where
         I: IntoIterator,
@@ -95,13 +95,13 @@ impl Codegen {
         self
     }
 
-    /// Sets the include directories that CIDL will search for included IDL files.
+    /// Sets the include directories that ic-idl will search for included IDL files.
     pub fn include<P: Into<PathBuf>>(mut self, path: P) -> Self {
         self.includes.push(path.into());
         self
     }
 
-    /// Sets the include directories that CIDL will search for included IDL files.
+    /// Sets the include directories that ic-idl will search for included IDL files.
     pub fn includes<I>(mut self, dirs: I) -> Self
     where
         I: IntoIterator,
@@ -144,23 +144,9 @@ impl Codegen {
         self
     }
 
-    /// Do not generate DDS-specific code.
-    pub fn no_typesupport(mut self, no_typesupport: bool) -> Self {
-        self.flags
-            .push(format!("--no-typesupport={no_typesupport}"));
-        self
-    }
-
-    /// Specifies if CIDL should generate code for included IDL files.
-    /// If disabled, code will only be generated for the specified input files.
-    pub fn set_header_follow(mut self, follow: bool) -> Self {
-        self.flags.push(format!("--no-header-follow={}", !follow));
-        self
-    }
-
-    /// Manually specify the path of CIDL.
+    /// Manually specify the path of ic-idl.
     /// In most cases, setting this should not be necessary as the library will
-    /// attempt to locate CIDL by searching the user's path.
+    /// attempt to locate ic-idl by searching the user's path.
     pub fn executable<P: Into<PathBuf>>(mut self, path: P) -> Self {
         self.exe = Some(path.into());
         self
@@ -168,14 +154,13 @@ impl Codegen {
 
     /// Invokes the compiler, outputting generated Rust code.
     pub fn generate(mut self) -> Result<(), CodegenError> {
-        let exe = self.find_cidl()?;
-        let dir = env::var("OUT_DIR").expect("CIDL can only be invoked from build scripts");
+        let exe = self.find_compiler()?;
+        let dir = env::var("OUT_DIR").expect("ic-idl can only be invoked from build scripts");
 
         for f in &self.input {
             println!("cargo:rerun-if-changed={}", f.to_string_lossy());
         }
-        self.flags
-            .push(format!("--rust-destination={dir}/{}", self.subdir));
+        self.flags.push(format!("--rust-out={dir}/{}", self.subdir));
         println!("cargo:rerun-if-changed={}", exe.to_string_lossy());
 
         for inc in self.includes {
@@ -196,8 +181,8 @@ impl Codegen {
         Ok(())
     }
 
-    fn find_cidl(&self) -> Result<PathBuf, CodegenError> {
-        if let Some(exe) = self.exe.clone().or_else(|| path::find_exe("cidl")) {
+    fn find_compiler(&self) -> Result<PathBuf, CodegenError> {
+        if let Some(exe) = self.exe.clone().or_else(|| path::find_exe("ic-idl")) {
             Ok(exe)
         } else {
             Err(CodegenError::NotFound(format!(
@@ -214,22 +199,22 @@ impl Codegen {
             let mut formatted = String::with_capacity(msg.len());
             for line in msg.lines() {
                 if !line.is_empty() {
-                    formatted += &format!("cargo:warning=CIDL: {line}\n");
+                    formatted += &format!("cargo:warning=ic-idl: {line}\n");
                 }
             }
             println!("{formatted}");
         } else {
-            panic!("CIDL: {msg}");
+            panic!("ic-idl: {msg}");
         }
     }
 }
 
 #[derive(Debug)]
 pub enum CodegenError {
-    /// A suitable CIDL executable was not found.
+    /// A suitable ic-idl executable was not found.
     NotFound(String),
 
-    /// Diagnostic produced by CIDL.
+    /// Diagnostic produced by ic-idl.
     Diagnostic(String),
 
     /// Error produced by the underlying filesystem.
@@ -239,8 +224,8 @@ pub enum CodegenError {
 impl fmt::Display for CodegenError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::NotFound(s) => write!(f, "A suitable CIDL executable was not found: {s}"),
-            Self::Diagnostic(s) => write!(f, "CIDL diagnostic: {s}"),
+            Self::NotFound(s) => write!(f, "A suitable ic-idl executable was not found: {s}"),
+            Self::Diagnostic(s) => write!(f, "ic-idl diagnostic: {s}"),
             Self::IoError(e) => write!(f, "{e}"),
         }
     }

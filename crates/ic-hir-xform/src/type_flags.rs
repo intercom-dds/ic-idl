@@ -97,11 +97,11 @@ fn analyze_def(def_id: DefId, context: &mut Context, seen: &mut HashSet<DefId>) 
                 .iter()
                 .any(|m| has_external_annotation(&m.annotations)),
         ),
+        DefKind::Const(c) => (vec![], vec![c.ty.clone()], false),
         DefKind::Module(_)
         | DefKind::Interface(_)
         | DefKind::Enum(_)
         | DefKind::Bitmask(_)
-        | DefKind::Const(_)
         | DefKind::Annotation(_)
         | DefKind::Decl(_)
         | DefKind::Bitset(_) => (vec![], vec![], false),

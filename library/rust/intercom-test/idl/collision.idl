@@ -1,0 +1,102 @@
+// Copyright 2026 KONGSBERG
+//
+// Redistribution and use in source and binary forms, with or without
+// modification, are permitted provided that the following conditions are met:
+//
+// 1. Redistributions of source code must retain the above copyright notice,
+//    this list of conditions and the following disclaimer.
+//
+// 2. Redistributions in binary form must reproduce the above copyright notice,
+//    this list of conditions and the following disclaimer in the documentation
+//    and/or other materials provided with the distribution.
+//
+// 3. Neither the name of the copyright holder nor the names of its contributors
+//    may be used to endorse or promote products derived from this software
+//    without specific prior written permission.
+//
+// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
+// ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+// WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+// DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
+// FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+// DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+// SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+// CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+// OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+// OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+#pragma once
+
+module precedence {
+    // `FooBar` and `FooBar_` already exist, so this should be renamed to `FooBar__`
+    struct foo_bar {
+        boolean double_underscore;
+    };
+
+    // `FooBar`, `FooBar_` and `FooBar__` exist, so this should be `FooBar___`
+    struct foo_bar_t {
+        boolean triple_underscore;
+    };
+
+    // The underscore would typically be stripped, but since `FooBar` already
+    // exists, this node gets to keep its original name.
+    struct FooBar_ {
+        boolean single_underscore;
+    };
+
+    // Defined last but still gets precedence over all the other nodes, so the
+    // name remains unaltered.
+    struct FooBar {
+        boolean unaltered;
+    };
+};
+
+module substitute {
+    // Renamed to `FooBar`
+    struct FooBar_ {};
+
+    // `FooBar_` was renamed to `FooBar`, so this can take its place
+    struct FooBar__ {
+        boolean single_underscore;
+    };
+
+    // Similarly, `FooBar__` is now available so we use that
+    struct FooBar___ {
+        boolean double_underscore;
+    };
+};
+
+module mod_collision {
+    module my_module {
+        struct Foo {
+            boolean unaltered;
+        };
+    };
+
+    // Becomes "my_module_"
+    module MyModule {
+        struct Foo {};
+    };
+
+    // Becomes `Property`, which is fine because the module later becomes `property`
+    struct property_t {};
+
+    // Becomes `property` which frees up the `Property` name
+    module Property {
+        struct Foo {};
+    };
+};
+
+module moved_node {
+    // `Bar` will be moved to a module called `foo_bar`, which creates a
+    // collision with the existing `foo_bar::Bar` type.
+    interface FooBar {
+        struct Bar {
+            boolean single_underscore;
+        };
+    };
+
+    module foo_bar {
+        struct Bar {};
+    };
+};

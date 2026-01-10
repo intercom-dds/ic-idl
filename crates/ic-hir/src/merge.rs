@@ -426,34 +426,8 @@ impl HirMerger {
     }
 
     fn update_parent_child_relationship(&mut self, child_id: DefId, parent_id: DefId) {
-        // Update the child's parent pointer
         let def = self.new_context.definitions.get_mut(child_id);
         def.parent = Some(parent_id);
-
-        // Add the child to the parent's definitions list
-        match &mut self.new_context.definitions.get_mut(parent_id).kind {
-            DefKind::Module(module) => {
-                if !module.definitions.contains(&child_id) {
-                    module.definitions.push(child_id);
-                }
-            }
-            DefKind::Interface(interface) => {
-                if !interface.definitions.contains(&child_id) {
-                    interface.definitions.push(child_id);
-                }
-            }
-            DefKind::Annotation(annotation) => {
-                if !annotation.types.contains(&child_id) {
-                    annotation.types.push(child_id);
-                }
-            }
-            DefKind::Valuetype(valuetype) => {
-                if !valuetype.definitions.contains(&child_id) {
-                    valuetype.definitions.push(child_id);
-                }
-            }
-            _ => {}
-        }
     }
 
     fn add_to_order(&mut self, graph_index: usize, order: &[DefId]) {

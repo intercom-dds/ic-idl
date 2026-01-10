@@ -911,3 +911,65 @@ fn test_merge_preserves_builtin_annotations() {
         panic!("TypeB should be a struct");
     }
 }
+
+#[test]
+fn test_merge_nested_modules_parent_child_consistency() {
+    let mut source_map = SourceMap::default();
+
+    let input1 = r"
+bitmask Flags {
+    FLAG_A,
+    FLAG_B
+};
+";
+
+    let input2 = r"
+module outer {
+    module sub1 {
+        struct Type1 { long x; };
+    };
+    module sub2 {
+        struct Type2 { long y; };
+    };
+    module sub3 {
+        struct Type3 { long z; };
+    };
+    module sub4 {
+        struct Type4 { long w; };
+    };
+};
+";
+
+    let file1 = source_map.embed_with_name("file1.idl", input1);
+    let file2 = source_map.embed_with_name("file2.idl", input2);
+
+    let parsed1 = ic_parse::from_file(file1, &source_map);
+    let parsed2 = ic_parse::from_file(file2, &source_map);
+
+    let graph1 = ic_hir_lower::from_ast(ic_hir_lower::AstInput::User(parsed1.tree));
+    let graph2 = ic_hir_lower::from_ast(ic_hir_lower::AstInput::User(parsed2.tree));
+
+    assert!(graph1.errors.is_empty());
+    assert!(graph2.errors.is_empty());
+
+    let merged = merge_hir_trees(&[graph1, graph2]);
+
+    assert!(merged.errors.is_empty(), "Merge should have no errors");
+
+    for (def_id, def) in &merged.context.definitions {
+        if let DefKind::Module(module_ty) = &def.kind {
+            for &child_id in &module_ty.definitions {
+                let child_def = merged.context.definitions.get(child_id);
+                assert_eq!(
+                    child_def.parent,
+                    Some(def_id),
+                    "Child {} in module {} has wrong parent: expected {:?}, got {:?}",
+                    child_def.ident.name,
+                    def.ident.name,
+                    Some(def_id),
+                    child_def.parent
+                );
+            }
+        }
+    }
+}

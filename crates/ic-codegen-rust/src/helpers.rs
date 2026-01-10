@@ -26,7 +26,7 @@
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use ic_hir::annotation::{Optional, find_annotation};
-use ic_hir::hir::{Def, DefFlags, DefId, DefKind, Member, PrimitiveTy, Ty, TyKind};
+use ic_hir::hir::{Def, DefFlags, DefId, DefKind, Member, Numeric, PrimitiveTy, Ty, TyKind};
 
 use crate::codegen::RustGen;
 
@@ -142,10 +142,28 @@ impl RustGen<'_> {
             _ => false,
         }
     }
+
+    pub fn is_string_const_literal(&self, ty: &Ty, value: &Numeric) -> bool {
+        let resolved_ty = self.hir.context.resolve_ty(ty);
+        if !matches!(resolved_ty.kind, TyKind::String { .. }) {
+            return false;
+        }
+        match value {
+            Numeric::String(_) => true,
+            Numeric::Const(def_id) => {
+                let const_def = self.hir.context.definitions.get(*def_id);
+                if let DefKind::Const(const_ty) = &const_def.kind {
+                    self.is_string_const_literal(&const_ty.ty, &const_ty.value)
+                } else {
+                    false
+                }
+            }
+            _ => false,
+        }
+    }
 }
 
 pub fn is_trivial(def: &Def) -> bool {
-    // TODO: string constants
     def.flags.contains(DefFlags::IS_TRIVIAL)
 }
 

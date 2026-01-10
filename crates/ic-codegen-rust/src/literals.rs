@@ -159,6 +159,7 @@ impl RustGen<'_> {
         w!(w, "}");
     }
 
+    #[allow(clippy::too_many_lines)]
     pub(crate) fn emit_const_value(&self, val: &Numeric, ty: &Ty, ctx_id: DefId, w: &mut Twine) {
         match val {
             Numeric::Null => {
@@ -200,11 +201,18 @@ impl RustGen<'_> {
                 if let DefKind::Const(const_ty) = &const_def.kind {
                     let name = self.scoped_name(*def_id, ctx_id);
                     w!(w, name);
-                    if matches!(ty.kind, TyKind::String { .. })
-                        && !matches!(const_ty.ty.kind, TyKind::String { .. })
-                    {
-                        w!(w, ".into()");
-                    } else if !is_trivial(const_def) {
+                    let is_str_const_lit =
+                        self.is_string_const_literal(&const_ty.ty, &const_ty.value);
+                    if matches!(ty.kind, TyKind::String { .. }) {
+                        if is_str_const_lit {
+                            let base_ty = self.hir.context.base_type_of(ctx_id);
+                            if !matches!(base_ty.kind, TyKind::String { .. }) {
+                                w!(w, ".into()");
+                            }
+                        } else if !matches!(const_ty.ty.kind, TyKind::String { .. }) {
+                            w!(w, ".into()");
+                        }
+                    } else if !is_trivial(const_def) && !is_str_const_lit {
                         w!(w, ".clone()");
                     }
                 }

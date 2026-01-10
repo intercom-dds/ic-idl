@@ -137,6 +137,15 @@ impl<'a> RustGen<'a> {
     }
 
     pub(crate) fn rust_type(&self, ty: &Ty, ctx: DefId) -> String {
+        let resolved_ty = self.hir.context.resolve_ty(ty);
+        if matches!(resolved_ty.kind, TyKind::String { .. })
+            && let ctx_def = self.hir.context.definitions.get(ctx)
+            && let DefKind::Const(const_ty) = &ctx_def.kind
+            && self.is_string_const_literal(&const_ty.ty, &const_ty.value)
+        {
+            return "&str".to_string();
+        }
+
         match &ty.kind {
             TyKind::Primitive(prim) => rust_primitive(*prim).to_string(),
             TyKind::String { .. } => "::std::string::String".to_string(),
@@ -570,19 +579,15 @@ impl<'a> RustGen<'a> {
     }
 
     fn emit_const(&self, def: &Def, const_ty: &ic_hir::hir::ConstTy, w: &mut Twine) {
-        let trivial = is_trivial(def);
+        let is_const_str = self.is_string_const_literal(&const_ty.ty, &const_ty.value);
+        let trivial = is_trivial(def) || is_const_str;
         let kind = if trivial { "const" } else { "static" };
 
         w!(w, "pub ", kind, " " , def, ": ");
 
-        let ty = self.rust_type(&const_ty.ty, def.id);
         if trivial {
-            if let TyKind::String { .. } = self.hir.context.base_type_of(def.id).kind {
-                w!(w, "&str");
-            } else {
-                w!(w, ty);
-            }
-            w!(w, " = ");
+            let ty = self.rust_type(&const_ty.ty, def.id);
+            w!(w, ty, " = ");
             self.emit_const_value(&const_ty.value, &const_ty.ty, def.id, w);
         } else {
             let ty = self.rust_type(&const_ty.ty, def.id);

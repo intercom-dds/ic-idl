@@ -39,24 +39,14 @@ use ic_hir::hir::{DefId, DefKind, TyKind};
 use tracing::{debug, debug_span};
 
 /// Normalizes and validates HIR structure.
-pub struct Normalizer {
-    /// Track changes made during normalization
+struct Normalizer {
     changes_made: bool,
-    /// Errors found during validation
     errors: Vec<String>,
-    /// Detailed log of changes made
     changes: Vec<String>,
 }
 
 impl Normalizer {
-    /// Normalize the HIR, fixing any inconsistencies.
-    ///
-    /// # Panics
-    ///
-    /// Panics if HIR validation fails after normalization, indicating a bug in the
-    /// normalization process.
-    #[must_use]
-    pub fn normalize(mut hir: ResolvedGraph) -> ResolvedGraph {
+    fn normalize(mut hir: ResolvedGraph) -> ResolvedGraph {
         let mut normalizer = Normalizer {
             changes_made: false,
             errors: Vec::new(),
@@ -85,34 +75,20 @@ impl Normalizer {
         hir
     }
 
-    /// Validate the HIR without making changes.
-    ///
-    /// # Errors
-    ///
-    /// Returns a vector of validation error messages if the HIR is invalid.
     #[cfg(debug_assertions)]
-    pub fn validate_only(hir: &ResolvedGraph) -> Result<(), Vec<String>> {
+    fn validate_only(hir: &ResolvedGraph) -> Result<(), Vec<String>> {
         Self::validate_hir(hir)
     }
 
     fn normalize_impl(&mut self, hir: &mut ResolvedGraph) {
-        // Fix parent relationships
         self.fix_parent_relationships(hir);
-
-        // Fix module/interface/valuetype definition lists
         self.fix_definition_lists(hir);
     }
 
     fn validate_hir(hir: &ResolvedGraph) -> Result<(), Vec<String>> {
         let mut errors = Vec::new();
-
-        // Validate parent relationships
         Self::validate_parent_relationships(hir, &mut errors);
-
-        // Validate definition lists
         Self::validate_definition_lists(hir, &mut errors);
-
-        // Validate scope relationships
         Self::validate_scope_relationships(hir, &mut errors);
 
         if errors.is_empty() {
@@ -124,7 +100,6 @@ impl Normalizer {
 
     /// Fix parent relationships based on containment.
     fn fix_parent_relationships(&mut self, hir: &mut ResolvedGraph) {
-        // Build a map of who contains whom
         let mut containment: HashMap<DefId, Vec<DefId>> = HashMap::new();
 
         // First pass: collect all containment relationships
@@ -151,14 +126,14 @@ impl Normalizer {
                     }
                 }
                 DefKind::Enum(e) => {
-                    // Enum members are the enum constants (fields)
                     for &field_id in &e.fields {
                         containment.entry(def_id).or_default().push(field_id);
                     }
                 }
                 DefKind::Bitmask(b) => {
-                    // Bitmask flags don't have their own DefIds, they're just stored inline
-                    // So no containment relationship to track here
+                    for &field_id in &b.flags {
+                        containment.entry(def_id).or_default().push(field_id);
+                    }
                 }
                 _ => {}
             }
@@ -186,7 +161,7 @@ impl Normalizer {
         // Check definitions with scopes
         for (scope_idx, scope) in hir.context.scopes.scopes.iter().enumerate() {
             if let Some(def_id) = scope.def_id {
-                // Skip root scope - definitions there should not automatically get a parent
+                // Skip root scope, definitions there should not automatically get a parent
                 if scope_idx == 0 {
                     continue;
                 }
@@ -194,7 +169,6 @@ impl Normalizer {
                 // Find all definitions in this scope
                 for (name, child_ids) in scope.definitions.iter() {
                     for &child_id in child_ids {
-                        // Skip if it's the scope's own definition
                         if child_id == def_id {
                             continue;
                         }
@@ -204,8 +178,6 @@ impl Normalizer {
                         let parent_name = hir.context.definitions.get(def_id).ident.name.clone();
 
                         let child_def = hir.context.definitions.get_mut(child_id);
-                        // If this definition has no parent set by containment,
-                        // it should have the scope's definition as parent
                         if child_def.parent.is_none() && !name.starts_with('@') {
                             self.changes_made = true;
                             self.changes.push(format!(
@@ -222,20 +194,17 @@ impl Normalizer {
 
     /// Fix definition lists to ensure they're complete.
     fn fix_definition_lists(&mut self, hir: &mut ResolvedGraph) {
-        // Build a map of parent -> children based on parent pointers
         let mut actual_children: HashMap<DefId, Vec<DefId>> = HashMap::new();
 
         for (def_id, def) in &hir.context.definitions {
             if let Some(parent_id) = def.parent {
-                // Check if this is a bitmask flag constant
                 if let DefKind::Const(c) = &def.kind
                     && let TyKind::Adt(type_id) = &c.ty.kind
                     && let DefKind::Bitmask(_) = &hir.context.definitions.get(*type_id).kind
                 {
-                    // This is a bitmask flag - don't add it to actual_children
-                    // as bitmask flags are stored in the parent scope, not in the bitmask's definition list
                     continue;
                 }
+
                 actual_children.entry(parent_id).or_default().push(def_id);
             }
         }
@@ -256,6 +225,7 @@ impl Normalizer {
                             if existing.contains(&child_id) {
                                 return false;
                             }
+
                             // Only add if it's actually a type definition
                             let child_def = hir.context.definitions.get(child_id);
                             matches!(child_def.kind, DefKind::Enum(_) | DefKind::Bitmask(_))
@@ -337,7 +307,6 @@ impl Normalizer {
         }
     }
 
-    #[allow(clippy::ptr_arg)]
     fn validate_parent_relationships(hir: &ResolvedGraph, errors: &mut Vec<String>) {
         for (def_id, def) in &hir.context.definitions {
             // Check parent exists
@@ -359,7 +328,6 @@ impl Normalizer {
                 };
 
                 let is_contained = if is_bitmask_flag {
-                    // Bitmask flags are constants stored in parent scope, not in bitmask's definition list
                     true
                 } else {
                     match &parent_def.kind {
@@ -368,8 +336,8 @@ impl Normalizer {
                         DefKind::Valuetype(v) => v.definitions.contains(&def_id),
                         DefKind::Annotation(a) => a.types.contains(&def_id),
                         DefKind::Enum(e) => e.fields.contains(&def_id),
-                        DefKind::Bitmask(_) => false, // Regular bitmask children
-                        _ => true,                    // Other types don't have containment
+                        DefKind::Bitmask(_) => false,
+                        _ => true,
                     }
                 };
 
@@ -383,7 +351,6 @@ impl Normalizer {
         }
     }
 
-    #[allow(clippy::ptr_arg)] // We need Vec to push errors
     fn validate_definition_lists(hir: &ResolvedGraph, errors: &mut Vec<String>) {
         for (def_id, def) in &hir.context.definitions {
             let children = match &def.kind {
@@ -412,8 +379,7 @@ impl Normalizer {
         }
     }
 
-    #[allow(clippy::ptr_arg)] // We need Vec to push errors
-    fn validate_scope_relationships(hir: &ResolvedGraph, errors: &mut Vec<String>) {
+    fn validate_scope_relationships(hir: &ResolvedGraph, errors: &mut [String]) {
         for scope in &hir.context.scopes.scopes {
             if let Some(def_id) = scope.def_id {
                 // Verify the definition exists

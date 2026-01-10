@@ -159,9 +159,9 @@ fn test_map_init() {
 #[test]
 fn test_map_init_missing_pair() {
     let input = r#"
-        const map<string, int32> AGE_MAP = { 
+        const map<string, int32> AGE_MAP = {
             { "Alice" },  // Missing value
-            { "Bob", 25 } 
+            { "Bob", 25 }
         };
     "#;
 
@@ -174,5 +174,53 @@ fn test_map_init_missing_pair() {
     );
 
     // Snapshot test the error message
+    insta::assert_snapshot!(output);
+}
+
+#[test]
+fn test_array_const_to_const_assignment() {
+    let input = r"
+        const int32 ARRAY1[3] = { 1, 2, 3 };
+        const int32 ARRAY2[3] = ARRAY1;
+    ";
+
+    let (result, _, _) = common::parse_and_resolve(input);
+    assert!(
+        result.errors.is_empty(),
+        "Array constant assignment should succeed when dimensions match"
+    );
+
+    let array2 = result
+        .context
+        .definitions
+        .iter()
+        .find(|(_, def)| def.ident.name == "ARRAY2")
+        .expect("ARRAY2 constant not found");
+
+    match &array2.1.kind {
+        DefKind::Const(const_ty) => match &const_ty.value {
+            Numeric::Const(def_id) => {
+                let array1 = result.context.definitions.get(*def_id);
+                assert_eq!(array1.ident.name, "ARRAY1");
+            }
+            _ => panic!("Expected const reference"),
+        },
+        _ => panic!("Expected constant definition"),
+    }
+}
+
+#[test]
+fn test_array_const_to_const_assignment_dimension_mismatch() {
+    let input = r"
+        const int32 ARRAY1[3] = { 1, 2, 3 };
+        const int32 ARRAY2[4] = ARRAY1;
+    ";
+
+    let (result, _, output) = common::parse_and_resolve(input);
+    assert!(
+        !result.errors.is_empty(),
+        "Array constant assignment should fail when dimensions don't match"
+    );
+
     insta::assert_snapshot!(output);
 }

@@ -203,6 +203,26 @@ impl<'ctx> TypeItemProcessor<'ctx> {
 
         self.ctx.context.scopes.set_scope_def_id(scope, def_id);
 
+        if self
+            .ctx
+            .registry
+            .register_definition(
+                self.current_scope,
+                &i.ident,
+                DefKindTag::Interface,
+                def_id,
+                &mut self.ctx.diagnostics,
+                &self.ctx.context,
+            )
+            .is_some()
+        {
+            self.ctx.context.scopes.add_definition(
+                self.current_scope,
+                i.ident.name.clone(),
+                def_id,
+            );
+        }
+
         let mut prototypes = Vec::new();
         let mut attributes = Vec::new();
         let prev_scope = self.current_scope;
@@ -232,26 +252,6 @@ impl<'ctx> TypeItemProcessor<'ctx> {
             interface_ty.prototypes = prototypes;
             interface_ty.attributes = attributes;
             interface_ty.definitions = definitions;
-        }
-
-        if self
-            .ctx
-            .registry
-            .register_definition(
-                self.current_scope,
-                &i.ident,
-                DefKindTag::Interface,
-                def_id,
-                &mut self.ctx.diagnostics,
-                &self.ctx.context,
-            )
-            .is_some()
-        {
-            self.ctx.context.scopes.add_definition(
-                self.current_scope,
-                i.ident.name.clone(),
-                def_id,
-            );
         }
 
         def_id

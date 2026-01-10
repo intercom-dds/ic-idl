@@ -231,3 +231,16 @@ pub fn rust_primitive(ty: PrimitiveTy) -> &'static str {
         PrimitiveTy::Char | PrimitiveTy::WChar => "char",
     }
 }
+
+pub fn type_flags(def: &Def) -> &'static str {
+    let is_final = def.annotations.iter().any(|a| a.ident.name == "final");
+    let is_mutable = def.annotations.iter().any(|a| a.ident.name == "mutable");
+
+    if is_final {
+        "::intercom_cts::TypeFlag::IS_FINAL"
+    } else if is_mutable {
+        "::intercom_cts::TypeFlag::IS_MUTABLE"
+    } else {
+        "::intercom_cts::TypeFlag::IS_APPENDABLE"
+    }
+}

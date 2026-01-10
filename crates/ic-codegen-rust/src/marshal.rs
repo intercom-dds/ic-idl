@@ -30,7 +30,7 @@ use ic_emit::w;
 use ic_hir::hir::{Def, DefKind, TyKind};
 
 use crate::codegen::RustGen;
-use crate::helpers::{is_optional, rust_primitive};
+use crate::helpers::{is_optional, rust_primitive, type_flags};
 
 impl RustGen<'_> {
     pub(crate) fn emit_type_info(&self, def: &Def, w: &mut Twine) {
@@ -61,7 +61,7 @@ impl RustGen<'_> {
         Self::emit_type_descriptor(def, w);
         w!(w, "const TYPE_INFO: ::intercom_cts::TypeInfo<'static> = ::intercom_cts::TypeInfo {\n");
         w!(w, "name: \"", full_name, "\",\n");
-        w!(w, "flags: ::intercom_cts::TypeFlag::IS_APPENDABLE,\n");
+        w!(w, "flags: ", type_flags(def), ",\n");
         w!(w, "kind: ::intercom_cts::TypeKind::", kind, ",\n");
         w!(w, "key_info: None,\n");
         if let Some(elem_ty) = element_info {
@@ -202,7 +202,7 @@ impl RustGen<'_> {
         Self::emit_type_descriptor(def, w);
         w!(w, "const TYPE_INFO: ::intercom_cts::TypeInfo<'static> = ::intercom_cts::TypeInfo {\n");
         w!(w, "name: \"", full_name, "\",\n");
-        w!(w, "flags: ::intercom_cts::TypeFlag::IS_APPENDABLE,\n");
+        w!(w, "flags: ", type_flags(def), ",\n");
         w!(w, "kind: ::intercom_cts::TypeKind::Enum,\n");
         w!(w, "key_info: None,\n");
         w!(w, "element_info: Some(::intercom_cts::type_info::<", element_ty, ">()),\n");
@@ -222,7 +222,7 @@ impl RustGen<'_> {
         Self::emit_type_descriptor(def, w);
         w!(w, "const TYPE_INFO: ::intercom_cts::TypeInfo<'static> = ::intercom_cts::TypeInfo {\n");
         w!(w, "name: \"", full_name, "\",\n");
-        w!(w, "flags: ::intercom_cts::TypeFlag::IS_APPENDABLE,\n");
+        w!(w, "flags: ", type_flags(def), ",\n");
         w!(w, "kind: ::intercom_cts::TypeKind::Bitmask,\n");
         w!(w, "key_info: None,\n");
         w!(w, "element_info: Some(::intercom_cts::type_info::<", element_ty, ">()),\n");

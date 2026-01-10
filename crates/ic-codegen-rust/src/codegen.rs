@@ -299,10 +299,18 @@ impl<'a> RustGen<'a> {
                     w!(w, "str");
                     return;
                 }
+
                 if let TyKind::Sequence { ty, .. } = &param.ty.kind {
                     let elem_ty = self.rust_type(ty, ctx);
                     w!(w, "[", elem_ty, "]");
                     return;
+                }
+            }
+
+            if let TyKind::Adt(def_id) = param.ty.kind {
+                let def = self.hir.context.base_def_of(def_id);
+                if matches!(def.kind, DefKind::Interface(_)) {
+                    w!(w, "dyn ");
                 }
             }
         }
@@ -313,7 +321,7 @@ impl<'a> RustGen<'a> {
 
     fn emit_prototype_return_type(&self, ty: &Ty, raises: &[DefId], ctx: DefId, w: &mut Twine) {
         if raises.len() > 1 {
-            w!(w, "\n");
+            w!(w, "\n\t");
             w!(w, "::std::result::Result<");
             self.emit_prototype_return_type(ty, &[], ctx, w);
             w!(w, ", ::std::boxed::Box<dyn ::std::error::Error>>");
@@ -323,9 +331,9 @@ impl<'a> RustGen<'a> {
             self.emit_prototype_return_type(ty, &[], ctx, w);
             w!(w, ">");
         } else if let TyKind::Adt(def_id) = ty.kind {
-            let def = self.hir.context.definitions.get(def_id);
+            let def = self.hir.context.base_def_of(def_id);
             if matches!(def.kind, DefKind::Interface(_)) {
-                w!(w, "Box<", def, ">");
+                w!(w, "Box<dyn ", def, ">");
             } else {
                 let ty_str = self.rust_type(ty, ctx);
                 w!(w, ty_str);

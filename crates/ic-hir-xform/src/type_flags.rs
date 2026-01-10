@@ -30,233 +30,173 @@
 //! This transformation analyzes types to determine:
 //! - `IS_TRIVIAL`: Types that consist only of primitive types and arrays
 //! - `TOTAL_ORDER`: Types whose members can form a well-ordered set
+//!
+//! The algorithm works by optimistically setting both flags on first visit,
+//! then clearing them as we discover disqualifying properties. This handles
+//! recursive types correctly: when we revisit a node in a cycle, we skip it
+//! (it already has flags set), and after the full traversal, flags propagate
+//! back up to clear any that should be unset.
 
-use std::collections::{HashMap, HashSet};
+use std::collections::HashSet;
 
-use ic_hir::hir::{Def, DefFlags, DefId, DefKind, PrimitiveTy, Ty, TyKind};
+use ic_hir::hir::{Ann, DefFlags, DefId, DefKind, PrimitiveTy, Ty, TyKind};
 use ic_hir::{Context, ResolvedGraph};
 use tracing::{debug, debug_span};
 
-/// Result of analyzing a type for flags
-#[derive(Debug, Clone, Copy)]
-struct TypeFlags {
-    is_trivial: bool,
-    total_order: bool,
+fn has_external_annotation(annotations: &[Ann]) -> bool {
+    annotations.iter().any(|a| a.ident.name == "external")
 }
 
-impl TypeFlags {
-    fn new() -> Self {
-        // Start by assuming types are trivial and have total order
-        Self {
-            is_trivial: true,
-            total_order: true,
-        }
+fn analyze_def(def_id: DefId, context: &mut Context, seen: &mut HashSet<DefId>) {
+    if !seen.insert(def_id) {
+        return;
     }
 
-    fn combine(&mut self, other: TypeFlags) {
-        // A type is only trivial if all its components are trivial
-        self.is_trivial &= other.is_trivial;
-        // A type only has total order if all its components do
-        self.total_order &= other.total_order;
+    let def = context.definitions.get_mut(def_id);
+
+    // Skip built-in types
+    if def.flags.contains(DefFlags::IS_BUILTIN) {
+        return;
+    }
+
+    def.flags.set(DefFlags::IS_TRIVIAL);
+    def.flags.set(DefFlags::TOTAL_ORDER);
+
+    if def.flags.contains(DefFlags::IS_CIRCULAR) {
+        def.flags.unset(DefFlags::IS_TRIVIAL);
+    }
+
+    // Collect parent `DefId`s, member types, and check for @external annotations
+    let (parents, types, has_external): (Vec<DefId>, Vec<Ty>, bool) = match &def.kind {
+        DefKind::Struct(s) => (
+            s.parent.into_iter().collect(),
+            s.members.iter().map(|m| m.ty.clone()).collect(),
+            s.members
+                .iter()
+                .any(|m| has_external_annotation(&m.annotations)),
+        ),
+        DefKind::Union(u) => (
+            vec![],
+            u.variants.iter().map(|v| v.ty.clone()).collect(),
+            u.variants
+                .iter()
+                .any(|v| has_external_annotation(&v.annotations)),
+        ),
+        DefKind::Valuetype(v) => (
+            v.parent.into_iter().collect(),
+            v.members.iter().map(|m| m.ty.clone()).collect(),
+            v.members
+                .iter()
+                .any(|m| has_external_annotation(&m.annotations)),
+        ),
+        DefKind::Alias(a) => (vec![], vec![a.ty.clone()], false),
+        DefKind::Except(e) => (
+            vec![],
+            e.members.iter().map(|m| m.ty.clone()).collect(),
+            e.members
+                .iter()
+                .any(|m| has_external_annotation(&m.annotations)),
+        ),
+        DefKind::Module(_)
+        | DefKind::Interface(_)
+        | DefKind::Enum(_)
+        | DefKind::Bitmask(_)
+        | DefKind::Const(_)
+        | DefKind::Annotation(_)
+        | DefKind::Decl(_)
+        | DefKind::Bitset(_) => (vec![], vec![], false),
+    };
+
+    // @external members imply heap allocation (Box<T>), so the type is not trivial
+    if has_external {
+        context
+            .definitions
+            .get_mut(def_id)
+            .flags
+            .unset(DefFlags::IS_TRIVIAL);
+    }
+
+    // Analyze parent types and propagate flags
+    for parent_id in parents {
+        check_def(parent_id, def_id, context, seen);
+    }
+
+    // Analyze member types and propagate flags
+    for ty in types {
+        analyze_type(&ty, def_id, context, seen);
     }
 }
 
-/// Analyzes and marks types with `IS_TRIVIAL` and `TOTAL_ORDER` flags
-pub struct TypeFlagsAnalyzer {
-    /// Cache of already analyzed types to handle recursion
-    cache: HashMap<DefId, TypeFlags>,
-    /// Set to track types currently being analyzed (for cycle detection)
-    analyzing: HashSet<DefId>,
+fn check_def(
+    ref_def_id: DefId,
+    parent_def_id: DefId,
+    context: &mut Context,
+    seen: &mut HashSet<DefId>,
+) {
+    analyze_def(ref_def_id, context, seen);
+
+    let ref_def = context.definitions.get(ref_def_id);
+    let ref_is_trivial = ref_def.flags.contains(DefFlags::IS_TRIVIAL);
+    let ref_total_order = ref_def.flags.contains(DefFlags::TOTAL_ORDER);
+    let parent_def = context.definitions.get_mut(parent_def_id);
+
+    if !ref_is_trivial {
+        parent_def.flags.unset(DefFlags::IS_TRIVIAL);
+    }
+    if !ref_total_order {
+        parent_def.flags.unset(DefFlags::TOTAL_ORDER);
+    }
 }
 
-impl TypeFlagsAnalyzer {
-    fn new() -> Self {
-        Self {
-            cache: HashMap::new(),
-            analyzing: HashSet::new(),
-        }
-    }
-
-    /// Analyze all types in the HIR and set their flags
-    pub fn analyze(mut self, context: &mut Context) {
-        // First pass: analyze all types
-        let def_ids: Vec<DefId> = context.definitions.iter().map(|(id, _)| id).collect();
-
-        for def_id in def_ids {
-            self.analyze_def(def_id, context);
-        }
-
-        // Second pass: apply the analyzed flags
-        for (def_id, flags) in self.cache {
-            let def = context.definitions.get_mut(def_id);
-
-            if flags.is_trivial {
-                def.flags.set(DefFlags::IS_TRIVIAL);
-            } else {
-                def.flags.unset(DefFlags::IS_TRIVIAL);
+fn analyze_type(ty: &Ty, parent_def_id: DefId, context: &mut Context, seen: &mut HashSet<DefId>) {
+    match &ty.kind {
+        TyKind::Primitive(prim) => match prim {
+            PrimitiveTy::Float32 | PrimitiveTy::Float64 | PrimitiveTy::Float128 => {
+                context
+                    .definitions
+                    .get_mut(parent_def_id)
+                    .flags
+                    .unset(DefFlags::TOTAL_ORDER);
             }
+            _ => {}
+        },
 
-            if flags.total_order {
-                def.flags.set(DefFlags::TOTAL_ORDER);
-            } else {
-                def.flags.unset(DefFlags::TOTAL_ORDER);
-            }
-        }
-    }
-
-    fn analyze_def(&mut self, def_id: DefId, context: &Context) -> TypeFlags {
-        // Check cache first
-        if let Some(&flags) = self.cache.get(&def_id) {
-            return flags;
+        TyKind::Any | TyKind::String { .. } => {
+            context
+                .definitions
+                .get_mut(parent_def_id)
+                .flags
+                .unset(DefFlags::IS_TRIVIAL);
         }
 
-        // Check if we're in a cycle
-        if self.analyzing.contains(&def_id) {
-            // Recursive types are never trivial
-            return TypeFlags {
-                is_trivial: false,
-                total_order: true,
-            };
+        TyKind::Sequence { ty: inner, .. } => {
+            context
+                .definitions
+                .get_mut(parent_def_id)
+                .flags
+                .unset(DefFlags::IS_TRIVIAL);
+            analyze_type(inner, parent_def_id, context, seen);
         }
 
-        // Mark as analyzing
-        self.analyzing.insert(def_id);
-
-        let def = context.definitions.get(def_id);
-        let mut flags = TypeFlags::new();
-
-        // Check if type is already marked as circular
-        if def.flags.contains(DefFlags::IS_CIRCULAR) {
-            flags.is_trivial = false;
+        TyKind::Array { ty: inner, .. } => {
+            analyze_type(inner, parent_def_id, context, seen);
         }
 
-        // Analyze based on definition kind
-        match &def.kind {
-            DefKind::Module(_) | DefKind::Interface(_) => {
-                // Modules and interfaces are never trivial
-                flags.is_trivial = false;
-            }
-
-            DefKind::Struct(s) => {
-                if let Some(parent_id) = s.parent {
-                    let parent_flags = self.analyze_def(parent_id, context);
-                    flags.combine(parent_flags);
-                }
-                for member in &s.members {
-                    let member_flags = self.analyze_type(&member.ty, context);
-                    flags.combine(member_flags);
-                }
-            }
-
-            DefKind::Union(u) => {
-                // A union is trivial if all its variants are trivial
-                for variant in &u.variants {
-                    let variant_flags = self.analyze_type(&variant.ty, context);
-                    flags.combine(variant_flags);
-                }
-            }
-
-            DefKind::Valuetype(v) => {
-                if let Some(parent_id) = v.parent {
-                    let parent_flags = self.analyze_def(parent_id, context);
-                    flags.combine(parent_flags);
-                }
-                for member in &v.members {
-                    let member_flags = self.analyze_type(&member.ty, context);
-                    flags.combine(member_flags);
-                }
-            }
-
-            DefKind::Alias(a) => {
-                // An alias has the same properties as its target type
-                flags = self.analyze_type(&a.ty, context);
-            }
-
-            DefKind::Except(e) => {
-                // Exceptions are like structs
-                for member in &e.members {
-                    let member_flags = self.analyze_type(&member.ty, context);
-                    flags.combine(member_flags);
-                }
-            }
-
-            DefKind::Enum(_)
-            | DefKind::Bitmask(_)
-            | DefKind::Const(_)
-            | DefKind::Annotation(_)
-            | DefKind::Decl(_)
-            | DefKind::Bitset(_) => {
-                // These are trivial and/or don't affect type properties
-            }
+        TyKind::Map { key, elem, .. } => {
+            context
+                .definitions
+                .get_mut(parent_def_id)
+                .flags
+                .unset(DefFlags::IS_TRIVIAL);
+            analyze_type(key, parent_def_id, context, seen);
+            analyze_type(elem, parent_def_id, context, seen);
         }
 
-        // Remove from analyzing set
-        self.analyzing.remove(&def_id);
-
-        // Cache the result
-        self.cache.insert(def_id, flags);
-
-        flags
-    }
-
-    fn analyze_type(&mut self, ty: &Ty, context: &Context) -> TypeFlags {
-        let mut flags = TypeFlags::new();
-
-        match &ty.kind {
-            TyKind::Primitive(prim) => {
-                match prim {
-                    PrimitiveTy::Float32 | PrimitiveTy::Float64 => {
-                        // Floating point types don't have total order (NaN)
-                        flags.total_order = false;
-                    }
-                    _ => {
-                        // Other primitives are trivial and have total order
-                    }
-                }
-            }
-
-            TyKind::String { .. } => {
-                // Strings are not trivial (heap allocated)
-                flags.is_trivial = false;
-            }
-
-            TyKind::Sequence { ty: inner, .. } => {
-                // Sequences are not trivial (heap allocated)
-                flags.is_trivial = false;
-                // Check element type
-                let elem_flags = self.analyze_type(inner, context);
-                flags.combine(elem_flags);
-            }
-
-            TyKind::Array { ty: inner, .. } => {
-                // Arrays might be trivial if their element type is
-                // Check element type
-                let elem_flags = self.analyze_type(inner, context);
-                flags.combine(elem_flags);
-            }
-
-            TyKind::Map { key, elem, .. } => {
-                // Maps are never trivial
-                flags.is_trivial = false;
-                // Check key and value types for total order
-                let key_flags = self.analyze_type(key, context);
-                let val_flags = self.analyze_type(elem, context);
-                flags.combine(key_flags);
-                flags.combine(val_flags);
-            }
-
-            TyKind::Adt(def_id) => {
-                // Analyze the referenced type
-                flags = self.analyze_def(*def_id, context);
-            }
-
-            TyKind::Any | TyKind::Fixed | TyKind::Null => {
-                // These types are not trivial
-                flags.is_trivial = false;
-            }
+        TyKind::Adt(ref_def_id) => {
+            check_def(*ref_def_id, parent_def_id, context, seen);
         }
 
-        flags
+        TyKind::Fixed | TyKind::Null => {}
     }
 }
 
@@ -265,7 +205,12 @@ impl TypeFlagsAnalyzer {
 pub fn transform(mut hir: ResolvedGraph) -> ResolvedGraph {
     let _span = debug_span!("xform", name = "type_flags").entered();
     debug!("applying transform");
-    let analyzer = TypeFlagsAnalyzer::new();
-    analyzer.analyze(&mut hir.context);
+
+    let def_ids: Vec<DefId> = hir.context.definitions.iter().map(|(id, _)| id).collect();
+    let mut seen = HashSet::new();
+
+    for def_id in def_ids {
+        analyze_def(def_id, &mut hir.context, &mut seen);
+    }
     hir
 }

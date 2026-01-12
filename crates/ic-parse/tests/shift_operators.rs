@@ -200,7 +200,7 @@ fn test_shift_in_multi_arg_template() {
         "Parse errors: {:?}",
         result.errors
     );
-    assert_eq!(result.tree.len(), 4); // 1 const + 3 typedefs
+    assert_eq!(result.tree.len(), 4);
 }
 
 #[test]
@@ -247,4 +247,31 @@ fn test_template_closers_with_declarator_list() {
         result.errors
     );
     assert_eq!(result.tree.len(), 3);
+}
+
+#[test]
+fn test_rshift_followed_by_scoped_name_with_leading_dcolon() {
+    let result = from_str(
+        r"
+        typedef string<a >> b @foo :: c> MyString;
+    ",
+    );
+    assert!(
+        result.errors.is_empty(),
+        "Parse errors: {:?}",
+        result.errors
+    );
+    assert_eq!(result.tree.len(), 1);
+
+    let result = from_str(
+        r"
+        typedef string<x >> y @min(1) :: z :: w> ComplexString;
+    ",
+    );
+    assert!(
+        result.errors.is_empty(),
+        "Parse errors: {:?}",
+        result.errors
+    );
+    assert_eq!(result.tree.len(), 1);
 }

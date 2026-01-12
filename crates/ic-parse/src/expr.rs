@@ -389,6 +389,7 @@ impl Parser<'_> {
                     | Kind::BitAnd
                     | Kind::Lt
                     | Kind::Gt
+                    | Kind::DColon
             ) || (allow_comma && after_ident == Kind::Comma)
         })
     }

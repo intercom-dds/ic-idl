@@ -520,13 +520,32 @@ impl<'a> Parser<'a> {
         parse_content: impl FnOnce(&mut Self) -> Result<T>,
     ) -> Result<T> {
         self.expect(Kind::Lt)?;
+        self.with_annotation_scope(|p| {
+            let content = parse_content(p)?;
+            p.expect(Kind::Gt)?;
+            Ok(content)
+        })
+    }
+
+    /// Executes within a new, isolated annotation scope.
+    ///
+    /// This temporarily sets aside any currently pending annotations. After the closure returns, any
+    /// annotations that were accumulated within the scope but not consumed are
+    /// collected as orphaned (to catch syntax errors like `[10 @invalid]`), and
+    /// the original pending annotations are restored.
+    ///
+    /// This is needed for parsing nested constructs (like array dimensions `[...]`
+    /// or template arguments `<...>`) where the closing delimiter (e.g., `]`) would
+    /// otherwise incorrectly flag outer annotations as orphaned.
+    pub fn with_annotation_scope<T>(
+        &mut self,
+        f: impl FnOnce(&mut Self) -> Result<T>,
+    ) -> Result<T> {
         let saved = std::mem::take(&mut self.pending_annotations);
-        let content = parse_content(self)?;
-        self.orphaned_annotations
-            .extend(std::mem::take(&mut self.pending_annotations));
-        self.expect(Kind::Gt)?;
+        let result = f(self);
+        self.collect_orphaned_annotations();
         self.pending_annotations = saved;
-        Ok(content)
+        result
     }
 
     // Rule 1

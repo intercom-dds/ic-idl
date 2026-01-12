@@ -387,9 +387,11 @@ impl Parser<'_> {
     // <fixed_array_size> ::= "[" <positive_int_const> "]"
     fn fixed_array_size(&mut self) -> Result<ic_syntax::Expr> {
         self.expect(Kind::LBracket)?;
-        let expr = self.positive_int_const()?;
-        self.expect(Kind::RBracket)?;
-        Ok(expr)
+        self.with_annotation_scope(|p| {
+            let expr = p.positive_int_const()?;
+            p.expect(Kind::RBracket)?;
+            Ok(expr)
+        })
     }
 
     // Rule 61

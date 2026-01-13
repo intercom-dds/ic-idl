@@ -151,6 +151,11 @@ fn collect_stdlib_imports(hir: &ResolvedGraph, def_id: DefId, imports: &mut Impo
             if needs_decimal(hir, &const_ty.ty) {
                 imports.stdlib.decimal = true;
             }
+            if let Some(parent) = &def.parent
+                && !matches!(hir.context.type_of(*parent).kind, DefKind::Enum(_))
+            {
+                imports.stdlib.typing = true;
+            }
         }
         DefKind::Interface(interface_ty) => {
             imports.stdlib.abc = true;

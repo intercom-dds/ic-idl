@@ -517,7 +517,7 @@ impl<'a> PyGen<'a> {
     fn emit_const(&self, w: &mut PyWriter, def: &Def, const_ty: &ConstTy) {
         let ty_str = py_type(self.hir, &const_ty.ty, def.id);
         let value_str = self.format_numeric(&const_ty.value);
-        py!(w, def, ": ", ty_str, " = ", value_str, "\n\n");
+        py!(w, def, ": _typing_.Final[", ty_str, "] = ", value_str, "\n\n");
     }
 
     fn emit_exception(&self, w: &mut PyWriter, def: &Def, except_ty: &ExceptTy) {

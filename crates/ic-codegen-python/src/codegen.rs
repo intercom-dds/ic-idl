@@ -329,7 +329,7 @@ impl<'a> PyGen<'a> {
                 let default = if is_optional {
                     "None".to_string()
                 } else {
-                    default_value(self.hir, &member.ty)
+                    default_value(self.hir, &member.ty, def.id)
                 };
 
                 py!(w, member.ident.name, ": ", ty_str, " = ", default, "\n");
@@ -530,7 +530,7 @@ impl<'a> PyGen<'a> {
         } else {
             for member in &except_ty.members {
                 let ty_str = py_type(self.hir, &member.ty, def.id);
-                let default = default_value(self.hir, &member.ty);
+                let default = default_value(self.hir, &member.ty, def.id);
                 py!(w, member.ident.name, ": ", ty_str, " = ", default, "\n");
             }
         }
@@ -644,7 +644,7 @@ impl<'a> PyGen<'a> {
 
             for member in &value_ty.members {
                 let ty_str = py_type(self.hir, &member.ty, def.id);
-                let default = default_value(self.hir, &member.ty);
+                let default = default_value(self.hir, &member.ty, def.id);
                 py!(w, member.ident.name, ": ", ty_str, " = ", default, "\n");
             }
 

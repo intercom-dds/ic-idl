@@ -99,12 +99,16 @@ pub fn py_type(hir: &ResolvedGraph, ty: &Ty, relative_def: DefId) -> String {
     }
 }
 
-pub fn default_value(hir: &ResolvedGraph, ty: &Ty) -> String {
+pub fn default_value(hir: &ResolvedGraph, ty: &Ty, relative_def: DefId) -> String {
     let resolved = hir.context.resolve_ty(ty);
     match &resolved.kind {
         TyKind::Primitive(prim) => primitive_default(*prim).to_string(),
         TyKind::String { .. } => "\"\"".to_string(),
-        TyKind::Adt(_) | TyKind::Any | TyKind::Null => "None".to_string(),
+        TyKind::Adt(_) => {
+            let type_name = py_type(hir, ty, relative_def);
+            format!("_dataclasses_.field(default_factory={type_name})")
+        }
+        TyKind::Any | TyKind::Null => "None".to_string(),
         TyKind::Array { .. } | TyKind::Sequence { .. } => {
             "_dataclasses_.field(default_factory=list)".to_string()
         }

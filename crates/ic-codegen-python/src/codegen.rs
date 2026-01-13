@@ -68,6 +68,22 @@ fn escape_python_string(s: &str) -> String {
     result
 }
 
+fn format_float(v: f64) -> String {
+    if v.is_nan() {
+        "float('nan')".to_string()
+    } else if v.is_infinite() {
+        if v.is_sign_positive() {
+            "float('inf')".to_string()
+        } else {
+            "float('-inf')".to_string()
+        }
+    } else if v.fract() == 0.0 {
+        format!("{v:.1}")
+    } else {
+        v.to_string()
+    }
+}
+
 fn escape_python_char(c: char) -> String {
     match c {
         '\\' => "\\\\".to_string(),
@@ -324,8 +340,9 @@ impl<'a> PyGen<'a> {
         py!(w, "\n\n");
     }
 
-    fn format_numeric(value: &Numeric) -> String {
+    fn format_numeric(&self, value: &Numeric) -> String {
         match value {
+            Numeric::Null => "None".to_string(),
             Numeric::Bool(b) => if *b { "True" } else { "False" }.to_string(),
             Numeric::Char(c) => format!("\"{}\"", escape_python_char(*c)),
             Numeric::Int8(v) => v.to_string(),
@@ -336,10 +353,34 @@ impl<'a> PyGen<'a> {
             Numeric::UInt32(v) => v.to_string(),
             Numeric::Int64(v) => v.to_string(),
             Numeric::UInt64(v) => v.to_string(),
-            Numeric::Float(v) => v.to_string(),
-            Numeric::Double(v) => v.to_string(),
+            Numeric::Float(v) => format_float(f64::from(*v)),
+            Numeric::Double(v) => format_float(*v),
             Numeric::String(s) => format!("\"{}\"", escape_python_string(s)),
-            _ => "0".to_string(),
+            Numeric::Const(def_id) => {
+                let def = self.hir.context.type_of(*def_id);
+                if let DefKind::Const(const_def) = &def.kind {
+                    self.format_numeric(&const_def.value)
+                } else {
+                    "None".to_string()
+                }
+            }
+            Numeric::Array { values, .. } | Numeric::Sequence { values, .. } => {
+                let items: Vec<_> = values.iter().map(|v| self.format_numeric(v)).collect();
+                format!("[{}]", items.join(", "))
+            }
+            Numeric::Map { entries, .. } => {
+                let items: Vec<_> = entries
+                    .iter()
+                    .map(|(k, v)| format!("{}: {}", self.format_numeric(k), self.format_numeric(v)))
+                    .collect();
+                format!("{{{}}}", items.join(", "))
+            }
+            Numeric::Struct { ty, fields } => {
+                let def = self.hir.context.definitions.get(*ty);
+                let items: Vec<_> = fields.iter().map(|v| self.format_numeric(v)).collect();
+                format!("{}({})", def.ident.name, items.join(", "))
+            }
+            Numeric::Union { value, .. } => self.format_numeric(value),
         }
     }
 
@@ -350,7 +391,7 @@ impl<'a> PyGen<'a> {
         for &member_id in &enum_ty.fields {
             let member_def = self.hir.context.definitions.get(member_id);
             if let DefKind::Const(const_ty) = &member_def.kind {
-                let val = Self::format_numeric(&const_ty.value);
+                let val = self.format_numeric(&const_ty.value);
                 py!(w, member_def, " = ", val, "\n");
             }
         }
@@ -366,7 +407,7 @@ impl<'a> PyGen<'a> {
         for &member_id in &bitmask_ty.flags {
             let member_def = self.hir.context.definitions.get(member_id);
             if let DefKind::Const(const_ty) = &member_def.kind {
-                let val = Self::format_numeric(&const_ty.value);
+                let val = self.format_numeric(&const_ty.value);
                 py!(w, member_def, " = ", val, "\n");
             }
         }
@@ -377,13 +418,13 @@ impl<'a> PyGen<'a> {
 
     fn emit_union(&self, w: &mut PyWriter, def: &Def, union_ty: &UnionTy) {
         let disc_type = py_type(self.hir, &union_ty.disc.ty, def.id);
-
-        let value_types: Vec<String> = union_ty
+        let value_types: Vec<_> = union_ty
             .variants
             .iter()
             .filter(|v| !matches!(v.ty.kind, TyKind::Null))
             .map(|v| py_type(self.hir, &v.ty, def.id))
             .collect();
+
         let value_union = if value_types.is_empty() {
             "None".to_string()
         } else {
@@ -422,17 +463,17 @@ impl<'a> PyGen<'a> {
             if variant.is_default {
                 py!(w, "return self._value\n");
             } else if variant.labels.len() == 1 {
-                let label = Self::format_numeric(&variant.labels[0].value);
+                let label = self.format_numeric(&variant.labels[0].value);
                 py!(w, "if self._discriminator != ", label, ":\n");
                 w.indent();
                 py!(w, "raise ValueError(\"", variant.ident.name, " not selected\")\n");
                 w.dedent();
                 py!(w, "return self._value\n");
             } else {
-                let labels: Vec<String> = variant
+                let labels: Vec<_> = variant
                     .labels
                     .iter()
-                    .map(|l| Self::format_numeric(&l.value))
+                    .map(|l| self.format_numeric(&l.value))
                     .collect();
                 py!(w, "if self._discriminator not in (", labels.join(", "), "):\n");
                 w.indent();
@@ -449,7 +490,7 @@ impl<'a> PyGen<'a> {
             py!(w, "def ", variant.ident.name, "(self, val: ", variant_type, ") -> None:\n");
             w.indent();
             if !variant.labels.is_empty() {
-                let first_label = Self::format_numeric(&variant.labels[0].value);
+                let first_label = self.format_numeric(&variant.labels[0].value);
                 py!(w, "self._discriminator = ", first_label, "\n");
             }
             py!(w, "self._value = val\n");
@@ -475,7 +516,7 @@ impl<'a> PyGen<'a> {
 
     fn emit_const(&self, w: &mut PyWriter, def: &Def, const_ty: &ConstTy) {
         let ty_str = py_type(self.hir, &const_ty.ty, def.id);
-        let value_str = Self::format_numeric(&const_ty.value);
+        let value_str = self.format_numeric(&const_ty.value);
         py!(w, def, ": ", ty_str, " = ", value_str, "\n\n");
     }
 
@@ -542,7 +583,7 @@ impl<'a> PyGen<'a> {
     fn emit_prototype(&self, w: &mut PyWriter, def: &Def, proto: &ProtoTy) {
         let ret_ty = py_type(self.hir, &proto.ty, def.id);
 
-        let params: Vec<String> = proto
+        let params: Vec<_> = proto
             .params
             .iter()
             .filter(|p| p.kind == ParamKind::In || p.kind == ParamKind::Inout)
@@ -561,8 +602,7 @@ impl<'a> PyGen<'a> {
     }
 
     fn emit_valuetype(&self, w: &mut PyWriter, def: &Def, value_ty: &ValueTy) {
-        let mut bases: Vec<String> = vec![];
-
+        let mut bases = vec![];
         if let Some(parent) = value_ty.parent {
             bases.push(self.hir.context.definitions.get(parent).ident.name.clone());
         }

@@ -373,6 +373,7 @@ impl<'a> JsonSchemaGen<'a> {
         let mut required = Vec::new();
 
         let is_final_struct = def.annotations.iter().any(|a| a.ident.name == "final");
+        let is_mutable_struct = def.annotations.iter().any(|a| a.ident.name == "mutable");
 
         for member in &struct_ty.members {
             let mut member_obj = self.generate_type_schema(&member.ty, current_file_id);
@@ -381,7 +382,7 @@ impl<'a> JsonSchemaGen<'a> {
                 .annotations
                 .iter()
                 .any(|a| a.ident.name == "optional");
-            if !is_optional {
+            if !is_mutable_struct && !is_optional {
                 required.push(Value::String(member.ident.name.clone()));
             }
 

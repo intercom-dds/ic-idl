@@ -28,6 +28,16 @@
 use ic_hir::ResolvedGraph;
 use ic_hir::hir::{DefId, PrimitiveTy, Ty, TyKind};
 
+pub fn needs_decimal(hir: &ResolvedGraph, ty: &Ty) -> bool {
+    let resolved = hir.context.resolve_ty(ty);
+    match &resolved.kind {
+        TyKind::Primitive(PrimitiveTy::Float128) | TyKind::Fixed => true,
+        TyKind::Array { ty, .. } | TyKind::Sequence { ty, .. } => needs_decimal(hir, ty),
+        TyKind::Map { key, elem, .. } => needs_decimal(hir, key) || needs_decimal(hir, elem),
+        _ => false,
+    }
+}
+
 pub fn primitive_type(prim: PrimitiveTy) -> &'static str {
     match prim {
         PrimitiveTy::Void => "None",

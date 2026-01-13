@@ -450,10 +450,11 @@ impl<'a> PyGen<'a> {
             value_types.join(" | ")
         };
 
+        let disc_default = default_value(self.hir, &union_ty.disc.ty, def.id);
         py!(w, "@_dataclasses_.dataclass(slots=True, order=True)\n");
         py!(w, "class ", def, ":\n");
         w.indent();
-        py!(w, "_discriminator: ", disc_type, " = 0\n");
+        py!(w, "_discriminator: ", disc_type, " = ", disc_default, "\n");
         py!(w, "_value: ", value_union, " | None = None\n");
         w.dedent();
         py!(w, "\n");
@@ -521,7 +522,7 @@ impl<'a> PyGen<'a> {
         w.indent();
         py!(w, "def default(self) -> None:\n");
         w.indent();
-        py!(w, "self._discriminator = 0\n");
+        py!(w, "self._discriminator = ", disc_default, "\n");
         py!(w, "self._value = None\n");
         w.dedent();
         w.dedent();

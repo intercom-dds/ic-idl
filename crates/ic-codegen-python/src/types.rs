@@ -26,7 +26,7 @@
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use ic_hir::ResolvedGraph;
-use ic_hir::hir::{DefId, PrimitiveTy, Ty, TyKind};
+use ic_hir::hir::{DefId, DefKind, PrimitiveTy, Ty, TyKind};
 
 pub fn needs_decimal(hir: &ResolvedGraph, ty: &Ty) -> bool {
     let resolved = hir.context.resolve_ty(ty);
@@ -103,14 +103,33 @@ pub fn py_type(hir: &ResolvedGraph, ty: &Ty, relative_def: DefId) -> String {
     }
 }
 
+// TODO: this isn't strictly correct because we should respect
+// `@default_literal`, but I think we'd be better off handling that in the HIR
+// somehow
+fn enum_default(hir: &ResolvedGraph, def_id: DefId, relative_def: DefId) -> Option<String> {
+    let def = hir.context.type_of(def_id);
+    if let DefKind::Enum(enum_ty) = &def.kind
+        && let Some(&first_field) = enum_ty.fields.first()
+    {
+        let first_def = hir.context.type_of(first_field);
+        let enum_name = py_def(hir, def_id, relative_def);
+        return Some(format!("{}.{}", enum_name, first_def.ident.name));
+    }
+    None
+}
+
 pub fn default_value(hir: &ResolvedGraph, ty: &Ty, relative_def: DefId) -> String {
     let resolved = hir.context.resolve_ty(ty);
     match &resolved.kind {
         TyKind::Primitive(prim) => primitive_default(*prim).to_string(),
         TyKind::String { .. } => "\"\"".to_string(),
-        TyKind::Adt(_) => {
-            let type_name = py_type(hir, ty, relative_def);
-            format!("_dataclasses_.field(default_factory={type_name})")
+        TyKind::Adt(def_id) => {
+            if let Some(enum_val) = enum_default(hir, *def_id, relative_def) {
+                enum_val
+            } else {
+                let type_name = py_type(hir, ty, relative_def);
+                format!("_dataclasses_.field(default_factory={type_name})")
+            }
         }
         TyKind::Any | TyKind::Null => "None".to_string(),
         TyKind::Array { .. } | TyKind::Sequence { .. } => {

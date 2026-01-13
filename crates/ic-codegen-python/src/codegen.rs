@@ -481,14 +481,14 @@ impl<'a> PyGen<'a> {
             w.indent();
 
             if variant.is_default {
-                py!(w, "return self._value\n");
+                py!(w, "return _typing_.cast(", variant_type, ", self._value)\n");
             } else if variant.labels.len() == 1 {
                 let label = self.format_numeric(&variant.labels[0].value, def.id);
                 py!(w, "if self._discriminator != ", label, ":\n");
                 w.indent();
                 py!(w, "raise ValueError(\"", variant.ident.name, " not selected\")\n");
                 w.dedent();
-                py!(w, "return self._value\n");
+                py!(w, "return _typing_.cast(", variant_type, ", self._value)\n");
             } else {
                 let labels: Vec<_> = variant
                     .labels
@@ -499,7 +499,7 @@ impl<'a> PyGen<'a> {
                 w.indent();
                 py!(w, "raise ValueError(\"", variant.ident.name, " not selected\")\n");
                 w.dedent();
-                py!(w, "return self._value\n");
+                py!(w, "return _typing_.cast(", variant_type, ", self._value)\n");
             }
             w.dedent();
             w.dedent();
@@ -531,13 +531,15 @@ impl<'a> PyGen<'a> {
 
     fn emit_alias(&self, w: &mut PyWriter, def: &Def, alias: &AliasTy) {
         let ty_str = py_type(self.hir, &alias.ty, def.id);
-        py!(w, def, ": _typing_.TypeAlias = ", ty_str, "\n\n");
+        py!(w, def, ": _typing_.TypeAlias = ", ty_str, "\n");
+        py!(w, "\n\n");
     }
 
     fn emit_const(&self, w: &mut PyWriter, def: &Def, const_ty: &ConstTy) {
         let ty_str = py_type(self.hir, &const_ty.ty, def.id);
         let value_str = self.format_numeric(&const_ty.value, def.id);
-        py!(w, def, ": _typing_.Final[", ty_str, "] = ", value_str, "\n\n");
+        py!(w, def, ": _typing_.Final[", ty_str, "] = ", value_str, "\n");
+        py!(w, "\n\n");
     }
 
     fn emit_exception(&self, w: &mut PyWriter, def: &Def, except_ty: &ExceptTy) {

@@ -127,6 +127,8 @@ fn collect_stdlib_imports(hir: &ResolvedGraph, def_id: DefId, imports: &mut Impo
         }
         DefKind::Union(union_ty) => {
             imports.stdlib.dataclasses = true;
+            imports.stdlib.typing = true;
+
             if needs_decimal(hir, &union_ty.disc.ty) {
                 imports.stdlib.decimal = true;
             }

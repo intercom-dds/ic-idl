@@ -309,7 +309,7 @@ impl<'a> PyGen<'a> {
         py!(w, "class ", def);
         if let Some(parent) = struct_ty.parent {
             let parent_def = self.hir.context.definitions.get(parent);
-            py!(w, parent_def);
+            py!(w, "(", parent_def, ")");
         }
         py!(w, ":\n");
 

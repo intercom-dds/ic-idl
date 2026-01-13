@@ -347,8 +347,21 @@ impl Context {
     where
         F: Fn(&Def) -> bool,
     {
+        DepCollector { ctx: self }.deps_where(def_id, include)
+    }
+}
+
+struct DepCollector<'a> {
+    ctx: &'a Context,
+}
+
+impl DepCollector<'_> {
+    fn deps_where<F>(&self, def_id: DefId, include: F) -> HashSet<DefId>
+    where
+        F: Fn(&Def) -> bool,
+    {
         let mut deps = HashSet::new();
-        let def = self.definitions.get(def_id);
+        let def = self.ctx.type_of(def_id);
 
         match &def.kind {
             DefKind::Struct(s) => {
@@ -437,7 +450,7 @@ impl Context {
         F: Fn(&Def) -> bool,
     {
         if let Some(id) = id
-            && include(self.definitions.get(id))
+            && include(self.ctx.type_of(id))
         {
             deps.insert(id);
         }
@@ -448,20 +461,19 @@ impl Context {
         F: Fn(&Def) -> bool,
     {
         for &id in ids {
-            if include(self.definitions.get(id)) {
+            if include(self.ctx.type_of(id)) {
                 deps.insert(id);
             }
         }
     }
 
-    #[allow(clippy::only_used_in_recursion)]
     fn collect_ty_refs<F>(&self, ty: &Ty, include: &F, deps: &mut HashSet<DefId>)
     where
         F: Fn(&Def) -> bool,
     {
         match &ty.kind {
             TyKind::Adt(def_id) => {
-                if include(self.definitions.get(*def_id)) {
+                if include(self.ctx.type_of(*def_id)) {
                     deps.insert(*def_id);
                 }
             }
@@ -476,14 +488,13 @@ impl Context {
         }
     }
 
-    #[allow(clippy::only_used_in_recursion)]
     fn collect_numeric_refs<F>(&self, numeric: &Numeric, include: &F, deps: &mut HashSet<DefId>)
     where
         F: Fn(&Def) -> bool,
     {
         match numeric {
             Numeric::Const(def_id) => {
-                if include(self.definitions.get(*def_id)) {
+                if include(self.ctx.type_of(*def_id)) {
                     deps.insert(*def_id);
                 }
             }
@@ -499,7 +510,7 @@ impl Context {
                 }
             }
             Numeric::Struct { ty, fields } => {
-                if include(self.definitions.get(*ty)) {
+                if include(self.ctx.type_of(*ty)) {
                     deps.insert(*ty);
                 }
                 for v in &**fields {
@@ -512,7 +523,7 @@ impl Context {
                 value,
                 ..
             } => {
-                if include(self.definitions.get(*ty)) {
+                if include(self.ctx.type_of(*ty)) {
                     deps.insert(*ty);
                 }
                 self.collect_numeric_refs(discriminant, include, deps);

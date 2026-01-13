@@ -74,6 +74,10 @@ pub fn primitive_default(prim: PrimitiveTy) -> &'static str {
     }
 }
 
+pub fn py_def(hir: &ResolvedGraph, def_id: DefId, _relative_def: DefId) -> String {
+    hir.context.type_of(def_id).ident.name.clone()
+}
+
 #[allow(clippy::only_used_in_recursion)]
 pub fn py_type(hir: &ResolvedGraph, ty: &Ty, relative_def: DefId) -> String {
     let resolved = hir.context.resolve_ty(ty);
@@ -81,7 +85,7 @@ pub fn py_type(hir: &ResolvedGraph, ty: &Ty, relative_def: DefId) -> String {
         TyKind::Primitive(prim) => primitive_type(*prim).to_string(),
         TyKind::String { .. } => "str".to_string(),
         TyKind::Adt(def_id) => {
-            let def = hir.context.definitions.get(*def_id);
+            let def = hir.context.type_of(*def_id);
             def.ident.name.clone()
         }
         TyKind::Array { ty, .. } | TyKind::Sequence { ty, .. } => {

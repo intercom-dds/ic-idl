@@ -38,7 +38,7 @@ use ic_hir::hir::{
 use ic_vfs::{FileId, SourceMap};
 
 use crate::imports::collect_imports;
-use crate::types::{default_value, py_type};
+use crate::types::{default_value, py_def, py_type};
 use crate::writer::PyWriter;
 use crate::{PythonOptions, py};
 
@@ -138,7 +138,7 @@ impl<'a> PyGen<'a> {
                 .insert(filename.clone());
 
             for &def_id in defs {
-                let def = self.hir.context.definitions.get(def_id);
+                let def = self.hir.context.type_of(def_id);
                 if !matches!(def.kind, DefKind::Module(_)) {
                     module_exports
                         .entry(module_path.clone())
@@ -197,7 +197,7 @@ impl<'a> PyGen<'a> {
     }
 
     fn emit_definition(&self, w: &mut PyWriter, def_id: DefId) {
-        let def = self.hir.context.definitions.get(def_id);
+        let def = self.hir.context.type_of(def_id);
 
         match &def.kind {
             DefKind::Struct(struct_ty) => self.emit_struct(w, def, struct_ty),
@@ -210,8 +210,7 @@ impl<'a> PyGen<'a> {
             DefKind::Valuetype(value_ty) => self.emit_valuetype(w, def, value_ty),
             DefKind::Const(const_ty) => {
                 let is_enum_member = matches!(
-                    def.parent
-                        .map(|p| &self.hir.context.definitions.get(p).kind),
+                    def.parent.map(|p| &self.hir.context.type_of(p).kind),
                     Some(DefKind::Enum(_) | DefKind::Bitmask(_))
                 );
                 if !is_enum_member {
@@ -224,7 +223,7 @@ impl<'a> PyGen<'a> {
     }
 
     fn source_filename(&self, def_id: DefId) -> Option<String> {
-        let def = self.hir.context.definitions.get(def_id);
+        let def = self.hir.context.type_of(def_id);
         let span = def.ident.span;
         let file_id = span.start.file_id;
         if file_id == FileId::_do_not_use() {
@@ -240,7 +239,7 @@ impl<'a> PyGen<'a> {
         let mut current = Some(def_id);
 
         while let Some(id) = current {
-            let def = self.hir.context.definitions.get(id);
+            let def = self.hir.context.type_of(id);
             if matches!(def.kind, DefKind::Module(_)) {
                 path.push(def.ident.name.clone());
             }
@@ -262,7 +261,7 @@ impl<'a> PyGen<'a> {
     }
 
     fn collect_definitions(&self, def_id: DefId, groups: &mut BTreeMap<FileKey, Vec<DefId>>) {
-        let def = self.hir.context.definitions.get(def_id);
+        let def = self.hir.context.type_of(def_id);
 
         match &def.kind {
             DefKind::Module(module_ty) => {
@@ -277,7 +276,7 @@ impl<'a> PyGen<'a> {
     }
 
     fn add_to_groups(&self, def_id: DefId, groups: &mut BTreeMap<FileKey, Vec<DefId>>) {
-        let def = self.hir.context.definitions.get(def_id);
+        let def = self.hir.context.type_of(def_id);
 
         let Some(filename) = self.source_filename(def_id) else {
             return;
@@ -308,7 +307,7 @@ impl<'a> PyGen<'a> {
         py!(w, "@_dataclasses_.dataclass(slots=True, order=True)\n");
         py!(w, "class ", def);
         if let Some(parent) = struct_ty.parent {
-            let parent_def = self.hir.context.definitions.get(parent);
+            let parent_def = self.hir.context.type_of(parent);
             py!(w, "(", parent_def, ")");
         }
         py!(w, ":\n");
@@ -340,7 +339,7 @@ impl<'a> PyGen<'a> {
         py!(w, "\n\n");
     }
 
-    fn format_numeric(&self, value: &Numeric) -> String {
+    fn format_numeric(&self, value: &Numeric, relative_def: DefId) -> String {
         match value {
             Numeric::Null => "None".to_string(),
             Numeric::Bool(b) => if *b { "True" } else { "False" }.to_string(),
@@ -358,29 +357,49 @@ impl<'a> PyGen<'a> {
             Numeric::String(s) => format!("\"{}\"", escape_python_string(s)),
             Numeric::Const(def_id) => {
                 let def = self.hir.context.type_of(*def_id);
+                if let Some(parent_id) = def.parent
+                    && let parent_def = self.hir.context.type_of(parent_id)
+                    && matches!(parent_def.kind, DefKind::Enum(_))
+                {
+                    let enum_name = py_def(self.hir, parent_id, relative_def);
+                    return format!("{}.{}", enum_name, def.ident.name);
+                }
+
                 if let DefKind::Const(const_def) = &def.kind {
-                    self.format_numeric(&const_def.value)
+                    self.format_numeric(&const_def.value, relative_def)
                 } else {
                     "None".to_string()
                 }
             }
             Numeric::Array { values, .. } | Numeric::Sequence { values, .. } => {
-                let items: Vec<_> = values.iter().map(|v| self.format_numeric(v)).collect();
+                let items: Vec<_> = values
+                    .iter()
+                    .map(|v| self.format_numeric(v, relative_def))
+                    .collect();
                 format!("[{}]", items.join(", "))
             }
             Numeric::Map { entries, .. } => {
                 let items: Vec<_> = entries
                     .iter()
-                    .map(|(k, v)| format!("{}: {}", self.format_numeric(k), self.format_numeric(v)))
+                    .map(|(k, v)| {
+                        format!(
+                            "{}: {}",
+                            self.format_numeric(k, relative_def),
+                            self.format_numeric(v, relative_def)
+                        )
+                    })
                     .collect();
                 format!("{{{}}}", items.join(", "))
             }
             Numeric::Struct { ty, fields } => {
-                let def = self.hir.context.definitions.get(*ty);
-                let items: Vec<_> = fields.iter().map(|v| self.format_numeric(v)).collect();
-                format!("{}({})", def.ident.name, items.join(", "))
+                let struct_name = py_def(self.hir, *ty, relative_def);
+                let items: Vec<_> = fields
+                    .iter()
+                    .map(|v| self.format_numeric(v, relative_def))
+                    .collect();
+                format!("{}({})", struct_name, items.join(", "))
             }
-            Numeric::Union { value, .. } => self.format_numeric(value),
+            Numeric::Union { value, .. } => self.format_numeric(value, relative_def),
         }
     }
 
@@ -389,9 +408,9 @@ impl<'a> PyGen<'a> {
         w.indent();
 
         for &member_id in &enum_ty.fields {
-            let member_def = self.hir.context.definitions.get(member_id);
+            let member_def = self.hir.context.type_of(member_id);
             if let DefKind::Const(const_ty) = &member_def.kind {
-                let val = self.format_numeric(&const_ty.value);
+                let val = self.format_numeric(&const_ty.value, def.id);
                 py!(w, member_def, " = ", val, "\n");
             }
         }
@@ -405,9 +424,9 @@ impl<'a> PyGen<'a> {
         w.indent();
 
         for &member_id in &bitmask_ty.flags {
-            let member_def = self.hir.context.definitions.get(member_id);
+            let member_def = self.hir.context.type_of(member_id);
             if let DefKind::Const(const_ty) = &member_def.kind {
-                let val = self.format_numeric(&const_ty.value);
+                let val = self.format_numeric(&const_ty.value, def.id);
                 py!(w, member_def, " = ", val, "\n");
             }
         }
@@ -463,7 +482,7 @@ impl<'a> PyGen<'a> {
             if variant.is_default {
                 py!(w, "return self._value\n");
             } else if variant.labels.len() == 1 {
-                let label = self.format_numeric(&variant.labels[0].value);
+                let label = self.format_numeric(&variant.labels[0].value, def.id);
                 py!(w, "if self._discriminator != ", label, ":\n");
                 w.indent();
                 py!(w, "raise ValueError(\"", variant.ident.name, " not selected\")\n");
@@ -473,7 +492,7 @@ impl<'a> PyGen<'a> {
                 let labels: Vec<_> = variant
                     .labels
                     .iter()
-                    .map(|l| self.format_numeric(&l.value))
+                    .map(|l| self.format_numeric(&l.value, def.id))
                     .collect();
                 py!(w, "if self._discriminator not in (", labels.join(", "), "):\n");
                 w.indent();
@@ -490,7 +509,7 @@ impl<'a> PyGen<'a> {
             py!(w, "def ", variant.ident.name, "(self, val: ", variant_type, ") -> None:\n");
             w.indent();
             if !variant.labels.is_empty() {
-                let first_label = self.format_numeric(&variant.labels[0].value);
+                let first_label = self.format_numeric(&variant.labels[0].value, def.id);
                 py!(w, "self._discriminator = ", first_label, "\n");
             }
             py!(w, "self._value = val\n");
@@ -516,7 +535,7 @@ impl<'a> PyGen<'a> {
 
     fn emit_const(&self, w: &mut PyWriter, def: &Def, const_ty: &ConstTy) {
         let ty_str = py_type(self.hir, &const_ty.ty, def.id);
-        let value_str = self.format_numeric(&const_ty.value);
+        let value_str = self.format_numeric(&const_ty.value, def.id);
         py!(w, def, ": _typing_.Final[", ty_str, "] = ", value_str, "\n\n");
     }
 
@@ -546,7 +565,7 @@ impl<'a> PyGen<'a> {
             interface_ty
                 .parents
                 .iter()
-                .map(|&p| self.hir.context.definitions.get(p).ident.name.clone())
+                .map(|&p| self.hir.context.type_of(p).ident.name.clone())
                 .collect()
         };
 
@@ -604,19 +623,11 @@ impl<'a> PyGen<'a> {
     fn emit_valuetype(&self, w: &mut PyWriter, def: &Def, value_ty: &ValueTy) {
         let mut bases = vec![];
         if let Some(parent) = value_ty.parent {
-            bases.push(self.hir.context.definitions.get(parent).ident.name.clone());
+            bases.push(self.hir.context.type_of(parent).ident.name.clone());
         }
 
         if let Some(supports) = value_ty.supports {
-            bases.push(
-                self.hir
-                    .context
-                    .definitions
-                    .get(supports)
-                    .ident
-                    .name
-                    .clone(),
-            );
+            bases.push(self.hir.context.type_of(supports).ident.name.clone());
         }
 
         if bases.is_empty() && !value_ty.prototypes.is_empty() {

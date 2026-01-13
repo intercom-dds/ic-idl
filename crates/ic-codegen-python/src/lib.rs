@@ -1,4 +1,4 @@
-// Copyright 2024 KONGSBERG
+// Copyright 2026 KONGSBERG
 //
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions are met:
@@ -25,68 +25,76 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use std::ffi::CString;
+mod codegen;
+mod types;
+mod writer;
 
 use ic_cli::Command;
 use ic_emit::File;
+use ic_emit::case::Case;
+use ic_hir_xform::{Convention, Target, rename};
+
+const KEYWORDS: &[&str] = &[
+    "False", "None", "True", "and", "as", "assert", "async", "await", "break", "class", "continue",
+    "def", "del", "elif", "else", "except", "finally", "for", "from", "global", "if", "import",
+    "in", "is", "lambda", "nonlocal", "not", "or", "pass", "raise", "return", "try", "while",
+    "with", "yield",
+];
+
+const PYTHON_CONVENTION: Convention = Convention {
+    struct_type: Some(Case::Pascal),
+    union_type: Some(Case::Pascal),
+    enum_type: Some(Case::Pascal),
+    interface: Some(Case::Pascal),
+    valuetype: Some(Case::Pascal),
+    alias: Some(Case::Pascal),
+    bitmask: Some(Case::Pascal),
+    bitset: Some(Case::Pascal),
+    exception: Some(Case::Pascal),
+    annotation: Some(Case::Pascal),
+    member: Some(Case::Snake),
+    variant: Some(Case::Snake),
+    enumerator: Some(Case::UpperSnake),
+    bit_flag: Some(Case::UpperSnake),
+    bitset_field: Some(Case::Snake),
+    constant: Some(Case::UpperSnake),
+    module: Some(Case::Snake),
+    operation: Some(Case::Snake),
+    attribute: Some(Case::Snake),
+    parameter: Some(Case::Snake),
+    name_preprocessor: None,
+    strip_enum_prefix: false,
+};
 
 #[derive(Command, Debug, Default, Clone)]
 pub struct PythonOptions {
-    /// Rename all types to conform to PEP-8
     #[option(long)]
     pub use_pep8: bool,
-
-    /// Postfix to use for global modules
-    #[option(long)]
-    pub global_postfix: Option<String>,
 }
 
-#[repr(C)]
-#[derive(Debug, Copy, Clone)]
-#[allow(non_camel_case_types)]
-struct python_options_t {
-    pub use_pep8: u8,
-    pub global_postfix: *const ::std::os::raw::c_char,
-}
-
-unsafe extern "C" {
-    fn ic_codegen_python(
-        result: *const ic_ptree::sys::parse_result,
-        options: python_options_t,
-        list: *mut ic_ptree::sys::ic_list_t,
-    );
-}
-
-/// # Panics
-///
-/// May panic if some of the passed string parameters contain a NUL byte.
 #[must_use]
-#[allow(clippy::undocumented_unsafe_blocks, clippy::needless_pass_by_value)]
 pub fn codegen_python(
     hir: &ic_hir::ResolvedGraph,
     source_map: &ic_vfs::SourceMap,
     options: PythonOptions,
 ) -> Vec<File> {
-    let result = ic_ptree_lower::from_hir(hir, source_map);
-    let global_postfix = options
-        .global_postfix
-        .as_ref()
-        .map(|s| CString::new(s.as_str()).expect("Invalid global_postfix"));
-
-    let ffi_options = python_options_t {
-        use_pep8: u8::from(options.use_pep8),
-        global_postfix: global_postfix
-            .as_ref()
-            .map_or(std::ptr::null(), |s| s.as_ptr()),
+    let target = Target {
+        convention: if options.use_pep8 {
+            PYTHON_CONVENTION
+        } else {
+            Convention::default()
+        },
+        keyword_escape: Some(|ctx| {
+            if KEYWORDS.contains(&ctx.name) {
+                Some(format!("_{}", ctx.name))
+            } else {
+                None
+            }
+        }),
+        ..Target::default()
     };
 
-    let mut generated = vec![];
-    unsafe {
-        ic_codegen_python(
-            result.as_raw(),
-            ffi_options,
-            std::ptr::addr_of_mut!(generated).cast::<_>(),
-        );
-    }
-    generated
+    let hir = rename::transform(hir.clone(), &target);
+    let generator = codegen::PyGen::new(&hir, source_map, options);
+    generator.generate()
 }

@@ -1,4 +1,4 @@
-// Copyright 2024 KONGSBERG
+// Copyright 2026 KONGSBERG
 //
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions are met:
@@ -25,8 +25,70 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-const FILES: &[&str] = &["cpp/python_code_gen.cpp"];
+use ic_emit::printer::PrettyPrinter;
 
-fn main() {
-    ic_cc::build("python", FILES);
+pub struct PyWriter {
+    printer: PrettyPrinter,
+}
+
+impl PyWriter {
+    pub fn new() -> Self {
+        Self {
+            printer: PrettyPrinter::new(),
+        }
+    }
+
+    pub fn write(&mut self, args: &[&dyn ToString]) {
+        for arg in args {
+            let s = arg.to_string();
+            for ch in s.chars() {
+                match ch {
+                    '\n' => {
+                        self.printer.endl();
+                    }
+                    _ => {
+                        self.printer.text(ch);
+                    }
+                }
+            }
+        }
+    }
+
+    pub fn indent(&mut self) {
+        self.printer.indent();
+    }
+
+    pub fn dedent(&mut self) {
+        self.printer.dedent();
+    }
+
+    pub fn finish(self) -> String {
+        let mut result = self
+            .printer
+            .finish()
+            .lines()
+            .map(str::trim_end)
+            .collect::<Vec<_>>()
+            .join("\n");
+
+        result.truncate(result.trim_end().len());
+        result.push('\n');
+        result
+    }
+}
+
+impl Default for PyWriter {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+#[macro_export]
+macro_rules! py {
+    ($writer:expr, $($arg:expr),+ $(,)?) => {
+        {
+            let args: &[&dyn std::string::ToString] = &[$(&$arg),+];
+            $writer.write(args);
+        }
+    };
 }

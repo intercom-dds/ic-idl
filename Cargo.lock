@@ -386,12 +386,10 @@ dependencies = [
 name = "ic-codegen-python"
 version = "0.3.13"
 dependencies = [
- "ic-cc",
  "ic-cli",
  "ic-emit",
  "ic-hir",
- "ic-ptree",
- "ic-ptree-lower",
+ "ic-hir-xform",
  "ic-vfs",
 ]
 

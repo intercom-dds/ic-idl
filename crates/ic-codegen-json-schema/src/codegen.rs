@@ -381,7 +381,7 @@ impl<'a> JsonSchemaGen<'a> {
                 .annotations
                 .iter()
                 .any(|a| a.ident.name == "optional");
-            if is_final_struct && !is_optional {
+            if !is_optional {
                 required.push(Value::String(member.ident.name.clone()));
             }
 

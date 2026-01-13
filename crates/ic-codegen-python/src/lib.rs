@@ -62,14 +62,15 @@ const PYTHON_CONVENTION: Convention = Convention {
     operation: Some(Case::Snake),
     attribute: Some(Case::Snake),
     parameter: Some(Case::Snake),
-    name_preprocessor: None,
-    strip_enum_prefix: false,
+    name_preprocessor: Some(rename::strip_common_suffixes),
+    strip_enum_prefix: true,
 };
 
 #[derive(Command, Debug, Default, Clone)]
 pub struct PythonOptions {
+    /// Do not rename types to PEP-8 conventions
     #[option(long)]
-    pub use_pep8: bool,
+    pub no_rename: bool,
 }
 
 #[must_use]
@@ -78,12 +79,14 @@ pub fn codegen_python(
     source_map: &ic_vfs::SourceMap,
     options: PythonOptions,
 ) -> Vec<File> {
+    let convention = if options.no_rename {
+        Convention::default()
+    } else {
+        PYTHON_CONVENTION
+    };
+
     let target = Target {
-        convention: if options.use_pep8 {
-            PYTHON_CONVENTION
-        } else {
-            Convention::default()
-        },
+        convention,
         keyword_escape: Some(|ctx| {
             if KEYWORDS.contains(&ctx.name) {
                 Some(format!("_{}", ctx.name))

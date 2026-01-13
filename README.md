@@ -108,8 +108,3 @@ MSRV is currently 1.88.
 
 The MSRV may change between minor version releases and is not considered a
 semver-breaking change.
-
-## Known bugs
-
-- The Python backend has not been updated and will still generate code that
-  targets InterCOM DDS.

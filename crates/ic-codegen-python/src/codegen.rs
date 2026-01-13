@@ -522,7 +522,7 @@ impl<'a> PyGen<'a> {
 
     fn emit_exception(&self, w: &mut PyWriter, def: &Def, except_ty: &ExceptTy) {
         py!(w, "@_dataclasses_.dataclass(slots=True, order=True)\n");
-        py!(w, "class ", def, "(Exception):\n");
+        py!(w, "class ", def, "(_builtins_.Exception):\n");
         w.indent();
 
         if except_ty.members.is_empty() {

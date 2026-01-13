@@ -36,11 +36,12 @@ use crate::writer::PyWriter;
 
 #[derive(Default)]
 pub struct Stdlib {
+    pub abc: bool,
+    pub builtins: bool,
     pub dataclasses: bool,
+    pub decimal: bool,
     pub enum_: bool,
     pub typing: bool,
-    pub abc: bool,
-    pub decimal: bool,
 }
 
 #[derive(Default)]
@@ -55,6 +56,11 @@ impl Imports {
 
         if self.stdlib.abc {
             py!(w, "import abc as _abc_\n");
+            has_imports = true;
+        }
+
+        if self.stdlib.builtins {
+            py!(w, "import builtins as _builtins_\n");
             has_imports = true;
         }
 
@@ -131,6 +137,7 @@ fn collect_stdlib_imports(hir: &ResolvedGraph, def_id: DefId, imports: &mut Impo
             }
         }
         DefKind::Except(except_ty) => {
+            imports.stdlib.builtins = true;
             imports.stdlib.dataclasses = true;
             for member in &except_ty.members {
                 if needs_decimal(hir, &member.ty) {
@@ -151,8 +158,9 @@ fn collect_stdlib_imports(hir: &ResolvedGraph, def_id: DefId, imports: &mut Impo
             if needs_decimal(hir, &const_ty.ty) {
                 imports.stdlib.decimal = true;
             }
-            if let Some(parent) = &def.parent
-                && !matches!(hir.context.type_of(*parent).kind, DefKind::Enum(_))
+            if def
+                .parent
+                .is_none_or(|p| !matches!(hir.context.type_of(p).kind, DefKind::Enum(_)))
             {
                 imports.stdlib.typing = true;
             }
@@ -226,7 +234,6 @@ fn collect_type_imports(
 ) {
     for dep_id in hir.context.deps(def_id) {
         let dep_def = hir.context.definitions.get(dep_id);
-
         if dep_def.flags.contains(DefFlags::IS_BUILTIN) {
             continue;
         }

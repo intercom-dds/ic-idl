@@ -353,7 +353,7 @@ impl<'a> PyGen<'a> {
                 let default = if is_optional {
                     "None".to_string()
                 } else {
-                    self.default_value(w, &member.ty)
+                    self.field_default(w, &member.ty)
                 };
 
                 py!(w, member.ident.name, ": ", ty_str, " = ", default, "\n");
@@ -467,11 +467,12 @@ impl<'a> PyGen<'a> {
             format!("{} | None", value_types.join(" | "))
         };
 
-        let disc_default = self.default_value(w, &union_ty.disc.ty);
+        let disc_field_default = self.field_default(w, &union_ty.disc.ty);
+        let disc_runtime_default = self.default_value(w, &union_ty.disc.ty);
         py!(w, "@_dataclasses_.dataclass(slots=True, order=True)\n");
         py!(w, "class ", def, ":\n");
         w.indent();
-        py!(w, "_discriminator: ", disc_type, " = ", disc_default, "\n");
+        py!(w, "_discriminator: ", disc_type, " = ", disc_field_default, "\n");
         py!(w, "_value: ", value_type_annotation, " = None\n");
         w.dedent();
         py!(w, "\n");
@@ -539,7 +540,7 @@ impl<'a> PyGen<'a> {
         w.indent();
         py!(w, "def default(self) -> None:\n");
         w.indent();
-        py!(w, "self._discriminator = ", disc_default, "\n");
+        py!(w, "self._discriminator = ", disc_runtime_default, "\n");
         py!(w, "self._value = None\n");
         w.dedent();
         w.dedent();
@@ -569,7 +570,7 @@ impl<'a> PyGen<'a> {
         } else {
             for member in &except_ty.members {
                 let ty_str = self.py_type(w, &member.ty);
-                let default = self.default_value(w, &member.ty);
+                let default = self.field_default(w, &member.ty);
                 py!(w, member.ident.name, ": ", ty_str, " = ", default, "\n");
             }
         }

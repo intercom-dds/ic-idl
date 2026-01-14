@@ -115,32 +115,65 @@ impl PyGen<'_> {
             TyKind::Primitive(prim) => primitive_default(*prim).to_string(),
             TyKind::String { .. } => "\"\"".to_string(),
             TyKind::Adt(def_id) => {
-                if let Some(enum_val) = self.enum_default(w, *def_id) {
-                    enum_val
+                if let Some(val) = self.adt_default(w, *def_id) {
+                    val
+                } else {
+                    let type_name = self.py_type(w, ty);
+                    format!("{type_name}()")
+                }
+            }
+            TyKind::Any | TyKind::Null => "None".to_string(),
+            TyKind::Array { .. } | TyKind::Sequence { .. } => "[]".to_string(),
+            TyKind::Map { .. } => "{}".to_string(),
+            TyKind::Fixed => "_decimal_.Decimal(0)".to_string(),
+        }
+    }
+
+    pub fn field_default(&self, w: &PyWriter, ty: &Ty) -> String {
+        let resolved = self.hir.context.resolve_ty(ty);
+        match &resolved.kind {
+            TyKind::Primitive(prim) => primitive_default(*prim).to_string(),
+            TyKind::String { .. } => "\"\"".to_string(),
+            TyKind::Any | TyKind::Null => "None".to_string(),
+            TyKind::Fixed => "_decimal_.Decimal(0)".to_string(),
+            TyKind::Array { .. } | TyKind::Sequence { .. } => {
+                "_dataclasses_.field(default_factory=list)".to_string()
+            }
+            TyKind::Map { .. } => "_dataclasses_.field(default_factory=dict)".to_string(),
+            TyKind::Adt(def_id) => {
+                if self.needs_lambda_default(*def_id) {
+                    let val = self.default_value(w, ty);
+                    format!("_dataclasses_.field(default_factory=lambda: {val})")
                 } else {
                     let type_name = self.py_type(w, ty);
                     format!("_dataclasses_.field(default_factory={type_name})")
                 }
             }
-            TyKind::Any | TyKind::Null => "None".to_string(),
-            TyKind::Array { .. } | TyKind::Sequence { .. } => {
-                "_dataclasses_.field(default_factory=list)".to_string()
-            }
-            TyKind::Map { .. } => "_dataclasses_.field(default_factory=dict)".to_string(),
-            TyKind::Fixed => "_decimal_.Decimal(0)".to_string(),
         }
     }
 
-    fn enum_default(&self, w: &PyWriter, def_id: DefId) -> Option<String> {
+    fn needs_lambda_default(&self, def_id: DefId) -> bool {
         let def = self.hir.context.type_of(def_id);
-        if let DefKind::Enum(enum_ty) = &def.kind
-            && let Some(&first_field) = enum_ty.fields.first()
-        {
-            let first_def = self.hir.context.type_of(first_field);
-            let enum_name = self.py_def(w, def_id);
-            return Some(format!("{}.{}", enum_name, first_def.ident.name));
+        matches!(
+            def.kind,
+            DefKind::Enum(_) | DefKind::Bitmask(_) | DefKind::Const(_)
+        )
+    }
+
+    fn adt_default(&self, w: &PyWriter, def_id: DefId) -> Option<String> {
+        let def = self.hir.context.type_of(def_id);
+        match &def.kind {
+            DefKind::Enum(enum_ty) => {
+                let first = *enum_ty.fields.first()?;
+                Some(self.py_def(w, first))
+            }
+            DefKind::Bitmask(bitmask_ty) => {
+                let first = *bitmask_ty.flags.first()?;
+                Some(self.py_def(w, first))
+            }
+            DefKind::Const(_) => Some(self.py_def(w, def_id)),
+            _ => None,
         }
-        None
     }
 
     fn nested_type_path(&self, def_id: DefId) -> String {

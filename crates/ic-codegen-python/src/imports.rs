@@ -262,12 +262,15 @@ fn collect_module_imports(
 
         if dep_module == current_module {
             if let Some(dep_filename) = source_filename_fn(dep_id) {
-                let dep_def = hir.context.type_of(dep_id);
-                context
-                    .sibling_imports
-                    .entry(format!("_{dep_filename}"))
-                    .or_default()
-                    .insert(dep_def.ident.name.clone());
+                let dep_types_file = format!("_{dep_filename}");
+                if dep_types_file != types_filename {
+                    let dep_def = hir.context.type_of(dep_id);
+                    context
+                        .sibling_imports
+                        .entry(dep_types_file)
+                        .or_default()
+                        .insert(dep_def.ident.name.clone());
+                }
             }
             continue;
         }

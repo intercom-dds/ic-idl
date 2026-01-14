@@ -458,10 +458,10 @@ impl<'a> PyGen<'a> {
             .map(|v| self.py_type(w, &v.ty))
             .collect();
 
-        let value_union = if value_types.is_empty() {
+        let value_type_annotation = if value_types.is_empty() {
             "None".to_string()
         } else {
-            value_types.join(" | ")
+            format!("{} | None", value_types.join(" | "))
         };
 
         let disc_default = self.default_value(w, &union_ty.disc.ty);
@@ -469,7 +469,7 @@ impl<'a> PyGen<'a> {
         py!(w, "class ", def, ":\n");
         w.indent();
         py!(w, "_discriminator: ", disc_type, " = ", disc_default, "\n");
-        py!(w, "_value: ", value_union, " | None = None\n");
+        py!(w, "_value: ", value_type_annotation, " = None\n");
         w.dedent();
         py!(w, "\n");
 

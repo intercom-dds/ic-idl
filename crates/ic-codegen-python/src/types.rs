@@ -82,8 +82,7 @@ impl PyGen<'_> {
     }
 
     pub fn py_type(&self, w: &PyWriter, ty: &Ty) -> String {
-        let resolved = self.hir.context.resolve_ty(ty);
-        match &resolved.kind {
+        match &ty.kind {
             TyKind::Primitive(prim) => primitive_type(*prim).to_string(),
             TyKind::String { .. } => "str".to_string(),
             TyKind::Adt(def_id) => self.py_def(w, *def_id),

@@ -36,13 +36,18 @@ use crate::writer::PyWriter;
 
 #[derive(Debug, Clone)]
 pub enum ImportStyle {
-    /// `from .. import foo` -> `foo.Type`
-    Relative { module_name: String, depth: usize },
+    /// `from .. import foo` -> `type_prefix.Type`
+    Relative {
+        module_name: String,
+        type_prefix: String,
+        depth: usize,
+    },
 
-    /// `from .. import foo as _foo` -> `_foo.Type`
+    /// `from .. import foo as _alias` -> `type_prefix.Type`
     Aliased {
         module_name: String,
         alias: String,
+        type_prefix: String,
         depth: usize,
     },
 
@@ -57,10 +62,9 @@ pub enum ImportStyle {
 impl ImportStyle {
     pub fn type_prefix(&self) -> String {
         match self {
-            ImportStyle::Relative { module_name, .. } => module_name.clone(),
-            ImportStyle::Aliased { alias, .. } | ImportStyle::Ancestor { alias, .. } => {
-                alias.clone()
-            }
+            ImportStyle::Relative { type_prefix, .. }
+            | ImportStyle::Aliased { type_prefix, .. } => type_prefix.clone(),
+            ImportStyle::Ancestor { alias, .. } => alias.clone(),
         }
     }
 }
@@ -76,7 +80,9 @@ impl ImportContext {
 
         for style in self.module_imports.values() {
             match style {
-                ImportStyle::Relative { module_name, depth } => {
+                ImportStyle::Relative {
+                    module_name, depth, ..
+                } => {
                     relative_imports
                         .entry(*depth)
                         .or_default()
@@ -86,6 +92,7 @@ impl ImportContext {
                     module_name,
                     alias,
                     depth,
+                    ..
                 } => {
                     relative_imports
                         .entry(*depth)
@@ -182,6 +189,23 @@ pub fn parent_module(hir: &ResolvedGraph, def_id: DefId) -> Option<DefId> {
     None
 }
 
+pub fn is_exportable(hir: &ResolvedGraph, def_id: DefId) -> bool {
+    let def = hir.context.type_of(def_id);
+    if def.flags.contains(DefFlags::IS_BUILTIN) {
+        return false;
+    }
+    match &def.kind {
+        DefKind::Module(_) | DefKind::Bitset(_) | DefKind::Annotation(_) | DefKind::Decl(_) => {
+            false
+        }
+        DefKind::Const(_) => !matches!(
+            def.parent.map(|p| &hir.context.type_of(p).kind),
+            Some(DefKind::Enum(_) | DefKind::Bitmask(_))
+        ),
+        _ => true,
+    }
+}
+
 fn has_collision(
     hir: &ResolvedGraph,
     name: &str,
@@ -208,12 +232,7 @@ fn collect_module_imports(
     context: &mut ImportContext,
 ) {
     for dep_id in hir.context.deps(def_id) {
-        let dep_def = hir.context.type_of(dep_id);
-        if dep_def.flags.contains(DefFlags::IS_BUILTIN) {
-            continue;
-        }
-
-        if matches!(dep_def.kind, DefKind::Module(_) | DefKind::Annotation(_)) {
+        if !is_exportable(hir, dep_id) {
             continue;
         }
 
@@ -251,6 +270,7 @@ fn import_style(
     if target_module.is_empty() {
         return ImportStyle::Relative {
             module_name: String::new(),
+            type_prefix: String::new(),
             depth: current_module.len(),
         };
     }
@@ -271,18 +291,35 @@ fn import_style(
         .take_while(|(a, b)| a == b)
         .count();
 
+    let remaining_path = &target_module[common_len..];
+    let Some(module_name) = remaining_path.first().cloned() else {
+        return ImportStyle::Relative {
+            module_name: String::new(),
+            type_prefix: String::new(),
+            depth: 0,
+        };
+    };
+
     let depth = current_module.len() - common_len;
-    let module_name = target_module.last().unwrap_or(&String::new()).clone();
+    let type_prefix = remaining_path.join(".");
 
     if has_collision(hir, &module_name, current_module, local_defs) {
         let alias = format!("_{module_name}");
+        let mut aliased_path = vec![alias.clone()];
+        aliased_path.extend(remaining_path[1..].iter().cloned());
+        let type_prefix = aliased_path.join(".");
         ImportStyle::Aliased {
             module_name,
             alias,
+            type_prefix,
             depth,
         }
     } else {
-        ImportStyle::Relative { module_name, depth }
+        ImportStyle::Relative {
+            module_name,
+            type_prefix,
+            depth,
+        }
     }
 }
 

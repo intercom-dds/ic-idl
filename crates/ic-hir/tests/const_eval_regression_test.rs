@@ -217,3 +217,14 @@ fn test_enum_initializer_valid_arithmetic() {
     let result = common::parse_and_resolve_successfully(input);
     assert!(result.errors.is_empty());
 }
+
+#[test]
+fn test_map_const_to_const_assignment() {
+    let input = r#"
+        const map<string, int32> MY_MAP = {{"key1", 123}, {"key2", 456}};
+        const map<string, int32> MY_MAP2 = MY_MAP;
+    "#;
+
+    let result = common::parse_and_resolve_successfully(input);
+    assert!(result.errors.is_empty());
+}

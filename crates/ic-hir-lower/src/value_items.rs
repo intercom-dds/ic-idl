@@ -733,7 +733,7 @@ fn are_annotations_consistent(existing: &DefKind, new: &DefKind, ctx: &Context) 
 }
 
 #[allow(clippy::used_underscore_binding)]
-fn types_equal(a: &Ty, b: &Ty, _ctx: &Context) -> bool {
+pub(crate) fn types_equal(a: &Ty, b: &Ty, _ctx: &Context) -> bool {
     use TyKind::{Adt, Any, Array, Fixed, Map, Null, Primitive, Sequence, String};
     match (&a.kind, &b.kind) {
         (Any, Any) | (Fixed, Fixed) | (Null, Null) => true,

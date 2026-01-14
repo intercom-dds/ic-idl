@@ -33,6 +33,7 @@ use ic_hir::scope::ScopeId;
 
 use super::LoweringContext;
 use super::utils::{literal_to_numeric, path_to_string};
+use super::value_items::types_equal;
 
 type Value = ic_expr::Value<DefId>;
 type Expr = ic_expr::Expr<ExprLeaf, ic_syntax::Span>;
@@ -223,7 +224,7 @@ impl<'a> ConstEvaluator<'a> {
         } else {
             let ct = self.ctx.context.resolve_ty(&c.ty);
             let tt = self.ctx.context.resolve_ty(ty);
-            if matches!(tt.kind, TyKind::Any) || ct.kind == tt.kind {
+            if matches!(tt.kind, TyKind::Any) || types_equal(&ct, &tt, &self.ctx.context) {
                 ConstPathOutcome::Accepted(Box::new(Numeric::Const(id)))
             } else {
                 let from_ty = ty_name(&c.ty, self.ctx);

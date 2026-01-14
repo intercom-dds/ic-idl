@@ -77,13 +77,22 @@ impl PyWriter {
     }
 
     pub fn finish(self) -> String {
-        let mut result = self
-            .printer
-            .finish()
-            .lines()
-            .map(str::trim_end)
-            .collect::<Vec<_>>()
-            .join("\n");
+        let output = self.printer.finish();
+        let mut result = String::new();
+        let mut blank_count = 0;
+
+        for line in output.lines().map(str::trim_end) {
+            if line.is_empty() {
+                blank_count += 1;
+                if blank_count <= 2 {
+                    result.push('\n');
+                }
+            } else {
+                blank_count = 0;
+                result.push_str(line);
+                result.push('\n');
+            }
+        }
 
         result.truncate(result.trim_end().len());
         result.push('\n');

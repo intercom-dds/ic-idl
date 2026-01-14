@@ -71,7 +71,8 @@ impl ImportStyle {
 
 #[derive(Default)]
 pub struct ImportContext {
-    pub module_imports: std::collections::HashMap<DefId, ImportStyle>,
+    pub module_imports: BTreeMap<DefId, ImportStyle>,
+    pub sibling_imports: BTreeMap<String, BTreeSet<String>>,
 }
 
 impl ImportContext {
@@ -121,6 +122,19 @@ impl ImportContext {
                     py!(w, "from ", dots, " import ", *module_name, "\n");
                 }
             }
+        }
+
+        for (types_file, type_names) in &self.sibling_imports {
+            if type_names.is_empty() {
+                continue;
+            }
+            py!(w, "from .", types_file, " import (\n");
+            w.indent();
+            for type_name in type_names {
+                py!(w, type_name, ",\n");
+            }
+            w.dedent();
+            py!(w, ")\n");
         }
     }
 }
@@ -231,6 +245,7 @@ fn collect_module_imports(
     current_module: &[String],
     local_defs: &[DefId],
     module_path_fn: &impl Fn(DefId) -> Vec<String>,
+    source_filename_fn: &impl Fn(DefId) -> Option<String>,
     types_filename: &str,
     context: &mut ImportContext,
 ) {
@@ -239,11 +254,25 @@ fn collect_module_imports(
             continue;
         }
 
-        let dep_module_id = parent_module(hir, dep_id);
-        let dep_module = module_path_fn(dep_id);
-        if dep_module == current_module {
+        if local_defs.contains(&dep_id) {
             continue;
         }
+
+        let dep_module = module_path_fn(dep_id);
+
+        if dep_module == current_module {
+            if let Some(dep_filename) = source_filename_fn(dep_id) {
+                let dep_def = hir.context.type_of(dep_id);
+                context
+                    .sibling_imports
+                    .entry(format!("_{dep_filename}"))
+                    .or_default()
+                    .insert(dep_def.ident.name.clone());
+            }
+            continue;
+        }
+
+        let dep_module_id = parent_module(hir, dep_id);
 
         if let Some(module_id) = dep_module_id
             && context.module_imports.contains_key(&module_id)
@@ -325,6 +354,7 @@ pub fn collect_imports(
     current_module: &[String],
     types_filename: &str,
     module_path_fn: impl Fn(DefId) -> Vec<String>,
+    source_filename_fn: impl Fn(DefId) -> Option<String>,
 ) -> Imports {
     let mut imports = Imports::default();
 
@@ -336,6 +366,7 @@ pub fn collect_imports(
             current_module,
             defs,
             &module_path_fn,
+            &source_filename_fn,
             types_filename,
             &mut imports.context,
         );

@@ -713,9 +713,14 @@ impl<'a> PyGen<'a> {
 
     fn emit_file(&self, module_path: &[String], filename: &str, defs: &[DefId]) -> File {
         let types_filename = format!("_{filename}");
-        let imports = collect_imports(self.hir, defs, module_path, &types_filename, |id| {
-            self.module_path(id)
-        });
+        let imports = collect_imports(
+            self.hir,
+            defs,
+            module_path,
+            &types_filename,
+            |id| self.module_path(id),
+            |id| self.source_filename(id),
+        );
 
         let mut w = PyWriter::new(imports.context);
         Self::emit_header(&mut w);

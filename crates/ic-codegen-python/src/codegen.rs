@@ -35,7 +35,7 @@ use ic_hir::hir::{
     AliasTy, Ann, BitmaskTy, ConstTy, Def, DefFlags, DefId, DefKind, EnumTy, ExceptTy, InterfaceTy,
     Numeric, ParamKind, ProtoTy, StructTy, TyKind, UnionTy, ValueTy,
 };
-use ic_vfs::{FileId, SourceMap};
+use ic_vfs::SourceMap;
 
 use crate::imports::{ImportContext, collect_imports, is_exportable};
 use crate::writer::PyWriter;
@@ -95,6 +95,18 @@ fn escape_python_char(c: char) -> String {
         c if c as u32 <= 0xFFFF => format!("\\u{:04x}", c as u32),
         c => format!("\\U{:08x}", c as u32),
     }
+}
+
+fn sanitize_module_name(name: &str) -> String {
+    name.chars()
+        .map(|c| {
+            if c.is_ascii_alphanumeric() || c == '_' {
+                c
+            } else {
+                '_'
+            }
+        })
+        .collect()
 }
 
 pub struct PyGen<'a> {
@@ -239,13 +251,9 @@ impl<'a> PyGen<'a> {
     fn source_filename(&self, def_id: DefId) -> Option<String> {
         let def = self.hir.context.type_of(def_id);
         let span = def.ident.span;
-        let file_id = span.start.file_id;
-        if file_id == FileId::_do_not_use() {
-            return None;
-        }
-        let file_path = self.source_map.name(file_id);
+        let file_path = self.source_map.name(span.start.file_id);
         let stem = file_path.file_stem()?.to_str()?;
-        Some(stem.to_string())
+        Some(sanitize_module_name(stem))
     }
 
     fn module_path(&self, def_id: DefId) -> Vec<String> {
@@ -291,7 +299,6 @@ impl<'a> PyGen<'a> {
 
     fn add_to_groups(&self, def_id: DefId, groups: &mut BTreeMap<FileKey, Vec<DefId>>) {
         let def = self.hir.context.type_of(def_id);
-
         let Some(filename) = self.source_filename(def_id) else {
             return;
         };

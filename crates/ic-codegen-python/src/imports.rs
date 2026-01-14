@@ -27,11 +27,11 @@
 
 use std::collections::{BTreeMap, BTreeSet};
 
-use ic_hir::ResolvedGraph;
-use ic_hir::hir::{DefFlags, DefId, DefKind};
+use ic_hir::hir::{DefFlags, DefId, DefKind, PrimitiveTy, Ty, TyKind};
+use ic_hir::visit::Visitor;
+use ic_hir::{Context, ResolvedGraph};
 
 use crate::py;
-use crate::types::needs_decimal;
 use crate::writer::PyWriter;
 
 #[derive(Debug, Clone)]
@@ -311,117 +311,79 @@ pub fn collect_imports(
     imports
 }
 
-#[allow(clippy::too_many_lines)]
+struct StdlibVisitor<'a> {
+    context: &'a Context,
+    stdlib: Stdlib,
+}
+
+impl<'a> ic_hir::visit::Visitor<'a> for StdlibVisitor<'a> {
+    fn context(&self) -> &'a Context {
+        self.context
+    }
+
+    fn visit_def(&mut self, def: &'a ic_hir::hir::Def) {
+        match &def.kind {
+            DefKind::Struct(_) => {
+                self.stdlib.dataclasses = true;
+            }
+            DefKind::Union(_) => {
+                self.stdlib.dataclasses = true;
+                self.stdlib.typing = true;
+            }
+            DefKind::Except(_) => {
+                self.stdlib.builtins = true;
+                self.stdlib.dataclasses = true;
+            }
+            DefKind::Enum(_) | DefKind::Bitmask(_) => {
+                self.stdlib.enum_ = true;
+            }
+            DefKind::Alias(_) => {
+                self.stdlib.typing = true;
+            }
+            DefKind::Const(_) => {
+                if def
+                    .parent
+                    .is_none_or(|p| !matches!(self.context.type_of(p).kind, DefKind::Enum(_)))
+                {
+                    self.stdlib.typing = true;
+                }
+            }
+            DefKind::Interface(_) => {
+                self.stdlib.abc = true;
+            }
+            DefKind::Valuetype(value_ty) => {
+                self.stdlib.dataclasses = true;
+                if !value_ty.prototypes.is_empty() || !value_ty.attributes.is_empty() {
+                    self.stdlib.abc = true;
+                }
+            }
+            _ => {}
+        }
+
+        ic_hir::visit::walk_def(self, def);
+    }
+
+    fn visit_ty(&mut self, ty: &'a Ty) {
+        let resolved = self.context.resolve_ty(ty);
+        match &resolved.kind {
+            TyKind::Primitive(PrimitiveTy::Float128) | TyKind::Fixed => {
+                self.stdlib.decimal = true;
+            }
+            TyKind::Any => {
+                self.stdlib.typing = true;
+            }
+            _ => {}
+        }
+        ic_hir::visit::walk_ty(self, ty);
+    }
+}
+
 fn collect_stdlib_imports(hir: &ResolvedGraph, def_id: DefId, imports: &mut Imports) {
     let def = hir.context.definitions.get(def_id);
-
-    match &def.kind {
-        DefKind::Struct(struct_ty) => {
-            imports.stdlib.dataclasses = true;
-            for member in &struct_ty.members {
-                if needs_decimal(hir, &member.ty) {
-                    imports.stdlib.decimal = true;
-                }
-            }
-        }
-        DefKind::Union(union_ty) => {
-            imports.stdlib.dataclasses = true;
-            imports.stdlib.typing = true;
-
-            if needs_decimal(hir, &union_ty.disc.ty) {
-                imports.stdlib.decimal = true;
-            }
-            for variant in &union_ty.variants {
-                if needs_decimal(hir, &variant.ty) {
-                    imports.stdlib.decimal = true;
-                }
-            }
-        }
-        DefKind::Except(except_ty) => {
-            imports.stdlib.builtins = true;
-            imports.stdlib.dataclasses = true;
-            for member in &except_ty.members {
-                if needs_decimal(hir, &member.ty) {
-                    imports.stdlib.decimal = true;
-                }
-            }
-        }
-        DefKind::Enum(_) | DefKind::Bitmask(_) => {
-            imports.stdlib.enum_ = true;
-        }
-        DefKind::Alias(alias_ty) => {
-            imports.stdlib.typing = true;
-            if needs_decimal(hir, &alias_ty.ty) {
-                imports.stdlib.decimal = true;
-            }
-        }
-        DefKind::Const(const_ty) => {
-            if needs_decimal(hir, &const_ty.ty) {
-                imports.stdlib.decimal = true;
-            }
-            if def
-                .parent
-                .is_none_or(|p| !matches!(hir.context.type_of(p).kind, DefKind::Enum(_)))
-            {
-                imports.stdlib.typing = true;
-            }
-        }
-        DefKind::Interface(interface_ty) => {
-            imports.stdlib.abc = true;
-            for attr in &interface_ty.attributes {
-                if needs_decimal(hir, &attr.ty) {
-                    imports.stdlib.decimal = true;
-                }
-            }
-            for proto in &interface_ty.prototypes {
-                if needs_decimal(hir, &proto.ty) {
-                    imports.stdlib.decimal = true;
-                }
-                for param in &proto.params {
-                    if needs_decimal(hir, &param.ty) {
-                        imports.stdlib.decimal = true;
-                    }
-                }
-            }
-            for &nested_id in &interface_ty.definitions {
-                collect_stdlib_imports(hir, nested_id, imports);
-            }
-        }
-        DefKind::Valuetype(value_ty) => {
-            imports.stdlib.dataclasses = true;
-            if value_ty.parent.is_none()
-                && value_ty.supports.is_none()
-                && !value_ty.prototypes.is_empty()
-            {
-                imports.stdlib.abc = true;
-            }
-            if !value_ty.prototypes.is_empty() || !value_ty.attributes.is_empty() {
-                imports.stdlib.abc = true;
-            }
-            for member in &value_ty.members {
-                if needs_decimal(hir, &member.ty) {
-                    imports.stdlib.decimal = true;
-                }
-            }
-            for attr in &value_ty.attributes {
-                if needs_decimal(hir, &attr.ty) {
-                    imports.stdlib.decimal = true;
-                }
-            }
-            for proto in &value_ty.prototypes {
-                if needs_decimal(hir, &proto.ty) {
-                    imports.stdlib.decimal = true;
-                }
-                for param in &proto.params {
-                    if needs_decimal(hir, &param.ty) {
-                        imports.stdlib.decimal = true;
-                    }
-                }
-            }
-            for &nested_id in &value_ty.definitions {
-                collect_stdlib_imports(hir, nested_id, imports);
-            }
-        }
-        _ => {}
-    }
+    let mut visitor = StdlibVisitor {
+        context: &hir.context,
+        stdlib: std::mem::take(&mut imports.stdlib),
+    };
+    visitor.visit_def(def);
+    imports.stdlib = visitor.stdlib;
 }

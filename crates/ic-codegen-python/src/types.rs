@@ -25,22 +25,11 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use ic_hir::ResolvedGraph;
 use ic_hir::hir::{DefId, DefKind, PrimitiveTy, Ty, TyKind};
 
 use crate::codegen::PyGen;
 use crate::imports::parent_module;
 use crate::writer::PyWriter;
-
-pub fn needs_decimal(hir: &ResolvedGraph, ty: &Ty) -> bool {
-    let resolved = hir.context.resolve_ty(ty);
-    match &resolved.kind {
-        TyKind::Primitive(PrimitiveTy::Float128) | TyKind::Fixed => true,
-        TyKind::Array { ty, .. } | TyKind::Sequence { ty, .. } => needs_decimal(hir, ty),
-        TyKind::Map { key, elem, .. } => needs_decimal(hir, key) || needs_decimal(hir, elem),
-        _ => false,
-    }
-}
 
 fn primitive_type(prim: PrimitiveTy) -> &'static str {
     match prim {
@@ -107,7 +96,7 @@ impl PyGen<'_> {
                 let elem_ty = self.py_type(w, elem);
                 format!("dict[{key_ty}, {elem_ty}]")
             }
-            TyKind::Any => "object".to_string(),
+            TyKind::Any => "_typing_.Any".to_string(),
             TyKind::Fixed => "_decimal_.Decimal".to_string(),
             TyKind::Null => "None".to_string(),
         }

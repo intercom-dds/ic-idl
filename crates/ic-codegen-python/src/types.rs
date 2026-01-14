@@ -28,6 +28,10 @@
 use ic_hir::ResolvedGraph;
 use ic_hir::hir::{DefId, DefKind, PrimitiveTy, Ty, TyKind};
 
+use crate::codegen::PyGen;
+use crate::imports::parent_module;
+use crate::writer::PyWriter;
+
 pub fn needs_decimal(hir: &ResolvedGraph, ty: &Ty) -> bool {
     let resolved = hir.context.resolve_ty(ty);
     match &resolved.kind {
@@ -38,7 +42,7 @@ pub fn needs_decimal(hir: &ResolvedGraph, ty: &Ty) -> bool {
     }
 }
 
-pub fn primitive_type(prim: PrimitiveTy) -> &'static str {
+fn primitive_type(prim: PrimitiveTy) -> &'static str {
     match prim {
         PrimitiveTy::Void => "None",
         PrimitiveTy::Bool => "bool",
@@ -56,7 +60,7 @@ pub fn primitive_type(prim: PrimitiveTy) -> &'static str {
     }
 }
 
-pub fn primitive_default(prim: PrimitiveTy) -> &'static str {
+fn primitive_default(prim: PrimitiveTy) -> &'static str {
     match prim {
         PrimitiveTy::Void => "None",
         PrimitiveTy::Bool => "False",
@@ -74,68 +78,85 @@ pub fn primitive_default(prim: PrimitiveTy) -> &'static str {
     }
 }
 
-pub fn py_def(hir: &ResolvedGraph, def_id: DefId, _relative_def: DefId) -> String {
-    hir.context.type_of(def_id).ident.name.clone()
-}
+impl PyGen<'_> {
+    pub fn py_def(&self, w: &PyWriter, def_id: DefId) -> String {
+        let def = self.hir.context.type_of(def_id);
+        let type_name = def.ident.name.clone();
 
-#[allow(clippy::only_used_in_recursion)]
-pub fn py_type(hir: &ResolvedGraph, ty: &Ty, relative_def: DefId) -> String {
-    let resolved = hir.context.resolve_ty(ty);
-    match &resolved.kind {
-        TyKind::Primitive(prim) => primitive_type(*prim).to_string(),
-        TyKind::String { .. } => "str".to_string(),
-        TyKind::Adt(def_id) => {
-            let def = hir.context.type_of(*def_id);
-            def.ident.name.clone()
+        if let Some(module_id) = parent_module(self.hir, def_id)
+            && let Some(style) = w.import_context.module_imports.get(&module_id)
+        {
+            let prefix = style.type_prefix();
+            format!("{prefix}.{type_name}")
+        } else {
+            type_name
         }
-        TyKind::Array { ty, .. } | TyKind::Sequence { ty, .. } => {
-            let inner = py_type(hir, ty, relative_def);
-            format!("list[{inner}]")
-        }
-        TyKind::Map { key, elem, .. } => {
-            let key_ty = py_type(hir, key, relative_def);
-            let elem_ty = py_type(hir, elem, relative_def);
-            format!("dict[{key_ty}, {elem_ty}]")
-        }
-        TyKind::Any => "object".to_string(),
-        TyKind::Fixed => "_decimal_.Decimal".to_string(),
-        TyKind::Null => "None".to_string(),
     }
-}
 
-// TODO: this isn't strictly correct because we should respect
-// `@default_literal`, but I think we'd be better off handling that in the HIR
-// somehow
-fn enum_default(hir: &ResolvedGraph, def_id: DefId, relative_def: DefId) -> Option<String> {
-    let def = hir.context.type_of(def_id);
-    if let DefKind::Enum(enum_ty) = &def.kind
-        && let Some(&first_field) = enum_ty.fields.first()
-    {
-        let first_def = hir.context.type_of(first_field);
-        let enum_name = py_def(hir, def_id, relative_def);
-        return Some(format!("{}.{}", enum_name, first_def.ident.name));
-    }
-    None
-}
+    pub fn py_type(&self, w: &PyWriter, ty: &Ty) -> String {
+        let resolved = self.hir.context.resolve_ty(ty);
+        match &resolved.kind {
+            TyKind::Primitive(prim) => primitive_type(*prim).to_string(),
+            TyKind::String { .. } => "str".to_string(),
+            TyKind::Adt(def_id) => {
+                let def = self.hir.context.type_of(*def_id);
+                let type_name = def.ident.name.clone();
 
-pub fn default_value(hir: &ResolvedGraph, ty: &Ty, relative_def: DefId) -> String {
-    let resolved = hir.context.resolve_ty(ty);
-    match &resolved.kind {
-        TyKind::Primitive(prim) => primitive_default(*prim).to_string(),
-        TyKind::String { .. } => "\"\"".to_string(),
-        TyKind::Adt(def_id) => {
-            if let Some(enum_val) = enum_default(hir, *def_id, relative_def) {
-                enum_val
-            } else {
-                let type_name = py_type(hir, ty, relative_def);
-                format!("_dataclasses_.field(default_factory={type_name})")
+                if let Some(module_id) = parent_module(self.hir, *def_id)
+                    && let Some(style) = w.import_context.module_imports.get(&module_id)
+                {
+                    let prefix = style.type_prefix();
+                    return format!("{prefix}.{type_name}");
+                }
+
+                type_name
             }
+            TyKind::Array { ty, .. } | TyKind::Sequence { ty, .. } => {
+                let inner = self.py_type(w, ty);
+                format!("list[{inner}]")
+            }
+            TyKind::Map { key, elem, .. } => {
+                let key_ty = self.py_type(w, key);
+                let elem_ty = self.py_type(w, elem);
+                format!("dict[{key_ty}, {elem_ty}]")
+            }
+            TyKind::Any => "object".to_string(),
+            TyKind::Fixed => "_decimal_.Decimal".to_string(),
+            TyKind::Null => "None".to_string(),
         }
-        TyKind::Any | TyKind::Null => "None".to_string(),
-        TyKind::Array { .. } | TyKind::Sequence { .. } => {
-            "_dataclasses_.field(default_factory=list)".to_string()
+    }
+
+    pub fn default_value(&self, w: &PyWriter, ty: &Ty) -> String {
+        let resolved = self.hir.context.resolve_ty(ty);
+        match &resolved.kind {
+            TyKind::Primitive(prim) => primitive_default(*prim).to_string(),
+            TyKind::String { .. } => "\"\"".to_string(),
+            TyKind::Adt(def_id) => {
+                if let Some(enum_val) = self.enum_default(w, *def_id) {
+                    enum_val
+                } else {
+                    let type_name = self.py_type(w, ty);
+                    format!("_dataclasses_.field(default_factory={type_name})")
+                }
+            }
+            TyKind::Any | TyKind::Null => "None".to_string(),
+            TyKind::Array { .. } | TyKind::Sequence { .. } => {
+                "_dataclasses_.field(default_factory=list)".to_string()
+            }
+            TyKind::Map { .. } => "_dataclasses_.field(default_factory=dict)".to_string(),
+            TyKind::Fixed => "_decimal_.Decimal(0)".to_string(),
         }
-        TyKind::Map { .. } => "_dataclasses_.field(default_factory=dict)".to_string(),
-        TyKind::Fixed => "_decimal_.Decimal(0)".to_string(),
+    }
+
+    fn enum_default(&self, w: &PyWriter, def_id: DefId) -> Option<String> {
+        let def = self.hir.context.type_of(def_id);
+        if let DefKind::Enum(enum_ty) = &def.kind
+            && let Some(&first_field) = enum_ty.fields.first()
+        {
+            let first_def = self.hir.context.type_of(first_field);
+            let enum_name = self.py_def(w, def_id);
+            return Some(format!("{}.{}", enum_name, first_def.ident.name));
+        }
+        None
     }
 }

@@ -34,6 +34,90 @@ use crate::py;
 use crate::types::needs_decimal;
 use crate::writer::PyWriter;
 
+#[derive(Debug, Clone)]
+pub enum ImportStyle {
+    /// `from .. import foo` -> `foo.Type`
+    Relative { module_name: String, depth: usize },
+
+    /// `from .. import foo as _foo` -> `_foo.Type`
+    Aliased {
+        module_name: String,
+        alias: String,
+        depth: usize,
+    },
+
+    /// `from ... import _types_file as _alias` -> `_alias.Type`
+    Ancestor {
+        types_file: String,
+        alias: String,
+        depth: usize,
+    },
+}
+
+impl ImportStyle {
+    pub fn type_prefix(&self) -> String {
+        match self {
+            ImportStyle::Relative { module_name, .. } => module_name.clone(),
+            ImportStyle::Aliased { alias, .. } | ImportStyle::Ancestor { alias, .. } => {
+                alias.clone()
+            }
+        }
+    }
+}
+
+#[derive(Default)]
+pub struct ImportContext {
+    pub module_imports: std::collections::HashMap<DefId, ImportStyle>,
+}
+
+impl ImportContext {
+    pub fn emit(&self, w: &mut PyWriter) {
+        let mut relative_imports: BTreeMap<_, BTreeSet<_>> = BTreeMap::new();
+
+        for style in self.module_imports.values() {
+            match style {
+                ImportStyle::Relative { module_name, depth } => {
+                    relative_imports
+                        .entry(*depth)
+                        .or_default()
+                        .insert((module_name.as_str(), None));
+                }
+                ImportStyle::Aliased {
+                    module_name,
+                    alias,
+                    depth,
+                } => {
+                    relative_imports
+                        .entry(*depth)
+                        .or_default()
+                        .insert((module_name.as_str(), Some(alias.as_str())));
+                }
+                ImportStyle::Ancestor {
+                    types_file,
+                    alias,
+                    depth,
+                } => {
+                    relative_imports
+                        .entry(*depth)
+                        .or_default()
+                        .insert((types_file.as_str(), Some(alias.as_str())));
+                }
+            }
+        }
+
+        for (depth, imports) in &relative_imports {
+            let dots = ".".repeat(depth + 1);
+            for (module_name, alias) in imports {
+                if let Some(alias) = alias {
+                    py!(w, "from ", dots, " import ", *module_name, " as ", *alias, "\n");
+                } else {
+                    py!(w, "from ", dots, " import ", *module_name, "\n");
+                }
+            }
+        }
+    }
+}
+
 #[derive(Default)]
 pub struct Stdlib {
     pub abc: bool,
@@ -47,52 +131,161 @@ pub struct Stdlib {
 #[derive(Default)]
 pub struct Imports {
     pub stdlib: Stdlib,
-    pub types: BTreeMap<String, BTreeSet<String>>,
+    pub context: ImportContext,
 }
 
-impl Imports {
+impl Stdlib {
     pub fn emit(&self, w: &mut PyWriter) {
-        let mut has_imports = false;
-
-        if self.stdlib.abc {
+        if self.abc {
             py!(w, "import abc as _abc_\n");
-            has_imports = true;
         }
-
-        if self.stdlib.builtins {
+        if self.builtins {
             py!(w, "import builtins as _builtins_\n");
-            has_imports = true;
         }
-
-        if self.stdlib.dataclasses {
+        if self.dataclasses {
             py!(w, "import dataclasses as _dataclasses_\n");
-            has_imports = true;
         }
-
-        if self.stdlib.decimal {
+        if self.decimal {
             py!(w, "import decimal as _decimal_\n");
-            has_imports = true;
         }
-
-        if self.stdlib.enum_ {
+        if self.enum_ {
             py!(w, "import enum as _enum_\n");
-            has_imports = true;
         }
-
-        if self.stdlib.typing {
+        if self.typing {
             py!(w, "import typing as _typing_\n");
-            has_imports = true;
         }
 
-        for (module, names) in &self.types {
-            let names_str = names.iter().cloned().collect::<Vec<_>>().join(", ");
-            py!(w, "from ", module, " import ", names_str, "\n");
-            has_imports = true;
-        }
-
-        if has_imports {
+        if self.abc
+            || self.builtins
+            || self.dataclasses
+            || self.decimal
+            || self.enum_
+            || self.typing
+        {
             py!(w, "\n");
         }
+    }
+}
+
+pub fn parent_module(hir: &ResolvedGraph, def_id: DefId) -> Option<DefId> {
+    let def = hir.context.type_of(def_id);
+    let mut current = def.parent;
+
+    while let Some(id) = current {
+        let parent_def = hir.context.type_of(id);
+        if matches!(parent_def.kind, DefKind::Module(_)) {
+            return Some(id);
+        }
+        current = parent_def.parent;
+    }
+
+    None
+}
+
+fn has_collision(
+    hir: &ResolvedGraph,
+    name: &str,
+    current_module: &[String],
+    local_defs: &[DefId],
+) -> bool {
+    for &def_id in local_defs {
+        let def = hir.context.type_of(def_id);
+        if def.ident.name == name {
+            return true;
+        }
+    }
+
+    current_module.last().is_some_and(|last| last == name)
+}
+
+fn collect_module_imports(
+    hir: &ResolvedGraph,
+    def_id: DefId,
+    current_module: &[String],
+    local_defs: &[DefId],
+    module_path_fn: &impl Fn(DefId) -> Vec<String>,
+    types_filename: &str,
+    context: &mut ImportContext,
+) {
+    for dep_id in hir.context.deps(def_id) {
+        let dep_def = hir.context.type_of(dep_id);
+        if dep_def.flags.contains(DefFlags::IS_BUILTIN) {
+            continue;
+        }
+
+        if matches!(
+            dep_def.kind,
+            DefKind::Module(_) | DefKind::Annotation(_) | DefKind::Const(_)
+        ) {
+            continue;
+        }
+
+        let dep_module_id = parent_module(hir, dep_id);
+        let dep_module = module_path_fn(dep_id);
+        if dep_module == current_module {
+            continue;
+        }
+
+        if let Some(module_id) = dep_module_id
+            && context.module_imports.contains_key(&module_id)
+        {
+            continue;
+        }
+
+        if let Some(module_id) = dep_module_id {
+            let style = import_style(hir, current_module, &dep_module, local_defs, types_filename);
+            context.module_imports.insert(module_id, style);
+        }
+    }
+}
+
+fn is_ancestor(current_module: &[String], target_module: &[String]) -> bool {
+    target_module.len() < current_module.len() && current_module.starts_with(target_module)
+}
+
+fn import_style(
+    hir: &ResolvedGraph,
+    current_module: &[String],
+    target_module: &[String],
+    local_defs: &[DefId],
+    types_filename: &str,
+) -> ImportStyle {
+    // Handle root-level types (no module)
+    if target_module.is_empty() {
+        return ImportStyle::Relative {
+            module_name: String::new(),
+            depth: current_module.len(),
+        };
+    }
+
+    if is_ancestor(current_module, target_module) {
+        let depth = current_module.len() - target_module.len();
+        let alias = format!("_{}", target_module.join("_"));
+        return ImportStyle::Ancestor {
+            types_file: types_filename.to_string(),
+            alias,
+            depth,
+        };
+    }
+
+    let common_len = current_module
+        .iter()
+        .zip(target_module.iter())
+        .take_while(|(a, b)| a == b)
+        .count();
+
+    let depth = current_module.len() - common_len;
+    let module_name = target_module.last().unwrap_or(&String::new()).clone();
+
+    if has_collision(hir, &module_name, current_module, local_defs) {
+        let alias = format!("_{module_name}");
+        ImportStyle::Aliased {
+            module_name,
+            alias,
+            depth,
+        }
+    } else {
+        ImportStyle::Relative { module_name, depth }
     }
 }
 
@@ -100,13 +293,22 @@ pub fn collect_imports(
     hir: &ResolvedGraph,
     defs: &[DefId],
     current_module: &[String],
+    types_filename: &str,
     module_path_fn: impl Fn(DefId) -> Vec<String>,
 ) -> Imports {
     let mut imports = Imports::default();
 
     for &def_id in defs {
         collect_stdlib_imports(hir, def_id, &mut imports);
-        collect_type_imports(hir, def_id, current_module, &module_path_fn, &mut imports);
+        collect_module_imports(
+            hir,
+            def_id,
+            current_module,
+            defs,
+            &module_path_fn,
+            types_filename,
+            &mut imports.context,
+        );
     }
 
     imports
@@ -224,41 +426,5 @@ fn collect_stdlib_imports(hir: &ResolvedGraph, def_id: DefId, imports: &mut Impo
             }
         }
         _ => {}
-    }
-}
-
-fn collect_type_imports(
-    hir: &ResolvedGraph,
-    def_id: DefId,
-    current_module: &[String],
-    module_path_fn: &impl Fn(DefId) -> Vec<String>,
-    imports: &mut Imports,
-) {
-    for dep_id in hir.context.deps(def_id) {
-        let dep_def = hir.context.definitions.get(dep_id);
-        if dep_def.flags.contains(DefFlags::IS_BUILTIN) {
-            continue;
-        }
-
-        if matches!(
-            dep_def.kind,
-            DefKind::Module(_) | DefKind::Annotation(_) | DefKind::Const(_)
-        ) {
-            continue;
-        }
-
-        let dep_module = module_path_fn(dep_id);
-        if dep_module != current_module {
-            let module_str = if dep_module.is_empty() {
-                ".".to_string()
-            } else {
-                format!(".{}", dep_module.join("."))
-            };
-            imports
-                .types
-                .entry(module_str)
-                .or_default()
-                .insert(dep_def.ident.name.clone());
-        }
     }
 }

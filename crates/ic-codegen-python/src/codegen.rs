@@ -37,8 +37,7 @@ use ic_hir::hir::{
 };
 use ic_vfs::{FileId, SourceMap};
 
-use crate::imports::collect_imports;
-use crate::types::{default_value, py_def, py_type};
+use crate::imports::{ImportContext, collect_imports};
 use crate::writer::PyWriter;
 use crate::{PythonOptions, py};
 
@@ -99,7 +98,7 @@ fn escape_python_char(c: char) -> String {
 }
 
 pub struct PyGen<'a> {
-    hir: &'a ResolvedGraph,
+    pub hir: &'a ResolvedGraph,
     source_map: &'a SourceMap,
     _options: PythonOptions,
 }
@@ -161,7 +160,7 @@ impl<'a> PyGen<'a> {
         let mut files = vec![];
 
         for module_path in all_paths {
-            let mut w = PyWriter::new();
+            let mut w = PyWriter::new(ImportContext::default());
             Self::emit_header(&mut w);
 
             let filenames: BTreeSet<_> = groups
@@ -172,16 +171,6 @@ impl<'a> PyGen<'a> {
 
             for filename in &filenames {
                 py!(w, "from ._", filename, " import *\n");
-            }
-
-            let child_modules: BTreeSet<&String> = groups
-                .keys()
-                .filter(|(mp, _)| mp.len() == module_path.len() + 1 && mp.starts_with(&module_path))
-                .map(|(mp, _)| &mp[module_path.len()])
-                .collect();
-
-            for child in child_modules {
-                py!(w, "from . import ", child, "\n");
             }
 
             let mut path: PathBuf = module_path.iter().collect();
@@ -320,15 +309,15 @@ impl<'a> PyGen<'a> {
             for member in &struct_ty.members {
                 let is_optional = self.is_optional(&member.annotations);
                 let ty_str = if is_optional {
-                    format!("{} | None", py_type(self.hir, &member.ty, def.id))
+                    format!("{} | None", self.py_type(w, &member.ty))
                 } else {
-                    py_type(self.hir, &member.ty, def.id)
+                    self.py_type(w, &member.ty)
                 };
 
                 let default = if is_optional {
                     "None".to_string()
                 } else {
-                    default_value(self.hir, &member.ty, def.id)
+                    self.default_value(w, &member.ty)
                 };
 
                 py!(w, member.ident.name, ": ", ty_str, " = ", default, "\n");
@@ -339,7 +328,7 @@ impl<'a> PyGen<'a> {
         py!(w, "\n\n");
     }
 
-    fn format_numeric(&self, value: &Numeric, relative_def: DefId) -> String {
+    fn format_numeric(&self, w: &PyWriter, value: &Numeric) -> String {
         match value {
             Numeric::Null => "None".to_string(),
             Numeric::Bool(b) => if *b { "True" } else { "False" }.to_string(),
@@ -361,21 +350,18 @@ impl<'a> PyGen<'a> {
                     && let parent_def = self.hir.context.type_of(parent_id)
                     && matches!(parent_def.kind, DefKind::Enum(_))
                 {
-                    let enum_name = py_def(self.hir, parent_id, relative_def);
+                    let enum_name = self.py_def(w, parent_id);
                     return format!("{}.{}", enum_name, def.ident.name);
                 }
 
                 if let DefKind::Const(const_def) = &def.kind {
-                    self.format_numeric(&const_def.value, relative_def)
+                    self.format_numeric(w, &const_def.value)
                 } else {
                     "None".to_string()
                 }
             }
             Numeric::Array { values, .. } | Numeric::Sequence { values, .. } => {
-                let items: Vec<_> = values
-                    .iter()
-                    .map(|v| self.format_numeric(v, relative_def))
-                    .collect();
+                let items: Vec<_> = values.iter().map(|v| self.format_numeric(w, v)).collect();
                 format!("[{}]", items.join(", "))
             }
             Numeric::Map { entries, .. } => {
@@ -384,22 +370,19 @@ impl<'a> PyGen<'a> {
                     .map(|(k, v)| {
                         format!(
                             "{}: {}",
-                            self.format_numeric(k, relative_def),
-                            self.format_numeric(v, relative_def)
+                            self.format_numeric(w, k),
+                            self.format_numeric(w, v)
                         )
                     })
                     .collect();
                 format!("{{{}}}", items.join(", "))
             }
             Numeric::Struct { ty, fields } => {
-                let struct_name = py_def(self.hir, *ty, relative_def);
-                let items: Vec<_> = fields
-                    .iter()
-                    .map(|v| self.format_numeric(v, relative_def))
-                    .collect();
+                let struct_name = self.py_def(w, *ty);
+                let items: Vec<_> = fields.iter().map(|v| self.format_numeric(w, v)).collect();
                 format!("{}({})", struct_name, items.join(", "))
             }
-            Numeric::Union { value, .. } => self.format_numeric(value, relative_def),
+            Numeric::Union { value, .. } => self.format_numeric(w, value),
         }
     }
 
@@ -410,7 +393,7 @@ impl<'a> PyGen<'a> {
         for &member_id in &enum_ty.fields {
             let member_def = self.hir.context.type_of(member_id);
             if let DefKind::Const(const_ty) = &member_def.kind {
-                let val = self.format_numeric(&const_ty.value, def.id);
+                let val = self.format_numeric(w, &const_ty.value);
                 py!(w, member_def, " = ", val, "\n");
             }
         }
@@ -426,7 +409,7 @@ impl<'a> PyGen<'a> {
         for &member_id in &bitmask_ty.flags {
             let member_def = self.hir.context.type_of(member_id);
             if let DefKind::Const(const_ty) = &member_def.kind {
-                let val = self.format_numeric(&const_ty.value, def.id);
+                let val = self.format_numeric(w, &const_ty.value);
                 py!(w, member_def, " = ", val, "\n");
             }
         }
@@ -436,12 +419,12 @@ impl<'a> PyGen<'a> {
     }
 
     fn emit_union(&self, w: &mut PyWriter, def: &Def, union_ty: &UnionTy) {
-        let disc_type = py_type(self.hir, &union_ty.disc.ty, def.id);
+        let disc_type = self.py_type(w, &union_ty.disc.ty);
         let value_types: Vec<_> = union_ty
             .variants
             .iter()
             .filter(|v| !matches!(v.ty.kind, TyKind::Null))
-            .map(|v| py_type(self.hir, &v.ty, def.id))
+            .map(|v| self.py_type(w, &v.ty))
             .collect();
 
         let value_union = if value_types.is_empty() {
@@ -450,7 +433,7 @@ impl<'a> PyGen<'a> {
             value_types.join(" | ")
         };
 
-        let disc_default = default_value(self.hir, &union_ty.disc.ty, def.id);
+        let disc_default = self.default_value(w, &union_ty.disc.ty);
         py!(w, "@_dataclasses_.dataclass(slots=True, order=True)\n");
         py!(w, "class ", def, ":\n");
         w.indent();
@@ -473,7 +456,7 @@ impl<'a> PyGen<'a> {
                 continue;
             }
 
-            let variant_type = py_type(self.hir, &variant.ty, def.id);
+            let variant_type = self.py_type(w, &variant.ty);
 
             w.indent();
             py!(w, "@property\n");
@@ -483,7 +466,7 @@ impl<'a> PyGen<'a> {
             if variant.is_default {
                 py!(w, "return _typing_.cast(", variant_type, ", self._value)\n");
             } else if variant.labels.len() == 1 {
-                let label = self.format_numeric(&variant.labels[0].value, def.id);
+                let label = self.format_numeric(w, &variant.labels[0].value);
                 py!(w, "if self._discriminator != ", label, ":\n");
                 w.indent();
                 py!(w, "raise ValueError(\"", variant.ident.name, " not selected\")\n");
@@ -493,7 +476,7 @@ impl<'a> PyGen<'a> {
                 let labels: Vec<_> = variant
                     .labels
                     .iter()
-                    .map(|l| self.format_numeric(&l.value, def.id))
+                    .map(|l| self.format_numeric(w, &l.value))
                     .collect();
                 py!(w, "if self._discriminator not in (", labels.join(", "), "):\n");
                 w.indent();
@@ -510,7 +493,7 @@ impl<'a> PyGen<'a> {
             py!(w, "def ", variant.ident.name, "(self, val: ", variant_type, ") -> None:\n");
             w.indent();
             if !variant.labels.is_empty() {
-                let first_label = self.format_numeric(&variant.labels[0].value, def.id);
+                let first_label = self.format_numeric(w, &variant.labels[0].value);
                 py!(w, "self._discriminator = ", first_label, "\n");
             }
             py!(w, "self._value = val\n");
@@ -530,14 +513,14 @@ impl<'a> PyGen<'a> {
     }
 
     fn emit_alias(&self, w: &mut PyWriter, def: &Def, alias: &AliasTy) {
-        let ty_str = py_type(self.hir, &alias.ty, def.id);
+        let ty_str = self.py_type(w, &alias.ty);
         py!(w, def, ": _typing_.TypeAlias = ", ty_str, "\n");
         py!(w, "\n\n");
     }
 
     fn emit_const(&self, w: &mut PyWriter, def: &Def, const_ty: &ConstTy) {
-        let ty_str = py_type(self.hir, &const_ty.ty, def.id);
-        let value_str = self.format_numeric(&const_ty.value, def.id);
+        let ty_str = self.py_type(w, &const_ty.ty);
+        let value_str = self.format_numeric(w, &const_ty.value);
         py!(w, def, ": _typing_.Final[", ty_str, "] = ", value_str, "\n");
         py!(w, "\n\n");
     }
@@ -551,8 +534,8 @@ impl<'a> PyGen<'a> {
             py!(w, "pass\n");
         } else {
             for member in &except_ty.members {
-                let ty_str = py_type(self.hir, &member.ty, def.id);
-                let default = default_value(self.hir, &member.ty, def.id);
+                let ty_str = self.py_type(w, &member.ty);
+                let default = self.default_value(w, &member.ty);
                 py!(w, member.ident.name, ": ", ty_str, " = ", default, "\n");
             }
         }
@@ -586,7 +569,7 @@ impl<'a> PyGen<'a> {
             }
 
             for attr in &interface_ty.attributes {
-                let ty_str = py_type(self.hir, &attr.ty, def.id);
+                let ty_str = self.py_type(w, &attr.ty);
                 py!(w, "@property\n");
                 py!(w, "@_abc_.abstractmethod\n");
                 py!(w, "def ", attr.ident.name, "(self) -> ", ty_str, ": ...\n");
@@ -594,7 +577,7 @@ impl<'a> PyGen<'a> {
             }
 
             for proto in &interface_ty.prototypes {
-                self.emit_prototype(w, def, proto);
+                self.emit_prototype(w, proto);
             }
         }
 
@@ -602,14 +585,14 @@ impl<'a> PyGen<'a> {
         py!(w, "\n\n");
     }
 
-    fn emit_prototype(&self, w: &mut PyWriter, def: &Def, proto: &ProtoTy) {
-        let ret_ty = py_type(self.hir, &proto.ty, def.id);
+    fn emit_prototype(&self, w: &mut PyWriter, proto: &ProtoTy) {
+        let ret_ty = self.py_type(w, &proto.ty);
 
         let params: Vec<_> = proto
             .params
             .iter()
             .filter(|p| p.kind == ParamKind::In || p.kind == ParamKind::Inout)
-            .map(|p| format!("{}: {}", p.ident.name, py_type(self.hir, &p.ty, def.id)))
+            .map(|p| format!("{}: {}", p.ident.name, self.py_type(w, &p.ty)))
             .collect();
 
         let params_str = if params.is_empty() {
@@ -657,13 +640,13 @@ impl<'a> PyGen<'a> {
             }
 
             for member in &value_ty.members {
-                let ty_str = py_type(self.hir, &member.ty, def.id);
-                let default = default_value(self.hir, &member.ty, def.id);
+                let ty_str = self.py_type(w, &member.ty);
+                let default = self.default_value(w, &member.ty);
                 py!(w, member.ident.name, ": ", ty_str, " = ", default, "\n");
             }
 
             for attr in &value_ty.attributes {
-                let ty_str = py_type(self.hir, &attr.ty, def.id);
+                let ty_str = self.py_type(w, &attr.ty);
                 py!(w, "@property\n");
                 py!(w, "@_abc_.abstractmethod\n");
                 py!(w, "def ", attr.ident.name, "(self) -> ", ty_str, ": ...\n");
@@ -671,7 +654,7 @@ impl<'a> PyGen<'a> {
             }
 
             for proto in &value_ty.prototypes {
-                self.emit_prototype(w, def, proto);
+                self.emit_prototype(w, proto);
             }
         }
 
@@ -685,11 +668,15 @@ impl<'a> PyGen<'a> {
     }
 
     fn emit_file(&self, module_path: &[String], filename: &str, defs: &[DefId]) -> File {
-        let imports = collect_imports(self.hir, defs, module_path, |id| self.module_path(id));
+        let types_filename = format!("_{filename}");
+        let imports = collect_imports(self.hir, defs, module_path, &types_filename, |id| {
+            self.module_path(id)
+        });
 
-        let mut w = PyWriter::new();
+        let mut w = PyWriter::new(imports.context);
         Self::emit_header(&mut w);
-        imports.emit(&mut w);
+        imports.stdlib.emit(&mut w);
+        w.emit_module_imports();
 
         for &def_id in defs {
             self.emit_definition(&mut w, def_id);

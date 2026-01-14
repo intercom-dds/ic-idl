@@ -27,14 +27,18 @@
 
 use ic_emit::printer::PrettyPrinter;
 
+use crate::imports::ImportContext;
+
 pub struct PyWriter {
     printer: PrettyPrinter,
+    pub import_context: ImportContext,
 }
 
 impl PyWriter {
-    pub fn new() -> Self {
+    pub fn new(import_context: ImportContext) -> Self {
         Self {
             printer: PrettyPrinter::new(),
+            import_context,
         }
     }
 
@@ -62,6 +66,16 @@ impl PyWriter {
         self.printer.dedent();
     }
 
+    pub fn emit_module_imports(&mut self) {
+        let context = std::mem::take(&mut self.import_context);
+        context.emit(self);
+        self.import_context = context;
+
+        if !self.import_context.module_imports.is_empty() {
+            crate::py!(self, "\n");
+        }
+    }
+
     pub fn finish(self) -> String {
         let mut result = self
             .printer
@@ -74,12 +88,6 @@ impl PyWriter {
         result.truncate(result.trim_end().len());
         result.push('\n');
         result
-    }
-}
-
-impl Default for PyWriter {
-    fn default() -> Self {
-        Self::new()
     }
 }
 

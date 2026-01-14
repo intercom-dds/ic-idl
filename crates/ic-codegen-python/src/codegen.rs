@@ -634,10 +634,18 @@ impl<'a> PyGen<'a> {
                 self.emit_definition(w, nested_id);
             }
 
+            if !value_ty.definitions.is_empty() {
+                py!(w, "\n");
+            }
+
             for member in &value_ty.members {
                 let ty_str = self.py_type(w, &member.ty);
                 let default = self.default_value(w, &member.ty);
                 py!(w, member.ident.name, ": ", ty_str, " = ", default, "\n");
+            }
+
+            if !value_ty.members.is_empty() {
+                py!(w, "\n");
             }
 
             for attr in &value_ty.attributes {

@@ -70,9 +70,10 @@ impl PyWriter {
         let context = std::mem::take(&mut self.import_context);
         context.emit(self);
         self.import_context = context;
+        self.printer.text("\n");
 
         if !self.import_context.module_imports.is_empty() {
-            crate::py!(self, "\n");
+            self.printer.text("\n");
         }
     }
 

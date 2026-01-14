@@ -213,10 +213,7 @@ fn collect_module_imports(
             continue;
         }
 
-        if matches!(
-            dep_def.kind,
-            DefKind::Module(_) | DefKind::Annotation(_) | DefKind::Const(_)
-        ) {
+        if matches!(dep_def.kind, DefKind::Module(_) | DefKind::Annotation(_)) {
             continue;
         }
 

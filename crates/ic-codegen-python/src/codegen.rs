@@ -353,12 +353,7 @@ impl<'a> PyGen<'a> {
                     let enum_name = self.py_def(w, parent_id);
                     return format!("{}.{}", enum_name, def.ident.name);
                 }
-
-                if let DefKind::Const(const_def) = &def.kind {
-                    self.format_numeric(w, &const_def.value)
-                } else {
-                    "None".to_string()
-                }
+                self.py_def(w, def.id)
             }
             Numeric::Array { values, .. } | Numeric::Sequence { values, .. } => {
                 let items: Vec<_> = values.iter().map(|v| self.format_numeric(w, v)).collect();

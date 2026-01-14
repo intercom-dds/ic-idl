@@ -451,12 +451,15 @@ impl<'a> PyGen<'a> {
 
     fn emit_union(&self, w: &mut PyWriter, def: &Def, union_ty: &UnionTy) {
         let disc_type = self.py_type(w, &union_ty.disc.ty);
-        let value_types: Vec<_> = union_ty
+        let mut value_types: Vec<_> = union_ty
             .variants
             .iter()
             .filter(|v| !matches!(v.ty.kind, TyKind::Null))
             .map(|v| self.py_type(w, &v.ty))
             .collect();
+
+        value_types.sort();
+        value_types.dedup();
 
         let value_type_annotation = if value_types.is_empty() {
             "None".to_string()

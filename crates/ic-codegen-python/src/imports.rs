@@ -194,6 +194,7 @@ pub fn is_exportable(hir: &ResolvedGraph, def_id: DefId) -> bool {
     if def.flags.contains(DefFlags::IS_BUILTIN) {
         return false;
     }
+
     match &def.kind {
         DefKind::Module(_) | DefKind::Bitset(_) | DefKind::Annotation(_) | DefKind::Decl(_) => {
             false
@@ -292,14 +293,7 @@ fn import_style(
         .count();
 
     let remaining_path = &target_module[common_len..];
-    let Some(module_name) = remaining_path.first().cloned() else {
-        return ImportStyle::Relative {
-            module_name: String::new(),
-            type_prefix: String::new(),
-            depth: 0,
-        };
-    };
-
+    let module_name = remaining_path[0].clone();
     let depth = current_module.len() - common_len;
     let type_prefix = remaining_path.join(".");
 

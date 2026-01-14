@@ -69,9 +69,13 @@ const PYTHON_CONVENTION: Convention = Convention {
 
 #[derive(Command, Debug, Default, Clone)]
 pub struct PythonOptions {
-    /// Do not rename types to PEP-8 conventions
+    /// Do not rename types to PEP 8 conventions
     #[option(long)]
     pub no_rename: bool,
+
+    /// Emit py.typed marker file
+    #[option(long)]
+    pub py_typed: bool,
 }
 
 #[must_use]

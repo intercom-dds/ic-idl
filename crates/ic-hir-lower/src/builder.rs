@@ -211,6 +211,15 @@ impl<'ctx> HirBuilder<'ctx> {
             module_ty.definitions = module_block_definitions;
         }
 
+        _ = self.ctx.registry.register_definition(
+            prev_scope,
+            &m.ident,
+            crate::registry::DefKindTag::Module,
+            def_id,
+            &mut self.ctx.diagnostics,
+            &self.ctx.context,
+        );
+
         // Only register the first block (reopened modules share the same scope)
         let parent_scope = self.ctx.context.scopes.get_scope(prev_scope);
         if !parent_scope.definitions.contains_key(&m.ident.name) {

@@ -29,7 +29,7 @@ use std::collections::HashMap;
 
 use ic_diagnostic::{Label, error_span};
 use ic_hir::diagnostics::Diagnostics;
-use ic_hir::hir::{Decl, DefId};
+use ic_hir::hir::{Decl, DefId, DefKind};
 use ic_hir::scope::ScopeId;
 use ic_syntax::Ident;
 
@@ -55,6 +55,9 @@ pub enum DefKindTag {
     Bitmask,
     Bitset,
     Const,
+    Module,
+    Annotation,
+    Alias,
 }
 
 /// Registry for tracking forward declarations and definitions.
@@ -151,6 +154,12 @@ impl DefinitionRegistry {
         // Check if definition already exists
         if let Some(&existing_id) = self.definitions.get(&key) {
             let existing_def = context.definitions.get(existing_id);
+            let existing_kind = def_kind_from_def(existing_def);
+
+            if kind == DefKindTag::Module && existing_kind == DefKindTag::Module {
+                return Some(existing_id);
+            }
+
             diagnostics.errors.push(
                 error_span(
                     format!("duplicate definition of `{}`", name.name),
@@ -210,6 +219,23 @@ impl DefinitionRegistry {
     }
 }
 
+fn def_kind_from_def(def: &ic_hir::hir::Def) -> DefKindTag {
+    match &def.kind {
+        DefKind::Struct(_) | DefKind::Except(_) => DefKindTag::Struct,
+        DefKind::Union(_) => DefKindTag::Union,
+        DefKind::Interface(_) => DefKindTag::Interface,
+        DefKind::Valuetype(_) => DefKindTag::Valuetype,
+        DefKind::Decl(decl) => def_kind_tag_from_decl(*decl),
+        DefKind::Enum(_) => DefKindTag::Enum,
+        DefKind::Bitmask(_) => DefKindTag::Bitmask,
+        DefKind::Bitset(_) => DefKindTag::Bitset,
+        DefKind::Const(_) => DefKindTag::Const,
+        DefKind::Module(_) => DefKindTag::Module,
+        DefKind::Alias(_) => DefKindTag::Alias,
+        DefKind::Annotation(_) => DefKindTag::Annotation,
+    }
+}
+
 fn def_kind_tag_from_decl(decl: Decl) -> DefKindTag {
     match decl {
         Decl::Struct => DefKindTag::Struct,
@@ -241,5 +267,8 @@ fn def_kind_tag_str(kind: DefKindTag) -> &'static str {
         DefKindTag::Const => "const",
         DefKindTag::Bitmask => "bitmask",
         DefKindTag::Bitset => "bitset",
+        DefKindTag::Module => "module",
+        DefKindTag::Alias => "alias",
+        DefKindTag::Annotation => "annotation",
     }
 }

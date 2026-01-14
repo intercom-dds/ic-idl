@@ -1,0 +1,12 @@
+---
+source: crates/ic-hir/tests/module_name_conflicts.rs
+expression: diagnostics
+---
+error: duplicate definition of `foo`
+   ┌ test.idl:2:16
+   │
+ 2 │         module foo {};
+   ·                ^^^ originally defined here
+ 3 │         struct foo {};
+   ·                ^^^ redefined here
+   └──

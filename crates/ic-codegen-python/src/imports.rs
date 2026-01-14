@@ -143,6 +143,8 @@ pub struct Imports {
 
 impl Stdlib {
     pub fn emit(&self, w: &mut PyWriter) {
+        py!(w, "from __future__ import annotations\n\n");
+
         if self.abc {
             py!(w, "import abc as _abc_\n");
         }

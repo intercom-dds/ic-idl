@@ -72,7 +72,7 @@ impl ImportStyle {
 #[derive(Default)]
 pub struct ImportContext {
     pub module_imports: BTreeMap<DefId, ImportStyle>,
-    pub sibling_imports: BTreeMap<String, BTreeSet<String>>,
+    pub file_imports: BTreeMap<(usize, String), BTreeSet<String>>,
 }
 
 impl ImportContext {
@@ -124,11 +124,12 @@ impl ImportContext {
             }
         }
 
-        for (types_file, type_names) in &self.sibling_imports {
+        for ((depth, types_file), type_names) in &self.file_imports {
             if type_names.is_empty() {
                 continue;
             }
-            py!(w, "from .", types_file, " import (\n");
+            let dots = ".".repeat(depth + 1);
+            py!(w, "from ", dots, types_file, " import (\n");
             w.indent();
             for type_name in type_names {
                 py!(w, type_name, ",\n");
@@ -260,14 +261,15 @@ fn collect_module_imports(
 
         let dep_module = module_path_fn(dep_id);
 
-        if dep_module == current_module {
+        if dep_module == current_module || dep_module.is_empty() {
             if let Some(dep_filename) = source_filename_fn(dep_id) {
                 let dep_types_file = format!("_{dep_filename}");
-                if dep_types_file != types_filename {
+                let depth = current_module.len() - dep_module.len();
+                if dep_types_file != types_filename || depth > 0 {
                     let dep_def = hir.context.type_of(dep_id);
                     context
-                        .sibling_imports
-                        .entry(dep_types_file)
+                        .file_imports
+                        .entry((depth, dep_types_file))
                         .or_default()
                         .insert(dep_def.ident.name.clone());
                 }

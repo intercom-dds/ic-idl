@@ -59,6 +59,14 @@ pub enum ImportStyle {
     },
 }
 
+#[derive(Debug, Clone)]
+pub struct FileImport {
+    pub depth: usize,
+    pub types_file: String,
+    pub type_name: String,
+    pub alias: Option<String>,
+}
+
 impl ImportStyle {
     pub fn type_prefix(&self) -> String {
         match self {
@@ -72,7 +80,7 @@ impl ImportStyle {
 #[derive(Default)]
 pub struct ImportContext {
     pub module_imports: BTreeMap<DefId, ImportStyle>,
-    pub file_imports: BTreeMap<(usize, String), BTreeSet<String>>,
+    pub file_imports: BTreeMap<DefId, FileImport>,
 }
 
 impl ImportContext {
@@ -124,15 +132,24 @@ impl ImportContext {
             }
         }
 
-        for ((depth, types_file), type_names) in &self.file_imports {
-            if type_names.is_empty() {
-                continue;
-            }
+        let mut grouped_file_imports: BTreeMap<_, Vec<_>> = BTreeMap::new();
+        for import in self.file_imports.values() {
+            grouped_file_imports
+                .entry((import.depth, &import.types_file))
+                .or_default()
+                .push((&import.type_name, import.alias.as_deref()));
+        }
+
+        for ((depth, types_file), imports) in &grouped_file_imports {
             let dots = ".".repeat(depth + 1);
-            py!(w, "from ", dots, types_file, " import (\n");
+            py!(w, "from ", dots, *types_file, " import (\n");
             w.indent();
-            for type_name in type_names {
-                py!(w, type_name, ",\n");
+            for (type_name, alias) in imports {
+                if let Some(alias) = alias {
+                    py!(w, *type_name, " as ", *alias, ",\n");
+                } else {
+                    py!(w, *type_name, ",\n");
+                }
             }
             w.dedent();
             py!(w, ")\n");
@@ -240,44 +257,68 @@ fn has_collision(
     current_module.last().is_some_and(|last| last == name)
 }
 
+struct ImportCollectorCtx<'a> {
+    hir: &'a ResolvedGraph,
+    current_module: &'a [String],
+    local_defs: &'a [DefId],
+    types_filename: &'a str,
+}
+
 fn collect_module_imports(
-    hir: &ResolvedGraph,
+    ctx: &ImportCollectorCtx,
     def_id: DefId,
-    current_module: &[String],
-    local_defs: &[DefId],
     module_path_fn: &impl Fn(DefId) -> Vec<String>,
     source_filename_fn: &impl Fn(DefId) -> Option<String>,
-    types_filename: &str,
     context: &mut ImportContext,
 ) {
-    for dep_id in hir.context.deps(def_id) {
-        if !is_exportable(hir, dep_id) {
+    for dep_id in ctx.hir.context.deps(def_id) {
+        if !is_exportable(ctx.hir, dep_id) {
             continue;
         }
 
-        if local_defs.contains(&dep_id) {
+        if ctx.local_defs.contains(&dep_id) {
             continue;
         }
 
         let dep_module = module_path_fn(dep_id);
+        if dep_module == ctx.current_module || dep_module.is_empty() {
+            if context.file_imports.contains_key(&dep_id) {
+                continue;
+            }
 
-        if dep_module == current_module || dep_module.is_empty() {
             if let Some(dep_filename) = source_filename_fn(dep_id) {
                 let dep_types_file = format!("_{dep_filename}");
-                let depth = current_module.len() - dep_module.len();
-                if dep_types_file != types_filename || depth > 0 {
-                    let dep_def = hir.context.type_of(dep_id);
-                    context
-                        .file_imports
-                        .entry((depth, dep_types_file))
-                        .or_default()
-                        .insert(dep_def.ident.name.clone());
+                let depth = ctx.current_module.len() - dep_module.len();
+
+                if dep_types_file != ctx.types_filename || depth > 0 {
+                    let dep_def = ctx.hir.context.type_of(dep_id);
+                    let type_name = dep_def.ident.name.clone();
+                    let has_collision = ctx
+                        .local_defs
+                        .iter()
+                        .any(|&id| ctx.hir.context.type_of(id).ident.name == type_name);
+
+                    let alias = if has_collision {
+                        Some(format!("_{type_name}"))
+                    } else {
+                        None
+                    };
+
+                    context.file_imports.insert(
+                        dep_id,
+                        FileImport {
+                            depth,
+                            types_file: dep_types_file,
+                            type_name,
+                            alias,
+                        },
+                    );
                 }
             }
             continue;
         }
 
-        let dep_module_id = parent_module(hir, dep_id);
+        let dep_module_id = parent_module(ctx.hir, dep_id);
 
         if let Some(module_id) = dep_module_id
             && context.module_imports.contains_key(&module_id)
@@ -286,7 +327,13 @@ fn collect_module_imports(
         }
 
         if let Some(module_id) = dep_module_id {
-            let style = import_style(hir, current_module, &dep_module, local_defs, types_filename);
+            let style = import_style(
+                ctx.hir,
+                ctx.current_module,
+                &dep_module,
+                ctx.local_defs,
+                ctx.types_filename,
+            );
             context.module_imports.insert(module_id, style);
         }
     }
@@ -363,16 +410,20 @@ pub fn collect_imports(
 ) -> Imports {
     let mut imports = Imports::default();
 
+    let ctx = ImportCollectorCtx {
+        hir,
+        current_module,
+        local_defs: defs,
+        types_filename,
+    };
+
     for &def_id in defs {
         collect_stdlib_imports(hir, def_id, &mut imports);
         collect_module_imports(
-            hir,
+            &ctx,
             def_id,
-            current_module,
-            defs,
             &module_path_fn,
             &source_filename_fn,
-            types_filename,
             &mut imports.context,
         );
     }

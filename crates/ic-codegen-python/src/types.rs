@@ -69,6 +69,14 @@ fn primitive_default(prim: PrimitiveTy) -> &'static str {
 
 impl PyGen<'_> {
     pub fn py_def(&self, w: &PyWriter, def_id: DefId) -> String {
+        if let Some(file_import) = w.import_context.file_imports.get(&def_id) {
+            return file_import
+                .alias
+                .as_ref()
+                .unwrap_or(&file_import.type_name)
+                .clone();
+        }
+
         let type_path = self.nested_type_path(def_id);
 
         if let Some(module_id) = parent_module(self.hir, def_id)

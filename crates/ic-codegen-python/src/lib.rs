@@ -35,11 +35,16 @@ use ic_emit::File;
 use ic_emit::case::Case;
 use ic_hir_xform::{Convention, Target, rename};
 
-const KEYWORDS: &[&str] = &[
+#[rustfmt::skip]
+const RESERVED: &[&str] = &[
+    // Keywords
     "False", "None", "True", "and", "as", "assert", "async", "await", "break", "class", "continue",
     "def", "del", "elif", "else", "except", "finally", "for", "from", "global", "if", "import",
     "in", "is", "lambda", "nonlocal", "not", "or", "pass", "raise", "return", "try", "while",
     "with", "yield",
+
+    // Reserved builtins
+    "dict", "list", "set", "tuple", "type", "frozenset", "bytes", "bytearray",
 ];
 
 const PYTHON_CONVENTION: Convention = Convention {
@@ -93,7 +98,7 @@ pub fn codegen_python(
     let target = Target {
         convention,
         keyword_escape: Some(|ctx| {
-            if KEYWORDS.contains(&ctx.name) {
+            if RESERVED.contains(&ctx.name) {
                 Some(format!("{}_", ctx.name))
             } else {
                 None

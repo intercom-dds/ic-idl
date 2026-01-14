@@ -372,10 +372,12 @@ impl<'a> ic_hir::visit::Visitor<'a> for StdlibVisitor<'a> {
                 self.stdlib.typing = true;
             }
             DefKind::Const(_) => {
-                if def
-                    .parent
-                    .is_none_or(|p| !matches!(self.context.type_of(p).kind, DefKind::Enum(_)))
-                {
+                if def.parent.is_none_or(|p| {
+                    !matches!(
+                        self.context.type_of(p).kind,
+                        DefKind::Enum(_) | DefKind::Bitmask(_)
+                    )
+                }) {
                     self.stdlib.typing = true;
                 }
             }

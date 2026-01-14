@@ -80,16 +80,15 @@ fn primitive_default(prim: PrimitiveTy) -> &'static str {
 
 impl PyGen<'_> {
     pub fn py_def(&self, w: &PyWriter, def_id: DefId) -> String {
-        let def = self.hir.context.type_of(def_id);
-        let type_name = def.ident.name.clone();
+        let type_path = self.nested_type_path(def_id);
 
         if let Some(module_id) = parent_module(self.hir, def_id)
             && let Some(style) = w.import_context.module_imports.get(&module_id)
         {
             let prefix = style.type_prefix();
-            format!("{prefix}.{type_name}")
+            format!("{prefix}.{type_path}")
         } else {
-            type_name
+            type_path
         }
     }
 
@@ -98,19 +97,7 @@ impl PyGen<'_> {
         match &resolved.kind {
             TyKind::Primitive(prim) => primitive_type(*prim).to_string(),
             TyKind::String { .. } => "str".to_string(),
-            TyKind::Adt(def_id) => {
-                let def = self.hir.context.type_of(*def_id);
-                let type_name = def.ident.name.clone();
-
-                if let Some(module_id) = parent_module(self.hir, *def_id)
-                    && let Some(style) = w.import_context.module_imports.get(&module_id)
-                {
-                    let prefix = style.type_prefix();
-                    return format!("{prefix}.{type_name}");
-                }
-
-                type_name
-            }
+            TyKind::Adt(def_id) => self.py_def(w, *def_id),
             TyKind::Array { ty, .. } | TyKind::Sequence { ty, .. } => {
                 let inner = self.py_type(w, ty);
                 format!("list[{inner}]")
@@ -158,5 +145,22 @@ impl PyGen<'_> {
             return Some(format!("{}.{}", enum_name, first_def.ident.name));
         }
         None
+    }
+
+    fn nested_type_path(&self, def_id: DefId) -> String {
+        let mut path = vec![];
+        let mut current = Some(def_id);
+
+        while let Some(id) = current {
+            let def = self.hir.context.type_of(id);
+            match &def.kind {
+                DefKind::Module(_) => break,
+                _ => path.push(def.ident.name.clone()),
+            }
+            current = def.parent;
+        }
+
+        path.reverse();
+        path.join(".")
     }
 }

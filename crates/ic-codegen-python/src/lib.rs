@@ -90,7 +90,7 @@ pub fn codegen_python(
         convention,
         keyword_escape: Some(|ctx| {
             if KEYWORDS.contains(&ctx.name) {
-                Some(format!("_{}", ctx.name))
+                Some(format!("{}_", ctx.name))
             } else {
                 None
             }

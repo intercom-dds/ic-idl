@@ -564,8 +564,10 @@ pub struct Ann {
 pub struct AnnArg {
     /// Argument name
     pub ident: Ident,
+
     /// The argument value
     pub value: Numeric,
+
     /// The resolved type of the parameter (from the annotation definition)
     pub ty: Option<Ty>,
 }

@@ -198,7 +198,10 @@ fn process_named_parameter(
         evaluator
             .eval_for_type(&arg.value, &param.ty)
             .map(|value| AnnArg {
-                ident: param.ident.clone(),
+                ident: Ident {
+                    name: param.ident.name.clone(),
+                    span: arg.span,
+                },
                 value,
                 ty: Some(param.ty.clone()),
             })

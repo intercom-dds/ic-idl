@@ -125,7 +125,9 @@ impl DefaultTypeMismatch<'_> {
                 match &def.kind {
                     DefKind::Struct(_) => matches!(value, Numeric::Struct { .. }),
                     DefKind::Enum(enum_ty) => self.is_valid_enum_value(value, enum_ty),
-                    DefKind::Bitmask(_) => Self::is_primitive_compatible(value, PrimitiveTy::Int32),
+                    DefKind::Bitmask(bitmask_ty) => {
+                        Self::is_primitive_compatible(value, bitmask_ty.ty)
+                    }
                     _ => false,
                 }
             }
@@ -184,6 +186,7 @@ impl DefaultTypeMismatch<'_> {
 
     fn numeric_to_i64(value: &Numeric) -> Option<i64> {
         match value {
+            Numeric::Char(c) => Some(i64::from(u32::from(*c))),
             Numeric::Int8(v) => Some(i64::from(*v)),
             Numeric::UInt8(v) => Some(i64::from(*v)),
             Numeric::Int16(v) => Some(i64::from(*v)),

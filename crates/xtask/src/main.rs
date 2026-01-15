@@ -30,6 +30,7 @@
 use ic_cli::Command;
 
 mod deny;
+mod e2e;
 mod ipr;
 mod release;
 
@@ -39,6 +40,7 @@ enum Commands {
     Ipr(ipr::Options),
     Deny(deny::Options),
     Release(release::Options),
+    E2e(e2e::Options),
 }
 
 fn main() {
@@ -49,5 +51,6 @@ fn main() {
         Commands::Ipr(v) => ipr::check(v),
         Commands::Release(v) => release::build(v),
         Commands::Deny(_) => deny::check(),
+        Commands::E2e(v) => e2e::run(v),
     }
 }

@@ -44,7 +44,8 @@ const RESERVED: &[&str] = &[
     "with", "yield",
 
     // Reserved builtins
-    "dict", "list", "set", "tuple", "type", "frozenset", "bytes", "bytearray",
+    "int", "str", "bool", "float", "dict", "list", "set", "tuple", "type", "frozenset", "bytes",
+    "bytearray",
 ];
 
 const PYTHON_CONVENTION: Convention = Convention {
@@ -72,6 +73,14 @@ const PYTHON_CONVENTION: Convention = Convention {
     strip_enum_prefix: true,
 };
 
+fn keyword_escape(ctx: rename::RenameContext<'_>) -> Option<String> {
+    if RESERVED.contains(&ctx.name) {
+        Some(format!("{}_", ctx.name))
+    } else {
+        None
+    }
+}
+
 #[derive(Command, Debug, Default, Clone)]
 pub struct PythonOptions {
     /// Do not rename types to PEP 8 conventions
@@ -97,13 +106,7 @@ pub fn codegen_python(
 
     let target = Target {
         convention,
-        keyword_escape: Some(|ctx| {
-            if RESERVED.contains(&ctx.name) {
-                Some(format!("{}_", ctx.name))
-            } else {
-                None
-            }
-        }),
+        keyword_escape: Some(keyword_escape),
         ..Target::default()
     };
 

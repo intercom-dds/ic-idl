@@ -32,7 +32,7 @@ requires-python = ">=3.10"
 
 [tool.pytest.ini_options]
 testpaths = ["."]
-addopts = "-v"
+addopts = "-v --tb=short"
 
 [dependency-groups]
 dev = [

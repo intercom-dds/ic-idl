@@ -276,6 +276,7 @@ impl Context {
     #[must_use]
     pub fn unsigned_value(&self, numeric: &Numeric) -> u64 {
         match numeric {
+            Numeric::Bool(v) => u64::from(*v),
             Numeric::UInt8(v) => u64::from(*v),
             Numeric::UInt16(v) => u64::from(*v),
             Numeric::UInt32(v) => u64::from(*v),

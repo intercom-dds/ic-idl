@@ -35,6 +35,7 @@
 
 // pub mod nested;
 pub mod coalesce_null_variants;
+pub mod default_annotation;
 pub mod implicit_default;
 pub mod move_constants;
 pub mod move_nested;

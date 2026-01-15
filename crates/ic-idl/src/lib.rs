@@ -330,6 +330,9 @@ impl Compiler {
         // Apply HIR transformations
         let hir = {
             let _xform_span = info_span!("xform").entered();
+
+            // Coerce @default annotation values to match their target types
+            let hir = ic_hir_xform::default_annotation::transform(hir);
             let hir = ic_hir_xform::value_annotation::transform(hir);
             let hir = ic_hir_xform::position_annotation::transform(hir);
 

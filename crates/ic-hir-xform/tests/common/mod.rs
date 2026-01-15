@@ -25,7 +25,7 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-//! Common test utilities for HIR transformation tests
+#![allow(dead_code)]
 
 use ic_hir::ResolvedGraph;
 use ic_hir_lower::AstInput;
@@ -45,8 +45,40 @@ pub fn parse_and_resolve(input: &str) -> ResolvedGraph {
     );
 
     let result = ic_hir_lower::from_ast(AstInput::User(parsed.tree));
-
     assert!(result.errors.is_empty(), "HIR errors: {:?}", result.errors);
+    result
+}
 
+/// Parse IDL input with builtin annotations and return the HIR
+#[track_caller]
+pub fn parse_with_builtins(input: &str) -> ResolvedGraph {
+    let mut source_map = SourceMap::default();
+    let file = source_map.embed_with_name("test.idl", input);
+    let parsed = ic_parse::from_file(file, &source_map);
+
+    assert!(
+        parsed.errors.is_empty(),
+        "Parse errors: {:?}",
+        parsed.errors
+    );
+
+    let builtin_file = source_map.embed_with_name(
+        "<builtin-annotations>",
+        include_str!("../../../ic-idl/idl/annotations.idl"),
+    );
+    let builtin_parsed = ic_parse::from_file(builtin_file, &source_map);
+
+    assert!(
+        builtin_parsed.errors.is_empty(),
+        "Builtin parse errors: {:?}",
+        builtin_parsed.errors
+    );
+
+    let result = ic_hir_lower::from_ast(AstInput::WithBuiltins {
+        builtins: builtin_parsed.tree,
+        user: parsed.tree,
+        include_in_output: false,
+    });
+    assert!(result.errors.is_empty(), "HIR errors: {:?}", result.errors);
     result
 }

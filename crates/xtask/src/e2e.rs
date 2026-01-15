@@ -70,6 +70,10 @@ pub struct Options {
     /// Verbose output
     #[option(short, long)]
     pub verbose: bool,
+
+    /// Treat skipped tests as failures
+    #[option(long)]
+    pub strict_skip: bool,
 }
 
 fn git_root() -> PathBuf {
@@ -158,6 +162,9 @@ pub fn run(opts: Options) {
     }
     if let Some(tsc) = &opts.tsc {
         cmd.arg(format!("--tsc={tsc}"));
+    }
+    if opts.strict_skip {
+        cmd.arg("--strict-skip");
     }
 
     if !opts.verbose {

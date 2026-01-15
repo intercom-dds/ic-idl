@@ -68,6 +68,25 @@ def pytest_addoption(parser: pytest.Parser) -> None:
         default="tsc",
         help="Path to TypeScript compiler (tsc)",
     )
+    parser.addoption(
+        "--strict-skip",
+        action="store_true",
+        default=False,
+        help="Treat skipped tests as failures",
+    )
+
+
+@pytest.hookimpl(hookwrapper=True)
+def pytest_runtest_makereport(item: pytest.Item, call: pytest.CallInfo):
+    outcome = yield
+    report = outcome.get_result()
+    if (
+        report.when == "setup"
+        and report.skipped
+        and item.config.getoption("--strict-skip")
+    ):
+        report.outcome = "failed"
+        report.longrepr = f"skipped (treated as failure): {report.longrepr}"
 
 
 @pytest.fixture(scope="session")

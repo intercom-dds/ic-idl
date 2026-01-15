@@ -78,7 +78,6 @@ impl PyGen<'_> {
         }
 
         let type_path = self.nested_type_path(def_id);
-
         if let Some(module_id) = parent_module(self.hir, def_id)
             && let Some(style) = w.import_context.module_imports.get(&module_id)
         {
@@ -87,6 +86,23 @@ impl PyGen<'_> {
         } else {
             type_path
         }
+    }
+
+    fn nested_type_path(&self, def_id: DefId) -> String {
+        let mut path = vec![];
+        let mut current = Some(def_id);
+
+        while let Some(id) = current {
+            let def = self.hir.context.type_of(id);
+            match &def.kind {
+                DefKind::Module(_) => break,
+                _ => path.push(def.ident.name.clone()),
+            }
+            current = def.parent;
+        }
+
+        path.reverse();
+        path.join(".")
     }
 
     pub fn py_type(&self, w: &PyWriter, ty: &Ty) -> String {
@@ -165,31 +181,18 @@ impl PyGen<'_> {
         match &def.kind {
             DefKind::Enum(enum_ty) => {
                 let first = *enum_ty.fields.first()?;
-                Some(self.py_def(w, first))
+                let first_def = self.hir.context.type_of(first);
+                let enum_path = self.py_def(w, def_id);
+                Some(format!("{}.{}", enum_path, first_def.ident.name))
             }
             DefKind::Bitmask(bitmask_ty) => {
                 let first = *bitmask_ty.flags.first()?;
-                Some(self.py_def(w, first))
+                let first_def = self.hir.context.type_of(first);
+                let bitmask_path = self.py_def(w, def_id);
+                Some(format!("{}.{}", bitmask_path, first_def.ident.name))
             }
             DefKind::Const(_) => Some(self.py_def(w, def_id)),
             _ => None,
         }
-    }
-
-    fn nested_type_path(&self, def_id: DefId) -> String {
-        let mut path = vec![];
-        let mut current = Some(def_id);
-
-        while let Some(id) = current {
-            let def = self.hir.context.type_of(id);
-            match &def.kind {
-                DefKind::Module(_) => break,
-                _ => path.push(def.ident.name.clone()),
-            }
-            current = def.parent;
-        }
-
-        path.reverse();
-        path.join(".")
     }
 }

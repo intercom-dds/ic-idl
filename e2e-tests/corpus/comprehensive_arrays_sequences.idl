@@ -1,0 +1,231 @@
+// Copyright 2025 KONGSBERG
+//
+// Redistribution and use in source and binary forms, with or without
+// modification, are permitted provided that the following conditions are met:
+//
+// 1. Redistributions of source code must retain the above copyright notice,
+//    this list of conditions and the following disclaimer.
+//
+// 2. Redistributions in binary form must reproduce the above copyright notice,
+//    this list of conditions and the following disclaimer in the documentation
+//    and/or other materials provided with the distribution.
+//
+// 3. Neither the name of the copyright holder nor the names of its contributors
+//    may be used to endorse or promote products derived from this software
+//    without specific prior written permission.
+//
+// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
+// ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+// WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+// DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
+// FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+// DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+// SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+// CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+// OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+// OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+// Comprehensive arrays and sequences testing
+
+module comprehensive_arrays_sequences {
+    typedef short ShortArr3[3];
+    typedef long LongArr3[3];
+    typedef long long LongLongArr3[3];
+    typedef unsigned short UShortArr3[3];
+    typedef unsigned long ULongArr3[3];
+    typedef unsigned long long ULongLongArr3[3];
+    typedef float FloatArr3[3];
+    typedef double DoubleArr3[3];
+    typedef long double LongDoubleArr3[3];
+    typedef char CharArr3[3];
+    typedef wchar WCharArr3[3];
+    typedef boolean BooleanArr3[3];
+    typedef octet OctetArr3[3];
+    typedef string StringArr3[3];
+    typedef string<5> String5Arr3[3];
+    typedef wstring WStringArr3[3];
+    typedef wstring<5> WString5Arr3[3];
+
+    typedef sequence<short> ShortSeq;
+    typedef sequence<short, 5> ShortSeq5;
+    typedef sequence<long> LongSeq;
+    typedef sequence<long, 5> LongSeq5;
+    typedef sequence<long long> LongLongSeq;
+    typedef sequence<long long, 5> LongLongSeq5;
+    typedef sequence<unsigned short> UShortSeq;
+    typedef sequence<unsigned short, 5> UShortSeq5;
+    typedef sequence<unsigned long> ULongSeq;
+    typedef sequence<unsigned long, 5> ULongSeq5;
+    typedef sequence<unsigned long long> ULongLongSeq;
+    typedef sequence<unsigned long long, 5> ULongLongSeq5;
+    typedef sequence<float> FloatSeq;
+    typedef sequence<float, 5> FloatSeq5;
+    typedef sequence<double> DoubleSeq;
+    typedef sequence<double, 5> DoubleSeq5;
+    typedef sequence<long double> LongDoubleSeq;
+    typedef sequence<long double, 5> LongDoubleSeq5;
+    typedef sequence<char> CharSeq;
+    typedef sequence<char, 5> CharSeq5;
+    typedef sequence<wchar> WCharSeq;
+    typedef sequence<wchar, 5> WCharSeq5;
+    typedef sequence<boolean> BooleanSeq;
+    typedef sequence<boolean, 5> BooleanSeq5;
+    typedef sequence<octet> OctetSeq;
+    typedef sequence<octet, 5> OctetSeq5;
+    typedef string<5> String5;
+    typedef wstring<5> WString5;
+    typedef sequence<string> StringSeq;
+    typedef sequence<string, 5> StringSeq5;
+    typedef sequence<String5> String5Seq;
+    typedef sequence<String5, 5> String5Seq5;
+    typedef sequence<wstring> WStringSeq;
+    typedef sequence<wstring, 5> WStringSeq5;
+    typedef sequence<WString5> WString5Seq;
+    typedef sequence<WString5, 5> WString5Seq5;
+
+    typedef ShortSeq ShortSeqArr3[3];
+    typedef ShortSeq5 ShortSeq5Arr3[3];
+    typedef LongSeq LongSeqArr3[3];
+    typedef LongSeq5 LongSeq5Arr3[3];
+    typedef LongLongSeq LongLongSeqArr3[3];
+    typedef LongLongSeq5 LonglongSeq5Arr3[3];
+    typedef UShortSeq UShortSeqArr3[3];
+    typedef UShortSeq5 UShortSeq5Arr3[3];
+    typedef ULongSeq ULongSeqArr3[3];
+    typedef ULongSeq5 ULongSeq5Arr3[3];
+    typedef ULongLongSeq ULongLongSeqArr3[3];
+    typedef ULongLongSeq5 ULongLongSeq5Arr3[3];
+    typedef FloatSeq FloatSeqArr3[3];
+    typedef FloatSeq5 FloatSeq5Arr3[3];
+    typedef DoubleSeq DoubleSeqArr3[3];
+    typedef DoubleSeq5 DoubleSeq5Arr3[3];
+    typedef LongDoubleSeq LongDoubleSeqArr3[3];
+    typedef LongDoubleSeq5 LongDoubleSeq5Arr3[3];
+    typedef CharSeq CharSeqArr3[3];
+    typedef CharSeq5 CharSeq5Arr3[3];
+    typedef WCharSeq WCharSeqArr3[3];
+    typedef WCharSeq5 WCharSeq5Arr3[3];
+    typedef BooleanSeq BooleanSeqArr3[3];
+    typedef BooleanSeq5 BooleanSeq5Arr3[3];
+    typedef OctetSeq OctetSeqArr3[3];
+    typedef OctetSeq5 OctetSeq5Arr3[3];
+    typedef StringSeq StringSeqArr3[3];
+    typedef StringSeq5 StringSeq5Arr3[3];
+    typedef String5Seq String5SeqArr3[3];
+    typedef String5Seq5 String5Seq5Arr3[3];
+    typedef WStringSeq WStringSeqArr3[3];
+    typedef WStringSeq5 WStringSeq5Arr3[3];
+    typedef WString5Seq WString5SeqArr3[3];
+    typedef WString5Seq5 WString5Seq5Arr3[3];
+
+    struct AllSequences {
+        ShortSeq short_seq;
+        ShortSeq5 short_seq5;
+        LongSeq long_seq;
+        LongSeq5 long_seq5;
+        LongLongSeq long_long_seq;
+        LongLongSeq5 long_long_seq5;
+        UShortSeq ushort_seq;
+        UShortSeq5 ushort_seq5;
+        ULongSeq ulong_seq;
+        ULongSeq5 ulong_seq5;
+        ULongLongSeq ulong_long_seq;
+        ULongLongSeq5 ulong_long_seq5;
+        FloatSeq float_seq;
+        FloatSeq5 float_seq5;
+        DoubleSeq double_seq;
+        DoubleSeq5 double_seq5;
+        LongDoubleSeq long_double_seq;
+        LongDoubleSeq5 long_double_seq5;
+        CharSeq char_seq;
+        CharSeq5 char_seq5;
+        WCharSeq wchar_seq;
+        WCharSeq5 wchar_seq5;
+        BooleanSeq boolean_seq;
+        BooleanSeq5 boolean_seq5;
+        OctetSeq octet_seq;
+        OctetSeq5 octet_seq5;
+        StringSeq string_seq;
+        StringSeq5 string_seq5;
+        String5Seq string5_seq;
+        String5Seq5 string5_seq5;
+        WStringSeq wstring_seq;
+        WStringSeq5 wstring_seq5;
+        WString5Seq wstring5_seq;
+        WString5Seq5 wstring5_seq5;
+        sequence<WString5Seq5> wstring5_seq5_seq;
+        sequence<WString5Seq5> wstring5_seq5_seq_anon;
+        sequence<WString5Seq5, 5> wstring5_seq5_seq5;
+        sequence<WString5Seq5, 5> wstring5_seq5_seq5_anon;
+    };
+
+    struct AllArrays {
+        ShortArr3 short_arr;
+        LongArr3 long_arr;
+        LongLongArr3 long_long_arr;
+        UShortArr3 ushort_arr;
+        ULongArr3 ulong_arr;
+        ULongLongArr3 ulong_long_arr;
+        FloatArr3 float_arr;
+        DoubleArr3 double_arr;
+        LongDoubleArr3 long_double_arr;
+        CharArr3 char_arr;
+        WCharArr3 wchar_arr;
+        BooleanArr3 boolean_arr;
+        OctetArr3 octet_arr;
+        StringArr3 string_arr;
+        String5Arr3 string5_arr;
+        WStringArr3 wstring_arr;
+        WString5Arr3 wstring5_arr;
+    };
+
+    struct AllSequenceArrays {
+        ShortSeqArr3 short_seq_arr;
+        ShortSeq5Arr3 short_seq5_arr;
+        LongSeqArr3 long_seq_arr;
+        LongSeq5Arr3 long_seq5_arr;
+        LongLongSeqArr3 long_long_seq_arr;
+        LonglongSeq5Arr3 long_long_seq5_arr;
+        UShortSeqArr3 ushort_seq_arr;
+        UShortSeq5Arr3 ushort_seq5_arr;
+        ULongSeqArr3 ulong_seq_arr;
+        ULongSeq5Arr3 ulong_seq5_arr;
+        ULongLongSeqArr3 ulong_long_seq_arr;
+        ULongLongSeq5Arr3 ulong_long_seq5_arr;
+        FloatSeqArr3 float_seq_arr;
+        FloatSeq5Arr3 float_seq5_arr;
+        DoubleSeqArr3 double_seq_arr;
+        DoubleSeq5Arr3 double_seq5_arr;
+        LongDoubleSeqArr3 long_double_seq_arr;
+        LongDoubleSeq5Arr3 long_double_seq5_arr;
+        CharSeqArr3 char_seq_arr;
+        CharSeq5Arr3 char_seq5_arr;
+        WCharSeqArr3 wchar_seq_arr;
+        WCharSeq5Arr3 wchar_seq5_arr;
+        BooleanSeqArr3 boolean_seq_arr;
+        BooleanSeq5Arr3 boolean_seq5_arr;
+        OctetSeqArr3 octet_seq_arr;
+        OctetSeq5Arr3 octet_seq5_arr;
+        StringSeqArr3 string_seq_arr;
+        StringSeq5Arr3 string_seq5_arr;
+        String5SeqArr3 string5_seq_arr;
+        String5Seq5Arr3 string5_seq5_arr;
+        WStringSeqArr3 wstring_seq_arr;
+        WStringSeq5Arr3 wstring_seq5_arr;
+        WString5SeqArr3 wstring5_seq_arr;
+        WString5Seq5Arr3 wstring5_seq5_arr;
+    };
+
+    typedef long LongArr2D[2][3];
+    typedef long LongArr3D[2][3][4];
+    typedef long LongArr4D[2][3][4][5];
+
+    struct MultidimensionalArrays {
+        long arr_2d[2][3];
+        long arr_3d[2][3][4];
+        long arr_4d[2][3][4][5];
+        LongArr2D typedef_arr_2d;
+        LongArr3D typedef_arr_3d;
+        LongArr4D typedef_arr_4d;
+    };
+};

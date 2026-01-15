@@ -1,0 +1,172 @@
+// Copyright 2025 KONGSBERG
+//
+// Redistribution and use in source and binary forms, with or without
+// modification, are permitted provided that the following conditions are met:
+//
+// 1. Redistributions of source code must retain the above copyright notice,
+//    this list of conditions and the following disclaimer.
+//
+// 2. Redistributions in binary form must reproduce the above copyright notice,
+//    this list of conditions and the following disclaimer in the documentation
+//    and/or other materials provided with the distribution.
+//
+// 3. Neither the name of the copyright holder nor the names of its contributors
+//    may be used to endorse or promote products derived from this software
+//    without specific prior written permission.
+//
+// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
+// ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+// WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+// DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
+// FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+// DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+// SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+// CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+// OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+// OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+module merge_shared_annotations {
+    module merge_test {
+        struct Position {
+            double pos_x;
+            double pos_y;
+            double pos_z;
+        };
+
+        struct Velocity {
+            double vel_x;
+            double vel_y;
+            double vel_z;
+        };
+
+        struct Debris {
+            Position pos;
+            @optional Velocity vel;
+            double radius;
+        };
+
+        struct Description {
+            string color;
+            @external Debris last_sighting;
+        };
+
+        struct ClassifiedDescription {
+            @default("big foot") string pilot;
+            sequence<string> passengers;
+        };
+
+        struct UnidentifiedFlyingObject {
+            @optional Debris deb;
+            @external Description desc;
+            @non_serialized ClassifiedDescription classified;
+        };
+
+        struct SimpleMerge {
+            Position pos;
+            string name;
+        };
+
+        struct DoubleMerge {
+            Position pos;
+            Velocity vel;
+            double mass;
+        };
+
+        struct NestedMerge {
+            SimpleMerge simple;
+            long id_;
+        };
+    };
+
+    module shared_test {
+        struct Leaf {
+            int8 i8;
+        };
+
+        struct Branch {
+            @shared Leaf leaf_ptr;
+        };
+
+        struct Root {
+            int8 i8;
+            @shared int8 i8_ptr;
+            @external Leaf leaf_ptr;
+            @external Branch branch_ptr;
+        };
+
+        const Leaf k_leaf = {1};
+        const Branch k_branch = {{2}};
+        const Root k_root = {4, 8, {16}, {{32}}};
+
+        struct SharedPrimitives {
+            @shared long long_ptr;
+            @shared string string_ptr;
+            @shared double double_ptr;
+        };
+
+        struct SharedStructs {
+            @shared Leaf leaf;
+            @shared Branch branch;
+        };
+
+        struct MixedShared {
+            @shared Leaf shared_leaf;
+            Leaf normal_leaf;
+            @shared long shared_long;
+            long normal_long;
+        };
+    };
+
+    module default_literal_test {
+        struct SimpleStruct {
+            int8 i8;
+        };
+
+        typedef SimpleStruct SimpleStructAlias;
+
+        // union UnionWithDefaultStructures switch(octet) {
+        //     default:
+        //         @default({i8=8}) SimpleStruct a;
+        //     case 2:
+        //         @default({i8=16}) SimpleStructAlias b;
+        // };
+
+        struct ComplexStruct {
+            int8 i8;
+            long l;
+        };
+
+        // union ComplexUnionWithDefaults switch(short) {
+        //     case 1:
+        //         @default({i8=1, l=100}) ComplexStruct c1;
+        //     case 2:
+        //         @default({i8=2, l=200}) ComplexStruct c2;
+        //     default:
+        //         @default({i8=0, l=0}) ComplexStruct c_default;
+        // };
+    };
+
+    module combined_test {
+        struct Point {
+            double x;
+            double y;
+        };
+
+        struct Circle {
+            Point center;
+            double radius;
+        };
+
+        struct Scene {
+            @shared Circle main_circle;
+            Point offset;
+            string name;
+        };
+
+        struct ComplexScene {
+            @shared Scene scene;
+            @external Circle extra_circle;
+            long id_;
+        };
+    };
+};

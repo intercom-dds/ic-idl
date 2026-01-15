@@ -1,0 +1,106 @@
+// Copyright 2025 KONGSBERG
+//
+// Redistribution and use in source and binary forms, with or without
+// modification, are permitted provided that the following conditions are met:
+//
+// 1. Redistributions of source code must retain the above copyright notice,
+//    this list of conditions and the following disclaimer.
+//
+// 2. Redistributions in binary form must reproduce the above copyright notice,
+//    this list of conditions and the following disclaimer in the documentation
+//    and/or other materials provided with the distribution.
+//
+// 3. Neither the name of the copyright holder nor the names of its contributors
+//    may be used to endorse or promote products derived from this software
+//    without specific prior written permission.
+//
+// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
+// ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+// WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+// DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
+// FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+// DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+// SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+// CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+// OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+// OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+// Range, min, max, and default annotations
+
+module range_annotations {
+    // Min annotation
+    @min(0) typedef long PositiveLong;
+    @min(1) typedef long OnePlus;
+    @min(-100) typedef long MinNegative;
+
+    // Max annotation
+    @max(100) typedef long Max100;
+    @max(255) typedef octet MaxByte;
+
+    // Range annotation
+    @range(min=0, max=100) typedef long Percentage;
+    @range(min=-10, max=10) typedef short SmallRange;
+    @range(min=1, max=1000000) typedef long LargeRange;
+
+    // Default annotation
+    @default(42) typedef long DefaultLong;
+    @default(3.14) typedef float DefaultFloat;
+    @default(TRUE) typedef boolean DefaultBool;
+    @default('A') typedef char DefaultChar;
+
+    // Combined annotations
+    @min(0) @max(100) @default(50) typedef long BoundedDefault;
+    @range(min=1, max=10) @default(5) typedef long RangedDefault;
+
+    // Struct with annotated fields
+    struct AnnotatedFields {
+        @min(0) long positive;
+        @max(255) octet byte_val;
+        @range(min=0, max=100) short percentage;
+        @default(42) long default_val;
+        @range(min=-180, max=180) @default(0) short angle;
+    };
+
+    // Character ranges
+    @range(min='a', max='z') typedef char LowerCase;
+    @range(min='A', max='Z') typedef char UpperCase;
+    @range(min='0', max='9') typedef char Digit;
+
+    // Float/double ranges
+    @range(min=0.0, max=1.0) typedef float Normalized;
+    @range(min=-3.14159, max=3.14159) typedef double PiRange;
+
+    // Named constant ranges
+    const long MIN_VAL = 10;
+    const long MAX_VAL = 100;
+    @range(min=MIN_VAL, max=MAX_VAL) typedef long NamedRange;
+
+    // Optional with max
+    struct OptionalWithMax {
+        @optional @max(100) long opt_bounded;
+    };
+
+    // Enum with explicit values and default literal
+    enum Priority {
+        LOW = 0,
+        @default_literal MEDIUM = 5,
+        HIGH = 10
+    };
+
+    struct PriorityData {
+        @default(MEDIUM) Priority prio;
+    };
+
+    // Bounded sequences with default
+    @default({1, 2, 3}) typedef sequence<long, 10> DefaultSeq;
+
+    // Bounded string with default
+    @default("hello") typedef string<256> DefaultString;
+
+    // Union with default case
+    union DefaultUnion switch (@default(0) long) {
+        case 1: long val1;
+        case 2: string val2;
+        default: boolean def_val;
+    };
+};

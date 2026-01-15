@@ -1,0 +1,151 @@
+// Copyright 2025 KONGSBERG
+//
+// Redistribution and use in source and binary forms, with or without
+// modification, are permitted provided that the following conditions are met:
+//
+// 1. Redistributions of source code must retain the above copyright notice,
+//    this list of conditions and the following disclaimer.
+//
+// 2. Redistributions in binary form must reproduce the above copyright notice,
+//    this list of conditions and the following disclaimer in the documentation
+//    and/or other materials provided with the distribution.
+//
+// 3. Neither the name of the copyright holder nor the names of its contributors
+//    may be used to endorse or promote products derived from this software
+//    without specific prior written permission.
+//
+// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
+// ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+// WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+// DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
+// FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+// DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+// SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+// CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+// OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+// OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+// Complex union scenarios
+
+module complex_unions {
+    // Union with struct members
+    struct StructA {
+        long a;
+        string name;
+    };
+
+    struct StructB {
+        double b;
+        boolean flag;
+    };
+
+    union StructUnion switch (short) {
+        case 1: StructA struct_a;
+        case 2: StructB struct_b;
+        default: long default_val;
+    };
+
+    // Union with sequence members
+    union SeqUnion switch (long) {
+        case 1: sequence<long> int_seq;
+        case 2: sequence<string> str_seq;
+        case 3: sequence<double, 100> bounded_seq;
+    };
+
+    // Union with array members
+    typedef long IntArray10[10];
+    typedef double DoubleArray5[5];
+
+    union ArrayUnion switch (long) {
+        case 1: IntArray10 int_arr;
+        case 2: DoubleArray5 double_arr;
+        case 3: string str;
+    };
+
+    // Union with union member (nested unions)
+    union InnerUnion switch (short) {
+        case 1: long val;
+        case 2: string str;
+    };
+
+    union OuterUnion switch (long) {
+        case 1: InnerUnion nested;
+        case 2: double value;
+        case 3: boolean flag;
+    };
+
+    // Union with all primitive types
+    union AllPrimitives switch (long) {
+        case 1: short s;
+        case 2: long l;
+        case 3: long long ll;
+        case 4: unsigned short us;
+        case 5: unsigned long ul;
+        case 6: unsigned long long ull;
+        case 7: float f;
+        case 8: double d;
+        case 9: boolean b;
+        case 10: char c;
+        case 11: octet o;
+        case 12: string str;
+    };
+
+    // Union with char discriminator
+    union CharDiscUnion switch (char) {
+        case 'A': long a_value;
+        case 'B': string b_value;
+        case 'C': double c_value;
+        default: boolean other;
+    };
+
+    // Union with octet discriminator
+    union OctetDiscUnion switch (octet) {
+        case 0: long zero;
+        case 1: long one;
+        case 255: long max;
+        default: long other;
+    };
+
+    // Union with many cases pointing to same member
+    union ManyCases switch (long) {
+        case 1:
+        case 2:
+        case 3:
+        case 4:
+        case 5:
+        case 6:
+        case 7:
+        case 8:
+        case 9:
+        case 10: long many_val;
+        case 20:
+        case 30:
+        case 40: string str_val;
+        default: boolean def_val;
+    };
+
+    // Enum with negative values as discriminator
+    enum SignedEnum {
+        NEGATIVE = -10,
+        ZERO = 0,
+        POSITIVE = 10
+    };
+
+    union SignedEnumUnion switch (SignedEnum) {
+        case NEGATIVE: string neg_str;
+        case ZERO: long zero_val;
+        case POSITIVE: double pos_val;
+    };
+
+    // Union in struct
+    struct UnionContainer {
+        StructUnion u1;
+        SeqUnion u2;
+        long id_;
+    };
+
+    // Sequence of unions
+    struct UnionSequence {
+        sequence<StructUnion> union_seq;
+    };
+};

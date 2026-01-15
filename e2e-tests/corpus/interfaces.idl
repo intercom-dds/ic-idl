@@ -1,0 +1,145 @@
+// Copyright 2025 KONGSBERG
+//
+// Redistribution and use in source and binary forms, with or without
+// modification, are permitted provided that the following conditions are met:
+//
+// 1. Redistributions of source code must retain the above copyright notice,
+//    this list of conditions and the following disclaimer.
+//
+// 2. Redistributions in binary form must reproduce the above copyright notice,
+//    this list of conditions and the following disclaimer in the documentation
+//    and/or other materials provided with the distribution.
+//
+// 3. Neither the name of the copyright holder nor the names of its contributors
+//    may be used to endorse or promote products derived from this software
+//    without specific prior written permission.
+//
+// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
+// ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+// WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+// DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
+// FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+// DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+// SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+// CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+// OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+// OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+// Interface definitions
+
+module interfaces {
+    // Simple interface
+    interface Simple {
+        void do_something();
+        long get_value();
+        void set_value(in long val);
+    };
+
+    // Interface with various parameter modes
+    interface ParamModes {
+        void in_param(in long val);
+        void out_param(out long val);
+        void inout_param(inout long val);
+        void mixed(in long in_val, out long out_val, inout long inout_val);
+    };
+
+    // Interface with return values
+    interface Returns {
+        long get_long();
+        string get_string();
+        double get_double();
+        boolean get_flag();
+    };
+
+    // Interface inheritance
+    interface Base {
+        void base_method();
+    };
+
+    interface Derived : Base {
+        void derived_method();
+    };
+
+    // Multiple inheritance
+    interface InterfaceA {
+        void method_a();
+    };
+
+    interface InterfaceB {
+        void method_b();
+    };
+
+    interface Combined : InterfaceA, InterfaceB {
+        void method_c();
+    };
+
+    // Interface with struct parameters
+    struct Point {
+        double x;
+        double y;
+    };
+
+    interface Geometry {
+        Point get_point();
+        void set_point(in Point p);
+        double distance(in Point p1, in Point p2);
+    };
+
+    // Interface with sequence parameters
+    interface Collections {
+        sequence<long> get_numbers();
+        void set_numbers(in sequence<long> nums);
+        long sum(in sequence<long> nums);
+    };
+
+    // Interface with exceptions
+    exception NotFound {
+        string message;
+    };
+
+    exception InvalidInput {
+        long code;
+        string reason;
+    };
+
+    interface ErrorHandling {
+        long find(in string key) raises (NotFound);
+        void validate(in long value) raises (InvalidInput, NotFound);
+    };
+
+    // Empty interface
+    interface Empty {
+    };
+
+    // Interface with attributes
+    interface Attributes {
+        attribute long read_write;
+        readonly attribute string read_only;
+        attribute boolean flag;
+    };
+
+    // Interface with oneway operations
+    interface OnewayOperations {
+        oneway void fire_and_forget(in long value);
+        oneway void notify(in string message);
+    };
+
+    // Complex interface combining features
+    interface Complex : Base {
+        struct Config {
+            long timeout;
+            string mode;
+        };
+
+        exception ConfigError {
+            string message;
+        };
+
+        attribute Config my_config;
+        readonly attribute long status;
+
+        void initialize(in Config cfg) raises (ConfigError);
+        oneway void shutdown();
+        long process(in sequence<long> data, out sequence<string> results);
+    };
+};

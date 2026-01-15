@@ -1,0 +1,119 @@
+// Copyright 2025 KONGSBERG
+//
+// Redistribution and use in source and binary forms, with or without
+// modification, are permitted provided that the following conditions are met:
+//
+// 1. Redistributions of source code must retain the above copyright notice,
+//    this list of conditions and the following disclaimer.
+//
+// 2. Redistributions in binary form must reproduce the above copyright notice,
+//    this list of conditions and the following disclaimer in the documentation
+//    and/or other materials provided with the distribution.
+//
+// 3. Neither the name of the copyright holder nor the names of its contributors
+//    may be used to endorse or promote products derived from this software
+//    without specific prior written permission.
+//
+// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
+// ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+// WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+// DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
+// FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+// DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+// SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+// CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+// OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+// OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+// Bitmask tests (different from bitsets)
+
+module bitmasks {
+    // Simple bitmask
+    bitmask SimpleBitmask {
+        FLAG_A,
+        FLAG_B,
+        FLAG_C,
+        FLAG_D
+    };
+
+    // Bitmask with explicit values
+    bitmask ExplicitBitmask {
+        READ = 0x01,
+        WRITE = 0x02,
+        EXECUTE = 0x04,
+        DELETE = 0x08
+    };
+
+    // Bitmask with @bit_bound
+    @bit_bound(8) bitmask Bitmask8 {
+        BIT0_8, BIT1_8, BIT2_8, BIT3_8, BIT4_8, BIT5_8, BIT6_8, BIT7_8
+    };
+
+    @bit_bound(16) bitmask Bitmask16 {
+        BIT0_16, BIT1_16, BIT2_16, BIT3_16, BIT4_16, BIT5_16, BIT6_16, BIT7_16,
+        BIT8_16, BIT9_16, BIT10_16, BIT11_16, BIT12_16, BIT13_16, BIT14_16, BIT15_16
+    };
+
+    @bit_bound(32) bitmask Bitmask32 {
+        BIT0_32, BIT1_32, BIT2_32, BIT3_32, BIT4_32, BIT5_32, BIT6_32, BIT7_32
+    };
+
+    @bit_bound(64) bitmask Bitmask64 {
+        BIT0_64, BIT1_64, BIT2_64, BIT3_64, BIT4_64, BIT5_64, BIT6_64, BIT7_64
+    };
+
+    // Bitmask positions
+    bitmask PositionedBitmask {
+        LOW = 1,
+        MEDIUM = 2,
+        HIGH = 3,
+        CRITICAL = 4
+    };
+
+    // Struct with bitmasks
+    struct BitmaskContainer {
+        SimpleBitmask simple;
+        ExplicitBitmask perms;
+        Bitmask8 byte_mask;
+        Bitmask16 word_mask;
+    };
+
+    // Sequence of bitmasks
+    struct BitmaskSequence {
+        sequence<SimpleBitmask> masks;
+    };
+
+    // Union with bitmask
+    union BitmaskUnion switch (long) {
+        case 1: SimpleBitmask mask;
+        case 2: long value;
+    };
+
+    // Bitmask with all bits set pattern
+    bitmask AllBits {
+        B0, B1, B2, B3, B4, B5, B6, B7,
+        B8, B9, B10, B11, B12, B13, B14, B15,
+        B16, B17, B18, B19, B20, B21, B22, B23,
+        B24, B25, B26, B27, B28, B29, B30, B31
+    };
+
+    // Typedef bitmasks
+    typedef SimpleBitmask MaskAlias;
+
+    struct UsingAlias {
+        MaskAlias mask;
+    };
+
+    // Bitmask in array
+    struct BitmaskArray {
+        SimpleBitmask masks[10];
+    };
+
+    // Sparse bitmask (gaps in values)
+    bitmask SparseBitmask {
+        FIRST = 1,
+        SECOND = 4,
+        THIRD = 8,
+        FOURTH = 16
+    };
+};

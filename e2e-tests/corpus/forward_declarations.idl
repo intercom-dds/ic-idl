@@ -1,0 +1,111 @@
+// Copyright 2025 KONGSBERG
+//
+// Redistribution and use in source and binary forms, with or without
+// modification, are permitted provided that the following conditions are met:
+//
+// 1. Redistributions of source code must retain the above copyright notice,
+//    this list of conditions and the following disclaimer.
+//
+// 2. Redistributions in binary form must reproduce the above copyright notice,
+//    this list of conditions and the following disclaimer in the documentation
+//    and/or other materials provided with the distribution.
+//
+// 3. Neither the name of the copyright holder nor the names of its contributors
+//    may be used to endorse or promote products derived from this software
+//    without specific prior written permission.
+//
+// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
+// ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+// WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+// DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
+// FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+// DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+// SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+// CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+// OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+// OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+// Forward declarations and circular references
+
+module forward_declarations {
+    // Simple forward declaration
+    struct ForwardDeclared;
+
+    struct UsesForward {
+        sequence<ForwardDeclared> fwd;
+    };
+
+    struct ForwardDeclared {
+        long value;
+    };
+
+    // Mutual references (circular)
+    struct NodeA;
+    struct NodeB;
+
+    struct NodeA {
+        sequence<NodeB> b_ref;
+        long a_value;
+    };
+
+    struct NodeB {
+        NodeA a_ref;
+        long b_value;
+    };
+
+    // Self-referential struct (requires sequence)
+    struct TreeNode {
+        long value;
+        sequence<TreeNode> children;
+    };
+
+    // Forward with typedef
+    struct FwdType;
+    typedef FwdType MyFwdType;
+
+    struct UsesFwdTypedef {
+        sequence<MyFwdType> ref;
+    };
+
+    struct FwdType {
+        long data;
+    };
+
+    // Complex forward scenario
+    struct ComplexFwd;
+
+    struct UsesComplexFwd {
+        sequence<ComplexFwd> fwd_seq;
+    };
+
+    struct ComplexFwd {
+        long value;
+        UsesComplexFwd back_ref;
+    };
+
+    // Forward declaration in union
+    struct UnionMember;
+
+    union ForwardUnion switch (long) {
+    case 1:
+        sequence<UnionMember> member;
+    case 2:
+        long value;
+    };
+
+    struct UnionMember {
+        long data;
+    };
+
+    // Linked list pattern
+    struct ListNode {
+        long data;
+        sequence<ListNode> next;
+    };
+
+    // Binary tree pattern
+    struct BinaryNode {
+        long value;
+        sequence<BinaryNode, 2> children;
+    };
+};

@@ -1,0 +1,101 @@
+// Copyright 2025 KONGSBERG
+//
+// Redistribution and use in source and binary forms, with or without
+// modification, are permitted provided that the following conditions are met:
+//
+// 1. Redistributions of source code must retain the above copyright notice,
+//    this list of conditions and the following disclaimer.
+//
+// 2. Redistributions in binary form must reproduce the above copyright notice,
+//    this list of conditions and the following disclaimer in the documentation
+//    and/or other materials provided with the distribution.
+//
+// 3. Neither the name of the copyright holder nor the names of its contributors
+//    may be used to endorse or promote products derived from this software
+//    without specific prior written permission.
+//
+// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
+// ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+// WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+// DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
+// FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+// DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+// SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+// CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+// OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+// OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+// Comprehensive typedef tests
+
+module typedef_tests {
+    // Basic typedefs
+    typedef long LongType;
+    typedef string StringType;
+    typedef double DoubleType;
+
+    // Array typedefs
+    typedef long IntArray[10];
+    typedef string NameArray[5];
+    typedef double Matrix[3][3];
+
+    // Sequence typedefs
+    typedef sequence<long> IntSeq;
+    typedef sequence<string> StrSeq;
+    typedef sequence<long, 100> BoundedIntSeq;
+
+    // Bounded string typedef
+    typedef string<256> BoundedString;
+
+    // Typedef chains
+    typedef long MyLong;
+    typedef MyLong MyMyLong;
+    typedef MyMyLong DeepLong;
+
+    // Struct using typedefs
+    struct TypedefUser {
+        LongType my_long;
+        StringType my_string;
+        IntArray int_arr;
+        IntSeq int_seq;
+        BoundedString bounded_str;
+        DeepLong deep;
+    };
+
+    // Typedef of struct
+    struct Point {
+        double x;
+        double y;
+    };
+    typedef Point Point2D;
+    typedef Point PointArray[10];
+    typedef sequence<Point> PointSeq;
+
+    // Typedef of enum
+    enum Status {
+        OK,
+        ERROR,
+        PENDING
+    };
+    typedef Status MyStatus;
+
+    // Complex typedef
+    typedef long LongArray5[5];
+    typedef sequence<LongArray5> LongArraySeq;
+    typedef sequence<LongArraySeq, 10> ComplexType;
+
+    struct ComplexUser {
+        ComplexType complex;
+    };
+
+    // Forward declaration with typedef
+    struct ForwardRef;
+    typedef ForwardRef FwdRef;
+
+    struct ForwardRef {
+        long value;
+    };
+
+    struct UsesFwd {
+        FwdRef ref;
+    };
+};

@@ -1,0 +1,91 @@
+// Copyright 2025 KONGSBERG
+//
+// Redistribution and use in source and binary forms, with or without
+// modification, are permitted provided that the following conditions are met:
+//
+// 1. Redistributions of source code must retain the above copyright notice,
+//    this list of conditions and the following disclaimer.
+//
+// 2. Redistributions in binary form must reproduce the above copyright notice,
+//    this list of conditions and the following disclaimer in the documentation
+//    and/or other materials provided with the distribution.
+//
+// 3. Neither the name of the copyright holder nor the names of its contributors
+//    may be used to endorse or promote products derived from this software
+//    without specific prior written permission.
+//
+// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
+// ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+// WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+// DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
+// FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+// DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+// SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+// CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+// OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+// OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+// Comprehensive constants tests
+
+module constant_tests {
+    // Integer constants
+    const short SHORT_CONST = 100;
+    const long LONG_CONST = 1000000;
+    const long long LONGLONG_CONST = 9223372036854775807;
+    const unsigned long ULONG_CONST = 4294967295;
+
+    // Floating point constants
+    const float FLOAT_CONST = 3.14159;
+    const double DOUBLE_CONST = 2.718281828;
+
+    // Boolean constants
+    const boolean TRUE_CONST = TRUE;
+    const boolean FALSE_CONST = FALSE;
+
+    // Character constants
+    const char CHAR_CONST = 'A';
+
+    // String constants
+    const string STRING_CONST = "Hello, World!";
+
+    // Octet constants
+    const octet OCTET_CONST = 0xFF;
+
+    // Expression constants
+    const long EXPR_ADD = 10 + 20;
+    const long EXPR_MUL = 5 * 6;
+    const long EXPR_SHIFT = 1 << 8;
+    const long EXPR_COMPLEX = (10 + 5) * 2;
+
+    // Hexadecimal constants
+    const long long LONG_LONG_HEX = 0x3344556600000000;
+    const long long LONG_LONG_NEG_HEX = -0x3344556600000000;
+    const unsigned long long ULONG_LONG_HEX = 0xee44556600001234;
+
+    // Bitwise expression constants
+    const unsigned long long BITWISE_OR = ULONG_LONG_HEX | 44;
+    const unsigned long long BITWISE_AND = ULONG_LONG_HEX & 0xff00000000000000;
+    const unsigned long long BITWISE_NOT = ~0xaa55;
+    const unsigned long long SHIFT_LEFT = ULONG_LONG_HEX << 3;
+    const unsigned long long SHIFT_RIGHT = ULONG_LONG_HEX >> 5;
+
+    // Decimal long long constant
+    const long long LONG_LONG_DEC = 7443344334433443333;
+
+    // Using constants in other constants
+    const long DERIVED = LONG_CONST / 100;
+
+    // Enum with explicit values
+    enum Priority {
+        LOW = 0,
+        MEDIUM = 5,
+        HIGH = 10,
+        CRITICAL = 100
+    };
+
+    // Using constants in arrays
+    struct ConstSizedArrays {
+        long data[10];
+        string<256> text;
+    };
+};

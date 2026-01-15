@@ -1,0 +1,96 @@
+// Copyright 2025 KONGSBERG
+//
+// Redistribution and use in source and binary forms, with or without
+// modification, are permitted provided that the following conditions are met:
+//
+// 1. Redistributions of source code must retain the above copyright notice,
+//    this list of conditions and the following disclaimer.
+//
+// 2. Redistributions in binary form must reproduce the above copyright notice,
+//    this list of conditions and the following disclaimer in the documentation
+//    and/or other materials provided with the distribution.
+//
+// 3. Neither the name of the copyright holder nor the names of its contributors
+//    may be used to endorse or promote products derived from this software
+//    without specific prior written permission.
+//
+// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
+// ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+// WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+// DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
+// FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+// DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+// SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+// CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+// OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+// OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+// Map types tests
+
+module maps {
+    // Basic maps
+    typedef map<long, string> LongStringMap;
+    typedef map<string, long> StringLongMap;
+    typedef map<long, long> LongLongMap;
+
+    // Bounded maps
+    typedef map<long, string, 10> BoundedLongStringMap;
+    typedef map<string, double, 100> BoundedStringDoubleMap;
+
+    // Maps with various key types
+    typedef map<short, string> ShortKeyMap;
+    typedef map<long long, string> LongLongKeyMap;
+    typedef map<char, string> CharKeyMap;
+    typedef map<boolean, string> BoolKeyMap;
+    typedef map<octet, string> OctetKeyMap;
+
+    // Maps with various value types
+    typedef map<string, short> ShortValueMap;
+    typedef map<string, double> DoubleValueMap;
+    typedef map<string, boolean> BoolValueMap;
+    typedef map<string, sequence<long>> SeqValueMap;
+
+    // Map of maps
+    typedef map<string, string> InnerMap;
+    typedef map<long, InnerMap> MapOfMaps;
+    typedef map<string, long> StringLongMapForNested;
+    typedef map<string, StringLongMapForNested> NestedMaps;
+
+    // Maps with bounded strings
+    typedef string<32> BoundedString32;
+    typedef string<256> BoundedString256;
+    typedef map<BoundedString32, BoundedString256> BoundedStringMap;
+
+    // Struct with maps
+    struct MapContainer {
+        LongStringMap basic_map;
+        BoundedLongStringMap bounded_map;
+        MapOfMaps nested_map;
+        BoolKeyMap bool_keyed_map;
+    };
+
+    // Sequence of maps
+    struct MapSequence {
+        sequence<LongStringMap> map_seq;
+    };
+
+    // Map in union
+    union MapUnion switch (long) {
+        case 1: LongStringMap str_map;
+        case 2: LongLongMap num_map;
+    };
+
+    // Complex map keys and values
+    struct ComplexKey {
+        @key long id_;
+        @key string name;
+    };
+
+    struct ComplexValue {
+        double value;
+        sequence<long> data;
+    };
+
+    typedef map<ComplexKey, ComplexValue> ComplexMap;
+    typedef map<long, string, 1> OneMap;
+};

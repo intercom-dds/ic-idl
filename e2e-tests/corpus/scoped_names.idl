@@ -1,0 +1,115 @@
+// Copyright 2025 KONGSBERG
+//
+// Redistribution and use in source and binary forms, with or without
+// modification, are permitted provided that the following conditions are met:
+//
+// 1. Redistributions of source code must retain the above copyright notice,
+//    this list of conditions and the following disclaimer.
+//
+// 2. Redistributions in binary form must reproduce the above copyright notice,
+//    this list of conditions and the following disclaimer in the documentation
+//    and/or other materials provided with the distribution.
+//
+// 3. Neither the name of the copyright holder nor the names of its contributors
+//    may be used to endorse or promote products derived from this software
+//    without specific prior written permission.
+//
+// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
+// ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+// WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+// DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
+// FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+// DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+// SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+// CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+// OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+// OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+// Scoped name resolution and global scope
+
+// Global typedef
+typedef string GlobalType;
+
+module scoped_names {
+    // Local typedef with same name
+    typedef long GlobalType;
+
+    struct LocalScope {
+        GlobalType local_ref;
+        ::GlobalType global_ref;
+    };
+
+    module nested {
+        // Another typedef with same name
+        typedef double GlobalType;
+
+        struct NestedScope {
+            GlobalType nested_ref;
+            scoped_names::GlobalType parent_ref;
+            ::GlobalType global_ref;
+        };
+
+        module deep {
+            typedef boolean GlobalType;
+
+            struct DeepScope {
+                GlobalType deep_ref;
+                nested::GlobalType parent_ref;
+                scoped_names::GlobalType grandparent_ref;
+                ::GlobalType global_ref;
+            };
+        };
+    };
+
+    // Using :: prefix for global scope
+    struct GlobalReference {
+        ::GlobalType definitely_global;
+    };
+
+    // Fully qualified names
+    struct FullyQualified {
+        scoped_names::nested::GlobalType nested_type;
+        scoped_names::nested::deep::GlobalType deep_type;
+    };
+};
+
+// Another module with same name as nested
+module nested {
+    typedef char MyChar;
+
+    struct NotRelated {
+        MyChar c;
+    };
+};
+
+// Using both nested modules
+module ambiguous {
+    struct UsesNested {
+        scoped_names::nested::GlobalType from_scoped;
+        ::nested::MyChar from_global_nested;
+    };
+};
+
+// Enum with same name in different scopes
+enum Status { OK, ERROR };
+
+module status_test {
+    enum Status { IDLE, BUSY };
+
+    struct StatusContainer {
+        Status local_status;
+        ::Status global_status;
+    };
+};
+
+// Constant with same name
+const long MAX = 100;
+
+module constants {
+    const long MAX = 200;
+
+    struct WithConstants {
+        long local_array[MAX];
+        long global_array[::MAX];
+    };
+};

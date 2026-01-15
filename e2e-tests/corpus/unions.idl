@@ -1,0 +1,87 @@
+// Copyright 2025 KONGSBERG
+//
+// Redistribution and use in source and binary forms, with or without
+// modification, are permitted provided that the following conditions are met:
+//
+// 1. Redistributions of source code must retain the above copyright notice,
+//    this list of conditions and the following disclaimer.
+//
+// 2. Redistributions in binary form must reproduce the above copyright notice,
+//    this list of conditions and the following disclaimer in the documentation
+//    and/or other materials provided with the distribution.
+//
+// 3. Neither the name of the copyright holder nor the names of its contributors
+//    may be used to endorse or promote products derived from this software
+//    without specific prior written permission.
+//
+// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
+// ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+// WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+// DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
+// FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+// DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+// SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+// CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+// OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+// OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+// Comprehensive union tests
+
+module union_tests {
+    // Simple union with integer discriminator
+    union SimpleUnion switch (long) {
+        case 1: long int_val;
+        case 2: string str_val;
+        case 3: double float_val;
+        default: boolean default_val;
+    };
+
+    // Enum discriminator
+    enum Color {
+        RED,
+        GREEN,
+        BLUE
+    };
+
+    union ColorData switch (Color) {
+        case RED: long red_value;
+        case GREEN: string green_name;
+        case BLUE: double blue_intensity;
+    };
+
+    // Boolean discriminator
+    union BoolUnion switch (boolean) {
+        case TRUE: long true_val;
+        case FALSE: string false_val;
+    };
+
+    // Nested unions
+    union InnerUnion switch (short) {
+        case 1: long value;
+        case 2: string name;
+    };
+
+    union OuterUnion switch (long) {
+        case 1: InnerUnion nested;
+        case 2: long simple;
+    };
+
+    // Union with multiple cases for same member
+    union MultiCaseUnion switch (long) {
+        case 1:
+        case 2:
+        case 3: long small_val;
+        case 10:
+        case 20: string text_val;
+        default: boolean flag;
+    };
+
+    // Union with @key discriminator
+    union KeyDiscriminatorUnion switch (@key long) {
+        case 1:
+        case 2:
+            string string_value;
+        default:
+            double double_value;
+    };
+};

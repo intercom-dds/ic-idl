@@ -1,0 +1,144 @@
+// Copyright 2025 KONGSBERG
+//
+// Redistribution and use in source and binary forms, with or without
+// modification, are permitted provided that the following conditions are met:
+//
+// 1. Redistributions of source code must retain the above copyright notice,
+//    this list of conditions and the following disclaimer.
+//
+// 2. Redistributions in binary form must reproduce the above copyright notice,
+//    this list of conditions and the following disclaimer in the documentation
+//    and/or other materials provided with the distribution.
+//
+// 3. Neither the name of the copyright holder nor the names of its contributors
+//    may be used to endorse or promote products derived from this software
+//    without specific prior written permission.
+//
+// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
+// ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+// WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+// DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
+// FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+// DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+// SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+// CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+// OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+// OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+// Advanced annotations
+
+module advanced_annotations {
+    // @try_construct annotation
+    module try_construct {
+        typedef string<5> BoundedString5;
+
+        @mutable struct UseDefault {
+            @try_construct(USE_DEFAULT) @range(min=1, max=5) @default(1) long value_1;
+            @try_construct(USE_DEFAULT) @min(2) @default(2) long value_2;
+            @try_construct(USE_DEFAULT) string<5> value_3;
+            @try_construct(USE_DEFAULT) sequence<long, 2> value_4;
+            @try_construct(USE_DEFAULT) sequence<BoundedString5> value_5;
+        };
+
+        @mutable struct UseTrim {
+            @try_construct(TRIM) string<5> value_1;
+            @try_construct(TRIM) sequence<long, 2> value_2;
+        };
+
+        @mutable struct UseDiscard {
+            @try_construct(DISCARD) @range(min=2, max=3) @default(2) long value_1;
+            @try_construct(DISCARD) @max(4) long value_2;
+            @try_construct(DISCARD) string<5> value_3;
+            @try_construct(DISCARD) sequence<long, 2> value_4;
+        };
+    };
+
+    // @autoid annotation
+    @autoid(SEQUENTIAL) module sequential_ids {
+        struct AutoSeq {
+            long a;
+            string b;
+            double c;
+        };
+    };
+
+    @autoid(HASH) module hash_ids {
+        struct AutoHash {
+            long x;
+            string y;
+        };
+    };
+
+    // @default_literal annotation
+    module default_literal {
+        @mutable enum Status {
+            IDLE = 0,
+            RUNNING = 1,
+            @default_literal UNKNOWN = 99
+        };
+
+        struct WithDefaultLiteral {
+            Status status;
+        };
+
+        @mutable enum Priority {
+            LOW = 1,
+            MEDIUM = 5,
+            @default_literal HIGH = 10
+        };
+    };
+
+    // @mustunderstand annotation
+    module must_understand {
+        @mutable struct MustUnderstandA {
+            @mustunderstand long critical_field;
+            short optional_field;
+        };
+
+        @mutable struct MustUnderstandB {
+            long field1;
+            @mustunderstand short critical_field;
+        };
+    };
+
+    // @non_serialized annotation
+    module non_serialized {
+        @mutable struct WithNonSerialized {
+            string serialized_field;
+            @non_serialized long transient_field;
+            double another_serialized;
+        };
+
+        struct AllNonSerialized {
+            @non_serialized long a;
+            @non_serialized string b;
+            @non_serialized boolean c;
+        };
+    };
+
+    // @external annotation
+    struct ExternalData {
+        @external long external_field;
+        string normal_field;
+    };
+
+    // @hashid annotation
+    struct WithHashId {
+        @hashid("custom_hash") long field1;
+        long field2;
+    };
+
+    // @verbatim annotation
+    @verbatim(language="c++", placement="before-declaration", text="// Custom C++ code here")
+    struct VerbatimStruct {
+        long value;
+    };
+
+    // Combination of annotations
+    @mutable struct ComplexAnnotations {
+        @key long id_;
+        @mustunderstand @try_construct(USE_DEFAULT) @default(1) long critical;
+        @non_serialized @optional string transient;
+        @range(min=0, max=100) @default(50) short percentage;
+    };
+};

@@ -1,0 +1,144 @@
+// Copyright 2025 KONGSBERG
+//
+// Redistribution and use in source and binary forms, with or without
+// modification, are permitted provided that the following conditions are met:
+//
+// 1. Redistributions of source code must retain the above copyright notice,
+//    this list of conditions and the following disclaimer.
+//
+// 2. Redistributions in binary form must reproduce the above copyright notice,
+//    this list of conditions and the following disclaimer in the documentation
+//    and/or other materials provided with the distribution.
+//
+// 3. Neither the name of the copyright holder nor the names of its contributors
+//    may be used to endorse or promote products derived from this software
+//    without specific prior written permission.
+//
+// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
+// ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+// WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+// DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
+// FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+// DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+// SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+// CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+// OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+// OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+// Name conflict scenarios and scoping edge cases
+
+module name_conflicts {
+    // Same name in different scopes
+    struct Data {
+        long value;
+    };
+
+    module inner {
+        struct Data {
+            string text;
+        };
+
+        struct Container {
+            Data inner_data;
+            name_conflicts::Data outer_data;
+        };
+    };
+
+    // Typedef with same name as struct in different scope
+    typedef long MyType;
+
+    module sub {
+        struct MyType {
+            long value;
+        };
+
+        struct UsesBoth {
+            MyType struct_type;
+            name_conflicts::MyType typedef_type;
+        };
+    };
+
+    // Enum and struct with same name in different modules
+    enum Status {
+        OK,
+        ERROR
+    };
+
+    module other {
+        struct Status {
+            long code;
+            string message;
+        };
+    };
+
+    // Reopened module with potential conflicts
+    module reopened {
+        struct First {
+            long a;
+        };
+    };
+
+    module reopened {
+        struct Second {
+            long b;
+        };
+
+        struct UsesFirst {
+            First ref;
+        };
+    };
+
+    // Same field name in base and derived (not allowed, causes duplicate)
+    struct Base {
+        long base_value;
+    };
+
+    struct Derived : Base {
+        string derived_value;
+    };
+
+    // Union cases with same type but different names
+    union SameTypeUnion switch (long) {
+        case 1: long first_long;
+        case 2: long second_long;
+        case 3: long third_long;
+    };
+
+    // Constants with same value
+    const long CONST_A = 100;
+    const long CONST_B = 100;
+    const long CONST_C = CONST_A;
+
+    // Multiple typedefs of same type
+    typedef long Long1;
+    typedef long Long2;
+    typedef long Long3;
+
+    struct MultipleTypedefs {
+        Long1 l1;
+        Long2 l2;
+        Long3 l3;
+    };
+
+    // Nested modules with same inner name
+    module group_a {
+        module common {
+            struct Item {
+                long a_value;
+            };
+        };
+    };
+
+    module group_b {
+        module common {
+            struct Item {
+                string b_value;
+            };
+        };
+    };
+
+    struct UsesNested {
+        group_a::common::Item item_a;
+        group_b::common::Item item_b;
+    };
+};

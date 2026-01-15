@@ -1,0 +1,146 @@
+// Copyright 2025 KONGSBERG
+//
+// Redistribution and use in source and binary forms, with or without
+// modification, are permitted provided that the following conditions are met:
+//
+// 1. Redistributions of source code must retain the above copyright notice,
+//    this list of conditions and the following disclaimer.
+//
+// 2. Redistributions in binary form must reproduce the above copyright notice,
+//    this list of conditions and the following disclaimer in the documentation
+//    and/or other materials provided with the distribution.
+//
+// 3. Neither the name of the copyright holder nor the names of its contributors
+//    may be used to endorse or promote products derived from this software
+//    without specific prior written permission.
+//
+// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
+// ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+// WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+// DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
+// FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+// DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+// SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+// CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+// OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+// OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+// Struct defined inside interface
+
+module struct_in_interface {
+    // Struct inside interface
+    interface Container {
+        struct InnerStruct {
+            long value;
+            string name;
+        };
+
+        InnerStruct get_data();
+        void set_data(in InnerStruct data);
+    };
+
+    // Multiple structs in interface
+    interface MultiStruct {
+        struct Data {
+            long id_;
+        };
+
+        struct Config {
+            string mode;
+            long timeout;
+        };
+
+        Data get_data();
+        Config get_config();
+    };
+
+    // Nested modules and interfaces
+    module nested {
+        interface NestedInterface {
+            struct NestedStruct {
+                double value;
+            };
+
+            NestedStruct process();
+        };
+    };
+
+    // Using interface-scoped struct outside
+    struct UsesInterfaceStruct {
+        Container::InnerStruct inner;
+        MultiStruct::Data data;
+    };
+
+    // Enum in interface
+    interface WithEnum {
+        enum Status {
+            OK,
+            ERROR,
+            PENDING
+        };
+
+        Status get_status();
+    };
+
+    // Union in interface
+    interface WithUnion {
+        union Result switch (long) {
+            case 0: long error_code;
+            case 1: string success_msg;
+        };
+
+        Result execute();
+    };
+
+    // Typedef in interface
+    interface WithTypedef {
+        typedef sequence<long> LongSeq;
+
+        LongSeq get_numbers();
+    };
+
+    // Constant in interface
+    interface WithConst {
+        const long MAX_SIZE = 1000;
+
+        struct BoundedData {
+            long data[MAX_SIZE];
+        };
+    };
+
+    // Exception in interface
+    interface WithException {
+        exception NotFound {
+            string message;
+        };
+
+        long find(in string key) raises (NotFound);
+    };
+
+    // Complex interface with all types
+    interface Complex {
+        struct Data {
+            long id_;
+        };
+
+        enum Mode {
+            READ,
+            WRITE
+        };
+
+        union Value switch (Mode) {
+            case READ: Data read_data;
+            case WRITE: string write_data;
+        };
+
+        typedef sequence<Data> MyDataSeq;
+
+        const long VERSION = 1;
+
+        exception InvalidMode {
+            Mode mode;
+        };
+
+        Value process(in Mode m) raises (InvalidMode);
+    };
+};

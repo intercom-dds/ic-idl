@@ -1,4 +1,4 @@
-# Copyright 2024 KONGSBERG
+# Copyright 2026 KONGSBERG
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions are met:
@@ -14,7 +14,7 @@
 #    may be used to endorse or promote products derived from this software
 #    without specific prior written permission.
 #
-# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS “AS IS” AND
+# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
 # ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
 # WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
 # DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
@@ -25,11 +25,23 @@
 # OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-**/__pycache__
-**/target
-*/**/Cargo.lock
-*.orig
-*.new
-.jj
-.worktrees
-uv.lock
+import json
+from pathlib import Path
+
+import pytest
+
+from conftest import make_output_dir, run_codegen
+
+
+@pytest.fixture
+def json_output_dir(request: pytest.FixtureRequest) -> Path:
+    return make_output_dir(request, "json")
+
+
+def test_json(idl_file: Path, idl_compiler: Path, json_output_dir: Path) -> None:
+    json_files = run_codegen(idl_compiler, idl_file, json_output_dir, "json-out")
+    for json_file in json_files:
+        try:
+            json.loads(json_file.read_text())
+        except json.JSONDecodeError as e:
+            raise AssertionError(f"JSON parse failed for {json_file.name}: {e}")

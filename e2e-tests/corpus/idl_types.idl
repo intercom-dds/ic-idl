@@ -1,0 +1,803 @@
+// Copyright 2025 KONGSBERG
+//
+// Redistribution and use in source and binary forms, with or without
+// modification, are permitted provided that the following conditions are met:
+//
+// 1. Redistributions of source code must retain the above copyright notice,
+//    this list of conditions and the following disclaimer.
+//
+// 2. Redistributions in binary form must reproduce the above copyright notice,
+//    this list of conditions and the following disclaimer in the documentation
+//    and/or other materials provided with the distribution.
+//
+// 3. Neither the name of the copyright holder nor the names of its contributors
+//    may be used to endorse or promote products derived from this software
+//    without specific prior written permission.
+//
+// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS “AS IS” AND
+// ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+// WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+// DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
+// FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+// DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+// SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+// CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+// OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+// OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+#ifndef IDLTYPES_IDL
+#define IDLTYPES_IDL
+
+module IdlTypes
+{
+   struct NoKey
+   {
+     long value;
+   };
+
+   struct ImplicitKey
+   {
+      @key NoKey keyValue;
+   };
+
+   struct PartialKey
+   {
+     @key long key;
+     long value;
+   };
+
+   struct ExplicitKey
+   {
+      @key PartialKey keyValue;
+   };
+
+   struct NothingHere {};
+
+   struct EmptyMember
+   {
+      NothingHere value;
+   };
+
+   // Test that a struct inside an interface does not generate invalid code
+   module qux {
+     interface quux {
+       struct zork {
+         long a;
+       };
+     };
+   };
+
+   // create aliases for the IDL 'basic' types.
+   typedef string             DdsString;
+   typedef string<12>         DdsString12;
+   typedef wstring            DdsWString;
+   typedef wstring<12>        DdsWString12;
+
+   typedef string             a_second_DdsString;
+   typedef string<12>         a_second_DdsString12;
+   typedef wstring            a_second_DdsWString;
+   typedef wstring<12>        a_second_DdsWString12;
+
+   struct Primitives
+   {
+      @key short          ss;
+      unsigned short      us;
+      long                sl;
+      unsigned long       ul;
+      long long           sll;
+      unsigned long long  ull;
+      float               f;
+
+      double              d;
+      //long double         ld;  // long double is not supported by intercom dds
+      char                c;
+      boolean             b;
+      wchar               wc;
+      octet               o;
+   };
+
+   typedef long                  LongA4[4];
+   typedef sequence<short>       ShortSeq;
+   typedef sequence<short,5>     ShortSeq5;
+   typedef map<short, string>    ShortStringMap;
+   typedef map<short, string,5>  ShortStringMap5;
+
+   typedef long                  a_second_LongA4[4];
+   typedef sequence<short>       a_second_ShortSeq;
+   typedef sequence<short,5>     a_second_ShortSeq5;
+   typedef map<short, string>    a_second_ShortStringMap;
+   typedef map<short, string,5>  a_second_ShortStringMap5;
+
+
+   @Extensibility(MUTABLE_EXTENSIBILITY)
+   struct ArrayTypes
+   {
+      @ID(1)  string                str;
+      @ID(2)  wstring               wstr;
+      @ID(3)  string<12>            str12;
+      @ID(4)  wstring<12>           wstr12;
+      @ID(5)  LongA4                longA4;
+      @ID(6)  ShortSeq              sSeq;
+      @ID(7)  ShortSeq5             sSeq5;
+      @ID(8)  ShortStringMap        sMap;
+      @ID(9)  ShortStringMap5       sMap5;
+      @ID(10) ShortSeq5             empty_sSeq5;
+   };
+
+   @nested
+   struct Other
+   {
+      // we expect these two values to be swapped in the transfer test
+      @optional long foo;
+      @optional long bar;
+   };
+
+   typedef LongA4 LongA4A4[4];
+
+
+   @nested
+   struct MoreArrayTypes
+   {
+      @ID(10) long                  lArray[10];
+      @ID(11) DdsString             dds_str;
+      @ID(12) DdsString12           dds_str12;
+      @ID(13) DdsWString            dds_wstr;
+      @ID(14) DdsWString12          dds_wstr12;
+      @ID(15) long l2DArray[10][10];
+      @ID(16) LongA4A4 lA4A4;
+   };
+
+   enum  MyEnum
+   {
+      MyEnum_e0 = 0,
+      MyEnum_e_invalid = -1,
+      MyEnum_e1 = 1,
+      MyEnum_e2
+   };
+
+   struct MyEnumStruct
+   {
+      MyEnum value;
+   };
+
+   typedef MyEnumStruct MyDerivedEnumStruct;
+
+   struct MyChildEnumStruct : MyEnumStruct
+   {
+      long newMember;
+   };
+
+   struct DerivedStructMemberStruct
+   {
+      MyDerivedEnumStruct MyDerivedStructMember;
+      MyChildEnumStruct MyChildStructMember;
+   };
+
+   @Extensibility(FINAL_EXTENSIBILITY)
+   struct MyString5
+   {
+      string<5> value;
+   };
+
+   typedef MyString5 MyString5Alias;
+
+   struct MyMap5
+   {
+      ShortStringMap5 value;
+   };
+
+#ifndef IDLTYPES_SKIP_BITSET
+   @BitSet @BitBound(7)
+   enum MyBitset
+   {
+      MY_BITSET_FLAG_1,
+      MY_BITSET_FLAG_2,
+      @Value(5)
+      MY_BITSET_FLAG_3,
+      MY_BITSET_FLAG_4
+   };
+
+   struct MyBitsetStruct
+   {
+      MyBitset value;
+   };
+#endif
+
+   /// Union
+   union MyUnion switch (short) //!< This is a union
+   {
+      case 3:
+         @optional sequence< long > sequenceType;
+      case 1:
+         /// This is the long type
+         long longType;
+      case 4: //!< This is case label 4
+         @optional long optionalLongType; //!< This is the optional long type
+      case 2:
+         boolean boolType;
+      case 133:
+          null;
+      case 134:
+          @optional string optionalString;
+      default:
+         @optional octet octetType;
+   };
+
+   union UnionWithExternalMember switch (boolean)
+   {
+      case true:
+         @external boolean really_true;
+      default:
+         null;
+   };
+
+   @bit_bound(2)
+   enum MyBoolean { FalseValue, TrueValue, @default_literal MaybeValue };
+
+   struct MyBooleanStruct
+   {
+      MyBoolean b1;
+      MyBoolean b2;
+      MyBoolean b3;
+      boolean arr[4];
+   };
+
+   union NoDefault switch(MyBoolean)
+   {
+      case MaybeValue:
+      case TrueValue:
+         string value;
+   };
+
+   struct TrickyAlignment
+   {
+      @non_serialized long notHere;
+      boolean myBool;
+      double myDouble;
+      MyBoolean myOtherBool;
+      MyBoolean myOtherBoolArray[2];
+      @optional double optionalDouble;
+      long long myLongLong;
+      boolean anotherBool;
+   };
+
+   struct TrickyAlignmentChild : TrickyAlignment
+   {
+      MyBoolean myThirdBool;
+   };
+
+   struct MyUnionStruct
+   {
+      MyUnion  value;
+   };
+
+   typedef MyUnionStruct MyDerivedUnionStruct;
+
+   struct MyChildUnionStruct : MyUnionStruct
+   {
+      long newMember;
+   };
+
+   module child_package
+   {
+      typedef long                  array_in_child[4];
+      typedef sequence<short>       sequence_in_child;
+      typedef sequence<short,5>     bounded_sequence_in_child;
+      typedef map<short, string>    map_in_child;
+      typedef map<short, string,5>  bounded_map_in_child;
+
+      struct foobar
+      {
+         @Optional child_package::array_in_child foo;
+         @Optional child_package::sequence_in_child bar;
+         @Optional child_package::bounded_sequence_in_child baz;
+         @Optional child_package::map_in_child qux;
+         @Optional child_package::bounded_map_in_child quux;
+      };
+   };
+
+   struct MyOptionalMemberStruct
+   {
+      @Optional string<5> anonymousBoundedString;
+      @Optional string unboundedString;
+      @Optional DdsString12 boundedString;
+      @Optional LongA4 arrayType;
+      @Optional sequence<short> anonymousSequence;
+      @Optional ShortSeq sequenceType;
+      @Optional sequence<short, 5> anonymousBoundedSequence;
+      @Optional ShortSeq5 boundedSequenceType;
+      // TODO: @Optional sequence<string<5> > anonymousSequenceofAnonymousBoundedString;
+   };
+
+
+   typedef long no_range;
+
+   const long foo_min=-7;
+
+   @Range(min=foo_min, max=13)
+   @Default(value=11)
+   typedef long foo;
+
+   @Range(min=-1.0, max=6.2831853070)
+   @Default(value=3.1415926535)
+   typedef float bar;
+
+   @Min(value=0.0)
+   @Max(3.1415926535)
+   @Default(value=3.1415926535/2.0)
+   typedef double baz;
+
+
+   @Range(min='a', max='z')
+   @Default(value='o')
+   typedef char lower_case;
+
+   enum quux
+   { quux_a, quux_b, quux_c, quux_d, quux_e, quux_f };
+
+
+   const string wubble = "wubble?";
+   @Default(value=wubble)
+   typedef string quuz;
+   const quuz wibble = "wibble?";
+
+
+   const foo XII = 12;
+   const bar I_LVI = 1.56;
+
+   // this constant now fails (as it should) in Ada, due to implementation of Min and Max annotations
+   const baz II_XXII = -2.22;
+
+   const lower_case D = 'd';
+   const quux E = quux_e;
+
+   const string icanhazcaek = "icanhazcaek?";
+
+   struct Ranged_And_Defaults
+   {
+      @Default(value=1337) long long1;
+      @Default(value=-420) long long2;
+      long long3;
+
+      @range(min=10, max=20) @default(17) long long4;
+
+
+      @Default(value=666.666) float float1;
+      @Default(value=-0.5) float float2;
+      float float4;
+
+      @Default(value=299792458.0) double double1;
+      @Default(value=-616.616) double double2;
+      double double4;
+
+      @Default(value=42) octet octet1;
+      octet octet2;
+
+      @Default(value='y') char char1;
+      char char2;
+
+      @Default(value='n') lower_case lower_case1;
+      @Default(value=D) lower_case lower_case2;
+      lower_case lower_case3;
+      @range(min='s', max='t') @default(value='s') lower_case lower_case4;
+
+      @Default(value=13) foo foo1;
+      @Default(value=XII) foo foo2;
+      foo foo3;
+      foo foo4[4];
+
+      @Default(value=true) boolean boo1;
+      boolean boo2;
+
+      @Default(value=0.17) bar bar1;
+      @Default(value=-0.7) bar bar2;
+      @Default(value=I_LVI) bar bar3;
+      bar bar4;
+
+      @Default(value=0.42) baz baz1;
+      @Default(value=-42.0) baz baz2;
+      @Default(value=II_XXII) baz baz3;
+      baz baz4;
+
+      @Default(value=quux_b) quux quux1;
+      @Default(value=E) quux quux2;
+      quux quux3;
+      quux quux4;
+
+
+      // string literals in annotations doesn't work in cidl.
+      // However, applying a const string works.
+      // @Default(value="cake is good!") string cake;
+      @Default(value=icanhazcaek) string caek;
+
+      @Default(value=wibble) quuz quuz1;
+      // string literals in annotations doesn't work in cidl.
+      // However, applying a const string works.
+      @Default(value="wobble") quuz quuz2;
+      quuz quuz3;
+
+   };
+
+
+   module toto {
+
+     @min(value=-100)
+     typedef long titi;
+
+     // Use titi directly without redefining bounds
+     typedef titi tata;
+
+     struct tutu {
+       tata wombat;
+     };
+
+
+     @range(min=-42,max=42)
+     typedef long wibble;
+
+     // Use wibble directly without redefining bounds
+     typedef wibble wabble;
+
+     struct wobble {
+       wabble wombat;
+     };
+
+
+     @min(value=-100)
+     @max(value=100)
+     typedef long fiffle;
+
+     // Use fiffle directly without redefining bounds
+     typedef fiffle faffle;
+
+     struct foffle {
+       faffle wombat;
+     };
+
+   };
+
+
+   module xtypes {
+      @final
+      struct MyStructFinal {
+         @id(1) @must_understand long x;
+         @id(2) long long y;
+         @id(5) @optional short z;
+         @id(7) string<2> str;
+      };
+      @appendable
+      struct MyStructAppendable {
+         @id(1) @must_understand long x;
+         @id(2) long long y;
+         @id(5) @optional short z;
+         @id(7) string<2> str;
+      };
+      @mutable
+      struct MyStructMutable {
+         @id(1) @must_understand long x;
+         @id(2) long long y;
+         @id(5) @optional short z;
+         @id(7) string<2> str;
+      };
+      @mutable
+      struct MyStructMutableReordered {
+         @id(7) string<2> str;
+         @id(1) @must_understand long x;
+         @id(5) @optional short z;
+         @id(2) long long y;
+      };
+      @appendable
+      struct MyStructAppendableExtended {
+         @id(1) @must_understand long x;
+         @id(2) long long y;
+         @id(5) @optional short z;
+         @id(7) string<2> str;
+         @id(8) string<2> str2;
+      };
+
+   };
+
+   struct MyStruct {};
+
+   @nested
+   struct MyNestedStruct {};
+
+   bitmask MyBitmask {
+      FLAG_1
+   };
+
+   exception MyException {};
+
+   valuetype MyValuetype  {
+       boolean my_function();
+   };
+
+    union AlmostExhausted switch(octet) {
+        case 0:
+        case 1:
+        case 2:
+        case 3:
+        case 4:
+        case 5:
+        case 6:
+        case 7:
+        case 8:
+        case 9:
+        case 10:
+        case 11:
+        case 12:
+        case 13:
+        case 14:
+        case 15:
+        case 16:
+        case 17:
+        case 18:
+        case 19:
+        case 20:
+        case 21:
+        case 22:
+        case 23:
+        case 24:
+        case 25:
+        case 26:
+        case 27:
+        case 28:
+        case 29:
+        case 30:
+        case 31:
+        case 32:
+        case 33:
+        case 34:
+        case 35:
+        case 36:
+        case 37:
+        case 38:
+        case 39:
+        case 40:
+        case 41:
+        case 42:
+        case 43:
+        case 44:
+        case 45:
+        case 46:
+        case 47:
+        case 48:
+        case 49:
+        case 50:
+        case 51:
+        case 52:
+        case 53:
+        case 54:
+        case 55:
+        case 56:
+        case 57:
+        case 58:
+        case 59:
+        case 60:
+        case 61:
+        case 62:
+        case 63:
+        case 64:
+        case 65:
+        case 66:
+        case 67:
+        case 68:
+        case 69:
+        case 70:
+        case 71:
+        case 72:
+        case 73:
+        case 74:
+        case 75:
+        case 76:
+        case 77:
+        case 78:
+        case 79:
+        case 80:
+        case 81:
+        case 82:
+        case 83:
+        case 84:
+        case 85:
+        case 86:
+        case 87:
+        case 88:
+        case 89:
+        case 90:
+        case 91:
+        case 92:
+        case 93:
+        case 94:
+        case 95:
+        case 96:
+        case 97:
+        case 98:
+        case 99:
+        case 100:
+        case 101:
+        case 102:
+        case 103:
+        case 104:
+        case 105:
+        case 106:
+        case 107:
+        case 108:
+        case 109:
+        case 110:
+        case 111:
+        case 112:
+        case 113:
+        case 114:
+        case 115:
+        case 116:
+        case 117:
+        case 118:
+        case 119:
+        case 120:
+        case 121:
+        case 122:
+        case 123:
+        case 124:
+        case 125:
+        case 126:
+        case 127:
+        case 128:
+        case 129:
+        case 130:
+        case 131:
+        case 132:
+        case 133:
+        case 134:
+        case 135:
+        case 136:
+        case 137:
+        case 138:
+        case 139:
+        case 140:
+        case 141:
+        case 142:
+        case 143:
+        case 144:
+        case 145:
+        case 146:
+        case 147:
+        case 148:
+        case 149:
+        case 150:
+        case 151:
+        case 152:
+        case 153:
+        case 154:
+        case 155:
+        case 156:
+        case 157:
+        case 158:
+        case 159:
+        case 160:
+        case 161:
+        case 162:
+        case 163:
+        case 164:
+        case 165:
+        case 166:
+        case 167:
+        case 168:
+        case 169:
+        case 170:
+        case 171:
+        case 172:
+        case 173:
+        case 174:
+        case 175:
+        case 176:
+        case 177:
+        case 178:
+        case 179:
+        case 180:
+        case 181:
+        case 182:
+        case 183:
+        case 184:
+        case 185:
+        case 186:
+        case 187:
+        case 188:
+        case 189:
+        case 190:
+        case 191:
+        case 192:
+        case 193:
+        case 194:
+        case 195:
+        case 196:
+        case 197:
+        case 198:
+        case 199:
+        case 200:
+        case 201:
+        case 202:
+        case 203:
+        case 204:
+        case 205:
+        case 206:
+        case 207:
+        case 208:
+        case 209:
+        case 210:
+        case 211:
+        case 212:
+        case 213:
+        case 214:
+        case 215:
+        case 216:
+        case 217:
+        case 218:
+        case 219:
+        case 220:
+        case 221:
+        case 222:
+        case 223:
+        case 224:
+        case 225:
+        case 226:
+        case 227:
+        case 228:
+        case 229:
+        case 230:
+        case 231:
+        case 232:
+        case 233:
+        case 234:
+        case 235:
+        case 236:
+        case 237:
+        case 238:
+        case 239:
+        case 240:
+        case 241:
+        case 242:
+        case 243:
+        case 244:
+        case 245:
+        case 246:
+        case 247:
+        case 248:
+        case 249:
+        case 250:
+        case 251:
+        case 252:
+        case 253:
+        case 254:
+            string my_str;
+        default:
+            string other;
+    };
+
+    union AutoIdSequential switch(octet) {
+    case 0:
+        string member1;
+    case 1:
+        string member2;
+    case 9:
+        string member3;
+    };
+
+    @autoid(HASH)
+    union AutoIdHash switch(octet) {
+    case 0:
+        string member1;
+    case 1:
+        string member2;
+    case 9:
+        string member3;
+    };
+
+    @autoid(HASH)
+    struct AutoIdWithHashId {
+        string color;
+        @hashid("shapesize") long size;
+    };
+};
+
+
+#endif

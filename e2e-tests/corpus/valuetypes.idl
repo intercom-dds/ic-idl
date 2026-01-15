@@ -1,0 +1,125 @@
+// Copyright 2025 KONGSBERG
+//
+// Redistribution and use in source and binary forms, with or without
+// modification, are permitted provided that the following conditions are met:
+//
+// 1. Redistributions of source code must retain the above copyright notice,
+//    this list of conditions and the following disclaimer.
+//
+// 2. Redistributions in binary form must reproduce the above copyright notice,
+//    this list of conditions and the following disclaimer in the documentation
+//    and/or other materials provided with the distribution.
+//
+// 3. Neither the name of the copyright holder nor the names of its contributors
+//    may be used to endorse or promote products derived from this software
+//    without specific prior written permission.
+//
+// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
+// ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+// WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+// DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
+// FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+// DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+// SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+// CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+// OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+// OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+// Valuetype tests
+
+module valuetypes {
+    // Simple valuetype
+    valuetype SimpleValue {
+        public long id_;
+        public string name;
+    };
+
+    // Valuetype with private members
+    valuetype MixedValue {
+        public long public_field;
+        private string private_field;
+        public double another_public;
+    };
+
+    // Valuetype inheritance
+    valuetype BaseValue {
+        public long base_id;
+    };
+
+    valuetype DerivedValue : BaseValue {
+        public string derived_name;
+    };
+
+    // Multi-level valuetype inheritance
+    valuetype Level1Value {
+        public long l1;
+    };
+
+    valuetype Level2Value : Level1Value {
+        public long l2;
+    };
+
+    valuetype Level3Value : Level2Value {
+        public long l3;
+    };
+
+    // Valuetype with sequences
+    valuetype CollectionValue {
+        public sequence<long> numbers;
+        public sequence<string, 10> names;
+    };
+
+    // Valuetype with struct member
+    struct EmbeddedStruct {
+        long x;
+        long y;
+    };
+
+    valuetype ValueWithStruct {
+        public EmbeddedStruct embedded;
+        public long id_;
+    };
+
+    valuetype AbstractValue {
+        public long id_;
+    };
+
+    valuetype ConcreteValue : AbstractValue {
+        public string name;
+    };
+
+    // Valuetype with custom modifier (not supported, removing)
+    valuetype CustomLikeValue {
+        public long value;
+    };
+
+    // Valuetype with all primitive types
+    valuetype AllTypes {
+        public short s;
+        public long l;
+        public long long ll;
+        public float f;
+        public double d;
+        public boolean b;
+        public char c;
+        public octet o;
+        public string str;
+    };
+
+    // Struct containing valuetype
+    struct ValueContainer {
+        SimpleValue val;
+        long id_;
+    };
+
+    // Sequence of valuetypes
+    struct ValueSequence {
+        sequence<SimpleValue> values;
+    };
+
+    // Valuetype with factory (custom init)
+    valuetype FactoryValue {
+        public long id_;
+        public string name;
+    };
+};

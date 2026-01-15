@@ -1,0 +1,744 @@
+// Copyright 2025 KONGSBERG
+//
+// Redistribution and use in source and binary forms, with or without
+// modification, are permitted provided that the following conditions are met:
+//
+// 1. Redistributions of source code must retain the above copyright notice,
+//    this list of conditions and the following disclaimer.
+//
+// 2. Redistributions in binary form must reproduce the above copyright notice,
+//    this list of conditions and the following disclaimer in the documentation
+//    and/or other materials provided with the distribution.
+//
+// 3. Neither the name of the copyright holder nor the names of its contributors
+//    may be used to endorse or promote products derived from this software
+//    without specific prior written permission.
+//
+// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS “AS IS” AND
+// ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+// WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+// DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
+// FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+// DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+// SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+// CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+// OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+// OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+#pragma once
+
+module all_keywords {
+
+    module idl {
+        // test use of all IDL keywords
+        // must be prefixed with _
+        struct idl_keywords {
+            long _abstract;
+            long _any;
+            long _alias;
+            long _attribute;
+            long _bitfield;
+            long _bitmask;
+            long _bitset;
+            long _boolean;
+            long _case;
+            long _char;
+            long _component;
+            long _connector;
+            long _const;
+            long _consumes;
+            long _context;
+            long _custom;
+            long _default;
+            long _double;
+            long _exception;
+            long _emits;
+            long _enum;
+            long _eventtype;
+            long _factory;
+            long _false;
+            long _finder;
+            long _fixed;
+            long _float;
+            long _getraises;
+            long _home;
+            long _import;
+            long _in;
+            long _inout;
+            long _interface;
+            long _local;
+            long _long;
+            long _manages;
+            long _map;
+            long _mirrorport;
+            long _module;
+            long _multiple;
+            long _native;
+            long _object;
+            long _octet;
+            long _oneway;
+            long _out;
+            long _primarykey;
+            long _private;
+            long _port;
+            long _porttype;
+            long _provides;
+            long _public;
+            long _publishes;
+            long _raises;
+            long _readonly;
+            long _setraises;
+            long _sequence;
+            long _short;
+            long _string;
+            long _struct;
+            long _supports;
+            long _switch;
+            long _true;
+            long _truncatable;
+            long _typedef;
+            long _typeid;
+            long _typename;
+            long _typeprefix;
+            long _unsigned;
+            long _union;
+            long _uses;
+            long _valuebase;
+            long _valuetype;
+            long _void;
+            long _wchar;
+            long _wstring;
+            long _int8;
+            long _uint8;
+            long _int16;
+            long _int32;
+            long _int64;
+            long _uint16;
+            long _uint32;
+            long _uint64;
+        };
+    };
+
+    module ada {
+        // test use of all Ada keywords
+        // any prefixed with _ is also IDL keyword or reserved by CIDL...
+        struct ada_keywords {
+            long abort;
+            long abs;
+            long _abstract;
+            long accept;
+            long access;
+            long aliased;
+            long all;
+            long and;
+            long array;
+            long at;
+
+            long begin;
+            long body;
+
+            long _case;
+            long constant;
+
+            long declare;
+            long delay;
+            long delta;
+            long digits;
+            long do;
+
+            long else;
+            long elsif;
+            long end;
+            long entry;
+            long _exception;
+            long exit;
+
+            long for;
+            long function;
+
+            long generic;
+            long goto;
+
+            long if;
+            long _in;
+            long _interface;
+            long is;
+
+            long limited;
+            long loop;
+
+            long mod;
+
+            long new;
+            long not ;
+            long _null;
+
+            long of;
+            long or ;
+            long others;
+            long _out;
+            long overriding;
+
+            long package;
+            long parallel;
+            long _pragma;
+            long _private;
+            long procedure;
+            long protected;
+
+            long raise;
+            long range;
+            long record;
+            long rem;
+            long renames;
+            long requeue;
+            long return;
+            long reverse;
+
+            long select;
+            long separate;
+            long some;
+            long subtype;
+            long synchronized;
+
+            long tagged;
+            long task;
+            long terminate;
+            long then;
+            long type;
+
+            long until;
+            long use;
+
+            long when;
+            long while;
+            long with;
+
+            long xor ;
+        };
+    };  // ada
+
+    module cpp {
+        // test use of all CPP keywords
+        // any prefixed with _ is also IDL keyword or reserved by CIDL...
+        struct cpp_keywords {
+            long alignas;
+            long alignof;
+            long and;
+            long and_eq;
+            long asm;
+            long atomic_cancel;
+            long atomic_commit;
+            long atomic_noexcept;
+            long auto;
+            long bitand;
+            long bitor;
+            long bool;
+            long break;
+            long _case;
+            long catch;
+            long _char;
+            long char16_t;
+            long char32_t;
+            long char8_t;
+            long class;
+            long co_await;
+            long co_return;
+            long co_yield;
+            long compl;
+            long concept;
+            long _const;
+            long const_cast;
+            long consteval;
+            long constexpr;
+            long constinit;
+            long continue;
+            long decltype;
+            long _default;
+            long delete;
+            long do;
+            long _double;
+            long dynamic_cast;
+            long else;
+            long _enum;
+            long explicit;
+            long export;
+            long extern;
+            long _false;
+            long _float;
+            long for;
+            long friend;
+            long goto;
+            long if;
+            long _import;
+            long inline;
+            long inspect;
+            long int;
+            long _long;
+            long _module;
+            long mutable;
+            long namespace;
+            long new;
+            long noexcept;
+            long not;
+            long not_eq;
+            long nullptr;
+            long operator;
+            long or;
+            long or_eq;
+            long _private;
+            long protected;
+            long _public;
+            long register;
+            long reinterpret_cast;
+            long really;
+            long reflexpr;
+            long requires;
+            long return;
+            long _short;
+            long signed;
+            long sizeof;
+            long static;
+            long static_assert;
+            long static_cast;
+            long _struct;
+            long _switch;
+            long synchronized;
+            long template;
+            long this;
+            long thread_local;
+            long throw;
+            long throws;
+            long _true;
+            long try;
+            long _typedef;
+            long _typeid;
+            long _typename;
+            long _union;
+            long _unsigned;
+            long using;
+            long virtual;
+            long _void;
+            long volatile;
+            long wchar_t;
+            long while;
+            long xor;
+            long xor_eq;
+            long typeof;
+            long assert;
+            long final;
+            long override;
+            long transaction_safe;
+            long transaction_safe_dynamic;
+        };
+    };  // cpp
+
+    module java {
+        // test use of all Java keywords
+        // any prefixed with _ is also IDL keyword or reserved by CIDL...
+        struct java_keywords {
+            long _abstract;
+            long assert;
+            long _default;
+            long if;
+            long _private;
+            long throw;
+            long _boolean;
+            long do;
+            long implements;
+            long protected;
+            long throws;
+            long break;
+            long _double;
+            long _import;
+            long _public;
+            long transient;
+            long byte;
+            long else;
+            long instanceof ;
+            long return;
+            long try;
+            long _case;
+            long extends;
+            long int;
+            long _short;
+            long _void;
+            long catch;
+            long final;
+            long _interface;
+            long static;
+            long volatile;
+            long _char;
+            long finally;
+            long _long;
+            long super;
+            long while;
+            long class;
+            long _float;
+            long _native;
+            long _switch;
+            long _const;
+            long for;
+            long new;
+            long synchronized;
+            long continue;
+            long goto;
+            long package;
+            long this;
+            long _true;
+            long _false;
+            long _null;
+            long clone;
+            long equals;
+            long finalize;
+            long getClass;
+            long hashCode;
+            long notify;
+            long notifyAll;
+            long toString;
+            long wait;
+        };
+    };  // java
+
+    module cs {
+        // test use of all C# keywords
+        // any prefixed with _ is also IDL keyword or reserved by CIDL...
+        struct cs_keywords {
+            long _abstract;
+            long as;
+            long base;
+            long bool;
+            long break;
+            long byte;
+            long _case;
+            long catch;
+            long _char;
+            long checked;
+            long class;
+            long _const;
+            long continue;
+            long decimal;
+            long _default;
+            long delegate;
+            long do;
+            long _double;
+            long else;
+            long _enum;
+            long event;
+            long explicit;
+            long extern;
+            long _false;
+            long finally;
+            long _fixed;
+            long _float;
+            long for;
+            long foreach;
+            long goto;
+            long if;
+            long implicit;
+            long _in;
+            long int;
+            long _interface;
+            long internal;
+            long is;
+            long lock;
+            long _long;
+            long namespace;
+            long new;
+            long _null;
+            long _object;
+            long operator;
+            long _out;
+            long override;
+            long params;
+            long _private;
+            long protected;
+            long _public;
+            long _readonly;
+            long ref;
+            long return;
+            long sbyte;
+            long sealed;
+            long _short;
+            long sizeof;
+            long stackalloc;
+            long static;
+            long _string;
+            long _struct;
+            long _switch;
+            long this;
+            long throw;
+            long _true;
+            long try;
+            long typeof;
+            long uint;
+            long ulong;
+            long unchecked;
+            long unsafe;
+            long ushort;
+            long using;
+            long virtual;
+            long _void;
+            long volatile;
+            long while;
+        };
+    };  // cs
+
+    module python {
+        // test use of all Python keywords
+        // any prefixed with _ is also IDL keyword or reserved by CIDL...
+        struct python_keywords {
+            long and;
+            long as;
+            long assert;
+            long break;
+            long class;
+            long continue;
+            long def;
+            long del;
+            long elif;
+            long else;
+            long except;
+            long _False;
+            long finally;
+            long for;
+            long from;
+            long global;
+            long if;
+            long _import;
+            long _in;
+            long is;
+            long lambda;
+            long None;
+            long nonlocal;
+            long not ;
+            long or ;
+            long pass;
+            long raise;
+            long return;
+            long _True;
+            long try;
+            long while;
+            long with;
+            long yield;
+            long abs;
+            long aiter;
+            long all;
+            long _any;
+            long anext;
+            long ascii;
+            long bin;
+            long bool;
+            long breakpoint;
+            long bytearray;
+            long bytes;
+            long callable;
+            long chr;
+            long classmethod;
+            long compile;
+            long complex;
+            long delattr;
+            long dict;
+            long dir;
+            long divmod;
+            long enumerate;
+            long eval;
+            long exec;
+            long filter;
+            long _float;
+            long format;
+            long frozenset;
+            long getattr;
+            long globals;
+            long hasattr;
+            long hash;
+            long help;
+            long hex;
+            long id;
+            long input;
+            long int;
+            long isinstance;
+            long issubclass;
+            long iter;
+            long len;
+            long list;
+            long locals;
+            long _map;
+            long max;
+            long memoryview;
+            long min;
+            long next;
+            long _object;
+            long oct;
+            long open;
+            long ord;
+            long pow;
+            long print;
+            long property;
+            long range;
+            long repr;
+            long reversed;
+            long round;
+            long set;
+            long setattr;
+            long slice;
+            long sorted;
+            long staticmethod;
+            long str;
+            long sum;
+            long super;
+            long tuple;
+            long type;
+            long vars;
+            long zip;
+        };
+    };  // python
+
+    module rust {
+        // test use of all Rust keywords
+        // any prefixed with _ is also IDL keyword or reserved by CIDL...
+        struct rust_keywords {
+            long as;
+            long break;
+            long _const;
+            long continue;
+            long crate;
+            long else;
+            long _enum;
+            long extern;
+            long _false;
+            long fn;
+            long for;
+            long if;
+            long impl;
+            long _in;
+            long let;
+            long loop;
+            long match;
+            long mod;
+            long move;
+            long mut;
+            long pub;
+            long ref;
+            long return;
+            long self;
+            // long Self; // already defined in lowercase
+            long static;
+            long _struct;
+            long super;
+            long trait;
+            long _true;
+            long type;
+            long unsafe;
+            long use;
+            long where;
+            long while;
+            long async;
+            long await;
+            long dyn;
+            long _abstract;
+            long become;
+            long box;
+            long do;
+            long final;
+            long macro;
+            long override;
+            long priv;
+            long typeof;
+            long unsized;
+            long virtual;
+            long yield;
+            long try;
+            long _String;
+            long Option;
+            // long Box; // already defined in lowercase
+            long Vec;
+        };
+    };  // rust
+
+    module proto {
+        // test use of all proto keywords
+        // any prefixed with _ is also IDL keyword or reserved by CIDL...
+        struct proto_keywords {
+            long syntax;
+            long _map;
+            long _int32;
+            long _import;
+            long extensions;
+            long _int64;
+            long weak;
+            long reserved;
+            long _uint32;
+            long _public;
+            long rpc;
+            long _uint64;
+            long package;
+            long stream;
+            long sint32;
+            long option;
+            long returns;
+            long sint64;
+            long inf;
+            long to;
+            long fixed32;
+            long nan;
+            long max;
+            long fixed64;
+            long message;
+            long repeated;
+            long sfixed32;
+            long _enum;
+            long optional;
+            long sfixed64;
+            long service;
+            long required;
+            long bool;
+            long extend;
+            long _string;
+            long _float;
+            long group;
+            long bytes;
+            long _double;
+            long oneof;
+        };
+    };
+
+    // also try some other constructs, using "while", "if", "else" and "for" as
+    // these are keywords in most languages, but not in IDL
+    module foo {
+        typedef short else;
+        typedef sequence<else> if;
+      typedef sequence<else, 10> for;
+    };
+
+    module bar {
+      typedef short else;
+      typedef map<else, short> if;
+      typedef map<short, else, 10> for;
+    };
+
+    module baz {
+      typedef short else;
+      typedef else if[3][3];
+    };
+
+    module qux {
+      typedef string if;
+      typedef string<10> for;
+    };
+
+    module if {
+      typedef string while;
+
+      exception else {
+         string for;
+      };
+
+      @DDSService
+      interface for
+      {
+         attribute while for setraises (else);
+         while if(inout while for) raises(else);
+      };
+    };
+};

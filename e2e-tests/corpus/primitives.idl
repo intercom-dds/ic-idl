@@ -1,0 +1,84 @@
+// Copyright 2025 KONGSBERG
+//
+// Redistribution and use in source and binary forms, with or without
+// modification, are permitted provided that the following conditions are met:
+//
+// 1. Redistributions of source code must retain the above copyright notice,
+//    this list of conditions and the following disclaimer.
+//
+// 2. Redistributions in binary form must reproduce the above copyright notice,
+//    this list of conditions and the following disclaimer in the documentation
+//    and/or other materials provided with the distribution.
+//
+// 3. Neither the name of the copyright holder nor the names of its contributors
+//    may be used to endorse or promote products derived from this software
+//    without specific prior written permission.
+//
+// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
+// ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+// WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+// DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
+// FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+// DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+// SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+// CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+// OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+// OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+// Comprehensive test for all primitive types
+
+module primitive_types {
+    // Integer types
+    struct IntegerTypes {
+        short s;
+        unsigned short us;
+        long l;
+        unsigned long ul;
+        long long ll;
+        unsigned long long ull;
+        int8 i8;
+        uint8 ui8;
+        int16 i16;
+        uint16 ui16;
+        int32 i32;
+        uint32 ui32;
+        int64 i64;
+        uint64 ui64;
+    };
+
+    // Floating point types
+    struct FloatingTypes {
+        float f;
+        double d;
+        long double ld;
+    };
+
+    // Character and boolean types
+    struct CharBoolTypes {
+        char c;
+        wchar wc;
+        boolean b;
+        octet o;
+    };
+
+    // String types
+    struct StringTypes {
+        string unbounded_str;
+        string<256> bounded_str;
+        wstring unbounded_wstr;
+        wstring<128> bounded_wstr;
+    };
+
+    // All primitives in one struct
+    struct AllPrimitives {
+        boolean flag;
+        char letter;
+        octet byte;
+        short small_num;
+        long num;
+        long long big_num;
+        float decimal;
+        double precise;
+        string text;
+    };
+};

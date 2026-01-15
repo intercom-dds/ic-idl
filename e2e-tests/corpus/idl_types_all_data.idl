@@ -1,0 +1,110 @@
+// Copyright 2025 KONGSBERG
+//
+// Redistribution and use in source and binary forms, with or without
+// modification, are permitted provided that the following conditions are met:
+//
+// 1. Redistributions of source code must retain the above copyright notice,
+//    this list of conditions and the following disclaimer.
+//
+// 2. Redistributions in binary form must reproduce the above copyright notice,
+//    this list of conditions and the following disclaimer in the documentation
+//    and/or other materials provided with the distribution.
+//
+// 3. Neither the name of the copyright holder nor the names of its contributors
+//    may be used to endorse or promote products derived from this software
+//    without specific prior written permission.
+//
+// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS “AS IS” AND
+// ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+// WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+// DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
+// FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+// DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+// SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+// CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+// OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+// OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+#ifndef IDLTYPES2_ALLDATA_IDL
+#define IDLTYPES2_ALLDATA_IDL
+
+#include "idl_types.idl"
+
+module IdlTypeSheep
+{
+   struct SheepRegister
+   {
+      long sheepNumber;
+      short numberOfLambs;
+      char instanceLetter;
+   };
+   typedef SheepRegister Cloud;
+   typedef long MyKey;
+   typedef map<MyKey, Cloud> CloudMap;
+   typedef sequence<Cloud> CloudSequence;
+   typedef Cloud CloudArray;
+   struct Heaven
+   {
+      Cloud one_cloud;
+      sequence<SheepRegister> seq_clouds_no_alias;
+      CloudSequence seq_clouds_one_dim;
+      sequence<CloudSequence> seq_clouds_two_dim;
+      sequence<sequence<SheepRegister>> seq_clouds_two_dim_no_alias;
+      long indices[3][2][3];
+      @key CloudMap map_clouds;
+      map<MyKey, Cloud> other_clouds;
+      @key MyKey my_key;
+   };
+};
+
+module IdlTypes2
+{
+   enum SenderId // Ada limitation: cannot use module at the same scope as struct
+   {
+      senderIdCpp,
+      senderIdForeignLanguage
+   };
+
+   // Better to be roughly right than precisely wrong
+   const float FloatPi = 22.0/7.0;
+   const double DoublePi = 22.0/7.0;
+
+   @Extensibility(MUTABLE_EXTENSIBILITY)
+   struct AllData
+   {
+      @ID(1) IdlTypes::Primitives      primitives;
+      @ID(2) IdlTypes::ArrayTypes      arrayTypes;
+      @ID(3) IdlTypes::MyEnum          myEnum;
+
+#ifndef IDLTYPES_SKIP_BITSET
+      @ID(4) IdlTypes::MyBitsetStruct  myBitsetStruct;
+#endif
+
+      @ID(5) IdlTypes::MyUnion         myUnion;
+
+      @ID(6) SenderId                  senderId;
+
+      IdlTypeSheep::Heaven             seventh;
+      @ID(8) IdlTypes::Other           other;
+      IdlTypes::TrickyAlignment        trickyAlignment;
+      @optional IdlTypes::TrickyAlignment optionalTrickyAlignment;
+      sequence<IdlTypes::TrickyAlignment> seqTrickyAlignment;
+      IdlTypes::NoDefault              noDefaultUnion;
+      @default(true) boolean           myLastBool;
+      @range(min=-FloatPi,max=FloatPi)   float  floatAngle;
+      @range(min=-DoublePi,max=DoublePi) double doubleAngle;
+   };
+
+   struct MoreAllData
+   {
+      IdlTypes::DerivedStructMemberStruct member1;
+      IdlTypes::MyChildUnionStruct member2;
+      IdlTypes::MoreArrayTypes member3;
+      IdlTypes::MyOptionalMemberStruct member4;
+      IdlTypes::DdsWString12 member5;
+      IdlTypes::Ranged_And_Defaults member6;
+      IdlTypes::child_package::foobar member7;
+   };
+
+};
+#endif

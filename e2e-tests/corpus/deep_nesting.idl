@@ -1,0 +1,216 @@
+// Copyright 2025 KONGSBERG
+//
+// Redistribution and use in source and binary forms, with or without
+// modification, are permitted provided that the following conditions are met:
+//
+// 1. Redistributions of source code must retain the above copyright notice,
+//    this list of conditions and the following disclaimer.
+//
+// 2. Redistributions in binary form must reproduce the above copyright notice,
+//    this list of conditions and the following disclaimer in the documentation
+//    and/or other materials provided with the distribution.
+//
+// 3. Neither the name of the copyright holder nor the names of its contributors
+//    may be used to endorse or promote products derived from this software
+//    without specific prior written permission.
+//
+// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
+// ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+// WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+// DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
+// FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+// DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+// SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+// CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+// OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+// OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+// Deep nesting tests for typedefs and constants across scopes
+
+const long GLOBAL_BASE = 10;
+const long GLOBAL_DERIVED = GLOBAL_BASE * 2;
+const long GLOBAL_DEEP = GLOBAL_DERIVED + 5;
+
+typedef long GlobalType0;
+typedef GlobalType0 GlobalType1;
+typedef GlobalType1 GlobalType2;
+
+module deep_nesting {
+    const long MODULE_BASE = GLOBAL_BASE * 10;
+    const long MODULE_DERIVED = MODULE_BASE + GLOBAL_DERIVED;
+    const long MODULE_DEEP = MODULE_DERIVED * 2 + GLOBAL_DEEP;
+
+    typedef GlobalType2 ModuleType0;
+    typedef ModuleType0 ModuleType1;
+    typedef ModuleType1 ModuleType2;
+
+    module level1 {
+        const long LEVEL1_BASE = ::GLOBAL_BASE + MODULE_BASE;
+        const long LEVEL1_DERIVED = LEVEL1_BASE * deep_nesting::MODULE_DERIVED;
+        const long LEVEL1_DEEP = LEVEL1_DERIVED + ::GLOBAL_DEEP + deep_nesting::MODULE_DEEP;
+
+        typedef deep_nesting::ModuleType2 Level1Type0;
+        typedef Level1Type0 Level1Type1;
+        typedef Level1Type1 Level1Type2;
+
+        module level2 {
+            const long LEVEL2_BASE = level1::LEVEL1_BASE + 100;
+            const long LEVEL2_DERIVED = LEVEL2_BASE * level1::LEVEL1_DERIVED;
+            const long LEVEL2_DEEP = LEVEL2_DERIVED + level1::LEVEL1_DEEP;
+
+            typedef level1::Level1Type2 Level2Type0;
+            typedef Level2Type0 Level2Type1;
+            typedef Level2Type1 Level2Type2;
+
+            module level3 {
+                const long LEVEL3_BASE = ::GLOBAL_BASE + deep_nesting::MODULE_BASE + level1::LEVEL1_BASE;
+                const long LEVEL3_DERIVED = LEVEL3_BASE * level2::LEVEL2_DERIVED;
+                const long LEVEL3_DEEP = LEVEL3_DERIVED + level2::LEVEL2_DEEP + ::GLOBAL_DEEP;
+
+                typedef level2::Level2Type2 Level3Type0;
+                typedef Level3Type0 Level3Type1;
+                typedef Level3Type1 Level3Type2;
+
+                module level4 {
+                    const long LEVEL4_BASE = 100;
+                    const long LEVEL4_DERIVED = 200;
+                    const long LEVEL4_DEEP = 10;
+
+                    typedef level3::Level3Type2 Level4Type0;
+                    typedef Level4Type0 Level4Type1;
+                    typedef Level4Type1 Level4Type2;
+
+                    struct DeepStruct {
+                        Level4Type2 deep_type;
+                        long array[LEVEL4_DEEP];
+                    };
+                };
+
+                struct Level3Struct {
+                    Level3Type2 type3;
+                    level4::Level4Type2 type4;
+                    long size3[LEVEL3_DEEP];
+                };
+            };
+
+            struct Level2Struct {
+                Level2Type2 type2;
+                level3::Level3Type2 type3;
+                level3::level4::Level4Type2 type4;
+            };
+        };
+
+        struct Level1Struct {
+            Level1Type2 type1;
+            level2::Level2Type2 type2;
+            level2::level3::Level3Type2 type3;
+        };
+    };
+
+    struct CrossScopeTypedefs {
+        ModuleType2 mod_type;
+        level1::Level1Type2 level1_type;
+        level1::level2::Level2Type2 level2_type;
+        level1::level2::level3::Level3Type2 level3_type;
+        level1::level2::level3::level4::Level4Type2 level4_type;
+    };
+
+    struct CrossScopeConstants {
+        long global_const[GLOBAL_DEEP];
+        long module_const[MODULE_DEEP];
+        long level1_const[level1::LEVEL1_DEEP];
+        long level2_const[level1::level2::LEVEL2_DEEP];
+    };
+};
+
+module parallel_scope {
+    const long PARALLEL_BASE = ::GLOBAL_BASE * 5;
+    const long PARALLEL_DERIVED = PARALLEL_BASE + deep_nesting::MODULE_BASE;
+
+    typedef ::GlobalType2 ParallelType0;
+    typedef ParallelType0 ParallelType1;
+    typedef deep_nesting::ModuleType2 ParallelType2;
+
+    struct CrossModuleRefs {
+        ParallelType1 parallel;
+        deep_nesting::ModuleType2 deep_mod;
+        deep_nesting::level1::Level1Type2 deep_level1;
+        ::GlobalType2 global;
+        long size[PARALLEL_DERIVED];
+    };
+};
+
+module typedef_chains {
+    typedef long Type0;
+    typedef Type0 Type1;
+    typedef Type1 Type2;
+    typedef Type2 Type3;
+    typedef Type3 Type4;
+    typedef Type4 Type5;
+    typedef Type5 Type6;
+    typedef Type6 Type7;
+    typedef Type7 Type8;
+    typedef Type8 Type9;
+    typedef Type9 Type10;
+
+    typedef sequence<long> SeqType0;
+    typedef sequence<SeqType0> SeqType1;
+    typedef sequence<SeqType1> SeqType2;
+    typedef sequence<SeqType2> SeqType3;
+    typedef sequence<SeqType3> SeqType4;
+    typedef sequence<SeqType4> SeqType5;
+
+    typedef Type10 TypeChain[10];
+    typedef TypeChain TypeChainSeq[5];
+
+    struct DeepChainUser {
+        Type10 deep_chain;
+        SeqType5 deep_seq_chain;
+        TypeChainSeq array_chain;
+    };
+};
+
+module constant_chains {
+    const long C0 = 1;
+    const long C1 = C0 * 2;
+    const long C2 = C1 * 2;
+    const long C3 = C2 * 2;
+    const long C4 = C3 * 2;
+    const long C5 = C4 * 2;
+    const long C6 = C5 * 2;
+    const long C7 = C6 * 2;
+    const long C8 = C7 * 2;
+    const long C9 = C8 * 2;
+    const long C10 = C9 * 2;
+
+    const long SUM0 = C0;
+    const long SUM1 = SUM0 + C1;
+    const long SUM2 = SUM1 + C2;
+    const long SUM3 = SUM2 + C3;
+    const long SUM4 = SUM3 + C4;
+    const long SUM5 = SUM4 + C5;
+
+    const long EXPR0 = C10;
+    const long EXPR1 = EXPR0 + SUM5;
+    const long EXPR2 = EXPR1 * C5;
+    const long EXPR3 = EXPR2 / C3;
+    const long EXPR4 = EXPR3 - C1;
+    const long EXPR5 = EXPR4 << 2;
+    const long EXPR6 = EXPR5 | C4;
+    const long EXPR7 = EXPR6 & 0xFFFF;
+
+    struct ConstantChainUser {
+        long data0[C10];
+        long data1[SUM5];
+        long data2[EXPR7];
+    };
+};
+
+typedef typedef_chains::Type10 GlobalChainedType;
+
+struct GlobalUser {
+    GlobalChainedType chained;
+    deep_nesting::level1::level2::level3::level4::Level4Type2 very_deep;
+    parallel_scope::ParallelType2 parallel;
+    long sized[constant_chains::C10];
+};

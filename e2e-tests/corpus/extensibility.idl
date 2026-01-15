@@ -1,0 +1,129 @@
+// Copyright 2025 KONGSBERG
+//
+// Redistribution and use in source and binary forms, with or without
+// modification, are permitted provided that the following conditions are met:
+//
+// 1. Redistributions of source code must retain the above copyright notice,
+//    this list of conditions and the following disclaimer.
+//
+// 2. Redistributions in binary form must reproduce the above copyright notice,
+//    this list of conditions and the following disclaimer in the documentation
+//    and/or other materials provided with the distribution.
+//
+// 3. Neither the name of the copyright holder nor the names of its contributors
+//    may be used to endorse or promote products derived from this software
+//    without specific prior written permission.
+//
+// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
+// ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+// WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+// DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
+// FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+// DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+// SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+// CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+// OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+// OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+// Extensibility modes and @ID annotation
+
+module extensibility {
+    @Extensibility(FINAL_EXTENSIBILITY)
+    struct FinalStruct {
+        @key long id_;
+        string name;
+        double value;
+    };
+
+    @Extensibility(EXTENSIBLE_EXTENSIBILITY)
+    struct ExtensibleStruct {
+        @key long id_;
+        string name;
+        double value;
+    };
+
+    @Extensibility(MUTABLE_EXTENSIBILITY)
+    struct MutableStruct {
+        @key @ID(0) long id_;
+        @ID(1) string name;
+        @ID(2) double value;
+    };
+
+    @Extensibility(FINAL_EXTENSIBILITY)
+    struct FinalWithKey {
+        @key short key_field;
+        long value_field;
+    };
+
+    @Extensibility(EXTENSIBLE_EXTENSIBILITY)
+    struct ExtensibleWithOptional {
+        @key short key_field;
+        @optional long optional_field;
+        string required_field;
+    };
+
+    @Extensibility(MUTABLE_EXTENSIBILITY)
+    struct MutableWithIds {
+        @key @ID(10) short key_field;
+        @ID(20) long value_field;
+        @ID(30) string name_field;
+    };
+
+    @Extensibility(MUTABLE_EXTENSIBILITY)
+    struct MutableSparse {
+        @key @ID(0) long id_;
+        @ID(100) string name;
+        @ID(1000) double value;
+    };
+
+    @Extensibility(FINAL_EXTENSIBILITY)
+    struct FinalNested {
+        @key long id_;
+        FinalStruct nested;
+    };
+
+    @Extensibility(EXTENSIBLE_EXTENSIBILITY)
+    struct ExtensibleNested {
+        @key long id_;
+        ExtensibleStruct nested;
+    };
+
+    @Extensibility(MUTABLE_EXTENSIBILITY)
+    struct MutableNested {
+        @key @ID(0) long id_;
+        @ID(1) MutableStruct nested;
+    };
+
+    @Extensibility(MUTABLE_EXTENSIBILITY)
+    struct MutableWithSequences {
+        @key @ID(0) long id_;
+        @ID(1) sequence<long> numbers;
+        @ID(2) sequence<string> names;
+    };
+
+    @final struct FinalLowercase {
+        @key long id_;
+        string data;
+    };
+
+    @Extensibility(FINAL_EXTENSIBILITY)
+    struct FinalComplex {
+        @key string<128> key_str;
+        sequence<octet, 16> data;
+        long value;
+    };
+
+    @Extensibility(EXTENSIBLE_EXTENSIBILITY)
+    struct ExtensibleComplex {
+        @key string<128> key_str;
+        sequence<octet, 16> data;
+        long value;
+    };
+
+    @Extensibility(MUTABLE_EXTENSIBILITY)
+    struct MutableComplex {
+        @key @ID(0) string<128> key_str;
+        @ID(1) sequence<octet, 16> data;
+        @ID(2) long value;
+    };
+};

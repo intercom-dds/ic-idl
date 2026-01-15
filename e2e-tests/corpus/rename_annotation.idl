@@ -1,0 +1,100 @@
+// Copyright 2025 KONGSBERG
+//
+// Redistribution and use in source and binary forms, with or without
+// modification, are permitted provided that the following conditions are met:
+//
+// 1. Redistributions of source code must retain the above copyright notice,
+//    this list of conditions and the following disclaimer.
+//
+// 2. Redistributions in binary form must reproduce the above copyright notice,
+//    this list of conditions and the following disclaimer in the documentation
+//    and/or other materials provided with the distribution.
+//
+// 3. Neither the name of the copyright holder nor the names of its contributors
+//    may be used to endorse or promote products derived from this software
+//    without specific prior written permission.
+//
+// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
+// ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+// WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+// DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
+// FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+// DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+// SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+// CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+// OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+// OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+// @ext::rename annotation tests
+
+module rename_annotation {
+    enum RenamedEnum {
+        FIELD_ONE,
+        @ext::rename("RENAMED_TWO")
+        FIELD_TWO,
+        @ext::rename("RENAMED_THREE")
+        FIELD_THREE,
+        FIELD_FOUR
+    };
+
+    union RenamedUnion switch (RenamedEnum) {
+        case FIELD_ONE:
+            long my_int;
+        case FIELD_TWO:
+            @ext::rename("renamed_int")
+            long my_other_int;
+        case FIELD_THREE:
+            string my_string;
+        case FIELD_FOUR:
+            @ext::rename("renamed_double")
+            double my_double;
+    };
+
+    struct RenamedStruct {
+        @ext::rename("renamed_string")
+        string my_string;
+
+        @ext::rename("renamed_enum")
+        RenamedEnum my_enum;
+
+        @ext::rename("renamed_union")
+        RenamedUnion my_union;
+
+        double my_double;
+
+        @ext::rename("renamed_long")
+        long my_long;
+    };
+
+    struct MultipleRenamed {
+        @ext::rename("a")
+        long field_a;
+
+        @ext::rename("b")
+        string field_b;
+
+        @ext::rename("c")
+        double field_c;
+
+        @ext::rename("d")
+        boolean field_d;
+    };
+
+    struct PartiallyRenamed {
+        @ext::rename("renamed_field1")
+        long field1;
+        long field2;
+        @ext::rename("renamed_field3")
+        string field3;
+        double field4;
+    };
+
+    enum PartiallyRenamedEnum {
+        VALUE_A,
+        @ext::rename("VALUE_B_RENAMED")
+        VALUE_B,
+        VALUE_C,
+        @ext::rename("VALUE_D_RENAMED")
+        VALUE_D
+    };
+};

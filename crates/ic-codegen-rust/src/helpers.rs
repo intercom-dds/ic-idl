@@ -197,6 +197,17 @@ pub fn is_optional(member: &Member) -> bool {
         .is_some_and(|opt| opt.value)
 }
 
+pub fn default_value(member: &Member) -> &Numeric {
+    static NULL: Numeric = Numeric::Null;
+
+    member
+        .annotations
+        .iter()
+        .find(|ann| ann.ident.name == "default")
+        .and_then(|ann| ann.args.first())
+        .map_or(&NULL, |arg| &arg.value)
+}
+
 pub fn format_integer(val: i128) -> String {
     let s = val.to_string();
     let (sign, digits) = s

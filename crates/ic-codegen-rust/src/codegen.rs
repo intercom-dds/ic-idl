@@ -34,7 +34,8 @@ use ic_hir::hir::{Def, DefFlags, DefId, DefKind, Numeric, ParamKind, PrimitiveTy
 
 use crate::RustOptions;
 use crate::helpers::{
-    is_copy, is_debug, is_eq, is_hash, is_optional, is_ord, is_trivial, rust_primitive,
+    default_value, is_copy, is_debug, is_eq, is_hash, is_optional, is_ord, is_trivial,
+    rust_primitive,
 };
 
 struct Module {
@@ -643,6 +644,7 @@ impl<'a> RustGen<'a> {
         if !self.options.must_use {
             w!(w, "#[must_use]\n");
         }
+
         w!(w, "pub fn new() -> Self {\n");
         w!(w, "Self {\n");
         for member in members {
@@ -650,7 +652,8 @@ impl<'a> RustGen<'a> {
             if is_optional(member) {
                 w!(w, "::std::option::Option::None");
             } else {
-                self.emit_const_value(&Numeric::Null, &member.ty, def.id, w);
+                let default_val = default_value(member);
+                self.emit_const_value(default_val, &member.ty, def.id, w);
             }
             w!(w, ",\n");
         }

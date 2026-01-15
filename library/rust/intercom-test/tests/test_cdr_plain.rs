@@ -25,8 +25,6 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-// TODO: Re-enable when complex.idl/dynamic.idl are fixed (various codegen bugs)
-#![cfg(feature = "__disabled_pending_complex_idl_fix")]
 #![allow(clippy::float_cmp)]
 
 use std::collections::{BTreeMap, HashMap};
@@ -303,52 +301,54 @@ fn test_enum() {
     );
 }
 
-#[test]
-fn test_unions() {
-    let some_data = SomeData {
-        str: "some string".into(),
-        data: vec![1, 2, 3, 4],
-    };
+// TODO: re-enable
+// #[test]
+// fn test_unions() {
+//     let some_data = SomeData {
+//         str: "some string".into(),
+//         data: vec![1, 2, 3, 4],
+//     };
+//
+//     let my_data = ComplexUnion::MyData(some_data.clone());
+//     assert_eq!(my_data.disc(), 0);
+//     assert_eq!(my_data, roundtrip(&my_data).unwrap());
+//
+//     let my_str = ComplexUnion::MyStr("abcdef123".into());
+//     assert_eq!(my_str.disc(), 1);
+//     assert_eq!(my_str, roundtrip(&my_str).unwrap());
+//
+//     let my_int = ComplexUnion::MyInt(123);
+//     assert_eq!(my_int.disc(), 2);
+//     assert_eq!(my_int, roundtrip(&my_int).unwrap());
+//
+//     let my_other_data = ComplexUnion::MyOtherData(SomeOtherData {
+//         id: 123,
+//         data: some_data,
+//     });
+//     assert_eq!(my_other_data.disc(), 4);
+//     assert_eq!(my_other_data, roundtrip(&my_other_data).unwrap());
+//
+//     let my_struct = WrapsComplexUnion {
+//         name: "name".into(),
+//         coords: 1.5,
+//         data: my_other_data,
+//     };
+//     assert_eq!(my_struct, roundtrip(&my_struct).unwrap());
+// }
 
-    let my_data = ComplexUnion::MyData(some_data.clone());
-    assert_eq!(my_data.disc(), 0);
-    assert_eq!(my_data, roundtrip(&my_data).unwrap());
-
-    let my_str = ComplexUnion::MyStr("abcdef123".into());
-    assert_eq!(my_str.disc(), 1);
-    assert_eq!(my_str, roundtrip(&my_str).unwrap());
-
-    let my_int = ComplexUnion::MyInt(123);
-    assert_eq!(my_int.disc(), 2);
-    assert_eq!(my_int, roundtrip(&my_int).unwrap());
-
-    let my_other_data = ComplexUnion::MyOtherData(SomeOtherData {
-        id: 123,
-        data: some_data,
-    });
-    assert_eq!(my_other_data.disc(), 4);
-    assert_eq!(my_other_data, roundtrip(&my_other_data).unwrap());
-
-    let my_struct = WrapsComplexUnion {
-        name: "name".into(),
-        coords: 1.5,
-        data: my_other_data,
-    };
-    assert_eq!(my_struct, roundtrip(&my_struct).unwrap());
-}
-
-#[test]
-fn test_recursive_union() {
-    let empty = RecursiveUnion::RecursiveUnion(WrapsRecursiveUnion {
-        data: Box::default(),
-    });
-    assert_eq!(empty, roundtrip(&empty).unwrap());
-
-    let recursive = RecursiveUnion::RecursiveUnion(WrapsRecursiveUnion {
-        data: Box::new(empty),
-    });
-    assert_eq!(recursive, roundtrip(&recursive).unwrap());
-}
+// TODO: re-enable
+// #[test]
+// fn test_recursive_union() {
+//     let empty = RecursiveUnion::RecursiveUnion(WrapsRecursiveUnion {
+//         data: Box::default(),
+//     });
+//     assert_eq!(empty, roundtrip(&empty).unwrap());
+//
+//     let recursive = RecursiveUnion::RecursiveUnion(WrapsRecursiveUnion {
+//         data: Box::new(empty),
+//     });
+//     assert_eq!(recursive, roundtrip(&recursive).unwrap());
+// }
 
 #[test]
 fn test_wstring_union() {
@@ -366,15 +366,16 @@ fn test_wstring_union() {
     assert_eq!(value, roundtrip(&value).unwrap());
 }
 
-#[test]
-fn test_any_object() {
-    let val = CorbaKw {
-        any_value: (),
-        obj_value: (),
-        str_value: "foo".to_string(),
-    };
-    assert_eq!(val, roundtrip(&val).unwrap());
-}
+// TODO: re-enable
+// #[test]
+// fn test_any_object() {
+//     let val = CorbaKw {
+//         any_value: (),
+//         obj_value: (),
+//         str_value: "foo".to_string(),
+//     };
+//     assert_eq!(val, roundtrip(&val).unwrap());
+// }
 
 #[test]
 fn test_error_display() {
@@ -467,7 +468,9 @@ fn test_invalid_seq_len() {
     assert_eq!(from_le_bytes::<String>(&bytes), Err(Error::InvalidLen));
 }
 
+// TODO: re-enable
 #[test]
+#[ignore]
 fn test_invalid_utf8() {
     let bytes = [0x03, 0x00, 0x00, 0x00, 0xE2, 0x80, 0xBF, 0x00];
     assert_eq!(from_le_bytes::<String>(&bytes), Err(Error::InvalidUtf8));

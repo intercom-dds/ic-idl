@@ -29,7 +29,9 @@
 
 use ic_diagnostic::Label;
 use ic_hir::ResolvedGraph;
-use ic_hir::hir::{Def, DefKind, EnumTy, Member, Numeric, PrimitiveTy, StructTy, Ty, TyKind};
+use ic_hir::hir::{
+    Def, DefId, DefKind, EnumTy, Member, Numeric, PrimitiveTy, StructTy, Ty, TyKind,
+};
 use ic_hir::visit::Visitor;
 
 use crate::{Category, Lint, LintCtx};
@@ -87,7 +89,12 @@ impl DefaultTypeMismatch<'_> {
     }
 
     fn is_compatible(&self, value: &Numeric, ty: &Ty) -> bool {
-        match (&ty.kind, value) {
+        if let Numeric::Const(const_id) = value {
+            return self.is_const_compatible(*const_id, ty);
+        }
+
+        let resolved_ty = self.hir.context.resolve_ty(ty);
+        match (&resolved_ty.kind, value) {
             (_, Numeric::Null) | (TyKind::String { .. }, Numeric::String(_)) => true,
 
             (TyKind::Primitive(prim), _) => Self::is_primitive_compatible(value, *prim),
@@ -127,13 +134,41 @@ impl DefaultTypeMismatch<'_> {
         }
     }
 
+    fn is_const_compatible(&self, const_id: DefId, ty: &Ty) -> bool {
+        let const_def = self.hir.context.type_of(const_id);
+        let DefKind::Const(const_ty) = &const_def.kind else {
+            return false;
+        };
+        let const_resolved = self.hir.context.resolve_ty(&const_ty.ty);
+        let target_resolved = self.hir.context.resolve_ty(ty);
+        Self::types_compatible(&const_resolved.kind, &target_resolved.kind)
+    }
+
+    fn types_compatible(a: &TyKind, b: &TyKind) -> bool {
+        match (a, b) {
+            (TyKind::String { .. }, TyKind::String { .. }) => true,
+            (TyKind::Primitive(pa), TyKind::Primitive(pb)) => pa == pb,
+            (TyKind::Adt(id_a), TyKind::Adt(id_b)) => id_a == id_b,
+            _ => false,
+        }
+    }
+
     fn is_valid_enum_value(&self, value: &Numeric, enum_ty: &EnumTy) -> bool {
         if let Numeric::Const(const_id) = value {
-            enum_ty.fields.contains(const_id)
-        } else {
-            let Some(int_val) = Self::numeric_to_i64(value) else {
-                return false;
-            };
+            if enum_ty.fields.contains(const_id) {
+                return true;
+            }
+
+            let const_def = self.hir.context.type_of(*const_id);
+            if let DefKind::Const(const_ty) = &const_def.kind
+                && let Numeric::Const(_) = &const_ty.value
+            {
+                return self.is_valid_enum_value(&const_ty.value, enum_ty);
+            }
+            return false;
+        }
+
+        if let Some(int_val) = Self::numeric_to_i64(value) {
             enum_ty.fields.iter().any(|field_id| {
                 let field_def = self.hir.context.type_of(*field_id);
                 if let DefKind::Const(const_ty) = &field_def.kind {
@@ -142,6 +177,8 @@ impl DefaultTypeMismatch<'_> {
                     false
                 }
             })
+        } else {
+            false
         }
     }
 
@@ -163,7 +200,16 @@ impl DefaultTypeMismatch<'_> {
         matches!(
             (prim, value),
             (PrimitiveTy::Bool, Numeric::Bool(_))
-                | (PrimitiveTy::Char | PrimitiveTy::WChar, Numeric::Char(_))
+                | (
+                    PrimitiveTy::Char | PrimitiveTy::WChar,
+                    Numeric::Char(_)
+                        | Numeric::Int8(_)
+                        | Numeric::UInt8(_)
+                        | Numeric::Int16(_)
+                        | Numeric::UInt16(_)
+                        | Numeric::Int32(_)
+                        | Numeric::UInt32(_)
+                )
                 | (
                     PrimitiveTy::Int8
                         | PrimitiveTy::UInt8

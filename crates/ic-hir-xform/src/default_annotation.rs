@@ -162,10 +162,10 @@ impl DefaultAnnotation {
             if fields.iter().any(|(_, fid)| fid == const_id) {
                 return None;
             }
-            if let Some(const_value) = self.const_values.get(const_id) {
-                if self.is_valid_enum_const(const_value, fields) {
-                    return None;
-                }
+            if let Some(const_value) = self.const_values.get(const_id)
+                && self.is_valid_enum_const(const_value, fields)
+            {
+                return None;
             }
             return None;
         }

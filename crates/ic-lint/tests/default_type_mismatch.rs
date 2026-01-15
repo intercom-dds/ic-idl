@@ -214,3 +214,65 @@ struct Good {
     let output = test_lint_hir(source);
     assert!(output.is_empty(), "Expected no errors, but got: {output}");
 }
+
+#[test]
+fn valid_enum_through_typedef() {
+    let source = r"
+enum Color { RED, GREEN, BLUE };
+typedef Color MyColor;
+
+struct Good {
+    @default(GREEN)
+    MyColor my_color;
+};
+";
+
+    let output = test_lint_hir(source);
+    assert!(output.is_empty(), "Expected no errors, but got: {output}");
+}
+
+#[test]
+fn invalid_enum_through_typedef() {
+    let source = r"
+enum Color { RED, GREEN };
+typedef Color MyColor;
+
+struct Bad {
+    @default(9)
+    MyColor my_color;
+};
+";
+
+    assert_snapshot!(test_lint_hir(source));
+}
+
+#[test]
+fn valid_const_referencing_enum() {
+    let source = r"
+enum Color { RED, GREEN, BLUE };
+const Color MY_COLOR = RED;
+
+struct Good {
+    @default(MY_COLOR)
+    Color my_color;
+};
+";
+
+    let output = test_lint_hir(source);
+    assert!(output.is_empty(), "Expected no errors, but got: {output}");
+}
+
+#[test]
+fn valid_char_through_typedef() {
+    let source = r"
+typedef char lower_case;
+
+struct Good {
+    @default('s')
+    lower_case my_char;
+};
+";
+
+    let output = test_lint_hir(source);
+    assert!(output.is_empty(), "Expected no errors, but got: {output}");
+}

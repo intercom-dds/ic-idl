@@ -1,0 +1,16 @@
+---
+source: crates/ic-lint/tests/default_type_mismatch.rs
+assertion_line: 246
+expression: test_lint_hir(source)
+---
+error[default-type-mismatch]: @default value is not compatible with member type `MyColor`
+   ┌ test.idl:6:14
+   │
+ 3 │ typedef Color MyColor;
+ 4 │ 
+ 5 │ struct Bad {
+ 6 │     @default(9)
+   ·              ^ incompatible default value
+ 7 │     MyColor my_color;
+ 8 │ };
+   └──

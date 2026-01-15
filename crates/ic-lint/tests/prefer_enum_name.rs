@@ -218,3 +218,43 @@ const Point ORIGIN = { 0, 0 };
         "Expected no warnings for non-enum constants, but got: {output}"
     );
 }
+
+#[test]
+fn default_annotation_with_integer() {
+    let source = r"
+enum Color {
+    RED = 0,
+    GREEN = 1,
+    BLUE = 2
+};
+
+struct Test {
+    @default(1)
+    Color my_color;
+};
+";
+
+    assert_snapshot!(test_lint_hir(source));
+}
+
+#[test]
+fn default_annotation_with_name_no_warning() {
+    let source = r"
+enum Color {
+    RED = 0,
+    GREEN = 1,
+    BLUE = 2
+};
+
+struct Test {
+    @default(GREEN)
+    Color my_color;
+};
+";
+
+    let output = test_lint_hir(source);
+    assert!(
+        output.is_empty(),
+        "Expected no warnings when using member names in @default, but got: {output}"
+    );
+}

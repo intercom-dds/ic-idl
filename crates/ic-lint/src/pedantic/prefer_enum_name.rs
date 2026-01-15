@@ -25,12 +25,14 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+#![allow(clippy::cast_possible_wrap)]
+
 use std::cell::RefCell;
 use std::collections::HashMap;
 
 use ic_diagnostic::Label;
 use ic_hir::ResolvedGraph;
-use ic_hir::hir::{ConstTy, Def, DefId, DefKind, Numeric, TyKind};
+use ic_hir::hir::{AnnArg, ConstTy, Def, DefId, DefKind, Member, Numeric, TyKind};
 use ic_hir::visit::{Visitor, walk_const};
 
 use crate::{Category, Lint, LintCtx};
@@ -38,6 +40,7 @@ use crate::{Category, Lint, LintCtx};
 pub struct PreferEnumName<'a> {
     ctx: &'a LintCtx<'a>,
     hir: &'a ic_hir::ResolvedGraph,
+
     /// Cache mapping enum ID to a map of value -> field name
     enum_value_cache: RefCell<HashMap<DefId, HashMap<i64, String>>>,
 }
@@ -70,7 +73,6 @@ impl PreferEnumName<'_> {
     fn get_enum_value_name(&self, enum_id: DefId, value: i64) -> Option<String> {
         let mut cache = self.enum_value_cache.borrow_mut();
 
-        // Build cache for this enum if not present
         cache.entry(enum_id).or_insert_with(|| {
             let mut value_map = HashMap::new();
 
@@ -95,7 +97,6 @@ impl PreferEnumName<'_> {
         cache.get(&enum_id).and_then(|map| map.get(&value).cloned())
     }
 
-    #[allow(clippy::cast_possible_wrap)]
     fn check_const(&mut self, const_def: &Def, const_ty: &ConstTy) {
         // Check if this constant has an enum type
         let enum_id = match &const_ty.ty.kind {
@@ -136,9 +137,46 @@ impl PreferEnumName<'_> {
             Self::report(self.ctx, diag);
         }
     }
+
+    fn check_member_default(&self, member: &Member) {
+        if let Some((field_name, arg)) = self.find_default_enum_literal(member) {
+            let diag = self.ctx.diag_span(
+                Self::name(),
+                Self::category(),
+                format!("prefer using enum member name '{field_name}' instead of numeric literal"),
+                Label::new(arg.ident.span).message(format!(
+                    "consider using '{field_name}' instead of '{}'",
+                    format_numeric_value(&arg.value)
+                )),
+            );
+            Self::report(self.ctx, diag);
+        }
+    }
+
+    fn find_default_enum_literal<'m>(&self, member: &'m Member) -> Option<(String, &'m AnnArg)> {
+        let arg = member
+            .annotations
+            .iter()
+            .find(|a| a.ident.name == "default")?
+            .args
+            .first()?;
+
+        let resolved_ty = self.hir.context.resolve_ty(&member.ty);
+        let TyKind::Adt(id) = &resolved_ty.kind else {
+            return None;
+        };
+
+        let def = self.context().definitions.get(*id);
+        if !matches!(def.kind, DefKind::Enum(_)) {
+            return None;
+        }
+
+        let int_value = numeric_to_i64(&arg.value)?;
+        let field_name = self.get_enum_value_name(*id, int_value)?;
+        Some((field_name, arg))
+    }
 }
 
-/// Format a numeric value for display in diagnostics
 fn format_numeric_value(value: &Numeric) -> String {
     match value {
         Numeric::Int8(v) => v.to_string(),
@@ -153,6 +191,20 @@ fn format_numeric_value(value: &Numeric) -> String {
     }
 }
 
+fn numeric_to_i64(value: &Numeric) -> Option<i64> {
+    match value {
+        Numeric::Int8(v) => Some(i64::from(*v)),
+        Numeric::Int16(v) => Some(i64::from(*v)),
+        Numeric::Int32(v) => Some(i64::from(*v)),
+        Numeric::Int64(v) => Some(*v),
+        Numeric::UInt8(v) => Some(i64::from(*v)),
+        Numeric::UInt16(v) => Some(i64::from(*v)),
+        Numeric::UInt32(v) => Some(i64::from(*v)),
+        Numeric::UInt64(v) => i64::try_from(*v).ok(),
+        _ => None,
+    }
+}
+
 impl<'a> Visitor<'a> for PreferEnumName<'a> {
     fn context(&self) -> &'a ic_hir::Context {
         &self.hir.context
@@ -163,16 +215,18 @@ impl<'a> Visitor<'a> for PreferEnumName<'a> {
     }
 
     fn visit_const(&mut self, def: &'a Def, data: &'a ConstTy) {
-        // Skip enum members themselves
         if def.parent.is_some()
             && let Some(parent_def) = def.parent.map(|p| self.context().definitions.get(p))
             && matches!(parent_def.kind, DefKind::Enum(_))
         {
-            // This is an enum member, skip checking
             return;
         }
 
         self.check_const(def, data);
         walk_const(self, data);
+    }
+
+    fn visit_member(&mut self, member: &'a Member) {
+        self.check_member_default(member);
     }
 }

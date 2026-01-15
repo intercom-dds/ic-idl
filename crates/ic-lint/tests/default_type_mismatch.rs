@@ -211,8 +211,7 @@ struct Good {
 };
 ";
 
-    let output = test_lint_hir(source);
-    assert!(output.is_empty(), "Expected no errors, but got: {output}");
+    assert_snapshot!(test_lint_hir(source));
 }
 
 #[test]

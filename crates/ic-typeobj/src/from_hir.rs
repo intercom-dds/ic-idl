@@ -62,21 +62,21 @@ fn truncate_to_i32(val: i64, field: &str) -> i32 {
 
 fn primitive_to_type_identifier(prim: PrimitiveTy) -> TypeIdentifier {
     match prim {
-        PrimitiveTy::Bool => TypeIdentifier::TkBoolean,
-        PrimitiveTy::Int8 => TypeIdentifier::TkInt8,
-        PrimitiveTy::UInt8 => TypeIdentifier::TkUint8,
-        PrimitiveTy::Char => TypeIdentifier::TkChar8,
-        PrimitiveTy::WChar => TypeIdentifier::TkChar16,
-        PrimitiveTy::Int16 => TypeIdentifier::TkInt16,
-        PrimitiveTy::UInt16 => TypeIdentifier::TkUint16,
-        PrimitiveTy::Int32 => TypeIdentifier::TkInt32,
-        PrimitiveTy::UInt32 => TypeIdentifier::TkUint32,
-        PrimitiveTy::Int64 => TypeIdentifier::TkInt64,
-        PrimitiveTy::UInt64 => TypeIdentifier::TkUint64,
-        PrimitiveTy::Float32 => TypeIdentifier::TkFloat32,
-        PrimitiveTy::Float64 => TypeIdentifier::TkFloat64,
-        PrimitiveTy::Float128 => TypeIdentifier::TkFloat128,
-        PrimitiveTy::Void => TypeIdentifier::TkNone,
+        PrimitiveTy::Bool => TypeIdentifier::TkBoolean(Empty {}),
+        PrimitiveTy::Int8 => TypeIdentifier::TkInt8(Empty {}),
+        PrimitiveTy::UInt8 => TypeIdentifier::TkUint8(Empty {}),
+        PrimitiveTy::Char => TypeIdentifier::TkChar8(Empty {}),
+        PrimitiveTy::WChar => TypeIdentifier::TkChar16(Empty {}),
+        PrimitiveTy::Int16 => TypeIdentifier::TkInt16(Empty {}),
+        PrimitiveTy::UInt16 => TypeIdentifier::TkUint16(Empty {}),
+        PrimitiveTy::Int32 => TypeIdentifier::TkInt32(Empty {}),
+        PrimitiveTy::UInt32 => TypeIdentifier::TkUint32(Empty {}),
+        PrimitiveTy::Int64 => TypeIdentifier::TkInt64(Empty {}),
+        PrimitiveTy::UInt64 => TypeIdentifier::TkUint64(Empty {}),
+        PrimitiveTy::Float32 => TypeIdentifier::TkFloat32(Empty {}),
+        PrimitiveTy::Float64 => TypeIdentifier::TkFloat64(Empty {}),
+        PrimitiveTy::Float128 => TypeIdentifier::TkFloat128(Empty {}),
+        PrimitiveTy::Void => TypeIdentifier::TkNone(Empty {}),
     }
 }
 
@@ -238,10 +238,10 @@ impl TypeObjectCache<'_> {
                         name = %self.ctx.qualified_name(*def_id),
                         "type identifier not found - dependency graph may be incomplete"
                     );
-                    TypeIdentifier::TkNone
+                    TypeIdentifier::TkNone(Empty {})
                 }
             }
-            _ => TypeIdentifier::TkNone,
+            _ => TypeIdentifier::TkNone(Empty {}),
         }
     }
 
@@ -868,10 +868,9 @@ impl TypeObjectCache<'_> {
             );
 
             for label in &variant.labels {
-                if let Some(val) = self.ctx.integer_value(&label.value) {
-                    let truncated = truncate_to_i32(val, &variant.ident.name);
-                    complete_member.common.label_seq.push(truncated);
-                }
+                let val = self.ctx.integer_value(&label.value);
+                let truncated = truncate_to_i32(val, &variant.ident.name);
+                complete_member.common.label_seq.push(truncated);
             }
 
             ty.member_seq.push(complete_member);
@@ -896,9 +895,8 @@ impl TypeObjectCache<'_> {
             let mut literal = CompleteEnumeratedLiteral::new();
             literal.common.flags = annotations::get_literal_flags(self.ctx, &field_def.annotations);
 
-            if let Some(val) = self.ctx.integer_value(&const_ty.value) {
-                literal.common.value = truncate_to_i32(val, &field_def.ident.name);
-            }
+            let val = self.ctx.integer_value(&const_ty.value);
+            literal.common.value = truncate_to_i32(val, &field_def.ident.name);
 
             literal.detail = annotations::create_complete_member_detail(
                 self.ctx,
@@ -943,9 +941,8 @@ impl TypeObjectCache<'_> {
             let mut flag = CompleteBitflag::new();
             flag.common.flags = annotations::get_literal_flags(self.ctx, &flag_def.annotations);
 
-            if let Some(val) = self.ctx.unsigned_value(&const_ty.value) {
-                flag.common.position = truncate_to_u16(val, &flag_def.ident.name);
-            }
+            let val = self.ctx.unsigned_value(&const_ty.value);
+            flag.common.position = truncate_to_u16(val, &flag_def.ident.name);
 
             flag.detail = annotations::create_complete_member_detail(
                 self.ctx,
@@ -1009,7 +1006,7 @@ fn collect_type_dependencies(
             }
         }
         CompleteTypeObject::StructType(struct_ty) => {
-            if struct_ty.header.base_type != TypeIdentifier::TkNone {
+            if !matches!(struct_ty.header.base_type, TypeIdentifier::TkNone(_)) {
                 complete_deps.insert(struct_ty.header.base_type.clone());
                 minimal_deps.insert(struct_ty.header.base_type.clone());
             }
@@ -1019,7 +1016,7 @@ fn collect_type_dependencies(
             }
         }
         CompleteTypeObject::UnionType(union) => {
-            if union.header.base_type != TypeIdentifier::TkNone {
+            if !matches!(union.header.base_type, TypeIdentifier::TkNone(_)) {
                 complete_deps.insert(union.header.base_type.clone());
                 minimal_deps.insert(union.header.base_type.clone());
             }

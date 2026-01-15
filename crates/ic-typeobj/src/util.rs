@@ -29,7 +29,7 @@ use ic_alloc::md5;
 use ic_hir::hir;
 use ic_hir::hir::{PrimitiveTy, TyKind};
 use ic_omgidl::types::xtypes::{
-    CompleteTypeObject, EK_BOTH, EK_COMPLETE, EK_MINIMAL, EquivalenceKind, MinimalAliasBody,
+    CompleteTypeObject, EK_BOTH, EK_COMPLETE, EK_MINIMAL, Empty, EquivalenceKind, MinimalAliasBody,
     MinimalAliasHeader, MinimalAliasType, MinimalAnnotationHeader, MinimalAnnotationParameter,
     MinimalAnnotationType, MinimalArrayHeader, MinimalArrayType, MinimalBitfield, MinimalBitflag,
     MinimalBitmaskHeader, MinimalBitmaskType, MinimalBitsetHeader, MinimalBitsetType,
@@ -277,7 +277,7 @@ pub fn equivalence_hash(type_obj: &TypeObject) -> TypeIdentifier {
     match type_obj {
         TypeObject::Complete(_) => TypeIdentifier::EkComplete(hash),
         TypeObject::Minimal(_) => TypeIdentifier::EkMinimal(hash),
-        TypeObject::Null => TypeIdentifier::TkNone,
+        TypeObject::Null => TypeIdentifier::TkNone(Empty {}),
     }
 }
 

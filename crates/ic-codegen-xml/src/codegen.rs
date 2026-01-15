@@ -346,6 +346,24 @@ impl<'a> XmlGen<'a> {
     }
 
     fn add_type_attrs(&self, ty: &Ty, attrs: &mut Vec<(String, String)>) {
+        let mut array_dims = Vec::new();
+        let mut seq_lengths = Vec::new();
+        self.collect_type_info(ty, attrs, &mut array_dims, &mut seq_lengths);
+        if !array_dims.is_empty() {
+            attrs.push(("arrayDimensions".to_string(), array_dims.join(",")));
+        }
+        if !seq_lengths.is_empty() {
+            attrs.push(("sequenceMaxLength".to_string(), seq_lengths.join(",")));
+        }
+    }
+
+    fn collect_type_info(
+        &self,
+        ty: &Ty,
+        attrs: &mut Vec<(String, String)>,
+        array_dims: &mut Vec<String>,
+        seq_lengths: &mut Vec<String>,
+    ) {
         match &ty.kind {
             TyKind::Primitive(prim) => {
                 let type_name = xml_type_name(*prim);
@@ -358,16 +376,13 @@ impl<'a> XmlGen<'a> {
                 }
             }
             TyKind::Sequence { ty, bound, .. } => {
-                self.add_type_attrs(ty, attrs);
-                if let Some(b) = bound {
-                    attrs.push(("sequenceMaxLength".to_string(), b.to_string()));
-                } else {
-                    attrs.push(("sequenceMaxLength".to_string(), "-1".to_string()));
-                }
+                self.collect_type_info(ty, attrs, array_dims, seq_lengths);
+                let len = bound.map(|b| b.to_string()).unwrap_or("-1".to_string());
+                seq_lengths.push(len);
             }
             TyKind::Array { ty, len, .. } => {
-                self.add_type_attrs(ty, attrs);
-                attrs.push(("arrayDimensions".to_string(), len.to_string()));
+                self.collect_type_info(ty, attrs, array_dims, seq_lengths);
+                array_dims.push(len.to_string());
             }
             TyKind::Map {
                 key, elem, bound, ..
@@ -381,7 +396,7 @@ impl<'a> XmlGen<'a> {
                     attrs.push(("mapKeyNonBasicTypeName".to_string(), key_type));
                 }
 
-                self.add_type_attrs(elem, attrs);
+                self.collect_type_info(elem, attrs, array_dims, seq_lengths);
 
                 if let Some(b) = bound {
                     attrs.push(("mapMaxLength".to_string(), b.to_string()));

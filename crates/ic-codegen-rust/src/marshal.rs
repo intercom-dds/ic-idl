@@ -27,10 +27,41 @@
 
 use ic_emit::printer::Twine;
 use ic_emit::w;
-use ic_hir::hir::{Def, DefKind, TyKind};
+use ic_hir::hir::{Def, DefKind, Member, TyKind};
 
 use crate::codegen::RustGen;
-use crate::helpers::{is_optional, rust_primitive, type_flags};
+use crate::helpers::{
+    is_key, is_must_understand, is_optional, is_shared, member_id, rust_primitive, type_flags,
+};
+
+fn emit_member_flags(member: &Member, w: &mut Twine) {
+    let mut flags = Vec::new();
+
+    if is_key(member) {
+        flags.push("IS_KEY");
+    }
+
+    if is_optional(member) {
+        flags.push("IS_OPTIONAL");
+    }
+
+    if is_shared(member) {
+        flags.push("IS_EXTERNAL");
+    }
+
+    if is_must_understand(member) {
+        flags.push("IS_MUST_UNDERSTAND");
+    }
+
+    if flags.is_empty() {
+        w!(w, "::intercom_cts::MemberFlag::nil()");
+    } else {
+        w!(w, "::intercom_cts::MemberFlag::", flags[0]);
+        for flag in &flags[1..] {
+            w!(w, ".union(::intercom_cts::MemberFlag::", flag, ")");
+        }
+    }
+}
 
 impl RustGen<'_> {
     pub(crate) fn emit_type_info(&self, def: &Def, w: &mut Twine) {
@@ -61,7 +92,7 @@ impl RustGen<'_> {
         Self::emit_type_descriptor(def, w);
         w!(w, "const TYPE_INFO: ::intercom_cts::TypeInfo<'static> = ::intercom_cts::TypeInfo {\n");
         w!(w, "name: \"", full_name, "\",\n");
-        w!(w, "flags: ", type_flags(def), ",\n");
+        w!(w, "flags: ", type_flags(&self.hir.context, def), ",\n");
         w!(w, "kind: ::intercom_cts::TypeKind::", kind, ",\n");
         w!(w, "key_info: None,\n");
         if let Some(elem_ty) = element_info {
@@ -105,17 +136,17 @@ impl RustGen<'_> {
         }
 
         w!(w, "const MEMBER_INFO: &[::intercom_cts::MemberInfo<'static>] = &[\n");
-        for (i, (orig_member, member)) in original_members.iter().zip(members.iter()).enumerate() {
-            let is_opt = is_optional(member);
+        let mut id = 0usize;
+        for (orig_member, member) in original_members.iter().zip(members.iter()) {
             let type_str = self.rust_type(&member.ty, def_id);
+            id = member_id(orig_member, id);
             w!(w, "::intercom_cts::MemberInfo {\n");
             w!(w, "name: \"", orig_member.ident.name, "\",\n");
-            w!(w, "member_id: ", i.to_string(), ",\n");
-            if is_opt {
-                w!(w, "flags: ::intercom_cts::MemberFlag::IS_OPTIONAL,\n");
-            } else {
-                w!(w, "flags: ::intercom_cts::MemberFlag::nil(),\n");
-            }
+            w!(w, "member_id: ", id.to_string(), ",\n");
+            id += 1;
+            w!(w, "flags: ");
+            emit_member_flags(member, w);
+            w!(w, ",\n");
             w!(w, "type_info: ::intercom_cts::type_info::<", type_str, ">(),\n");
             w!(w, "},\n");
         }
@@ -202,7 +233,7 @@ impl RustGen<'_> {
         Self::emit_type_descriptor(def, w);
         w!(w, "const TYPE_INFO: ::intercom_cts::TypeInfo<'static> = ::intercom_cts::TypeInfo {\n");
         w!(w, "name: \"", full_name, "\",\n");
-        w!(w, "flags: ", type_flags(def), ",\n");
+        w!(w, "flags: ", type_flags(&self.hir.context, def), ",\n");
         w!(w, "kind: ::intercom_cts::TypeKind::Enum,\n");
         w!(w, "key_info: None,\n");
         w!(w, "element_info: Some(::intercom_cts::type_info::<", element_ty, ">()),\n");
@@ -222,7 +253,7 @@ impl RustGen<'_> {
         Self::emit_type_descriptor(def, w);
         w!(w, "const TYPE_INFO: ::intercom_cts::TypeInfo<'static> = ::intercom_cts::TypeInfo {\n");
         w!(w, "name: \"", full_name, "\",\n");
-        w!(w, "flags: ", type_flags(def), ",\n");
+        w!(w, "flags: ", type_flags(&self.hir.context, def), ",\n");
         w!(w, "kind: ::intercom_cts::TypeKind::Bitmask,\n");
         w!(w, "key_info: None,\n");
         w!(w, "element_info: Some(::intercom_cts::type_info::<", element_ty, ">()),\n");

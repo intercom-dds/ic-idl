@@ -25,6 +25,8 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+use std::fmt::Write;
+
 use ic_hir::annotation::{Optional, find_annotation};
 use ic_hir::hir::{Def, DefFlags, DefId, DefKind, Member, Numeric, PrimitiveTy, Ty, TyKind};
 
@@ -197,6 +199,24 @@ pub fn is_optional(member: &Member) -> bool {
         .is_some_and(|opt| opt.value)
 }
 
+pub fn is_must_understand(member: &Member) -> bool {
+    member
+        .annotations
+        .iter()
+        .any(|a| a.ident.name == "must_understand")
+}
+
+pub fn is_key(member: &Member) -> bool {
+    member.annotations.iter().any(|a| a.ident.name == "key")
+}
+
+pub fn is_shared(member: &Member) -> bool {
+    member
+        .annotations
+        .iter()
+        .any(|a| a.ident.name == "shared" || a.ident.name == "external")
+}
+
 pub fn default_value(member: &Member) -> &Numeric {
     static NULL: Numeric = Numeric::Null;
 
@@ -206,6 +226,19 @@ pub fn default_value(member: &Member) -> &Numeric {
         .find(|ann| ann.ident.name == "default")
         .and_then(|ann| ann.args.first())
         .map_or(&NULL, |arg| &arg.value)
+}
+
+pub fn member_id(member: &Member, default_id: usize) -> usize {
+    member
+        .annotations
+        .iter()
+        .find(|ann| ann.ident.name == "id")
+        .and_then(|ann| ann.args.first())
+        .and_then(|arg| match &arg.value {
+            Numeric::UInt32(v) => Some(*v as usize),
+            _ => None,
+        })
+        .unwrap_or(default_id)
 }
 
 pub fn format_integer(val: i128) -> String {
@@ -243,15 +276,62 @@ pub fn rust_primitive(ty: PrimitiveTy) -> &'static str {
     }
 }
 
-pub fn type_flags(def: &Def) -> &'static str {
+fn is_nested(def: &Def) -> bool {
+    def.annotations.iter().any(|a| a.ident.name == "nested")
+}
+
+fn is_autoid_hash(ctx: &ic_hir::Context, def: &Def) -> bool {
+    def.annotations.iter().any(|a| {
+        a.ident.name == "autoid"
+            && a.args.first().is_some_and(|arg| {
+                if let Numeric::Const(def_id) = &arg.value {
+                    ctx.type_of(*def_id).ident.name == "HASH"
+                } else {
+                    false
+                }
+            })
+    })
+}
+
+fn has_key_member(def: &Def) -> bool {
+    let members = match &def.kind {
+        DefKind::Struct(s) => &s.members,
+        DefKind::Valuetype(v) => &v.members,
+        DefKind::Except(e) => &e.members,
+        _ => return false,
+    };
+    members.iter().any(is_key)
+}
+
+pub fn type_flags(ctx: &ic_hir::Context, def: &Def) -> String {
+    let mut flags = Vec::new();
+
     let is_final = def.annotations.iter().any(|a| a.ident.name == "final");
     let is_mutable = def.annotations.iter().any(|a| a.ident.name == "mutable");
 
     if is_final {
-        "::intercom_cts::TypeFlag::IS_FINAL"
+        flags.push("IS_FINAL");
     } else if is_mutable {
-        "::intercom_cts::TypeFlag::IS_MUTABLE"
+        flags.push("IS_MUTABLE");
     } else {
-        "::intercom_cts::TypeFlag::IS_APPENDABLE"
+        flags.push("IS_APPENDABLE");
     }
+
+    if is_nested(def) {
+        flags.push("IS_NESTED");
+    }
+
+    if is_autoid_hash(ctx, def) {
+        flags.push("IS_AUTOID_HASH");
+    }
+
+    if has_key_member(def) {
+        flags.push("IS_KEYED");
+    }
+
+    let mut result = format!("::intercom_cts::TypeFlag::{}", flags[0]);
+    for flag in &flags[1..] {
+        _ = write!(result, ".union(::intercom_cts::TypeFlag::{flag})");
+    }
+    result
 }

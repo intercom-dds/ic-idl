@@ -43,9 +43,8 @@ const RESERVED: &[&str] = &[
     "in", "is", "lambda", "nonlocal", "not", "or", "pass", "raise", "return", "try", "while",
     "with", "yield",
 
-    // Reserved builtins
-    "int", "str", "bool", "float", "dict", "list", "set", "tuple", "type", "frozenset", "bytes",
-    "bytearray",
+    // Builtins we use in type annotations
+    "int", "str", "bool", "float", "list", "dict",
 ];
 
 const PYTHON_CONVENTION: Convention = Convention {

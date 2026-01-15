@@ -448,7 +448,7 @@ module mutable {
 
     @mutable
     struct MutableUnordered {
-        @id(3) @default(789) octet value3;
+        @id(3) @default(21) octet value3;
         @id(1) @default(456) uint32 value1;
         @id(2) @default(123) uint64 value2;
     };

@@ -65,14 +65,7 @@ where
 #[test]
 fn test_final_primitive_struct() {
     roundtrip_expected(
-        cdr2::final_::PrimitiveStruct {
-            value1: 128,
-            value2: 128,
-            value3: 128,
-            value4: 128,
-            value5: 1.5,
-            value6: 1.5,
-        },
+        cdr2::final_::PrimitiveStruct::default(),
         cdr2::final_::PRIMITIVE_STRUCT_EXPECTED,
     );
 }
@@ -80,9 +73,7 @@ fn test_final_primitive_struct() {
 #[test]
 fn test_final_primitive_array() {
     roundtrip_expected(
-        cdr2::final_::PrimitiveArray {
-            my_array: [1, 2, 3],
-        },
+        cdr2::final_::PrimitiveArray::default(),
         cdr2::final_::PRIMITIVE_ARRAY_TYPE_EXPECTED,
     );
 }
@@ -90,9 +81,7 @@ fn test_final_primitive_array() {
 #[test]
 fn test_final_array() {
     roundtrip_expected(
-        cdr2::final_::ArrayType {
-            inner: ["a".to_string(), "b".to_string(), "c".to_string()],
-        },
+        cdr2::final_::ArrayType::default(),
         cdr2::final_::ARRAY_TYPE_EXPECTED,
     );
 }
@@ -100,9 +89,7 @@ fn test_final_array() {
 #[test]
 fn test_final_sequence() {
     roundtrip_expected(
-        cdr2::final_::SeqType {
-            inner: vec!["a".to_string(), "b".to_string(), "c".to_string()],
-        },
+        cdr2::final_::SeqType::default(),
         cdr2::final_::SEQ_TYPE_EXPECTED,
     );
 }
@@ -110,9 +97,7 @@ fn test_final_sequence() {
 #[test]
 fn test_final_primitive_sequence() {
     roundtrip_expected(
-        cdr2::final_::PrimitiveSeqType {
-            inner: vec![1, 2, 3],
-        },
+        cdr2::final_::PrimitiveSeqType::default(),
         cdr2::final_::PRIMITIVE_SEQ_TYPE_EXPECTED,
     );
 }
@@ -120,13 +105,7 @@ fn test_final_primitive_sequence() {
 #[test]
 fn test_final_map() {
     roundtrip_expected(
-        cdr2::final_::MapType {
-            inner: std::collections::BTreeMap::from([
-                (1, "a".to_string()),
-                (2, "b".to_string()),
-                (3, "c".to_string()),
-            ]),
-        },
+        cdr2::final_::MapType::default(),
         cdr2::final_::MAP_TYPE_EXPECTED,
     );
 }
@@ -134,9 +113,7 @@ fn test_final_map() {
 #[test]
 fn test_final_primitive_map() {
     roundtrip_expected(
-        cdr2::final_::PrimitiveMap {
-            inner: std::collections::BTreeMap::from([(1, 1), (2, 2), (3, 333)]),
-        },
+        cdr2::final_::PrimitiveMap::default(),
         cdr2::final_::PRIMITIVE_MAP_EXPECTED,
     );
 }
@@ -154,14 +131,7 @@ fn test_final_optional_member() {
 #[test]
 fn test_appendable_primitive_struct() {
     roundtrip_expected(
-        cdr2::appendable::PrimitiveStruct {
-            value1: 128,
-            value2: 128,
-            value3: 128,
-            value4: 128,
-            value5: 1.5,
-            value6: 1.5,
-        },
+        cdr2::appendable::PrimitiveStruct::default(),
         cdr2::appendable::PRIMITIVE_STRUCT_EXPECTED,
     );
 }
@@ -169,9 +139,7 @@ fn test_appendable_primitive_struct() {
 #[test]
 fn test_appendable_array() {
     roundtrip_expected(
-        cdr2::appendable::ArrayType {
-            inner: ["a".to_string(), "b".to_string(), "c".to_string()],
-        },
+        cdr2::appendable::ArrayType::default(),
         cdr2::appendable::ARRAY_TYPE_EXPECTED,
     );
 }
@@ -179,9 +147,7 @@ fn test_appendable_array() {
 #[test]
 fn test_appendable_primitive_array() {
     roundtrip_expected(
-        cdr2::appendable::PrimitiveArray {
-            my_array: [1, 2, 3],
-        },
+        cdr2::appendable::PrimitiveArray::default(),
         cdr2::appendable::PRIMITIVE_ARRAY_TYPE_EXPECTED,
     );
 }
@@ -189,9 +155,7 @@ fn test_appendable_primitive_array() {
 #[test]
 fn test_appendable_sequence() {
     roundtrip_expected(
-        cdr2::appendable::SeqType {
-            inner: vec!["a".to_string(), "b".to_string(), "c".to_string()],
-        },
+        cdr2::appendable::SeqType::default(),
         cdr2::appendable::SEQ_TYPE_EXPECTED,
     );
 }
@@ -199,9 +163,7 @@ fn test_appendable_sequence() {
 #[test]
 fn test_appendable_primitive_sequence() {
     roundtrip_expected(
-        cdr2::appendable::PrimitiveSeqType {
-            inner: vec![1, 2, 3],
-        },
+        cdr2::appendable::PrimitiveSeqType::default(),
         cdr2::appendable::PRIMITIVE_SEQ_TYPE_EXPECTED,
     );
 }
@@ -209,13 +171,7 @@ fn test_appendable_primitive_sequence() {
 #[test]
 fn test_appendable_map() {
     roundtrip_expected(
-        cdr2::appendable::MapType {
-            inner: std::collections::BTreeMap::from([
-                (1, "a".to_string()),
-                (2, "b".to_string()),
-                (3, "c".to_string()),
-            ]),
-        },
+        cdr2::appendable::MapType::default(),
         cdr2::appendable::MAP_TYPE_EXPECTED,
     );
 }
@@ -223,9 +179,7 @@ fn test_appendable_map() {
 #[test]
 fn test_appendable_primitive_map() {
     roundtrip_expected(
-        cdr2::appendable::PrimitiveMap {
-            inner: std::collections::BTreeMap::from([(1, 1), (2, 2), (3, 333)]),
-        },
+        cdr2::appendable::PrimitiveMap::default(),
         cdr2::appendable::PRIMITIVE_MAP_EXPECTED,
     );
 }
@@ -253,14 +207,7 @@ fn test_appendable_optional_long_pl_member() {
 #[test]
 fn test_mutable_primitive_struct() {
     roundtrip_expected(
-        cdr2::mutable::PrimitiveStruct {
-            value1: 255,
-            value2: 128,
-            value3: 128,
-            value4: 128,
-            value5: 1.5,
-            value6: 1.5,
-        },
+        cdr2::mutable::PrimitiveStruct::default(),
         cdr2::mutable::PRIMITIVE_STRUCT_EXPECTED,
     );
 }
@@ -268,9 +215,7 @@ fn test_mutable_primitive_struct() {
 #[test]
 fn test_mutable_primitive_array() {
     roundtrip_expected(
-        cdr2::mutable::PrimitiveArray {
-            my_array: [1, 2, 3],
-        },
+        cdr2::mutable::PrimitiveArray::default(),
         cdr2::mutable::PRIMITIVE_ARRAY_TYPE_EXPECTED,
     );
 }
@@ -278,9 +223,7 @@ fn test_mutable_primitive_array() {
 #[test]
 fn test_mutable_array() {
     roundtrip_expected(
-        cdr2::mutable::ArrayType {
-            inner: ["a".to_string(), "b".to_string(), "c".to_string()],
-        },
+        cdr2::mutable::ArrayType::default(),
         cdr2::mutable::ARRAY_TYPE_EXPECTED,
     );
 }
@@ -288,9 +231,7 @@ fn test_mutable_array() {
 #[test]
 fn test_mutable_primitive_sequence() {
     roundtrip_expected(
-        cdr2::mutable::PrimitiveSeqType {
-            inner: vec![1, 2, 3],
-        },
+        cdr2::mutable::PrimitiveSeqType::default(),
         cdr2::mutable::PRIMITIVE_SEQ_TYPE_EXPECTED,
     );
 }
@@ -298,9 +239,7 @@ fn test_mutable_primitive_sequence() {
 #[test]
 fn test_mutable_sequence() {
     roundtrip_expected(
-        cdr2::mutable::SeqType {
-            inner: vec!["a".to_string(), "b".to_string(), "c".to_string()],
-        },
+        cdr2::mutable::SeqType::default(),
         cdr2::mutable::SEQ_TYPE_EXPECTED,
     );
 }
@@ -308,9 +247,7 @@ fn test_mutable_sequence() {
 #[test]
 fn test_mutable_primitive_map() {
     roundtrip_expected(
-        cdr2::mutable::PrimitiveMapType {
-            inner: std::collections::BTreeMap::from([(1, 1), (2, 2), (3, 333)]),
-        },
+        cdr2::mutable::PrimitiveMapType::default(),
         cdr2::mutable::PRIMITIVE_MAP_EXPECTED,
     );
 }
@@ -318,13 +255,7 @@ fn test_mutable_primitive_map() {
 #[test]
 fn test_mutable_map() {
     roundtrip_expected(
-        cdr2::mutable::MapType {
-            inner: std::collections::BTreeMap::from([
-                (1, "a".to_string()),
-                (2, "b".to_string()),
-                (3, "c".to_string()),
-            ]),
-        },
+        cdr2::mutable::MapType::default(),
         cdr2::mutable::MAP_TYPE_EXPECTED,
     );
 }
@@ -364,18 +295,7 @@ fn test_mutable_union() {
 #[test]
 fn test_mutable_unordered() {
     roundtrip_expected(
-        cdr2::mixed::MutableMiddle {
-            value1: 4444,
-            value2: cdr2::mutable::PrimitiveStruct {
-                value1: 255,
-                value2: 128,
-                value3: 128,
-                value4: 128,
-                value5: 1.5,
-                value6: 1.5,
-            },
-            value3: 0,
-        },
+        cdr2::mixed::MutableMiddle::default(),
         cdr2::mixed::MUTABLE_MIDDLE_EXPECTED,
     );
 }
@@ -383,32 +303,7 @@ fn test_mutable_unordered() {
 #[test]
 fn test_mixed_final() {
     roundtrip_expected(
-        cdr2::mixed::TopFinal {
-            final_member: cdr2::final_::PrimitiveStruct {
-                value1: 128,
-                value2: 128,
-                value3: 128,
-                value4: 128,
-                value5: 1.5,
-                value6: 1.5,
-            },
-            appendable_member: cdr2::appendable::PrimitiveStruct {
-                value1: 128,
-                value2: 128,
-                value3: 128,
-                value4: 128,
-                value5: 1.5,
-                value6: 1.5,
-            },
-            mutable_member: cdr2::mutable::PrimitiveStruct {
-                value1: 255,
-                value2: 128,
-                value3: 128,
-                value4: 128,
-                value5: 1.5,
-                value6: 1.5,
-            },
-        },
+        cdr2::mixed::TopFinal::default(),
         cdr2::mixed::TOP_FINAL_EXPECTED,
     );
 }
@@ -416,32 +311,7 @@ fn test_mixed_final() {
 #[test]
 fn test_mixed_appendable() {
     roundtrip_expected(
-        cdr2::mixed::TopAppendable {
-            final_member: cdr2::final_::PrimitiveStruct {
-                value1: 128,
-                value2: 128,
-                value3: 128,
-                value4: 128,
-                value5: 1.5,
-                value6: 1.5,
-            },
-            appendable_member: cdr2::appendable::PrimitiveStruct {
-                value1: 128,
-                value2: 128,
-                value3: 128,
-                value4: 128,
-                value5: 1.5,
-                value6: 1.5,
-            },
-            mutable_member: cdr2::mutable::PrimitiveStruct {
-                value1: 255,
-                value2: 128,
-                value3: 128,
-                value4: 128,
-                value5: 1.5,
-                value6: 1.5,
-            },
-        },
+        cdr2::mixed::TopAppendable::default(),
         cdr2::mixed::TOP_APPENDABLE_EXPECTED,
     );
 }
@@ -449,32 +319,7 @@ fn test_mixed_appendable() {
 #[test]
 fn test_mixed_mutable() {
     roundtrip_expected(
-        cdr2::mixed::TopMutable {
-            final_member: cdr2::final_::PrimitiveStruct {
-                value1: 128,
-                value2: 128,
-                value3: 128,
-                value4: 128,
-                value5: 1.5,
-                value6: 1.5,
-            },
-            appendable_member: cdr2::appendable::PrimitiveStruct {
-                value1: 128,
-                value2: 128,
-                value3: 128,
-                value4: 128,
-                value5: 1.5,
-                value6: 1.5,
-            },
-            mutable_member: cdr2::mutable::PrimitiveStruct {
-                value1: 255,
-                value2: 128,
-                value3: 128,
-                value4: 128,
-                value5: 1.5,
-                value6: 1.5,
-            },
-        },
+        cdr2::mixed::TopMutable::default(),
         cdr2::mixed::TOP_MUTABLE_EXPECTED,
     );
 }
@@ -998,25 +843,14 @@ fn test_mutable_struct_with_union() {
 #[test]
 fn test_mutable_appendable_evolution() {
     {
-        let gen1 = cdr2::mixed::MutableAppendableGen1 {
-            value1: cdr2::mixed::AppendableGen1 {
-                value1: "foo".to_string(),
-            },
-            foobar: 99,
-        };
+        let gen1 = cdr2::mixed::MutableAppendableGen1::default();
         let bytes = intercom_cts::cdr2::to_le_bytes(&gen1).unwrap();
         let _: cdr2::mixed::MutableAppendableGen2 =
             intercom_cts::cdr2::from_le_bytes(&bytes).unwrap();
     }
 
     {
-        let gen2 = cdr2::mixed::MutableAppendableGen2 {
-            value1: cdr2::mixed::AppendableGen2 {
-                value1: "foo".to_string(),
-                value2: "bar".to_string(),
-            },
-            foobar: 99,
-        };
+        let gen2 = cdr2::mixed::MutableAppendableGen2::default();
         let bytes = intercom_cts::cdr2::to_le_bytes(&gen2).unwrap();
         let _: cdr2::mixed::MutableAppendableGen1 =
             intercom_cts::cdr2::from_le_bytes(&bytes).unwrap();

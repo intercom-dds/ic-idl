@@ -584,7 +584,7 @@ fn value_from_numeric(num: &Numeric) -> Option<Value> {
     Some(match num {
         Numeric::Null => Value::Null,
         Numeric::Bool(b) => Value::Bool(*b),
-        Numeric::Char(c) => Value::UInt(u128::from(*c as u32), IntRank::U8),
+        Numeric::Char(c) => Value::Char(*c),
         Numeric::Int8(v) => Value::Int(i128::from(*v), IntRank::I8),
         Numeric::UInt8(v) => Value::UInt(u128::from(*v), IntRank::U8),
         Numeric::Int16(v) => Value::Int(i128::from(*v), IntRank::I16),

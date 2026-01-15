@@ -556,6 +556,7 @@ define_lints! {
         pedantic::unused_include::UnusedInclude,
         semantic::bit_bound::BitBound,
         semantic::conflicting_annotations::ConflictingAnnotations,
+        semantic::default_type_mismatch::DefaultTypeMismatch,
         semantic::derived_struct_key::DerivedStructKey,
         semantic::duplicate_annotations_hir::DuplicateAnnotations,
         semantic::duplicate_bounds::DuplicateBounds,

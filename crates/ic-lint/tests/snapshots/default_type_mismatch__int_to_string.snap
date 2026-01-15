@@ -1,0 +1,14 @@
+---
+source: crates/ic-lint/tests/default_type_mismatch.rs
+assertion_line: 54
+expression: test_lint_hir(source)
+---
+error[default-type-mismatch]: @default value is not compatible with member type `string`
+   ┌ test.idl:3:14
+   │
+ 2 │ struct Bad {
+ 3 │     @default(123)
+   ·              ^^^ incompatible default value
+ 4 │     string my_string;
+ 5 │ };
+   └──

@@ -210,6 +210,23 @@ impl Context {
         }
     }
 
+    /// Returns the name of the given type.
+    #[must_use]
+    pub fn type_name(&self, ty: &Ty) -> String {
+        match ty.kind {
+            TyKind::Primitive(p) => p.name().to_string(),
+            TyKind::String { .. } => "string".to_string(),
+            TyKind::Sequence { .. } => "sequence".to_string(),
+            TyKind::Array { .. } => "array".to_string(),
+            TyKind::Map { .. } => "map".to_string(),
+            TyKind::Any => "any".to_string(),
+            TyKind::Fixed => "fixed".to_string(),
+            TyKind::Null => "null".to_string(),
+            TyKind::Adt(def_id) => self.type_of(def_id).ident.name.clone(),
+        }
+    }
+
+    /// Returns the fully qualified name of the given definition.
     #[must_use]
     pub fn qualified_name(&self, id: DefId) -> String {
         let def = self.type_of(id);

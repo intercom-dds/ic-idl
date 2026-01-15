@@ -30,6 +30,7 @@ name = "intercom-test"
 version = "0.0.0"
 authors = ["InterCOM DDS team <InterCOM.DDSteam@kongsberg.com>"]
 edition = "2024"
+publish = false
 
 [lib]
 doc = false

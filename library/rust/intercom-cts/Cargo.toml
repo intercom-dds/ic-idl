@@ -32,6 +32,7 @@ authors = ["InterCOM DDS team <IDS-InterCOM_DDS@kda.kongsberg.com>"]
 edition = "2024"
 rust-version = "1.90"
 license-file = "LICENSE"
+publish = false
 
 [features]
 default = []

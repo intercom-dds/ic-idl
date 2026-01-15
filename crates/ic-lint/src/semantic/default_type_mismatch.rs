@@ -29,7 +29,7 @@
 
 use ic_diagnostic::Label;
 use ic_hir::ResolvedGraph;
-use ic_hir::hir::{Def, DefKind, Member, Numeric, PrimitiveTy, StructTy, Ty, TyKind};
+use ic_hir::hir::{Def, DefKind, EnumTy, Member, Numeric, PrimitiveTy, StructTy, Ty, TyKind};
 use ic_hir::visit::Visitor;
 
 use crate::{Category, Lint, LintCtx};
@@ -113,25 +113,49 @@ impl DefaultTypeMismatch<'_> {
                 })
             }
 
-            (TyKind::Adt(def_id), Numeric::Const(const_id)) => {
-                let const_def = self.hir.context.type_of(*const_id);
-                const_def
-                    .parent
-                    .is_some_and(|parent_id| parent_id == *def_id)
-            }
-
             (TyKind::Adt(def_id), _) => {
                 let def = self.hir.context.type_of(*def_id);
                 match &def.kind {
                     DefKind::Struct(_) => matches!(value, Numeric::Struct { .. }),
-                    DefKind::Enum(_) | DefKind::Bitmask(_) => {
-                        Self::is_primitive_compatible(value, PrimitiveTy::Int32)
-                    }
+                    DefKind::Enum(enum_ty) => self.is_valid_enum_value(value, enum_ty),
+                    DefKind::Bitmask(_) => Self::is_primitive_compatible(value, PrimitiveTy::Int32),
                     _ => false,
                 }
             }
 
             _ => false,
+        }
+    }
+
+    fn is_valid_enum_value(&self, value: &Numeric, enum_ty: &EnumTy) -> bool {
+        if let Numeric::Const(const_id) = value {
+            enum_ty.fields.contains(const_id)
+        } else {
+            let Some(int_val) = Self::numeric_to_i64(value) else {
+                return false;
+            };
+            enum_ty.fields.iter().any(|field_id| {
+                let field_def = self.hir.context.type_of(*field_id);
+                if let DefKind::Const(const_ty) = &field_def.kind {
+                    Self::numeric_to_i64(&const_ty.value) == Some(int_val)
+                } else {
+                    false
+                }
+            })
+        }
+    }
+
+    fn numeric_to_i64(value: &Numeric) -> Option<i64> {
+        match value {
+            Numeric::Int8(v) => Some(i64::from(*v)),
+            Numeric::UInt8(v) => Some(i64::from(*v)),
+            Numeric::Int16(v) => Some(i64::from(*v)),
+            Numeric::UInt16(v) => Some(i64::from(*v)),
+            Numeric::Int32(v) => Some(i64::from(*v)),
+            Numeric::UInt32(v) => Some(i64::from(*v)),
+            Numeric::Int64(v) => Some(*v),
+            Numeric::UInt64(v) => i64::try_from(*v).ok(),
+            _ => None,
         }
     }
 

@@ -185,3 +185,32 @@ struct Bad {
 
     assert_snapshot!(test_lint_hir(source));
 }
+
+#[test]
+fn invalid_enum_int_value() {
+    let source = r"
+enum Color { RED, GREEN };
+
+struct Bad {
+    @default(9)
+    Color my_color;
+};
+";
+
+    assert_snapshot!(test_lint_hir(source));
+}
+
+#[test]
+fn valid_enum_int_value() {
+    let source = r"
+enum Color { RED, GREEN, BLUE };
+
+struct Good {
+    @default(1)
+    Color my_color;
+};
+";
+
+    let output = test_lint_hir(source);
+    assert!(output.is_empty(), "Expected no errors, but got: {output}");
+}

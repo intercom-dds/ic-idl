@@ -1,0 +1,16 @@
+---
+source: crates/ic-lint/tests/default_type_mismatch.rs
+assertion_line: 200
+expression: test_lint_hir(source)
+---
+error[default-type-mismatch]: @default value is not compatible with member type `Color`
+   ┌ test.idl:5:14
+   │
+ 2 │ enum Color { RED, GREEN };
+ 3 │ 
+ 4 │ struct Bad {
+ 5 │     @default(9)
+   ·              ^ incompatible default value
+ 6 │     Color my_color;
+ 7 │ };
+   └──

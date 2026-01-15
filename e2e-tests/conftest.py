@@ -69,6 +69,12 @@ def pytest_addoption(parser: pytest.Parser) -> None:
         help="Path to TypeScript compiler (tsc)",
     )
     parser.addoption(
+        "--cargo",
+        action="store",
+        default="cargo",
+        help="Path to Rust package manager (cargo)",
+    )
+    parser.addoption(
         "--strict-skip",
         action="store_true",
         default=False,

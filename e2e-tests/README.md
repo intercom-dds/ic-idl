@@ -66,6 +66,7 @@ For language-specific tests, you'll need the corresponding toolchain installed:
 - **Java**: `javac` (JDK 8 or newer)
 - **C#**: `dotnet` (.NET 8.0 SDK)
 - **TypeScript**: `tsc` (usually via `npm install -g typescript`)
+- **Rust**: `cargo`
 - **Protobuf**: `protoc`
 
 Tests will be skipped if a toolchain isn't available, so you don't need everything installed to run

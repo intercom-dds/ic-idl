@@ -63,6 +63,10 @@ pub struct Options {
     #[option(long, arg = "path")]
     pub tsc: Option<String>,
 
+    /// Path to Rust package manager (cargo)
+    #[option(long, arg = "path")]
+    pub cargo: Option<String>,
+
     /// Path to ic-idl compiler executable
     #[option(long, arg = "path")]
     pub idl_compiler: Option<String>,
@@ -96,6 +100,7 @@ fn lang_to_test_file(lang: &str) -> Option<&'static str> {
         "json-schema" => Some("test_json_schema.py"),
         "xml" => Some("test_xml.py"),
         "idl" => Some("test_idl.py"),
+        "rust" | "rs" => Some("test_rust.py"),
         _ => None,
     }
 }
@@ -130,7 +135,7 @@ pub fn run(opts: Options) {
             } else {
                 eprintln!("error: unknown or unsupported language '{lang}'");
                 eprintln!(
-                    "supported languages: csharp, java, protobuf, python, typescript, json, \
+                    "supported languages: csharp, java, protobuf, python, rust, typescript, json, \
                      json-schema, xml, idl, all"
                 );
                 std::process::exit(1);
@@ -162,6 +167,9 @@ pub fn run(opts: Options) {
     }
     if let Some(tsc) = &opts.tsc {
         cmd.arg(format!("--tsc={tsc}"));
+    }
+    if let Some(cargo) = &opts.cargo {
+        cmd.arg(format!("--cargo={cargo}"));
     }
     if opts.strict_skip {
         cmd.arg("--strict-skip");

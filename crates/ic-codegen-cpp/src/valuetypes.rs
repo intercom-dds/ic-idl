@@ -59,15 +59,7 @@ impl CppGen<'_> {
         }
 
         for member in &valuetype_ty.members {
-            let ty_str = self.cpp_type(&member.ty, def.id);
-            w!(decl_w, ty_str, " ", member.ident.name);
-
-            if self.has_default_value(&member.ty) {
-                w!(decl_w, "{");
-                self.emit_default_initializer(decl_w, &member.ty);
-                w!(decl_w, "}");
-            }
-            w!(decl_w, ";\n");
+            self.emit_member(decl_w, member, def.id);
         }
 
         w!(decl_w, "};\n\n");

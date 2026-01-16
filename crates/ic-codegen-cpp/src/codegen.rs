@@ -31,6 +31,7 @@ use std::path::PathBuf;
 use ic_emit::File;
 use ic_emit::printer::{Twine, w};
 use ic_hir::ResolvedGraph;
+use ic_hir::annotation::{Optional, find_annotation};
 use ic_hir::hir::{
     Decl, Def, DefId, DefKind, InterfaceTy, Member, ModuleTy, Numeric, ParamKind, PrimitiveTy,
     ProtoTy, Ty, TyKind,
@@ -266,6 +267,28 @@ impl<'a> CppGen<'a> {
         !matches!(&ty.kind, TyKind::Primitive(_))
     }
 
+    pub fn is_optional(member: &Member) -> bool {
+        find_annotation::<Optional>(&member.annotations, "optional")
+            .and_then(Result::ok)
+            .is_some_and(|opt| opt.value)
+    }
+
+    pub fn emit_member(&self, w: &mut Twine, member: &Member, def_id: DefId) {
+        let ty_str = self.cpp_type(&member.ty, def_id);
+
+        if Self::is_optional(member) {
+            w!(w, "::std::optional<", ty_str, "> ", member.ident.name, ";\n");
+        } else {
+            w!(w, ty_str, " ", member.ident.name);
+            if self.has_default_value(&member.ty) {
+                w!(w, "{");
+                self.emit_default_initializer(w, &member.ty);
+                w!(w, "}");
+            }
+            w!(w, ";\n");
+        }
+    }
+
     pub fn collect_all_members(&self, def_id: DefId) -> Vec<Member> {
         let def = self.hir.context.definitions.get(def_id);
         let mut all_members = Vec::new();
@@ -333,7 +356,7 @@ impl<'a> CppGen<'a> {
                 let name = self.scoped_name(*const_def_id, relative_def_opt);
                 w!(w, name);
             }
-            Numeric::Sequence { values, .. } | Numeric::Array { values, .. } => {
+            Numeric::Sequence { values, .. } => {
                 w!(w, "{");
                 for (i, elem) in values.iter().enumerate() {
                     self.emit_numeric_value(w, elem, relative_def_opt);
@@ -342,6 +365,16 @@ impl<'a> CppGen<'a> {
                     }
                 }
                 w!(w, "}");
+            }
+            Numeric::Array { values, .. } => {
+                w!(w, "{{");
+                for (i, elem) in values.iter().enumerate() {
+                    self.emit_numeric_value(w, elem, relative_def_opt);
+                    if i < values.len() - 1 {
+                        w!(w, ", ");
+                    }
+                }
+                w!(w, "}}");
             }
             Numeric::Struct {
                 fields,
@@ -718,6 +751,7 @@ impl<'a> CppGen<'a> {
             w!(header, "#include <cstdint>\n");
             w!(header, "#include <map>\n");
             w!(header, "#include <memory>\n");
+            w!(header, "#include <optional>\n");
             w!(header, "#include <string>\n");
             w!(header, "#include <vector>\n\n");
             w!(header, "#include <ic_cts/member_info.h>\n");

@@ -28,7 +28,6 @@
 #![allow(clippy::cast_possible_wrap)]
 
 use ic_emit::printer::{Twine, w};
-use ic_hir::annotation::{Optional, find_annotation};
 use ic_hir::hir::{Def, DefId, DefKind, Member, PrimitiveTy, Ty, TyKind, UnionTy};
 
 use crate::codegen::CppGen;
@@ -69,9 +68,7 @@ fn is_key(member: &Member) -> bool {
 }
 
 fn is_optional(member: &Member) -> bool {
-    find_annotation::<Optional>(&member.annotations, "optional")
-        .and_then(Result::ok)
-        .is_some_and(|opt| opt.value)
+    CppGen::is_optional(member)
 }
 
 fn is_shared(member: &Member) -> bool {

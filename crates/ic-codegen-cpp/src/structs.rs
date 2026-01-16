@@ -94,15 +94,7 @@ impl CppGen<'_> {
 
     fn emit_members(&self, w: &mut Twine, def: &Def, members: &[ic_hir::hir::Member]) {
         for member in members {
-            let ty_str = self.cpp_type(&member.ty, def.id);
-            w!(w, ty_str, " ", member.ident.name);
-
-            if self.has_default_value(&member.ty) {
-                w!(w, "{");
-                self.emit_default_initializer(w, &member.ty);
-                w!(w, "}");
-            }
-            w!(w, ";\n");
+            self.emit_member(w, member, def.id);
         }
     }
 

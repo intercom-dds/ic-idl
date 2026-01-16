@@ -200,9 +200,16 @@ impl CppGen<'_> {
             }
             _ => {
                 let ty_str = self.cpp_type(&const_ty.ty, def.id);
-                w!(decl_w, "inline ", static_keyword, constness, " ", ty_str, " ", const_name, "{");
-                self.emit_numeric_value(decl_w, &const_ty.value, def.id);
-                w!(decl_w, "};\n\n");
+                let is_array = matches!(const_ty.value, ic_hir::hir::Numeric::Array { .. });
+                if is_array {
+                    w!(decl_w, "inline ", static_keyword, constness, " ", ty_str, " ", const_name);
+                    self.emit_numeric_value(decl_w, &const_ty.value, def.id);
+                    w!(decl_w, ";\n\n");
+                } else {
+                    w!(decl_w, "inline ", static_keyword, constness, " ", ty_str, " ", const_name, "{");
+                    self.emit_numeric_value(decl_w, &const_ty.value, def.id);
+                    w!(decl_w, "};\n\n");
+                }
             }
         }
     }

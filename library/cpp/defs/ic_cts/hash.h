@@ -71,6 +71,7 @@ inline void hash_combine(std::size_t& seed, const std::array<T, N>& x) {
 
 template <typename K, typename V>
 inline void hash_combine(std::size_t& seed, const std::map<K, V>& x) {
+    hash_combine(seed, x.size());
     for (const auto& [key, value] : x) {
         hash_combine(seed, key);
         hash_combine(seed, value);

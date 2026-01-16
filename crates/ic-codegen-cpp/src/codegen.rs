@@ -33,7 +33,7 @@ use ic_emit::printer::{Twine, w};
 use ic_hir::ResolvedGraph;
 use ic_hir::annotation::{Optional, find_annotation};
 use ic_hir::hir::{
-    Decl, Def, DefId, DefKind, InterfaceTy, Member, ModuleTy, Numeric, ParamKind, PrimitiveTy,
+    Ann, Decl, Def, DefId, DefKind, InterfaceTy, Member, ModuleTy, Numeric, ParamKind, PrimitiveTy,
     ProtoTy, Ty, TyKind,
 };
 use ic_vfs::{FileId, SourceMap};
@@ -273,6 +273,14 @@ impl<'a> CppGen<'a> {
             .is_some_and(|opt| opt.value)
     }
 
+    pub fn default_value(annotations: &[Ann]) -> Option<&Numeric> {
+        annotations
+            .iter()
+            .find(|ann| ann.ident.name == "default")
+            .and_then(|ann| ann.args.first())
+            .map(|arg| &arg.value)
+    }
+
     pub fn emit_member(&self, w: &mut Twine, member: &Member, def_id: DefId) {
         let ty_str = self.cpp_type(&member.ty, def_id);
 
@@ -280,7 +288,16 @@ impl<'a> CppGen<'a> {
             w!(w, "::std::optional<", ty_str, "> ", member.ident.name, ";\n");
         } else {
             w!(w, ty_str, " ", member.ident.name);
-            if self.has_default_value(&member.ty) {
+            if let Some(default) = Self::default_value(&member.annotations) {
+                let is_array = matches!(default, Numeric::Array { .. });
+                if !is_array {
+                    w!(w, "{");
+                }
+                self.emit_numeric_value(w, default, def_id);
+                if !is_array {
+                    w!(w, "}");
+                }
+            } else if self.has_default_value(&member.ty) {
                 w!(w, "{");
                 self.emit_default_initializer(w, &member.ty);
                 w!(w, "}");

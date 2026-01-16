@@ -244,6 +244,16 @@ impl CppGen<'_> {
         }
     }
 
+    fn get_variant_default_expr(&self, variant: &Variant, def_id: DefId) -> String {
+        if let Some(default) = Self::default_value(&variant.annotations) {
+            let mut w = ic_emit::printer::Twine::new();
+            self.emit_numeric_value(&mut w, default, def_id);
+            w.finish()
+        } else {
+            self.get_default_value_expr(&variant.ty, def_id)
+        }
+    }
+
     fn emit_default_discriminator_check(
         &self,
         w: &mut Twine,
@@ -290,7 +300,7 @@ impl CppGen<'_> {
 
         if let Some(first_variant) = union_ty.variants.first() {
             self.emit_set_discriminator_to_variant(w, first_variant, union_ty, def.id);
-            let default_val = self.get_default_value_expr(&first_variant.ty, def.id);
+            let default_val = self.get_variant_default_expr(first_variant, def.id);
             self.emit_variant_init(w, first_variant, &default_val);
         }
         w!(w, "}\n\n");
@@ -566,7 +576,7 @@ impl CppGen<'_> {
                 w!(w, "free_union_();\n");
 
                 if !matches!(variant.ty.kind, TyKind::Null) {
-                    let default_val = self.get_default_value_expr(&variant.ty, def.id);
+                    let default_val = self.get_variant_default_expr(variant, def.id);
                     self.emit_variant_init(w, variant, &default_val);
                 }
 
@@ -581,7 +591,7 @@ impl CppGen<'_> {
                 w!(w, ") {\n");
                 w!(w, "free_union_();\n");
 
-                let default_val = self.get_default_value_expr(&variant.ty, def.id);
+                let default_val = self.get_variant_default_expr(variant, def.id);
                 self.emit_variant_init(w, variant, &default_val);
                 w!(w, "}\n");
             }

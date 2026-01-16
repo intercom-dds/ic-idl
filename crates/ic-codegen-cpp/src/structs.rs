@@ -62,7 +62,7 @@ impl CppGen<'_> {
         if !all_members.is_empty() {
             self.emit_struct_like_constructor_impl(impl_w, def);
         }
-        self.emit_struct_like_comparison_impl(impl_w, def);
+        self.emit_struct_like_comparison_impl(impl_w, def, &all_members);
     }
 
     pub fn emit_exception(
@@ -87,7 +87,7 @@ impl CppGen<'_> {
         w!(decl_w, "};\n\n");
 
         self.emit_hash_declaration(impl_w, def);
-        self.emit_struct_like_comparison_impl(impl_w, def);
+        self.emit_struct_like_comparison_impl(impl_w, def, &except_ty.members);
     }
 
     fn emit_members(&self, w: &mut Twine, def: &Def, members: &[ic_hir::hir::Member]) {
@@ -279,9 +279,13 @@ impl CppGen<'_> {
         w!(w, " {}\n\n");
     }
 
-    fn emit_struct_like_comparison_impl(&self, w: &mut Twine, def: &Def) {
+    fn emit_struct_like_comparison_impl(
+        &self,
+        w: &mut Twine,
+        def: &Def,
+        all_members: &[ic_hir::hir::Member],
+    ) {
         let qualified_name = self.scoped_name(def.id, None);
-        let all_members = self.collect_all_members(def.id);
         let param = if all_members.is_empty() {
             ""
         } else {
@@ -305,7 +309,7 @@ impl CppGen<'_> {
         w!(w, "}\n\n");
 
         w!(w, "inline bool ", qualified_name, "::operator==(const ", qualified_name, "&", param, ") const {\n");
-        for member in &all_members {
+        for member in all_members {
             let member_name = &member.ident.name;
             w!(w, "if (!(this->", member_name, " == a_other.", member_name, ")) { return false; }\n");
         }

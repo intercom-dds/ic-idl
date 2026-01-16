@@ -331,7 +331,8 @@ impl CppGen<'_> {
         match &ty.kind {
             ic_hir::hir::TyKind::String { .. } => "std::string{}".to_string(),
             ic_hir::hir::TyKind::Array { .. } | ic_hir::hir::TyKind::Sequence { .. } => {
-                "{}".to_string()
+                let type_name = self.cpp_type(ty, relative_def);
+                format!("{type_name}{{}}")
             }
             ic_hir::hir::TyKind::Map { .. } => {
                 let type_name = self.cpp_type(ty, relative_def);

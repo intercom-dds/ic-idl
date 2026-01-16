@@ -485,7 +485,7 @@ impl CppGen<'_> {
             let labels: Vec<i64> = variant
                 .labels
                 .iter()
-                .map(|label| self.hir.context.integer_value(&label.value).unwrap_or(0))
+                .map(|label| self.hir.context.integer_value(&label.value))
                 .collect();
 
             if labels.is_empty() {
@@ -563,7 +563,7 @@ impl CppGen<'_> {
         for &field_id in fields {
             let field_def = self.hir.context.definitions.get(field_id);
             if let DefKind::Const(c) = &field_def.kind {
-                let val = self.hir.context.integer_value(&c.value).unwrap_or(0);
+                let val = self.hir.context.integer_value(&c.value);
                 min_val = min_val.min(val);
                 max_val = max_val.max(val);
             }
@@ -580,7 +580,7 @@ impl CppGen<'_> {
         for (i, &field_id) in fields.iter().enumerate() {
             let field_def = self.hir.context.definitions.get(field_id);
             let member_id = if let DefKind::Const(c) = &field_def.kind {
-                self.hir.context.integer_value(&c.value).unwrap_or(i as i64)
+                self.hir.context.integer_value(&c.value)
             } else {
                 i as i64
             };
@@ -611,7 +611,7 @@ impl CppGen<'_> {
         for &flag_id in flags {
             let flag_def = self.hir.context.definitions.get(flag_id);
             if let DefKind::Const(c) = &flag_def.kind {
-                let val = self.hir.context.unsigned_value(&c.value).unwrap_or(0);
+                let val = self.hir.context.unsigned_value(&c.value);
                 max_val |= val;
             }
         }
@@ -627,7 +627,7 @@ impl CppGen<'_> {
             let flag_def = self.hir.context.definitions.get(flag_id);
 
             let member_id = if let DefKind::Const(c) = &flag_def.kind {
-                let val = self.hir.context.unsigned_value(&c.value).unwrap_or(0);
+                let val = self.hir.context.unsigned_value(&c.value);
                 // For bitmasks, the member ID is the bit position
                 if val > 0 {
                     i64::from(val.trailing_zeros())

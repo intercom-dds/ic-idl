@@ -330,7 +330,7 @@ impl<'a> CppGen<'a> {
                     };
                     w!(w, type_name, "{");
                 }
-                for (i, (_ident, value)) in fields.iter().enumerate() {
+                for (i, value) in fields.iter().enumerate() {
                     self.emit_numeric_value_impl(w, value, relative_def_opt, None, true);
                     if i < fields.len() - 1 {
                         w!(w, ", ");

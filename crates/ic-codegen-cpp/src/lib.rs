@@ -27,7 +27,7 @@
 
 use ic_cli::Command;
 use ic_emit::File;
-use ic_hir_xform::Target;
+use ic_hir_xform::{Target, rename};
 
 mod codegen;
 mod deps;
@@ -90,6 +90,14 @@ pub struct CppOptions {
     pub header_subdir: Option<String>,
 }
 
+fn escape_cpp_keyword(ctx: rename::RenameContext) -> Option<String> {
+    if KEYWORDS.contains(&ctx.name) {
+        Some(format!("{}_", ctx.name))
+    } else {
+        None
+    }
+}
+
 /// # Panics
 ///
 /// May panic if some of the passed string parameters contain a NUL byte.
@@ -100,8 +108,7 @@ pub fn codegen_cpp(
     options: CppOptions,
 ) -> Vec<File> {
     let target = Target {
-        keywords: KEYWORDS.iter().copied().collect(),
-        keyword_escape_fn: |name| format!("{name}_"),
+        keyword_escape: Some(escape_cpp_keyword),
         ..Target::default()
     };
 

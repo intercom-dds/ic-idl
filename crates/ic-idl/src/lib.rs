@@ -85,7 +85,7 @@ pub use config::{Options as CompilerOptions, Unstable, Warnings};
 use ic_cli::color::Colorize as _;
 pub use ic_emit::File;
 pub use util::Error as DiagnosticError;
-pub use {ic_hir as hir, ic_hir_lower as hir_lower, ic_ptree as ptree, ic_vfs as vfs};
+pub use {ic_hir as hir, ic_hir_lower as hir_lower, ic_vfs as vfs};
 
 /// Error type for compilation failures.
 #[derive(Debug)]
@@ -175,11 +175,6 @@ impl CompileDiagnostics {
 
         result
     }
-}
-
-/// Convert HIR to ptree.
-pub fn to_ptree(hir: &hir::ResolvedGraph, source_map: &SourceMap) -> ptree::ParseResult {
-    ic_ptree_lower::from_hir(hir, source_map)
 }
 
 /// Main compiler interface.

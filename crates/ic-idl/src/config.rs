@@ -291,10 +291,6 @@ pub struct Unstable {
     #[option(long)]
     pub hir_dump: bool,
 
-    /// Print the ptree in a tree-like format
-    #[option(long)]
-    pub ptree_dump: bool,
-
     /// Only parse, skip type checking and code generation
     #[option(long)]
     pub parse_only: bool,
@@ -331,7 +327,6 @@ impl convert::Convert for Unstable {
             match arg.as_str() {
                 "ast-dump" => this.ast_dump = true,
                 "hir-dump" => this.hir_dump = true,
-                "ptree-dump" => this.ptree_dump = true,
                 "parse-only" => this.parse_only = true,
                 "trace" => this.trace = Some("trace".to_string()),
                 "help" => {

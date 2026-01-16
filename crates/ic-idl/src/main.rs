@@ -217,11 +217,6 @@ fn try_compile(options: CompilerOptions) {
         println!("{tree}");
     }
 
-    if compiler.options().unstable.ptree_dump {
-        let ptree = ic_ptree_lower::from_hir(&hir, compiler.source_map());
-        ic_ptree_dump::ptree_dump(&ptree);
-    }
-
     // Generate code using backends (they will convert HIR to ptree as needed)
     let generated = match generate_code(compiler.options(), &hir, compiler.source_map()) {
         Ok(files) => files,

@@ -280,13 +280,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "ic-cc"
-version = "0.3.14"
-dependencies = [
- "cc",
-]
-
-[[package]]
 name = "ic-cli"
 version = "0.3.14"
 dependencies = [
@@ -541,9 +534,6 @@ dependencies = [
  "ic-lint",
  "ic-parse",
  "ic-preproc",
- "ic-ptree",
- "ic-ptree-dump",
- "ic-ptree-lower",
  "ic-syntax",
  "ic-vfs",
  "intercom-cts",
@@ -572,7 +562,6 @@ dependencies = [
  "ic-lexer",
  "ic-parse",
  "ic-preproc",
- "ic-ptree-lower",
  "ic-syntax",
  "ic-vfs",
  "insta",
@@ -618,33 +607,6 @@ dependencies = [
  "ic-vfs",
  "rustc-hash",
  "tracing",
-]
-
-[[package]]
-name = "ic-ptree"
-version = "0.3.14"
-dependencies = [
- "ic-cc",
-]
-
-[[package]]
-name = "ic-ptree-dump"
-version = "0.3.14"
-dependencies = [
- "ic-cc",
- "ic-ptree",
-]
-
-[[package]]
-name = "ic-ptree-lower"
-version = "0.3.14"
-dependencies = [
- "ic-hir",
- "ic-hir-lower",
- "ic-parse",
- "ic-ptree",
- "ic-syntax",
- "ic-vfs",
 ]
 
 [[package]]

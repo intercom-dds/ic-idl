@@ -29,7 +29,6 @@
 resolver = "2"
 members = [
     "crates/ic-alloc",
-    "crates/ic-cc",
     "crates/ic-cli",
     "crates/ic-cli-derive",
     "crates/ic-codegen-cpp",
@@ -58,9 +57,6 @@ members = [
     "crates/ic-omgidl",
     "crates/ic-parse",
     "crates/ic-preproc",
-    "crates/ic-ptree",
-    "crates/ic-ptree-dump",
-    "crates/ic-ptree-lower",
     "crates/ic-syntax",
     "crates/ic-typeobj",
     "crates/ic-vfs",

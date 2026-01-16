@@ -43,16 +43,10 @@ Schema, and XML.
 
 ## Building
 
-Building `ic-idl` requires a C++17 toolchain and a Rust 1.88+ toolchain.
+Building `ic-idl` requires a Rust 1.88+ toolchain.
 
-The system's default C++ toolchain will be used unless otherwise is specified.
-This can be overridden by using the `CXX` environment variable, and custom
-flags can be specified with `CXXFLAGS`.
-
-For working with the C++ code, you can use the top-level `CMakeLists.txt` to
-initialize a project and generate a `compile_commands.json`. The CMake project
-*only* exists to generate said file -- it is not used by Cargo, and any
-artifacts compiled using it will not be included in the `ic-idl` binary.
+Running the end-to-end tests requires Python and [uv](https://docs.astral.sh/uv/). See the
+`e2e-tests` directory for more information.
 
 ## Installation
 

@@ -95,16 +95,17 @@ fn git_root() -> PathBuf {
 
 fn lang_to_test_file(lang: &str) -> Option<&'static str> {
     match lang {
-        "csharp" | "cs" => Some("test_csharp.py"),
-        "java" => Some("test_java.py"),
-        "protobuf" => Some("test_protobuf.py"),
-        "python" => Some("test_python.py"),
-        "typescript" | "ts" => Some("test_typescript.py"),
-        "json" => Some("test_json.py"),
-        "json-schema" => Some("test_json_schema.py"),
-        "xml" => Some("test_xml.py"),
-        "idl" => Some("test_idl.py"),
-        "rust" | "rs" => Some("test_rust.py"),
+        "csharp" | "cs" => Some("tests/test_csharp.py"),
+        "java" => Some("tests/test_java.py"),
+        "protobuf" => Some("tests/test_protobuf.py"),
+        "python" => Some("tests/test_python.py"),
+        "typescript" | "ts" => Some("tests/test_typescript.py"),
+        "json" => Some("tests/test_json.py"),
+        "json-schema" => Some("tests/test_json_schema.py"),
+        "xml" => Some("tests/test_xml.py"),
+        "idl" => Some("tests/test_idl.py"),
+        "rust" | "rs" => Some("tests/test_rust.py"),
+        "cpp" | "c++" => Some("tests/test_cpp.py"),
         _ => None,
     }
 }
@@ -139,8 +140,8 @@ pub fn run(opts: Options) {
             } else {
                 eprintln!("error: unknown or unsupported language '{lang}'");
                 eprintln!(
-                    "supported languages: csharp, java, protobuf, python, rust, typescript, json, \
-                     json-schema, xml, idl, all"
+                    "supported languages: cpp, csharp, java, protobuf, python, rust, typescript, \
+                     json, json-schema, xml, idl, all"
                 );
                 std::process::exit(1);
             }

@@ -29,8 +29,8 @@
 
 # End-to-end tests
 
-This directory contains the e2e test suite for validating generated code across all backends. All
-files placed in the `corpus` directory will be considered its own test case, and will be tested
+This directory contains the e2e test suite for validating generated code across all backends. Each
+file placed in the `corpus` directory will be considered its own test case, and will be tested
 against all available backends.
 
 ## Running the tests

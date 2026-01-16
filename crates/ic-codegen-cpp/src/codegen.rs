@@ -283,6 +283,9 @@ impl<'a> CppGen<'a> {
                 }
                 all_members.extend(valuetype_ty.members.clone());
             }
+            DefKind::Except(except_ty) => {
+                all_members.extend(except_ty.members.clone());
+            }
             _ => {}
         }
 
@@ -459,10 +462,9 @@ impl<'a> CppGen<'a> {
         let qualified_name = self.scoped_name(def.id, None);
 
         let has_members = match &def.kind {
-            DefKind::Struct(_) | DefKind::Valuetype(_) => {
+            DefKind::Struct(_) | DefKind::Valuetype(_) | DefKind::Except(_) => {
                 !self.collect_all_members(def.id).is_empty()
             }
-            DefKind::Except(except_ty) => !except_ty.members.is_empty(),
             DefKind::Union(_) => true,
             _ => false,
         };

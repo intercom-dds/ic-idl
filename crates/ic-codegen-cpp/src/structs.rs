@@ -88,7 +88,8 @@ impl CppGen<'_> {
         w!(decl_w, "};\n\n");
 
         self.emit_hash_declaration(impl_w, def);
-        self.emit_struct_like_comparison_impl(impl_w, def, &except_ty.members);
+        let all_members = self.collect_all_members(def.id);
+        self.emit_struct_like_comparison_impl(impl_w, def, &all_members);
     }
 
     fn emit_members(&self, w: &mut Twine, def: &Def, members: &[ic_hir::hir::Member]) {

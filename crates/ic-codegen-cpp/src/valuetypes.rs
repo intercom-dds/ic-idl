@@ -75,7 +75,7 @@ impl CppGen<'_> {
         self.emit_typedef_sequence(decl_w, def);
         self.emit_type_traits(impl_w, def);
         self.emit_hash_declaration(impl_w, def);
-        self.emit_valuetype_serializer(impl_w, def, valuetype_ty);
+        self.emit_valuetype_serializer(impl_w, def);
 
         let all_members = self.collect_all_valuetype_members(def.id);
         if !all_members.is_empty() {
@@ -270,9 +270,10 @@ impl CppGen<'_> {
         w!(w, "}\n\n");
     }
 
-    fn emit_valuetype_serializer(&self, w: &mut Twine, def: &Def, valuetype_ty: &ValueTy) {
+    fn emit_valuetype_serializer(&self, w: &mut Twine, def: &Def) {
         let qualified_name = self.scoped_name(def.id, None);
-        let value_param = if valuetype_ty.members.is_empty() {
+        let all_members = self.collect_all_valuetype_members(def.id);
+        let value_param = if all_members.is_empty() {
             ""
         } else {
             " a_value"
@@ -284,7 +285,7 @@ impl CppGen<'_> {
         w!(w, "auto a_info = &::ic_cts::TypeTraits<", qualified_name, ">::type_info;\n");
         w!(w, "typename Archive::StructValue serializer(a_archive, a_info);\n");
 
-        for (i, member) in valuetype_ty.members.iter().enumerate() {
+        for (i, member) in all_members.iter().enumerate() {
             let member_name = &member.ident.name;
             w!(w, "serializer.io(a_info->members[", i.to_string(), "], a_value.", member_name, ");\n");
         }

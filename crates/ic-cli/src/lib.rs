@@ -486,14 +486,14 @@ impl CommandLine {
             lines.push(format!("\n{section}:").yellow().bold().to_string());
 
             for cmd in cmds {
-                let name_bold = cmd.name.bold().to_string();
+                let name_styled = cmd.name.cyan().to_string();
                 let name_display_width = display_width(&cmd.name);
                 let current_position = LEFT_MARGIN + name_display_width;
                 let padding_width = desc_column.saturating_sub(current_position);
                 let line = format!(
                     "{:LEFT_MARGIN$}{}{}{}",
                     " ",
-                    name_bold,
+                    name_styled,
                     " ".repeat(padding_width),
                     cmd.desc
                 );

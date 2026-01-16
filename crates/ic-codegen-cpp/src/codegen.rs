@@ -266,6 +266,29 @@ impl<'a> CppGen<'a> {
         !matches!(&ty.kind, TyKind::Primitive(_))
     }
 
+    pub fn collect_all_members(&self, def_id: DefId) -> Vec<Member> {
+        let def = self.hir.context.definitions.get(def_id);
+        let mut all_members = Vec::new();
+
+        match &def.kind {
+            DefKind::Struct(struct_ty) => {
+                if let Some(parent_id) = struct_ty.parent {
+                    all_members.extend(self.collect_all_members(parent_id));
+                }
+                all_members.extend(struct_ty.members.clone());
+            }
+            DefKind::Valuetype(valuetype_ty) => {
+                if let Some(parent_id) = valuetype_ty.parent {
+                    all_members.extend(self.collect_all_members(parent_id));
+                }
+                all_members.extend(valuetype_ty.members.clone());
+            }
+            _ => {}
+        }
+
+        all_members
+    }
+
     pub fn emit_numeric_value(
         &self,
         w: &mut Twine,
@@ -436,8 +459,9 @@ impl<'a> CppGen<'a> {
         let qualified_name = self.scoped_name(def.id, None);
 
         let has_members = match &def.kind {
-            DefKind::Struct(_) => !self.collect_all_members(def.id).is_empty(),
-            DefKind::Valuetype(_) => !self.collect_all_valuetype_members(def.id).is_empty(),
+            DefKind::Struct(_) | DefKind::Valuetype(_) => {
+                !self.collect_all_members(def.id).is_empty()
+            }
             DefKind::Except(except_ty) => !except_ty.members.is_empty(),
             DefKind::Union(_) => true,
             _ => false,

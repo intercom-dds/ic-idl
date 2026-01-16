@@ -46,7 +46,7 @@ impl CppGen<'_> {
         w!(decl_w, " {\n");
 
         self.emit_struct_like_constructors(decl_w, def);
-        self.emit_struct_like_comparison_operators(decl_w, def, &struct_ty.members);
+        self.emit_struct_like_comparison_operators(decl_w, def);
 
         w!(decl_w, "\n");
 
@@ -57,7 +57,8 @@ impl CppGen<'_> {
         self.emit_typedef_sequence(decl_w, def);
         self.emit_type_traits(impl_w, def);
         self.emit_hash_declaration(impl_w, def);
-        self.emit_serializer_specialization(impl_w, def, &struct_ty.members);
+        self.emit_serializer_specialization(impl_w, def);
+
         let all_members = self.collect_all_members(def.id);
         if !all_members.is_empty() {
             self.emit_struct_like_constructor_impl(impl_w, def);
@@ -78,7 +79,7 @@ impl CppGen<'_> {
         w!(decl_w, " {\n");
 
         self.emit_exception_constructors(decl_w, impl_w, def, &except_ty.members);
-        self.emit_struct_like_comparison_operators(decl_w, def, &except_ty.members);
+        self.emit_struct_like_comparison_operators(decl_w, def);
 
         w!(decl_w, "\n");
 
@@ -164,23 +165,6 @@ impl CppGen<'_> {
         }
     }
 
-    pub(crate) fn collect_all_members(
-        &self,
-        def_id: ic_hir::hir::DefId,
-    ) -> Vec<ic_hir::hir::Member> {
-        let def = self.hir.context.definitions.get(def_id);
-        let mut all_members = Vec::new();
-
-        if let ic_hir::hir::DefKind::Struct(struct_ty) = &def.kind {
-            if let Some(parent_id) = struct_ty.parent {
-                all_members.extend(self.collect_all_members(parent_id));
-            }
-            all_members.extend(struct_ty.members.clone());
-        }
-
-        all_members
-    }
-
     fn emit_struct_like_constructors(&self, w: &mut Twine, def: &Def) {
         let struct_name = &def.ident.name;
 
@@ -208,12 +192,7 @@ impl CppGen<'_> {
         }
     }
 
-    fn emit_struct_like_comparison_operators(
-        &self,
-        w: &mut Twine,
-        def: &Def,
-        _members: &[ic_hir::hir::Member],
-    ) {
+    fn emit_struct_like_comparison_operators(&self, w: &mut Twine, def: &Def) {
         let struct_name = &def.ident.name;
 
         w!(w, "bool operator<(const ", struct_name, "& a_other) const;\n");
@@ -317,12 +296,7 @@ impl CppGen<'_> {
         w!(w, "}\n\n");
     }
 
-    fn emit_serializer_specialization(
-        &self,
-        w: &mut Twine,
-        def: &Def,
-        _members: &[ic_hir::hir::Member],
-    ) {
+    fn emit_serializer_specialization(&self, w: &mut Twine, def: &Def) {
         let qualified_name = self.scoped_name(def.id, None);
         let all_members = self.collect_all_members(def.id);
 

@@ -77,7 +77,7 @@ impl CppGen<'_> {
         self.emit_hash_declaration(impl_w, def);
         self.emit_valuetype_serializer(impl_w, def);
 
-        let all_members = self.collect_all_valuetype_members(def.id);
+        let all_members = self.collect_all_members(def.id);
         if !all_members.is_empty() {
             self.emit_valuetype_constructor_impl(impl_w, def, valuetype_ty);
         }
@@ -97,7 +97,7 @@ impl CppGen<'_> {
         w!(w, valuetype_name, "(", valuetype_name, " &&) = default;\n");
         w!(w, valuetype_name, "& operator=(", valuetype_name, " &&) = default;\n");
 
-        let all_members = self.collect_all_valuetype_members(def.id);
+        let all_members = self.collect_all_members(def.id);
 
         if !all_members.is_empty() {
             if all_members.len() == 1 {
@@ -170,27 +170,10 @@ impl CppGen<'_> {
         w!(w, "}\n\n");
     }
 
-    pub(crate) fn collect_all_valuetype_members(
-        &self,
-        def_id: ic_hir::hir::DefId,
-    ) -> Vec<ic_hir::hir::Member> {
-        let def = self.hir.context.definitions.get(def_id);
-        let mut all_members = Vec::new();
-
-        if let ic_hir::hir::DefKind::Valuetype(valuetype_ty) = &def.kind {
-            if let Some(parent_id) = valuetype_ty.parent {
-                all_members.extend(self.collect_all_valuetype_members(parent_id));
-            }
-            all_members.extend(valuetype_ty.members.clone());
-        }
-
-        all_members
-    }
-
     fn emit_valuetype_constructor_impl(&self, w: &mut Twine, def: &Def, valuetype_ty: &ValueTy) {
         let qualified_name = self.scoped_name(def.id, None);
         let valuetype_name = &def.ident.name;
-        let all_members = self.collect_all_valuetype_members(def.id);
+        let all_members = self.collect_all_members(def.id);
 
         w!(w, "inline ", qualified_name, "::", valuetype_name, "(\n");
         for (i, member) in all_members.iter().enumerate() {
@@ -206,7 +189,7 @@ impl CppGen<'_> {
         if let Some(parent_id) = valuetype_ty.parent {
             has_parent = true;
             let parent_name = self.scoped_name(parent_id, None);
-            let parent_all_members = self.collect_all_valuetype_members(parent_id);
+            let parent_all_members = self.collect_all_members(parent_id);
 
             w!(w, parent_name, "(");
             for (i, member) in parent_all_members.iter().enumerate() {
@@ -238,7 +221,7 @@ impl CppGen<'_> {
 
     fn emit_valuetype_comparison_impl(&self, w: &mut Twine, def: &Def) {
         let qualified_name = self.scoped_name(def.id, None);
-        let all_members = self.collect_all_valuetype_members(def.id);
+        let all_members = self.collect_all_members(def.id);
         let param = if all_members.is_empty() {
             ""
         } else {
@@ -272,7 +255,7 @@ impl CppGen<'_> {
 
     fn emit_valuetype_serializer(&self, w: &mut Twine, def: &Def) {
         let qualified_name = self.scoped_name(def.id, None);
-        let all_members = self.collect_all_valuetype_members(def.id);
+        let all_members = self.collect_all_members(def.id);
         let value_param = if all_members.is_empty() {
             ""
         } else {

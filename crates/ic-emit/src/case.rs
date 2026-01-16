@@ -227,7 +227,8 @@ impl Converter {
             if let Some((_, peek)) = iter.peek() {
                 let len = i - start;
 
-                if is_delim(*peek) || (c.is_lowercase() && peek.is_uppercase()) {
+                let digit_to_upper = c.is_ascii_digit() && peek.is_uppercase();
+                if is_delim(*peek) || (c.is_lowercase() && peek.is_uppercase()) || digit_to_upper {
                     self.append(&input[start..=(start + len)], &mut buffer);
                     start = i + 1;
                 } else if was_upper && c.is_uppercase() && peek.is_lowercase() {
@@ -285,7 +286,17 @@ mod test {
     fn multiple_upper() {
         assert_eq!(pascal("JSONParser"), "JsonParser");
         assert_eq!(snake("IDLType"), "idl_type");
-        assert_eq!(snake("PROTO3Buffer"), "proto3buffer");
+        assert_eq!(snake("PROTO3Buffer"), "proto3_buffer");
+    }
+
+    #[test]
+    fn digit_to_upper_boundary() {
+        assert_eq!(pascal("foo123value"), "Foo123value");
+        assert_eq!(pascal("foo123Value"), "Foo123Value");
+        assert_eq!(pascal("abc123Def456Ghi"), "Abc123Def456Ghi");
+        assert_eq!(snake("foo123Value"), "foo123_value");
+        assert_eq!(snake("e2e"), "e2e");
+        assert_eq!(camel("foo_123_bar"), "foo123Bar");
     }
 
     #[test]

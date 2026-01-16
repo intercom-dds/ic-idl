@@ -322,9 +322,15 @@ impl CppGen<'_> {
         let qualified_name = self.scoped_name(def.id, None);
         let all_members = self.collect_all_members(def.id);
 
+        let value_param = if all_members.is_empty() {
+            ""
+        } else {
+            " a_value"
+        };
+
         w!(w, "template <class Archive>\n");
         w!(w, "struct ic_cts::Serializer<Archive, ", qualified_name, "> {\n");
-        w!(w, "void operator()(Archive& a_archive, ", qualified_name, "& a_value, const ::ic_cts::TypeInfo*) {\n");
+        w!(w, "void operator()(Archive& a_archive, ", qualified_name, "&", value_param, ", const ::ic_cts::TypeInfo*) {\n");
         w!(w, "auto a_info = &::ic_cts::TypeTraits<", qualified_name, ">::type_info;\n");
         w!(w, "typename Archive::StructValue serializer(a_archive, a_info);\n");
 

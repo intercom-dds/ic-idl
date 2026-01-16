@@ -361,21 +361,22 @@ impl<'a> CppGen<'a> {
         }
     }
 
+    pub fn primitive_default(prim: PrimitiveTy) -> &'static str {
+        match prim {
+            PrimitiveTy::Bool => "false",
+            PrimitiveTy::Int8 | PrimitiveTy::Int16 | PrimitiveTy::Int32 | PrimitiveTy::Int64 => "0",
+            PrimitiveTy::UInt8 | PrimitiveTy::UInt16 | PrimitiveTy::UInt32 => "0U",
+            PrimitiveTy::UInt64 => "0ULL",
+            PrimitiveTy::Float32 | PrimitiveTy::Float64 | PrimitiveTy::Float128 => "0.0",
+            PrimitiveTy::Char => "'\\0'",
+            PrimitiveTy::WChar => "L'\\0'",
+            PrimitiveTy::Void => "",
+        }
+    }
+
     pub fn emit_default_initializer(&self, w: &mut Twine, ty: &Ty) {
         match &ty.kind {
-            TyKind::Primitive(prim) => match prim {
-                PrimitiveTy::Bool => w!(w, "false"),
-                PrimitiveTy::Int8
-                | PrimitiveTy::Int16
-                | PrimitiveTy::Int32
-                | PrimitiveTy::Int64 => w!(w, "0"),
-                PrimitiveTy::UInt8 | PrimitiveTy::UInt16 | PrimitiveTy::UInt32 => w!(w, "0U"),
-                PrimitiveTy::UInt64 => w!(w, "0ULL"),
-                PrimitiveTy::Float32 | PrimitiveTy::Float64 | PrimitiveTy::Float128 => w!(w, "0.0"),
-                PrimitiveTy::Char => w!(w, "'\\0'"),
-                PrimitiveTy::WChar => w!(w, "L'\\0'"),
-                PrimitiveTy::Void => {}
-            },
+            TyKind::Primitive(prim) => w!(w, Self::primitive_default(*prim)),
             TyKind::Array { .. } => w!(w, "{}"),
             _ => {}
         }

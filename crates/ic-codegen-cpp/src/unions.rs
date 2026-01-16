@@ -303,6 +303,7 @@ impl CppGen<'_> {
                 let type_name = self.cpp_type(ty, relative_def);
                 format!("{type_name}{{}}")
             }
+            TyKind::Primitive(prim) => Self::primitive_default(*prim).to_string(),
             TyKind::Adt(def_id) => {
                 let def = self.hir.context.definitions.get(*def_id);
                 match &def.kind {
@@ -344,6 +345,9 @@ impl CppGen<'_> {
                     DefKind::Union(_) | DefKind::Alias(_) => {
                         let type_name = self.cpp_type(ty, relative_def);
                         format!("{type_name}{{}}")
+                    }
+                    DefKind::Bitmask(bitmask_ty) => {
+                        Self::primitive_default(bitmask_ty.ty).to_string()
                     }
                     _ => "0".to_string(),
                 }
@@ -512,6 +516,7 @@ impl CppGen<'_> {
             false
         });
 
+        w!(w, "return false;\n");
         w!(w, "}\n\n");
 
         // operator==
@@ -527,6 +532,7 @@ impl CppGen<'_> {
             false
         });
 
+        w!(w, "return true;\n");
         w!(w, "}\n\n");
     }
 

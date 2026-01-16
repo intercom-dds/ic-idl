@@ -36,6 +36,18 @@
 namespace ic_cts {
 
 template <class T>
+inline void hash_combine(std::size_t& seed, const T& x);
+
+template <typename T>
+inline void hash_combine(std::size_t& seed, const std::vector<T>& x);
+
+template <typename T, std::size_t N>
+inline void hash_combine(std::size_t& seed, const std::array<T, N>& x);
+
+template <typename K, typename V>
+inline void hash_combine(std::size_t& seed, const std::map<K, V>& x);
+
+template <class T>
 inline void hash_combine(std::size_t& seed, const T& x) {
     seed ^= std::hash<T>{}(x) + static_cast<std::size_t>(0x9e3779b97f4a7c15ULL) + (seed << 6) +
             (seed >> 2);

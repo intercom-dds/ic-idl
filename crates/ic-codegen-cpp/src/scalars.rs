@@ -61,11 +61,10 @@ impl CppGen<'_> {
             if field_def
                 .flags
                 .contains(ic_hir::hir::DefFlags::IS_ENUMERATED)
+                && let ic_hir::hir::DefKind::Const(const_ty) = &field_def.kind
             {
-                if let ic_hir::hir::DefKind::Const(const_ty) = &field_def.kind {
-                    w!(decl_w, " = ");
-                    self.emit_numeric_value(decl_w, &const_ty.value, def.id);
-                }
+                w!(decl_w, " = ");
+                self.emit_numeric_value(decl_w, &const_ty.value, def.id);
             }
 
             if i < enum_ty.fields.len() - 1 {

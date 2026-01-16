@@ -48,7 +48,6 @@ pub struct CppGen<'a> {
     source_map: &'a SourceMap,
 }
 
-#[allow(clippy::unused_self)]
 impl<'a> CppGen<'a> {
     pub fn new(hir: &'a ResolvedGraph, source_map: &'a SourceMap, options: CppOptions) -> Self {
         Self {

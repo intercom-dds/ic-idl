@@ -30,7 +30,6 @@ use ic_hir::hir::{Def, StructTy};
 
 use crate::codegen::CppGen;
 
-#[allow(clippy::unused_self)]
 impl CppGen<'_> {
     pub fn emit_struct(
         &self,
@@ -242,25 +241,25 @@ impl CppGen<'_> {
 
         // Check if there's a parent and emit parent constructor call
         let mut has_parent = false;
-        if let ic_hir::hir::DefKind::Struct(struct_ty) = &def.kind {
-            if let Some(parent_id) = struct_ty.parent {
-                has_parent = true;
-                let parent_name = self.scoped_name(parent_id, None);
-                let parent_all_members = self.collect_all_members(parent_id);
+        if let ic_hir::hir::DefKind::Struct(struct_ty) = &def.kind
+            && let Some(parent_id) = struct_ty.parent
+        {
+            has_parent = true;
+            let parent_name = self.scoped_name(parent_id, None);
+            let parent_all_members = self.collect_all_members(parent_id);
 
-                w!(w, parent_name, "(");
-                for (i, member) in parent_all_members.iter().enumerate() {
-                    if self.should_use_move(&member.ty) {
-                        w!(w, "std::move(a_", member.ident.name, ")");
-                    } else {
-                        w!(w, "a_", member.ident.name);
-                    }
-                    if i < parent_all_members.len() - 1 {
-                        w!(w, ", ");
-                    }
+            w!(w, parent_name, "(");
+            for (i, member) in parent_all_members.iter().enumerate() {
+                if self.should_use_move(&member.ty) {
+                    w!(w, "std::move(a_", member.ident.name, ")");
+                } else {
+                    w!(w, "a_", member.ident.name);
                 }
-                w!(w, ")");
+                if i < parent_all_members.len() - 1 {
+                    w!(w, ", ");
+                }
             }
+            w!(w, ")");
         }
 
         // Initialize own members

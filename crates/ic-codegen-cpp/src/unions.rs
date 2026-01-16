@@ -26,20 +26,19 @@
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use ic_emit::printer::{Twine, w};
-use ic_hir::hir::Def;
+use ic_hir::hir::{Def, DefId, DefKind, Ty, TyKind, UnionTy, Variant};
 
 use crate::codegen::CppGen;
 
 const UNION_DISC_FIELD: &str = "ic_discriminator_value_";
 
-#[allow(clippy::unused_self)]
 impl CppGen<'_> {
     pub fn emit_union(
         &self,
         decl_w: &mut Twine,
         impl_w: &mut Twine,
         def: &Def,
-        union_ty: &ic_hir::hir::UnionTy,
+        union_ty: &UnionTy,
     ) {
         let disc_type = self.cpp_type(&union_ty.disc.ty, def.id);
         w!(decl_w, "struct ", def, " {\n");
@@ -64,7 +63,7 @@ impl CppGen<'_> {
 
         // Member accessors
         for variant in &union_ty.variants {
-            if !matches!(variant.ty.kind, ic_hir::hir::TyKind::Null) {
+            if !matches!(variant.ty.kind, TyKind::Null) {
                 self.emit_union_member_accessors(decl_w, def, variant, &disc_type);
             }
         }
@@ -75,7 +74,7 @@ impl CppGen<'_> {
         w!(decl_w, "ICUnionType_() {}\n");
         w!(decl_w, "~ICUnionType_() {}\n");
         for variant in &union_ty.variants {
-            if !matches!(variant.ty.kind, ic_hir::hir::TyKind::Null) {
+            if !matches!(variant.ty.kind, TyKind::Null) {
                 let member_type = self.cpp_type(&variant.ty, def.id);
                 w!(decl_w, member_type, " ", variant.ident.name, ";\n");
             }
@@ -93,12 +92,12 @@ impl CppGen<'_> {
         self.emit_union_impl(impl_w, def, union_ty, &disc_type);
     }
 
-    pub fn emit_hash_union(&self, w: &mut Twine, union_ty: &ic_hir::hir::UnionTy) {
+    pub fn emit_hash_union(&self, w: &mut Twine, union_ty: &UnionTy) {
         w!(w, "std::size_t seed = 0;\n");
         w!(w, "::ic_cts::hash_combine(seed, s._d());\n\n");
 
         self.emit_union_switch(w, union_ty, "s._d()", |w, variant| {
-            if !matches!(variant.ty.kind, ic_hir::hir::TyKind::Null) {
+            if !matches!(variant.ty.kind, TyKind::Null) {
                 let member_name = format!("s.{}()", variant.ident.name);
                 w!(w, "::ic_cts::hash_combine(seed, ", member_name, ");\n");
             }
@@ -121,7 +120,7 @@ impl CppGen<'_> {
         &self,
         w: &mut Twine,
         def: &Def,
-        variant: &ic_hir::hir::Variant,
+        variant: &Variant,
         disc_type: &str,
     ) {
         let member_type = self.cpp_type(&variant.ty, def.id);
@@ -159,14 +158,9 @@ impl CppGen<'_> {
         w!(w, "\n");
     }
 
-    fn emit_union_switch<F>(
-        &self,
-        w: &mut Twine,
-        union_ty: &ic_hir::hir::UnionTy,
-        disc_var: &str,
-        mut body: F,
-    ) where
-        F: FnMut(&mut Twine, &ic_hir::hir::Variant) -> bool,
+    fn emit_union_switch<F>(&self, w: &mut Twine, union_ty: &UnionTy, disc_var: &str, mut body: F)
+    where
+        F: FnMut(&mut Twine, &Variant) -> bool,
     {
         w!(w, "switch (", disc_var, ") {\n");
         w.dedent();
@@ -195,20 +189,11 @@ impl CppGen<'_> {
         w!(w, "}\n");
     }
 
-    fn should_emit_variant_check(
-        &self,
-        union_ty: &ic_hir::hir::UnionTy,
-        variant: &ic_hir::hir::Variant,
-    ) -> bool {
+    fn should_emit_variant_check(&self, union_ty: &UnionTy, variant: &Variant) -> bool {
         !variant.is_default || union_ty.variants.len() > 1
     }
 
-    fn emit_variant_check_condition(
-        &self,
-        w: &mut Twine,
-        union_ty: &ic_hir::hir::UnionTy,
-        variant: &ic_hir::hir::Variant,
-    ) {
+    fn emit_variant_check_condition(&self, w: &mut Twine, union_ty: &UnionTy, variant: &Variant) {
         if variant.is_default {
             let non_default_variants: Vec<_> =
                 union_ty.variants.iter().filter(|v| !v.is_default).collect();
@@ -237,9 +222,9 @@ impl CppGen<'_> {
     fn emit_set_discriminator_to_variant(
         &self,
         w: &mut Twine,
-        variant: &ic_hir::hir::Variant,
-        union_ty: &ic_hir::hir::UnionTy,
-        def_id: ic_hir::hir::DefId,
+        variant: &Variant,
+        union_ty: &UnionTy,
+        def_id: DefId,
     ) {
         w!(w, UNION_DISC_FIELD, " = ");
         if let Some(first_label) = variant.labels.first() {
@@ -251,7 +236,7 @@ impl CppGen<'_> {
         w!(w, ";\n");
     }
 
-    fn emit_variant_init(&self, w: &mut Twine, variant: &ic_hir::hir::Variant, value_expr: &str) {
+    fn emit_variant_init(&self, w: &mut Twine, variant: &Variant, value_expr: &str) {
         if self.should_use_move(&variant.ty) {
             w!(w, "::ic_cts::construct_at(&ic_union_value_.", variant.ident.name, ", ", value_expr, ");\n");
         } else {
@@ -262,7 +247,7 @@ impl CppGen<'_> {
     fn emit_default_discriminator_check(
         &self,
         w: &mut Twine,
-        union_ty: &ic_hir::hir::UnionTy,
+        union_ty: &UnionTy,
         discriminator_var: &str,
     ) {
         let non_default_variants: Vec<_> =
@@ -285,14 +270,8 @@ impl CppGen<'_> {
         w!(w, ") {\n");
     }
 
-    fn emit_union_impl(
-        &self,
-        w: &mut Twine,
-        def: &Def,
-        union_ty: &ic_hir::hir::UnionTy,
-        disc_type: &str,
-    ) {
-        self.emit_union_constructor(w, def, union_ty, disc_type);
+    fn emit_union_impl(&self, w: &mut Twine, def: &Def, union_ty: &UnionTy, disc_type: &str) {
+        self.emit_union_constructor(w, def, union_ty);
         self.emit_union_copy_constructor(w, def, union_ty, disc_type);
         self.emit_union_copy_assignment(w, def, union_ty, disc_type);
         self.emit_union_move_constructor(w, def, union_ty, disc_type);
@@ -305,13 +284,7 @@ impl CppGen<'_> {
         self.emit_union_free(w, def, union_ty);
     }
 
-    fn emit_union_constructor(
-        &self,
-        w: &mut Twine,
-        def: &Def,
-        union_ty: &ic_hir::hir::UnionTy,
-        _disc_type: &str,
-    ) {
+    fn emit_union_constructor(&self, w: &mut Twine, def: &Def, union_ty: &UnionTy) {
         let qualified_name = self.scoped_name(def.id, None);
         w!(w, "inline ", qualified_name, "::", def, "() {\n");
 
@@ -323,25 +296,17 @@ impl CppGen<'_> {
         w!(w, "}\n\n");
     }
 
-    fn get_default_value_expr(
-        &self,
-        ty: &ic_hir::hir::Ty,
-        relative_def: ic_hir::hir::DefId,
-    ) -> String {
+    fn get_default_value_expr(&self, ty: &Ty, relative_def: DefId) -> String {
         match &ty.kind {
-            ic_hir::hir::TyKind::String { .. } => "std::string{}".to_string(),
-            ic_hir::hir::TyKind::Array { .. } | ic_hir::hir::TyKind::Sequence { .. } => {
+            TyKind::String { .. } => "std::string{}".to_string(),
+            TyKind::Array { .. } | TyKind::Sequence { .. } | TyKind::Map { .. } => {
                 let type_name = self.cpp_type(ty, relative_def);
                 format!("{type_name}{{}}")
             }
-            ic_hir::hir::TyKind::Map { .. } => {
-                let type_name = self.cpp_type(ty, relative_def);
-                format!("{type_name}{{}}")
-            }
-            ic_hir::hir::TyKind::Adt(def_id) => {
+            TyKind::Adt(def_id) => {
                 let def = self.hir.context.definitions.get(*def_id);
                 match &def.kind {
-                    ic_hir::hir::DefKind::Struct(struct_ty) => {
+                    DefKind::Struct(struct_ty) => {
                         let type_name = self.cpp_type(ty, relative_def);
                         let mut result = format!("{type_name}{{");
                         for (i, member) in struct_ty.members.iter().enumerate() {
@@ -355,7 +320,7 @@ impl CppGen<'_> {
                         result.push('}');
                         result
                     }
-                    ic_hir::hir::DefKind::Valuetype(valuetype_ty) => {
+                    DefKind::Valuetype(valuetype_ty) => {
                         let type_name = self.cpp_type(ty, relative_def);
                         let mut result = format!("{type_name}{{");
                         for (i, member) in valuetype_ty.members.iter().enumerate() {
@@ -369,14 +334,14 @@ impl CppGen<'_> {
                         result.push('}');
                         result
                     }
-                    ic_hir::hir::DefKind::Enum(enum_ty) => {
+                    DefKind::Enum(enum_ty) => {
                         if let Some(&first_field_id) = enum_ty.fields.first() {
                             self.scoped_name(first_field_id, relative_def)
                         } else {
                             "0".to_string()
                         }
                     }
-                    ic_hir::hir::DefKind::Union(_) | ic_hir::hir::DefKind::Alias(_) => {
+                    DefKind::Union(_) | DefKind::Alias(_) => {
                         let type_name = self.cpp_type(ty, relative_def);
                         format!("{type_name}{{}}")
                     }
@@ -391,7 +356,7 @@ impl CppGen<'_> {
         &self,
         w: &mut Twine,
         def: &Def,
-        union_ty: &ic_hir::hir::UnionTy,
+        union_ty: &UnionTy,
         _disc_type: &str,
     ) {
         let qualified_name = self.scoped_name(def.id, None);
@@ -399,11 +364,25 @@ impl CppGen<'_> {
         w!(w, UNION_DISC_FIELD, " = a_other.", UNION_DISC_FIELD, ";\n");
 
         self.emit_union_switch(w, union_ty, UNION_DISC_FIELD, |w, variant| {
-            if !matches!(variant.ty.kind, ic_hir::hir::TyKind::Null) {
+            if !matches!(variant.ty.kind, TyKind::Null) {
                 if self.should_use_move(&variant.ty) {
-                    w!(w, "::ic_cts::construct_at(&ic_union_value_.", variant.ident.name, ", a_other.ic_union_value_.", variant.ident.name, ");\n");
+                    w!(
+                        w,
+                        "::ic_cts::construct_at(&ic_union_value_.",
+                        variant.ident.name,
+                        ", a_other.ic_union_value_.",
+                        variant.ident.name,
+                        ");\n",
+                    );
                 } else {
-                    w!(w, "ic_union_value_.", variant.ident.name, " = a_other.ic_union_value_.", variant.ident.name, ";\n");
+                    w!(
+                        w,
+                        "ic_union_value_.",
+                        variant.ident.name,
+                        " = a_other.ic_union_value_.",
+                        variant.ident.name,
+                        ";\n",
+                    );
                 }
             }
             true
@@ -416,7 +395,7 @@ impl CppGen<'_> {
         &self,
         w: &mut Twine,
         def: &Def,
-        union_ty: &ic_hir::hir::UnionTy,
+        union_ty: &UnionTy,
         _disc_type: &str,
     ) {
         let qualified_name = self.scoped_name(def.id, None);
@@ -426,11 +405,25 @@ impl CppGen<'_> {
         w!(w, UNION_DISC_FIELD, " = a_other.", UNION_DISC_FIELD, ";\n");
 
         self.emit_union_switch(w, union_ty, UNION_DISC_FIELD, |w, variant| {
-            if !matches!(variant.ty.kind, ic_hir::hir::TyKind::Null) {
+            if !matches!(variant.ty.kind, TyKind::Null) {
                 if self.should_use_move(&variant.ty) {
-                    w!(w, "::ic_cts::construct_at(&ic_union_value_.", variant.ident.name, ", a_other.ic_union_value_.", variant.ident.name, ");\n");
+                    w!(
+                        w,
+                        "::ic_cts::construct_at(&ic_union_value_.",
+                        variant.ident.name,
+                        ", a_other.ic_union_value_.",
+                        variant.ident.name,
+                        ");\n",
+                    );
                 } else {
-                    w!(w, "ic_union_value_.", variant.ident.name, " = a_other.ic_union_value_.", variant.ident.name, ";\n");
+                    w!(
+                        w,
+                        "ic_union_value_.",
+                        variant.ident.name,
+                        " = a_other.ic_union_value_.",
+                        variant.ident.name,
+                        ";\n",
+                    );
                 }
             }
             true
@@ -445,7 +438,7 @@ impl CppGen<'_> {
         &self,
         w: &mut Twine,
         def: &Def,
-        union_ty: &ic_hir::hir::UnionTy,
+        union_ty: &UnionTy,
         _disc_type: &str,
     ) {
         let qualified_name = self.scoped_name(def.id, None);
@@ -453,7 +446,7 @@ impl CppGen<'_> {
         w!(w, UNION_DISC_FIELD, " = a_other.", UNION_DISC_FIELD, ";\n");
 
         self.emit_union_switch(w, union_ty, UNION_DISC_FIELD, |w, variant| {
-            if !matches!(variant.ty.kind, ic_hir::hir::TyKind::Null) {
+            if !matches!(variant.ty.kind, TyKind::Null) {
                 if self.should_use_move(&variant.ty) {
                     w!(w, "::ic_cts::construct_at(&ic_union_value_.", variant.ident.name, ", std::move(a_other.ic_union_value_.", variant.ident.name, "));\n");
                 } else {
@@ -470,7 +463,7 @@ impl CppGen<'_> {
         &self,
         w: &mut Twine,
         def: &Def,
-        union_ty: &ic_hir::hir::UnionTy,
+        union_ty: &UnionTy,
         _disc_type: &str,
     ) {
         let qualified_name = self.scoped_name(def.id, None);
@@ -480,7 +473,7 @@ impl CppGen<'_> {
         w!(w, UNION_DISC_FIELD, " = a_other.", UNION_DISC_FIELD, ";\n");
 
         self.emit_union_switch(w, union_ty, UNION_DISC_FIELD, |w, variant| {
-            if !matches!(variant.ty.kind, ic_hir::hir::TyKind::Null) {
+            if !matches!(variant.ty.kind, TyKind::Null) {
                 if self.should_use_move(&variant.ty) {
                     w!(w, "::ic_cts::construct_at(&ic_union_value_.", variant.ident.name, ", std::move(a_other.ic_union_value_.", variant.ident.name, "));\n");
                 } else {
@@ -502,12 +495,7 @@ impl CppGen<'_> {
         w!(w, "}\n\n");
     }
 
-    fn emit_union_comparison_impl(
-        &self,
-        w: &mut Twine,
-        def: &Def,
-        union_ty: &ic_hir::hir::UnionTy,
-    ) {
+    fn emit_union_comparison_impl(&self, w: &mut Twine, def: &Def, union_ty: &UnionTy) {
         let qualified_name = self.scoped_name(def.id, None);
 
         // operator<
@@ -516,7 +504,7 @@ impl CppGen<'_> {
         w!(w, "if (a_other._d() < _d()) { return false; }\n");
 
         self.emit_union_switch(w, union_ty, UNION_DISC_FIELD, |w, variant| {
-            if matches!(variant.ty.kind, ic_hir::hir::TyKind::Null) {
+            if matches!(variant.ty.kind, TyKind::Null) {
                 w!(w, "return false;\n");
             } else {
                 w!(w, "return this->", variant.ident.name, "() < a_other.", variant.ident.name, "();\n");
@@ -531,7 +519,7 @@ impl CppGen<'_> {
         w!(w, "if (!(_d() == a_other._d())) return false;\n");
 
         self.emit_union_switch(w, union_ty, UNION_DISC_FIELD, |w, variant| {
-            if matches!(variant.ty.kind, ic_hir::hir::TyKind::Null) {
+            if matches!(variant.ty.kind, TyKind::Null) {
                 w!(w, "return true;\n");
             } else {
                 w!(w, "return this->", variant.ident.name, "() == a_other.", variant.ident.name, "();\n");
@@ -555,7 +543,7 @@ impl CppGen<'_> {
         &self,
         w: &mut Twine,
         def: &Def,
-        union_ty: &ic_hir::hir::UnionTy,
+        union_ty: &UnionTy,
         disc_type: &str,
     ) {
         let qualified_name = self.scoped_name(def.id, None);
@@ -571,7 +559,7 @@ impl CppGen<'_> {
 
                 w!(w, "free_union_();\n");
 
-                if !matches!(variant.ty.kind, ic_hir::hir::TyKind::Null) {
+                if !matches!(variant.ty.kind, TyKind::Null) {
                     let default_val = self.get_default_value_expr(&variant.ty, def.id);
                     self.emit_variant_init(w, variant, &default_val);
                 }
@@ -579,7 +567,7 @@ impl CppGen<'_> {
                 if has_non_default {
                     w!(w, "}\n");
                 }
-            } else if !matches!(variant.ty.kind, ic_hir::hir::TyKind::Null) {
+            } else if !matches!(variant.ty.kind, TyKind::Null) {
                 w!(w, "if (", UNION_DISC_FIELD, " != ");
                 if let Some(first_label) = variant.labels.first() {
                     self.emit_numeric_value(w, &first_label.value, None);
@@ -602,11 +590,11 @@ impl CppGen<'_> {
         &self,
         w: &mut Twine,
         def: &Def,
-        union_ty: &ic_hir::hir::UnionTy,
+        union_ty: &UnionTy,
         disc_type: &str,
     ) {
         for variant in &union_ty.variants {
-            if !matches!(variant.ty.kind, ic_hir::hir::TyKind::Null) {
+            if !matches!(variant.ty.kind, TyKind::Null) {
                 self.emit_variant_getters(w, def, union_ty, variant);
                 self.emit_variant_setters(w, def, union_ty, variant, disc_type);
             }
@@ -617,8 +605,8 @@ impl CppGen<'_> {
         &self,
         w: &mut Twine,
         def: &Def,
-        union_ty: &ic_hir::hir::UnionTy,
-        variant: &ic_hir::hir::Variant,
+        union_ty: &UnionTy,
+        variant: &Variant,
     ) {
         let qualified_name = self.scoped_name(def.id, None);
         let member_type = self.cpp_type(&variant.ty, None);
@@ -657,8 +645,8 @@ impl CppGen<'_> {
         &self,
         w: &mut Twine,
         def: &Def,
-        union_ty: &ic_hir::hir::UnionTy,
-        variant: &ic_hir::hir::Variant,
+        union_ty: &UnionTy,
+        variant: &Variant,
         disc_type: &str,
     ) {
         let member_type = self.cpp_type(&variant.ty, None);
@@ -686,8 +674,8 @@ impl CppGen<'_> {
         &self,
         w: &mut Twine,
         def: &Def,
-        union_ty: &ic_hir::hir::UnionTy,
-        variant: &ic_hir::hir::Variant,
+        union_ty: &UnionTy,
+        variant: &Variant,
         member_type: &str,
         member_name: &str,
     ) {
@@ -721,8 +709,8 @@ impl CppGen<'_> {
         &self,
         w: &mut Twine,
         def: &Def,
-        union_ty: &ic_hir::hir::UnionTy,
-        variant: &ic_hir::hir::Variant,
+        union_ty: &UnionTy,
+        variant: &Variant,
         member_type: &str,
         member_name: &str,
     ) {
@@ -746,7 +734,7 @@ impl CppGen<'_> {
         &self,
         w: &mut Twine,
         def: &Def,
-        union_ty: &ic_hir::hir::UnionTy,
+        union_ty: &UnionTy,
         disc_type: &str,
         member_type: &str,
         member_name: &str,
@@ -775,14 +763,12 @@ impl CppGen<'_> {
         w!(w, "}\n\n");
     }
 
-    fn emit_union_free(&self, w: &mut Twine, def: &Def, union_ty: &ic_hir::hir::UnionTy) {
+    fn emit_union_free(&self, w: &mut Twine, def: &Def, union_ty: &UnionTy) {
         let qualified_name = self.scoped_name(def.id, None);
         w!(w, "inline void ", qualified_name, "::free_union_() {\n");
 
         self.emit_union_switch(w, union_ty, UNION_DISC_FIELD, |w, variant| {
-            if !matches!(variant.ty.kind, ic_hir::hir::TyKind::Null)
-                && self.should_use_move(&variant.ty)
-            {
+            if !matches!(variant.ty.kind, TyKind::Null) && self.should_use_move(&variant.ty) {
                 w!(w, "std::destroy_at(&ic_union_value_.", variant.ident.name, ");\n");
             }
             true
@@ -791,7 +777,7 @@ impl CppGen<'_> {
         w!(w, "}\n\n");
     }
 
-    fn emit_union_serializer(&self, w: &mut Twine, def: &Def, union_ty: &ic_hir::hir::UnionTy) {
+    fn emit_union_serializer(&self, w: &mut Twine, def: &Def, union_ty: &UnionTy) {
         let qualified_name = self.scoped_name(def.id, None);
 
         w!(w, "template <class Archive>\n");
@@ -807,7 +793,7 @@ impl CppGen<'_> {
             w!(w, "a_value._d(discr);\n");
             w!(w, "}\n");
 
-            if !matches!(variant.ty.kind, ic_hir::hir::TyKind::Null) {
+            if !matches!(variant.ty.kind, TyKind::Null) {
                 let member_idx = union_ty.variants.iter().position(|v| v.ident.name == variant.ident.name).unwrap() + 1;
                 w!(w, "serializer.io(a_info->members[", member_idx.to_string(), "], a_value.", variant.ident.name, "());\n");
             }

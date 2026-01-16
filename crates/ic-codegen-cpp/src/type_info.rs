@@ -28,11 +28,11 @@
 #![allow(clippy::cast_possible_wrap)]
 
 use ic_emit::printer::{Twine, w};
+use ic_hir::annotation::{Optional, find_annotation};
 use ic_hir::hir::{Def, DefId, DefKind, Member, PrimitiveTy, Ty, TyKind, UnionTy};
 
 use crate::codegen::CppGen;
 
-// TypeInfo structure representation
 struct TypeInfo {
     name: String,
     kind: String,
@@ -64,75 +64,103 @@ impl TypeInfo {
     }
 }
 
-fn is_key(_member: &Member) -> bool {
-    false
+fn is_key(member: &Member) -> bool {
+    member.annotations.iter().any(|a| a.ident.name == "key")
 }
 
-fn is_optional(_member: &Member) -> bool {
-    false
+fn is_optional(member: &Member) -> bool {
+    find_annotation::<Optional>(&member.annotations, "optional")
+        .and_then(Result::ok)
+        .is_some_and(|opt| opt.value)
 }
 
-fn is_shared(_member: &Member) -> bool {
-    false
+fn is_shared(member: &Member) -> bool {
+    member
+        .annotations
+        .iter()
+        .any(|a| a.ident.name == "shared" || a.ident.name == "external")
 }
 
-fn is_must_understand(_member: &Member) -> bool {
-    false
+fn is_must_understand(member: &Member) -> bool {
+    member
+        .annotations
+        .iter()
+        .any(|a| a.ident.name == "must_understand")
 }
 
-fn is_nested(_def: &Def) -> bool {
-    false
+fn is_nested(def: &Def) -> bool {
+    def.annotations.iter().any(|a| a.ident.name == "nested")
 }
 
-fn default_value_of(_def: &Def) -> i64 {
-    0
+fn default_value_of(def: &Def, ctx: &ic_hir::Context) -> i64 {
+    match &def.kind {
+        DefKind::Enum(e) => {
+            if let Some(&first_field_id) = e.fields.first() {
+                let field_def = ctx.definitions.get(first_field_id);
+                if let DefKind::Const(c) = &field_def.kind {
+                    return ctx.integer_value(&c.value);
+                }
+            }
+            0
+        }
+        _ => 0,
+    }
 }
 
-fn extensibility(_def: &Def) -> &'static str {
-    "::ic_cts::dcps::xtypes::IS_APPENDABLE"
+fn extensibility(def: &Def) -> &'static str {
+    let is_final = def.annotations.iter().any(|a| a.ident.name == "final");
+    let is_mutable = def.annotations.iter().any(|a| a.ident.name == "mutable");
+
+    if is_final {
+        "::ic_cts::dcps::xtypes::IS_FINAL"
+    } else if is_mutable {
+        "::ic_cts::dcps::xtypes::IS_MUTABLE"
+    } else {
+        "::ic_cts::dcps::xtypes::IS_APPENDABLE"
+    }
 }
 
-fn bit_size(_def: &Def) -> usize {
-    0
+fn is_autoid_hash(ctx: &ic_hir::Context, def: &Def) -> bool {
+    def.annotations.iter().any(|a| {
+        a.ident.name == "autoid"
+            && a.args.first().is_some_and(|arg| {
+                if let ic_hir::hir::Numeric::Const(def_id) = &arg.value {
+                    ctx.type_of(*def_id).ident.name == "HASH"
+                } else {
+                    false
+                }
+            })
+    })
 }
 
-// Helper functions
 fn primitive_bit_size(ty: PrimitiveTy) -> usize {
-    use PrimitiveTy::{
-        Bool, Char, Float32, Float64, Float128, Int8, Int16, Int32, Int64, UInt8, UInt16, UInt32,
-        UInt64, Void, WChar,
-    };
     match ty {
-        Void => 0,
-        Bool | Int8 | UInt8 | Char => 8,
-        Int16 | UInt16 | WChar => 16,
-        Int32 | UInt32 | Float32 => 32,
-        Int64 | UInt64 | Float64 => 64,
-        Float128 => 128,
+        PrimitiveTy::Void => 0,
+        PrimitiveTy::Bool | PrimitiveTy::Int8 | PrimitiveTy::UInt8 | PrimitiveTy::Char => 8,
+        PrimitiveTy::Int16 | PrimitiveTy::UInt16 | PrimitiveTy::WChar => 16,
+        PrimitiveTy::Int32 | PrimitiveTy::UInt32 | PrimitiveTy::Float32 => 32,
+        PrimitiveTy::Int64 | PrimitiveTy::UInt64 | PrimitiveTy::Float64 => 64,
+        PrimitiveTy::Float128 => 128,
     }
 }
 
 fn primitive_type_info(ty: PrimitiveTy) -> &'static str {
-    use PrimitiveTy::{
-        Bool, Char, Float32, Float64, Float128, Int8, Int16, Int32, Int64, UInt8, UInt16, UInt32,
-        UInt64, Void, WChar,
-    };
     match ty {
-        Void => "nullptr",
-        Bool => "::ic_cts::BOOLEAN_TYPE_INFO",
-        Int8 => "::ic_cts::INT8_TYPE_INFO",
-        UInt8 => "::ic_cts::UINT8_TYPE_INFO",
-        Int16 => "::ic_cts::SHORT_TYPE_INFO",
-        UInt16 => "::ic_cts::USHORT_TYPE_INFO",
-        Int32 => "::ic_cts::LONG_TYPE_INFO",
-        UInt32 => "::ic_cts::ULONG_TYPE_INFO",
-        Int64 => "::ic_cts::LONGLONG_TYPE_INFO",
-        UInt64 => "::ic_cts::ULONGLONG_TYPE_INFO",
-        Float32 => "::ic_cts::FLOAT_TYPE_INFO",
-        Float64 => "::ic_cts::DOUBLE_TYPE_INFO",
-        Float128 => "::ic_cts::LONG_DOUBLE_TYPE_INFO",
-        Char => "::ic_cts::CHAR_TYPE_INFO",
-        WChar => "::ic_cts::CHAR16_TYPE_INFO",
+        PrimitiveTy::Void => "nullptr",
+        PrimitiveTy::Bool => "::ic_cts::BOOLEAN_TYPE_INFO",
+        PrimitiveTy::Int8 => "::ic_cts::INT8_TYPE_INFO",
+        PrimitiveTy::UInt8 => "::ic_cts::UINT8_TYPE_INFO",
+        PrimitiveTy::Int16 => "::ic_cts::SHORT_TYPE_INFO",
+        PrimitiveTy::UInt16 => "::ic_cts::USHORT_TYPE_INFO",
+        PrimitiveTy::Int32 => "::ic_cts::LONG_TYPE_INFO",
+        PrimitiveTy::UInt32 => "::ic_cts::ULONG_TYPE_INFO",
+        PrimitiveTy::Int64 => "::ic_cts::LONGLONG_TYPE_INFO",
+        PrimitiveTy::UInt64 => "::ic_cts::ULONGLONG_TYPE_INFO",
+        PrimitiveTy::Float32 => "::ic_cts::FLOAT_TYPE_INFO",
+        PrimitiveTy::Float64 => "::ic_cts::DOUBLE_TYPE_INFO",
+        PrimitiveTy::Float128 => "::ic_cts::LONG_DOUBLE_TYPE_INFO",
+        PrimitiveTy::Char => "::ic_cts::CHAR_TYPE_INFO",
+        PrimitiveTy::WChar => "::ic_cts::CHAR16_TYPE_INFO",
     }
 }
 
@@ -217,13 +245,17 @@ fn member_flags(member: &Member, has_key: bool) -> String {
     }
 }
 
-fn type_flags(def: &Def) -> String {
+fn type_flags(ctx: &ic_hir::Context, def: &Def) -> String {
     let mut flag = String::new();
     match &def.kind {
         DefKind::Struct(_) | DefKind::Union(_) | DefKind::Except(_) => {
             add_flag(&mut flag, extensibility(def));
+
             if is_nested(def) {
                 add_flag(&mut flag, "::ic_cts::dcps::xtypes::IS_NESTED");
+            }
+            if is_autoid_hash(ctx, def) {
+                add_flag(&mut flag, "::ic_cts::dcps::xtypes::IS_AUTOID_HASH");
             }
         }
         _ => {}
@@ -236,7 +268,6 @@ fn type_flags(def: &Def) -> String {
     }
 }
 
-// Member information helpers
 fn emit_member_info(
     w: &mut Twine,
     index: usize,
@@ -251,7 +282,6 @@ fn emit_member_info(
 }
 
 impl CppGen<'_> {
-    /// Get mangled name for static variables (e.g., "`Example__Status`" for `Example::Status`)
     fn mangled_name(&self, def_id: DefId) -> String {
         self.scoped_name(def_id, None).replace("::", "__")
     }
@@ -299,7 +329,6 @@ impl CppGen<'_> {
         }
     }
 
-    // Emit type info for nested types with optional parent scope
     fn emit_nested_type_info(
         &self,
         w: &mut Twine,
@@ -313,14 +342,12 @@ impl CppGen<'_> {
             TyKind::Primitive(p) => format!("&{}", primitive_type_info(*p)),
             TyKind::Adt(_) => self.type_info_ref(ty),
             TyKind::String { .. } | TyKind::Sequence { .. } | TyKind::Array { .. } => {
-                // Need to emit TypeInfo with parent-scoped name
                 self.emit_type_info(w, ty, var_name, Some(parent))
             }
             _ => "nullptr".to_string(),
         }
     }
 
-    // Emit TypeInfo struct for a type
     fn emit_type_info(
         &self,
         w: &mut Twine,
@@ -335,8 +362,8 @@ impl CppGen<'_> {
             TyKind::Adt(_) => self.type_info_ref(ty),
             TyKind::String { wide, bound, .. } => {
                 let base_name = string_type_name(*wide);
-                // Strings are not qualified with parent scope
                 let name = base_name.to_string();
+
                 let info = TypeInfo {
                     name,
                     kind: ty_kind_name(&resolved.kind).to_string(),
@@ -438,7 +465,6 @@ impl CppGen<'_> {
         let scoped_name = self.scoped_name(def.id, None);
         let has_key = members.iter().any(is_key);
 
-        // Emit type info for complex members
         let mut type_infos = Vec::new();
         for (i, member) in members.iter().enumerate() {
             let var_name = format!("{mangled_name}_type_info_{i}");
@@ -446,7 +472,6 @@ impl CppGen<'_> {
             type_infos.push(type_info);
         }
 
-        // Emit member array
         w!(w, "static ::ic_cts::MemberInfo ", mangled_name, "_members[", members.len(), "] = {\n");
         for (i, member) in members.iter().enumerate() {
             let flags = member_flags(member, has_key);
@@ -463,15 +488,12 @@ impl CppGen<'_> {
         w!(w, "};\n\n");
     }
 
-    // Emit union members with cleaner structure
     fn emit_union_members(&self, w: &mut Twine, def: &Def, union: &UnionTy) {
         if union.variants.is_empty() {
             return;
         }
 
         let mangled_name = self.mangled_name(def.id);
-
-        // Emit type info for variants
         let mut type_infos = Vec::new();
         let mut case_label_names = Vec::new();
 
@@ -481,7 +503,6 @@ impl CppGen<'_> {
             let type_info = self.emit_type_info(w, &variant.ty, &var_name, None);
             type_infos.push(type_info);
 
-            // Handle case labels
             let labels: Vec<i64> = variant
                 .labels
                 .iter()
@@ -501,14 +522,10 @@ impl CppGen<'_> {
             }
         }
 
-        // Emit discriminator type info
         let disc_type_info = self.type_info_ref(&union.disc.ty);
         let total_members = union.variants.len() + 1;
-
-        // Emit member array
         w!(w, "static ::ic_cts::MemberInfo ", mangled_name, "_members[", total_members, "] = {\n");
 
-        // Discriminator member
         let mut disc_flags = String::new();
         add_flag(&mut disc_flags, "::ic_cts::dcps::xtypes::IS_DISCRIMINATOR");
         add_flag(&mut disc_flags, "::ic_cts::dcps::xtypes::IS_IMPLICIT_KEY");
@@ -524,7 +541,6 @@ impl CppGen<'_> {
             "nullptr",
         );
 
-        // Variant members
         for (i, variant) in union.variants.iter().enumerate() {
             let mut flag = String::new();
             add_flag(&mut flag, "::ic_cts::dcps::xtypes::IS_IMPLICIT_KEY");
@@ -546,7 +562,6 @@ impl CppGen<'_> {
         w!(w, " };\n\n");
     }
 
-    // Emit enum members
     fn emit_enum_members(
         &self,
         w: &mut Twine,
@@ -555,8 +570,6 @@ impl CppGen<'_> {
         element_ty: PrimitiveTy,
     ) {
         let name = self.mangled_name(def.id);
-
-        // Calculate min/max values
         let mut min_val = i64::MAX;
         let mut max_val = i64::MIN;
 
@@ -569,13 +582,11 @@ impl CppGen<'_> {
             }
         }
 
-        // Emit static values
         let type_name = crate::codegen::cpp_primitive(element_ty);
         w!(w, "static ", type_name, " ", name, "_min = ", min_val, ";\n");
         w!(w, "static ", type_name, " ", name, "_max = ", max_val, ";\n");
-        w!(w, "static ", type_name, " ", name, "_default = ", default_value_of(def), ";\n\n");
+        w!(w, "static ", type_name, " ", name, "_default = ", default_value_of(def, &self.hir.context), ";\n\n");
 
-        // Emit member array
         w!(w, "static ::ic_cts::MemberInfo ", name, "_members[", fields.len(), "] = {\n");
         for (i, &field_id) in fields.iter().enumerate() {
             let field_def = self.hir.context.definitions.get(field_id);
@@ -596,7 +607,6 @@ impl CppGen<'_> {
         w!(w, "\n};\n\n");
     }
 
-    // Emit bitmask members
     fn emit_bitmask_members(
         &self,
         w: &mut Twine,
@@ -606,7 +616,6 @@ impl CppGen<'_> {
     ) {
         let name = self.mangled_name(def.id);
 
-        // Calculate max value
         let mut max_val: u64 = 0;
         for &flag_id in flags {
             let flag_def = self.hir.context.definitions.get(flag_id);
@@ -616,12 +625,10 @@ impl CppGen<'_> {
             }
         }
 
-        // Emit static values
         let type_name = crate::codegen::cpp_primitive(element_ty);
         w!(w, "static ", type_name, " ", name, "_max = ", max_val, ";\n");
-        w!(w, "static ", type_name, " ", name, "_default = ", default_value_of(def), ";\n\n");
+        w!(w, "static ", type_name, " ", name, "_default = ", default_value_of(def, &self.hir.context), ";\n\n");
 
-        // Emit member array
         w!(w, "static ::ic_cts::MemberInfo ", name, "_members[", flags.len(), "] = {\n");
         for (i, &flag_id) in flags.iter().enumerate() {
             let flag_def = self.hir.context.definitions.get(flag_id);
@@ -644,7 +651,6 @@ impl CppGen<'_> {
         w!(w, " };\n\n");
     }
 
-    // Main entry point for emitting member info
     pub(crate) fn emit_member_info(&self, w: &mut Twine, def: &Def) {
         match &def.kind {
             DefKind::Struct(_) => {
@@ -658,7 +664,6 @@ impl CppGen<'_> {
         }
     }
 
-    // Main entry point for emitting type info definition
     pub(crate) fn emit_type_info_definition(&self, w: &mut Twine, def: &Def) {
         let def_kind = match &def.kind {
             DefKind::Struct(_) | DefKind::Union(_) | DefKind::Enum(_) | DefKind::Bitmask(_) => {
@@ -676,12 +681,11 @@ impl CppGen<'_> {
         let kind = type_kind_name(def_kind).to_string();
 
         let flags = match def_kind {
-            DefKind::Struct(_) | DefKind::Union(_) => type_flags(def),
+            DefKind::Struct(_) | DefKind::Union(_) => type_flags(&self.hir.context, def),
             _ => "0".to_string(),
         };
 
         let bit_size = match def_kind {
-            DefKind::Struct(_) | DefKind::Union(_) => bit_size(def),
             DefKind::Enum(e) => primitive_bit_size(e.ty),
             DefKind::Bitmask(b) => primitive_bit_size(b.ty),
             _ => 0,
@@ -740,7 +744,6 @@ impl CppGen<'_> {
             members,
         };
 
-        // Emit the type info
         w!(w, "const ::ic_cts::TypeInfo ic_cts::TypeTraits<", qualified_name, ">::type_info = ");
         info.emit(w);
         w!(w, ";\n");

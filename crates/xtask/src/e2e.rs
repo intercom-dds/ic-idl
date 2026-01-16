@@ -128,7 +128,10 @@ pub fn run(opts: Options) {
         std::process::exit(1);
     }
 
-    let corpus = opts.corpus.unwrap_or_else(|| "corpus".to_string());
+    let corpus = opts.corpus.map_or_else(
+        || e2e_tests_dir.join("corpus"),
+        |c| std::env::current_dir().unwrap().join(c),
+    );
 
     let test_files: Vec<&str> = if opts.lang.is_empty() || opts.lang.iter().any(|l| l == "all") {
         vec![]
@@ -158,7 +161,7 @@ pub fn run(opts: Options) {
         .args(["run", "pytest"])
         .args(&test_files)
         .arg(format!("--idl-compiler={idl_compiler}"))
-        .arg(format!("--corpus={corpus}"))
+        .arg(format!("--corpus={}", corpus.display()))
         .arg(format!("-n={jobs}"));
 
     if let Some(java) = &opts.java_compiler {

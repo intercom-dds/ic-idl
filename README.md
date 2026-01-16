@@ -29,43 +29,34 @@
 
 # ic-idl
 
-Generic, multi-target OMG IDL compiler written in Rust.
+**Generic, multi-target OMG IDL compiler written in Rust.**
 
-ic-idl parses [OMG IDL4](https://www.omg.org/spec/IDL/4.2) interface definitions
-and generates type definitions, interfaces, and serialization code for multiple
-target languages.
+ic-idl parses [OMG IDL4](https://www.omg.org/spec/IDL/4.2) interface definitions and generates type
+definitions, interfaces, and serialization code for multiple target languages. It generates code
+for C++, Rust, C#, Java, Python, and TypeScript. It can also convert IDL to other schema formats
+including Protobuf, JSON, JSON Schema, and XML.
 
-## Backends
-
-ic-idl can generate code for C++, Rust, C#, Java, Python, and TypeScript. It
-can also convert IDL to other schema formats including Protobuf, JSON, JSON
-Schema, and XML.
-
-## Building
-
-Building `ic-idl` requires a Rust 1.88+ toolchain.
-
-Running the end-to-end tests requires Python and [uv](https://docs.astral.sh/uv/). See the
-`e2e-tests` directory for more information.
+In addition to being a full IDL compiler, ic-idl is designed as a modular compilation pipeline.
+Components such as the lexer, C-compliant preprocessor, IDL parser, and type-resolved IR are
+available as standalone crates for projects that only need IDL parsing or analysis. The pipeline is
+designed to be easily extended with new code generation backends, and can even be extended to
+support other input languages beyond IDL.
 
 ## Installation
 
-To build a full release, you can use `xtask`:
+To create a release archive with the binary and runtime libraries:
 
 ```sh
 cargo xtask release
 ```
 
-This will compile a release version of `ic-idl` and create an archive that
-contains the binary and serialization libraries.
-
-## Development
-
-Build and run `ic-idl`:
+To build and run the compiler from source:
 
 ```sh
-cargo run
+cargo run --release
 ```
+
+## Development
 
 Run all tests:
 
@@ -73,32 +64,15 @@ Run all tests:
 cargo nextest run --workspace --all-targets
 ```
 
-Development documentation can be generated with:
+Running the end-to-end tests requires Python and [uv](https://docs.astral.sh/uv/). See the
+`e2e-tests` directory for more information. The tests can be run through `xtask`:
+
+```sh
+cargo xtask e2e
+```
+
+Generate development documentation:
 
 ```sh
 cargo doc --document-private-items --no-deps --workspace
 ```
-
-## Supported languages
-
-Feature support by language:
-
-| Feature / Language | C++  | Rust | Python | Java | TypeScript | C#  | IDL | Protobuf | JSON | XML |
-|--------------------|:----:|:----:|:------:|:----:|:----------:|:---:|:---:|:--------:|:----:|:---:|
-| Struct             |  ✔   |   ✔  |   ✔    |  ✔   |      ✔     |  ✔  |  ✔  |    ✔     |  ✔   | ✔   |
-| Union              |  ✔   |   ✔  |   ✔    |  ✔   |      ✔     |  ✔  |  ✔  |    ✔     |  ✔   | ✔   |
-| Enum               |  ✔   |   ✔  |   ✔    |  ✔   |      ✔     |  ✔  |  ✔  |    ✔     |  ✔   | ✔   |
-| Exception          |  ✔   |   ✔  |   ✔    |  ✔   |      ✔     |  ✔  |  ✔  |    ✔     |  ✔   | ✔   |
-| Valuetype          |  ✔   |   ✔  |   ✔    |  ✔   |      ✔     |  ✔  |  ✔  |    ✖     |  ✔   | ✔   |
-| Interface          |  ✔   |   ✔  |   ✔    |  ✔   |      ✔     |  ✔  |  ✔  |    ✖     |  ✔   | ✔   |
-| Typedef            |  ✔   |   ✔  |   ✔    |  ✔   |      ✔     |  ✔  |  ✔  |    ✔     |  ✔   | ✔   |
-| Constants          |  ✔   |   ✔  |   ✔    |  ✔   |      ✔     |  ✔  |  ✔  |    ✖     |  ✔   | ✔   |
-| Bitmask            |  ✔   |   ✔  |   ✔    |  ✔   |      ✔     |  ✔  |  ✔  |    ✖     |  ✔   | ✔   |
-| Bitset             |  ✖   |   ✖  |   ✖    |  ✖   |      ✖     |  ✖  |  ✔  |    ✖     |  ✖   | ✖   |
-
-## MSRV
-
-MSRV is currently 1.88.
-
-The MSRV may change between minor version releases and is not considered a
-semver-breaking change.

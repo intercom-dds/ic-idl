@@ -212,10 +212,11 @@ fn string_element_type_info(wide: bool) -> String {
 
 fn add_flag(flag: &mut String, value: &str) {
     if flag.is_empty() || flag == "0" {
-        *flag = value.to_string();
+        *flag = format!("uint32_t({value})");
     } else {
-        flag.push('|');
+        flag.push_str(" | uint32_t(");
         flag.push_str(value);
+        flag.push(')');
     }
 }
 
@@ -238,10 +239,10 @@ fn member_flags(member: &Member, has_key: bool) -> String {
         add_flag(&mut flag, "::ic_cts::dcps::xtypes::IS_IMPLICIT_KEY");
     }
 
-    if flag.is_empty() || flag == "0" {
+    if flag.is_empty() {
         "0".to_string()
     } else {
-        format!("uint32_t({flag})")
+        flag
     }
 }
 
@@ -264,7 +265,7 @@ fn type_flags(ctx: &ic_hir::Context, def: &Def) -> String {
     if flag.is_empty() {
         "0".to_string()
     } else {
-        format!("uint32_t({flag})")
+        flag
     }
 }
 
@@ -529,7 +530,6 @@ impl CppGen<'_> {
         let mut disc_flags = String::new();
         add_flag(&mut disc_flags, "::ic_cts::dcps::xtypes::IS_DISCRIMINATOR");
         add_flag(&mut disc_flags, "::ic_cts::dcps::xtypes::IS_IMPLICIT_KEY");
-        disc_flags = format!("uint32_t({disc_flags})");
 
         emit_member_info(
             w,
@@ -547,7 +547,6 @@ impl CppGen<'_> {
             if variant.is_default {
                 add_flag(&mut flag, "::ic_cts::dcps::xtypes::IS_DEFAULT");
             }
-            let flag = format!("uint32_t({flag})");
 
             emit_member_info(
                 w,

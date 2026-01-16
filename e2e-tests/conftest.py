@@ -75,6 +75,12 @@ def pytest_addoption(parser: pytest.Parser) -> None:
         help="Path to Rust package manager (cargo)",
     )
     parser.addoption(
+        "--cpp-compiler",
+        action="store",
+        default=None,
+        help="Path to C++ compiler",
+    )
+    parser.addoption(
         "--strict-skip",
         action="store_true",
         default=False,

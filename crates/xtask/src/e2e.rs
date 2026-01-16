@@ -63,9 +63,13 @@ pub struct Options {
     #[option(long, arg = "path")]
     pub tsc: Option<String>,
 
-    /// Path to Rust package manager (cargo)
+    /// Path to Cargo
     #[option(long, arg = "path")]
     pub cargo: Option<String>,
+
+    /// Path to C++ compiler
+    #[option(long, arg = "path")]
+    pub cpp_compiler: Option<String>,
 
     /// Path to ic-idl compiler executable
     #[option(long, arg = "path")]
@@ -170,6 +174,9 @@ pub fn run(opts: Options) {
     }
     if let Some(cargo) = &opts.cargo {
         cmd.arg(format!("--cargo={cargo}"));
+    }
+    if let Some(cpp) = &opts.cpp_compiler {
+        cmd.arg(format!("--cpp-compiler={cpp}"));
     }
     if opts.strict_skip {
         cmd.arg("--strict-skip");

@@ -482,11 +482,11 @@ impl<'a> CppGen<'a> {
         w!(w, "static const ic_cts::TypeInfo type_info;\n");
 
         match &def.kind {
-            DefKind::Struct(_) => w!(w, "static const bool is_struct = true;\n"),
-            DefKind::Union(_) => w!(w, "static const bool is_union = true;\n"),
-            DefKind::Enum(_) => w!(w, "static const bool is_enum = true;\n"),
-            DefKind::Bitmask(_) => w!(w, "static const bool is_bitmask = true;\n"),
-            DefKind::Valuetype(_) => w!(w, "static const bool is_struct = true;\n"),
+            DefKind::Struct(_) => w!(w, "static constexpr bool is_struct = true;\n"),
+            DefKind::Union(_) => w!(w, "static constexpr bool is_union = true;\n"),
+            DefKind::Enum(_) => w!(w, "static constexpr bool is_enum = true;\n"),
+            DefKind::Bitmask(_) => w!(w, "static constexpr bool is_bitmask = true;\n"),
+            DefKind::Valuetype(_) => w!(w, "static constexpr bool is_struct = true;\n"),
             _ => {}
         }
         w!(w, "};\n\n");

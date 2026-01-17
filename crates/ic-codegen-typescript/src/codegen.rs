@@ -49,15 +49,15 @@ impl<'a> TsGen<'a> {
     }
 
     fn ts_name(&self, def_id: DefId) -> &str {
-        &self.hir.context.definitions.get(def_id).ident.name
+        &self.hir.context.type_of(def_id).ident.name
     }
 
     fn scope_of(&self, def_id: DefId) -> Option<DefId> {
-        let def = self.hir.context.definitions.get(def_id);
+        let def = self.hir.context.type_of(def_id);
         let mut current = def.parent?;
 
         loop {
-            let def = self.hir.context.definitions.get(current);
+            let def = self.hir.context.type_of(current);
             if matches!(def.kind, DefKind::Module(_)) {
                 return Some(current);
             }
@@ -68,7 +68,7 @@ impl<'a> TsGen<'a> {
     fn get_root_module(&self, def_id: DefId) -> Option<DefId> {
         let mut current = def_id;
         loop {
-            let def = self.hir.context.definitions.get(current);
+            let def = self.hir.context.type_of(current);
             if matches!(def.kind, DefKind::Module(_)) && def.parent.is_none() {
                 return Some(current);
             }
@@ -80,7 +80,7 @@ impl<'a> TsGen<'a> {
         let mut ancestors = vec![];
         let mut current = Some(def_id);
         while let Some(id) = current {
-            let def = self.hir.context.definitions.get(id);
+            let def = self.hir.context.type_of(id);
             if matches!(def.kind, DefKind::Module(_)) {
                 ancestors.push(id);
             }
@@ -99,12 +99,12 @@ impl<'a> TsGen<'a> {
                 break;
             }
 
-            let def = self.hir.context.definitions.get(current);
+            let def = self.hir.context.type_of(current);
             path.push(def.ident.name.clone());
 
             match def.parent {
                 Some(parent_id) => {
-                    let parent_def = self.hir.context.definitions.get(parent_id);
+                    let parent_def = self.hir.context.type_of(parent_id);
                     if matches!(parent_def.kind, DefKind::Module(_)) {
                         current = parent_id;
                     } else {
@@ -145,7 +145,7 @@ impl<'a> TsGen<'a> {
                 // Build path from the divergence point
                 let relative_path: Vec<_> = target_ancestors[common_len..]
                     .iter()
-                    .map(|&id| self.hir.context.definitions.get(id).ident.name.clone())
+                    .map(|&id| self.hir.context.type_of(id).ident.name.clone())
                     .collect();
 
                 if relative_path.is_empty() {
@@ -153,7 +153,7 @@ impl<'a> TsGen<'a> {
                     // We need to reference via the ancestor's name
                     if common_len > 0 && current_ancestors.len() > common_len {
                         // Get the name of the module that contains the target
-                        let target_module = self.hir.context.definitions.get(target_scope);
+                        let target_module = self.hir.context.type_of(target_scope);
                         format!("{}.{type_name}", target_module.ident.name)
                     } else {
                         type_name.to_string()
@@ -349,9 +349,9 @@ impl<'a> TsGen<'a> {
             Numeric::Double(v) => v.to_string(),
             Numeric::String(s) => format!("\"{}\"", s.escape_default()),
             Numeric::Const(const_def_id) => {
-                let const_def = self.hir.context.definitions.get(*const_def_id);
+                let const_def = self.hir.context.type_of(*const_def_id);
                 if let Some(parent_id) = const_def.parent {
-                    let parent_def = self.hir.context.definitions.get(parent_id);
+                    let parent_def = self.hir.context.type_of(parent_id);
                     if matches!(parent_def.kind, DefKind::Enum(_) | DefKind::Bitmask(_)) {
                         let enum_name = self.scoped_name(parent_id, def_id);
                         let const_name = &const_def.ident.name;
@@ -426,7 +426,7 @@ impl<'a> TsGen<'a> {
         w!(w, "export enum ", def.ident.name, " {\n");
 
         for &member_id in members {
-            let member_def = self.hir.context.definitions.get(member_id);
+            let member_def = self.hir.context.type_of(member_id);
             if let DefKind::Const(const_ty) = &member_def.kind {
                 let val = self.format_numeric(&const_ty.value, def.id);
                 w!(w, member_def.ident.name, " = ", val, ",\n");
@@ -636,7 +636,7 @@ impl<'a> TsGen<'a> {
     }
 
     fn emit_non_module_definition(&self, w: &mut Twine, def_id: DefId) {
-        let def = self.hir.context.definitions.get(def_id);
+        let def = self.hir.context.type_of(def_id);
 
         match &def.kind {
             DefKind::Struct(struct_ty) => self.emit_struct(w, def, struct_ty),
@@ -648,8 +648,7 @@ impl<'a> TsGen<'a> {
             DefKind::Alias(alias) => self.emit_alias(w, def, alias),
             DefKind::Const(const_ty) => {
                 let is_enum_member = matches!(
-                    def.parent
-                        .map(|p| &self.hir.context.definitions.get(p).kind),
+                    def.parent.map(|p| &self.hir.context.type_of(p).kind),
                     Some(DefKind::Enum(_) | DefKind::Bitmask(_))
                 );
                 if !is_enum_member {
@@ -667,7 +666,7 @@ impl<'a> TsGen<'a> {
         let mut other_defs = vec![];
 
         for &def_id in &module_ty.definitions {
-            let def = self.hir.context.definitions.get(def_id);
+            let def = self.hir.context.type_of(def_id);
             if matches!(def.kind, DefKind::Module(_)) {
                 nested_modules.push(def_id);
             } else {
@@ -710,7 +709,7 @@ impl<'a> TsGen<'a> {
         }
         for &id in remaining {
             parts.push('/');
-            parts.push_str(&self.hir.context.definitions.get(id).ident.name);
+            parts.push_str(&self.hir.context.type_of(id).ident.name);
         }
 
         parts
@@ -736,17 +735,16 @@ impl<'a> TsGen<'a> {
 
         if let Some(nested_modules) = re_exports {
             for &nested_id in nested_modules {
-                let nested_def = self.hir.context.definitions.get(nested_id);
+                let nested_def = self.hir.context.type_of(nested_id);
                 let is_used = referenced
                     .iter()
                     .any(|&ref_id| is_in_module(ref_id, nested_id));
+
                 if is_used {
-                    // Module is used locally: import and re-export
-                    w!(w, "import * as ", nested_def.ident.name, " from './", nested_def.ident.name, "';\n");
-                    w!(w, "export { ", nested_def.ident.name, " };\n");
+                    w!(w, "import * as ", nested_def, " from './", nested_def, "';\n");
+                    w!(w, "export { ", nested_def, " };\n");
                 } else {
-                    // Module is only re-exported
-                    w!(w, "export * as ", nested_def.ident.name, " from './", nested_def.ident.name, "';\n");
+                    w!(w, "export * as ", nested_def, " from './", nested_def, "';\n");
                 }
             }
         }
@@ -755,6 +753,7 @@ impl<'a> TsGen<'a> {
             .iter()
             .map(|&id| self.get_root_module(id))
             .collect();
+
         for &exclude in exclude_from_deps {
             import_sources.remove(&Some(exclude));
         }
@@ -784,7 +783,7 @@ impl<'a> TsGen<'a> {
                         ("types".to_string(), path)
                     }
                     Some(module_id) => {
-                        let module_def = self.hir.context.definitions.get(module_id);
+                        let module_def = self.hir.context.type_of(module_id);
                         (
                             module_def.ident.name.clone(),
                             self.relative_import_path(dir_module, module_id),
@@ -812,7 +811,7 @@ impl<'a> TsGen<'a> {
             .map(|m| self.module_ancestors(m))
             .unwrap_or_default()
             .iter()
-            .map(|&id| &self.hir.context.definitions.get(id).ident.name)
+            .map(|&id| &self.hir.context.type_of(id).ident.name)
             .collect();
         path.push(file_name);
         File::Generated {
@@ -822,7 +821,7 @@ impl<'a> TsGen<'a> {
     }
 
     fn generate_module(&self, module_id: DefId, result: &mut Vec<File>) {
-        let def = self.hir.context.definitions.get(module_id);
+        let def = self.hir.context.type_of(module_id);
         let DefKind::Module(module_ty) = &def.kind else {
             return;
         };
@@ -830,7 +829,7 @@ impl<'a> TsGen<'a> {
         let (nested_modules, non_module_defs) = self.partition_module_defs(module_ty);
         let parent_module = def
             .parent
-            .filter(|&p| matches!(self.hir.context.definitions.get(p).kind, DefKind::Module(_)));
+            .filter(|&p| matches!(self.hir.context.type_of(p).kind, DefKind::Module(_)));
 
         if nested_modules.is_empty() {
             result.push(self.emit_file(
@@ -853,7 +852,7 @@ impl<'a> TsGen<'a> {
             ));
 
             for &nested_id in &nested_modules {
-                let nested_def = self.hir.context.definitions.get(nested_id);
+                let nested_def = self.hir.context.type_of(nested_id);
                 if let DefKind::Module(nested_module_ty) = &nested_def.kind {
                     let (nested_nested, nested_other) =
                         self.partition_module_defs(nested_module_ty);
@@ -880,7 +879,7 @@ impl<'a> TsGen<'a> {
         let mut top_level_modules: Vec<DefId> = vec![];
 
         for &def_id in &self.hir.order {
-            let def = self.hir.context.definitions.get(def_id);
+            let def = self.hir.context.type_of(def_id);
 
             if matches!(def.kind, DefKind::Module(_)) {
                 if def.parent.is_none() {

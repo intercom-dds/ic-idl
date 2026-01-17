@@ -724,7 +724,7 @@ impl<'a> TsGen<'a> {
         exclude_from_deps: &[DefId],
         re_exports: Option<&[DefId]>,
     ) -> File {
-        let mut w = Twine::new();
+        let mut w = Twine::with_indent(2);
         Self::emit_header(&mut w);
 
         let referenced = self.collect_deps(defs);

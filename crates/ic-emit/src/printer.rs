@@ -27,8 +27,6 @@
 
 #![allow(clippy::needless_pass_by_value)]
 
-const INDENT: &str = "    ";
-
 #[derive(Debug, Clone)]
 enum Token {
     Text(String),
@@ -42,7 +40,7 @@ enum Token {
 
 pub struct PrettyPrinter {
     tokens: Vec<Token>,
-    indent_str: &'static str,
+    indent_str: String,
 }
 
 impl Default for PrettyPrinter {
@@ -54,9 +52,14 @@ impl Default for PrettyPrinter {
 impl PrettyPrinter {
     #[must_use]
     pub fn new() -> Self {
+        Self::with_indent(4)
+    }
+
+    #[must_use]
+    pub fn with_indent(width: usize) -> Self {
         Self {
             tokens: Vec::with_capacity(64 * 1024),
-            indent_str: "    ",
+            indent_str: " ".repeat(width),
         }
     }
 
@@ -117,7 +120,7 @@ impl PrettyPrinter {
                 Token::Text(text) => {
                     if prev_was_newline {
                         for _ in 0..indent_level {
-                            output.push_str(self.indent_str);
+                            output.push_str(&self.indent_str);
                         }
                         prev_was_newline = false;
                     }
@@ -126,7 +129,7 @@ impl PrettyPrinter {
                 Token::BlockStart(brace) => {
                     if prev_was_newline {
                         for _ in 0..indent_level {
-                            output.push_str(self.indent_str);
+                            output.push_str(&self.indent_str);
                         }
                         prev_was_newline = false;
                     }
@@ -137,7 +140,7 @@ impl PrettyPrinter {
                     indent_level = indent_level.saturating_sub(1);
                     if prev_was_newline {
                         for _ in 0..indent_level {
-                            output.push_str(self.indent_str);
+                            output.push_str(&self.indent_str);
                         }
                         prev_was_newline = false;
                     }
@@ -154,7 +157,7 @@ impl PrettyPrinter {
                     indent_level = indent_level.saturating_sub(1);
                 }
                 Token::Tab => {
-                    output.push_str(INDENT);
+                    output.push_str(&self.indent_str);
                 }
             }
         }
@@ -181,8 +184,13 @@ impl Default for Twine {
 impl Twine {
     #[must_use]
     pub fn new() -> Self {
+        Self::with_indent(4)
+    }
+
+    #[must_use]
+    pub fn with_indent(width: usize) -> Self {
         Self {
-            writer: PrettyPrinter::new(),
+            writer: PrettyPrinter::with_indent(width),
         }
     }
 
@@ -201,7 +209,7 @@ impl Twine {
                         self.writer.endl();
                     }
                     '\t' => {
-                        self.writer.text("    ");
+                        self.writer.tab();
                     }
                     _ => {
                         self.writer.text(ch);

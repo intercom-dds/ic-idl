@@ -1470,7 +1470,18 @@ impl<'a> JavaGen<'a> {
     }
 
     fn emit_interface(&self, w: &mut Twine, def: &Def, interface_ty: &InterfaceTy) {
-        w!(w, "public interface ", def, " {\n");
+        let parents = interface_ty
+            .parents
+            .iter()
+            .map(|v| self.java_name(*v))
+            .collect::<Vec<_>>()
+            .join(", ");
+
+        w!(w, "public interface ", def);
+        if !parents.is_empty() {
+            w!(w, " extends ", parents);
+        }
+        w!(w, " {\n");
 
         // Emit nested definitions
         for &nested_id in &interface_ty.definitions {

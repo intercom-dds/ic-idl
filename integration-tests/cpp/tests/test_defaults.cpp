@@ -25,33 +25,31 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#include <gtest/gtest.h>
+#include <doctest/doctest.h>
 
 #include "generated/defaults.h"
 
-namespace {
-
-TEST(DefaultsTest, test_const_string_values) {
-    EXPECT_STREQ(default_types::DEFAULT_NAME, "unnamed");
-    EXPECT_EQ(default_types::DEFAULT_COUNT, 100);
-    EXPECT_DOUBLE_EQ(default_types::DEFAULT_RATE, 0.5);
+TEST_CASE("const_string_values" * doctest::test_suite("defaults")) {
+    CHECK(default_types::DEFAULT_NAME == "unnamed");
+    CHECK(default_types::DEFAULT_COUNT == 100);
+    CHECK(default_types::DEFAULT_RATE == doctest::Approx(0.5));
 }
 
-TEST(DefaultsTest, test_struct_const_initializer) {
-    EXPECT_EQ(default_types::DEFAULT_INNER.x, 10);
-    EXPECT_EQ(default_types::DEFAULT_INNER.y, "default");
-    EXPECT_EQ(default_types::NESTED_INNER.x, 99);
-    EXPECT_EQ(default_types::NESTED_INNER.y, "nested");
+TEST_CASE("struct_const_initializer" * doctest::test_suite("defaults")) {
+    CHECK(default_types::DEFAULT_INNER.x == 10);
+    CHECK(default_types::DEFAULT_INNER.y == "default");
+    CHECK(default_types::NESTED_INNER.x == 99);
+    CHECK(default_types::NESTED_INNER.y == "nested");
 }
 
-TEST(DefaultsTest, test_optional_fields_are_none) {
+TEST_CASE("optional_fields_are_none" * doctest::test_suite("defaults")) {
     default_types::OptionalFields opt;
-    EXPECT_FALSE(opt.maybe_int.has_value());
-    EXPECT_FALSE(opt.maybe_string.has_value());
-    EXPECT_FALSE(opt.maybe_struct.has_value());
+    CHECK_FALSE(opt.maybe_int.has_value());
+    CHECK_FALSE(opt.maybe_string.has_value());
+    CHECK_FALSE(opt.maybe_struct.has_value());
 }
 
-TEST(DefaultsTest, test_optional_fields_type_annotations) {
+TEST_CASE("optional_fields_type_annotations" * doctest::test_suite("defaults")) {
     default_types::OptionalFields opt;
     static_assert(
         std::is_same<decltype(opt.maybe_int), std::optional<int32_t>>::value,
@@ -67,106 +65,104 @@ TEST(DefaultsTest, test_optional_fields_type_annotations) {
     );
 }
 
-TEST(DefaultsTest, test_optional_fields_can_be_set) {
+TEST_CASE("optional_fields_can_be_set" * doctest::test_suite("defaults")) {
     default_types::OptionalFields opt;
     opt.maybe_int = 42;
     opt.maybe_string = "test";
     opt.maybe_struct = default_types::Inner(10, "hello");
-    EXPECT_TRUE(opt.maybe_int.has_value());
-    EXPECT_EQ(opt.maybe_int.value(), 42);
-    EXPECT_TRUE(opt.maybe_string.has_value());
-    EXPECT_EQ(opt.maybe_string.value(), "test");
-    EXPECT_TRUE(opt.maybe_struct.has_value());
-    EXPECT_EQ(opt.maybe_struct.value().x, 10);
-    EXPECT_EQ(opt.maybe_struct.value().y, "hello");
+    CHECK(opt.maybe_int.has_value());
+    CHECK(opt.maybe_int.value() == 42);
+    CHECK(opt.maybe_string.has_value());
+    CHECK(opt.maybe_string.value() == "test");
+    CHECK(opt.maybe_struct.has_value());
+    CHECK(opt.maybe_struct.value().x == 10);
+    CHECK(opt.maybe_struct.value().y == "hello");
 }
 
-TEST(DefaultsTest, test_enum_default_literal_exists) {
-    EXPECT_EQ(default_types::Priority::LOW, 0);
-    EXPECT_EQ(default_types::Priority::MEDIUM, 1);
-    EXPECT_EQ(default_types::Priority::HIGH, 2);
+TEST_CASE("enum_default_literal_exists" * doctest::test_suite("defaults")) {
+    CHECK(default_types::Priority::LOW == 0);
+    CHECK(default_types::Priority::MEDIUM == 1);
+    CHECK(default_types::Priority::HIGH == 2);
 }
 
-TEST(DefaultsTest, test_primitive_bool_default) {
+TEST_CASE("primitive_bool_default" * doctest::test_suite("defaults")) {
     default_types::PrimitiveDefaults p;
-    EXPECT_EQ(p.bool_empty, false);
-    EXPECT_EQ(p.bool_true, true);
-    EXPECT_EQ(p.bool_false, false);
+    CHECK(p.bool_empty == false);
+    CHECK(p.bool_true == true);
+    CHECK(p.bool_false == false);
 }
 
-TEST(DefaultsTest, test_primitive_int_default) {
+TEST_CASE("primitive_int_default" * doctest::test_suite("defaults")) {
     default_types::PrimitiveDefaults p;
-    EXPECT_EQ(p.int_empty, 0);
-    EXPECT_EQ(p.int_value, 42);
-    EXPECT_EQ(p.int_negative, -100);
+    CHECK(p.int_empty == 0);
+    CHECK(p.int_value == 42);
+    CHECK(p.int_negative == -100);
 }
 
-TEST(DefaultsTest, test_primitive_float_default) {
+TEST_CASE("primitive_float_default" * doctest::test_suite("defaults")) {
     default_types::PrimitiveDefaults p;
-    EXPECT_DOUBLE_EQ(p.float_empty, 0.0);
-    EXPECT_NEAR(p.float_value, 3.14159, 0.00001);
-    EXPECT_DOUBLE_EQ(p.float_negative, -0.5);
+    CHECK(p.float_empty == doctest::Approx(0.0));
+    CHECK(p.float_value == doctest::Approx(3.14159).epsilon(0.00001));
+    CHECK(p.float_negative == doctest::Approx(-0.5));
 }
 
-TEST(DefaultsTest, test_primitive_string_default) {
+TEST_CASE("primitive_string_default" * doctest::test_suite("defaults")) {
     default_types::PrimitiveDefaults p;
-    EXPECT_EQ(p.string_empty, "");
-    EXPECT_EQ(p.string_value, "hello");
-    EXPECT_EQ(p.string_from_const, "unnamed");
+    CHECK(p.string_empty == "");
+    CHECK(p.string_value == "hello");
+    CHECK(p.string_from_const == "unnamed");
 }
 
-TEST(DefaultsTest, test_array_default_values) {
+TEST_CASE("array_default_values" * doctest::test_suite("defaults")) {
     default_types::ArrayDefaults a;
-    EXPECT_EQ(a.array_empty.size(), 3U);
-    EXPECT_EQ(a.array_empty[0], 0);
-    EXPECT_EQ(a.array_empty[1], 0);
-    EXPECT_EQ(a.array_empty[2], 0);
-    EXPECT_EQ(a.array_values.size(), 3U);
-    EXPECT_EQ(a.array_values[0], 1);
-    EXPECT_EQ(a.array_values[1], 2);
-    EXPECT_EQ(a.array_values[2], 3);
-    EXPECT_EQ(a.array_partial.size(), 2U);
-    EXPECT_EQ(a.array_partial[0], 10);
-    EXPECT_EQ(a.array_partial[1], 20);
-    EXPECT_EQ(a.string_array_empty.size(), 2U);
-    EXPECT_EQ(a.string_array_empty[0], "");
-    EXPECT_EQ(a.string_array_empty[1], "");
-    EXPECT_EQ(a.string_array_values.size(), 2U);
-    EXPECT_EQ(a.string_array_values[0], "foo");
-    EXPECT_EQ(a.string_array_values[1], "bar");
+    CHECK(a.array_empty.size() == 3U);
+    CHECK(a.array_empty[0] == 0);
+    CHECK(a.array_empty[1] == 0);
+    CHECK(a.array_empty[2] == 0);
+    CHECK(a.array_values.size() == 3U);
+    CHECK(a.array_values[0] == 1);
+    CHECK(a.array_values[1] == 2);
+    CHECK(a.array_values[2] == 3);
+    CHECK(a.array_partial.size() == 2U);
+    CHECK(a.array_partial[0] == 10);
+    CHECK(a.array_partial[1] == 20);
+    CHECK(a.string_array_empty.size() == 2U);
+    CHECK(a.string_array_empty[0] == "");
+    CHECK(a.string_array_empty[1] == "");
+    CHECK(a.string_array_values.size() == 2U);
+    CHECK(a.string_array_values[0] == "foo");
+    CHECK(a.string_array_values[1] == "bar");
 }
 
-TEST(DefaultsTest, test_sequence_default_values) {
+TEST_CASE("sequence_default_values" * doctest::test_suite("defaults")) {
     default_types::SequenceDefaults s;
-    EXPECT_EQ(s.seq_empty.size(), 0U);
-    EXPECT_EQ(s.seq_values.size(), 5U);
-    EXPECT_EQ(s.seq_values[0], 1);
-    EXPECT_EQ(s.seq_values[1], 2);
-    EXPECT_EQ(s.seq_values[2], 3);
-    EXPECT_EQ(s.seq_values[3], 4);
-    EXPECT_EQ(s.seq_values[4], 5);
-    EXPECT_EQ(s.string_seq_empty.size(), 0U);
-    EXPECT_EQ(s.string_seq_values.size(), 3U);
-    EXPECT_EQ(s.string_seq_values[0], "a");
-    EXPECT_EQ(s.string_seq_values[1], "b");
-    EXPECT_EQ(s.string_seq_values[2], "c");
+    CHECK(s.seq_empty.size() == 0U);
+    CHECK(s.seq_values.size() == 5U);
+    CHECK(s.seq_values[0] == 1);
+    CHECK(s.seq_values[1] == 2);
+    CHECK(s.seq_values[2] == 3);
+    CHECK(s.seq_values[3] == 4);
+    CHECK(s.seq_values[4] == 5);
+    CHECK(s.string_seq_empty.size() == 0U);
+    CHECK(s.string_seq_values.size() == 3U);
+    CHECK(s.string_seq_values[0] == "a");
+    CHECK(s.string_seq_values[1] == "b");
+    CHECK(s.string_seq_values[2] == "c");
 }
 
-TEST(DefaultsTest, test_map_default_values) {
+TEST_CASE("map_default_values" * doctest::test_suite("defaults")) {
     default_types::MapDefaults m;
-    EXPECT_EQ(m.map_empty.size(), 0U);
-    EXPECT_EQ(m.map_values.size(), 2U);
-    EXPECT_EQ(m.map_values.at("one"), 1);
-    EXPECT_EQ(m.map_values.at("two"), 2);
-    EXPECT_EQ(m.reverse_map_empty.size(), 0U);
-    EXPECT_EQ(m.reverse_map_values.size(), 2U);
-    EXPECT_EQ(m.reverse_map_values.at(1), "one");
-    EXPECT_EQ(m.reverse_map_values.at(2), "two");
+    CHECK(m.map_empty.size() == 0U);
+    CHECK(m.map_values.size() == 2U);
+    CHECK(m.map_values.at("one") == 1);
+    CHECK(m.map_values.at("two") == 2);
+    CHECK(m.reverse_map_empty.size() == 0U);
+    CHECK(m.reverse_map_values.size() == 2U);
+    CHECK(m.reverse_map_values.at(1) == "one");
+    CHECK(m.reverse_map_values.at(2) == "two");
 }
 
-TEST(DefaultsTest, test_enum_field_default) {
+TEST_CASE("enum_field_default" * doctest::test_suite("defaults")) {
     default_types::EnumDefaults e;
-    EXPECT_EQ(e.priority_high, default_types::Priority::HIGH);
+    CHECK(e.priority_high == default_types::Priority::HIGH);
 }
-
-} // namespace

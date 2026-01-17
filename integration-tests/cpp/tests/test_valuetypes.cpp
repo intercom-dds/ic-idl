@@ -25,86 +25,84 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#include <gtest/gtest.h>
+#include <doctest/doctest.h>
 
 #include <type_traits>
 
 #include "generated/valuetypes.h"
 
-namespace {
-
-TEST(ValuetypesTest, test_valuetype_instantiation) {
+TEST_CASE("valuetype_instantiation" * doctest::test_suite("valuetypes")) {
     valuetype_types::SimpleValue sv(42, "test");
-    EXPECT_EQ(sv.id, 42);
-    EXPECT_EQ(sv.name, "test");
+    CHECK(sv.id == 42);
+    CHECK(sv.name == "test");
 }
 
-TEST(ValuetypesTest, test_valuetype_defaults) {
+TEST_CASE("valuetype_defaults" * doctest::test_suite("valuetypes")) {
     valuetype_types::SimpleValue sv;
-    EXPECT_EQ(sv.id, 0);
-    EXPECT_EQ(sv.name, "");
+    CHECK(sv.id == 0);
+    CHECK(sv.name == "");
 }
 
-TEST(ValuetypesTest, test_valuetype_inheritance) {
+TEST_CASE("valuetype_inheritance" * doctest::test_suite("valuetypes")) {
     valuetype_types::DerivedValue dv(1, "base", "derived");
-    EXPECT_EQ(dv.id, 1);
-    EXPECT_EQ(dv.name, "base");
-    EXPECT_EQ(dv.description, "derived");
+    CHECK(dv.id == 1);
+    CHECK(dv.name == "base");
+    CHECK(dv.description == "derived");
 
     valuetype_types::SimpleValue* sv = &dv;
-    EXPECT_EQ(sv->id, 1);
-    EXPECT_EQ(sv->name, "base");
+    CHECK(sv->id == 1);
+    CHECK(sv->name == "base");
 }
 
-TEST(ValuetypesTest, test_valuetype_empty) {
+TEST_CASE("valuetype_empty" * doctest::test_suite("valuetypes")) {
     valuetype_types::Empty e;
-    EXPECT_EQ(e, e);
+    CHECK(e == e);
 }
 
-TEST(ValuetypesTest, test_valuetype_with_sequence) {
+TEST_CASE("valuetype_with_sequence" * doctest::test_suite("valuetypes")) {
     std::vector<int32_t> nums = {1, 2, 3, 4, 5};
     std::vector<std::string> names = {"a", "b", "c"};
     valuetype_types::WithSequence ws(nums, names);
 
-    EXPECT_EQ(ws.numbers.size(), 5);
-    EXPECT_EQ(ws.names.size(), 3);
-    EXPECT_EQ(ws.numbers[0], 1);
-    EXPECT_EQ(ws.names[1], "b");
+    CHECK(ws.numbers.size() == 5);
+    CHECK(ws.names.size() == 3);
+    CHECK(ws.numbers[0] == 1);
+    CHECK(ws.names[1] == "b");
 }
 
-TEST(ValuetypesTest, test_valuetype_equality) {
+TEST_CASE("valuetype_equality" * doctest::test_suite("valuetypes")) {
     valuetype_types::SimpleValue v1(10, "test");
     valuetype_types::SimpleValue v2(10, "test");
     valuetype_types::SimpleValue v3(20, "other");
 
-    EXPECT_EQ(v1, v2);
-    EXPECT_NE(v1, v3);
+    CHECK(v1 == v2);
+    CHECK(v1 != v3);
 }
 
-TEST(ValuetypesTest, test_valuetype_supports_interface) {
+TEST_CASE("valuetype_supports_interface" * doctest::test_suite("valuetypes")) {
     valuetype_types::IdentifiableValue iv(123, "data");
-    EXPECT_EQ(iv.id, 123);
-    EXPECT_EQ(iv.data, "data");
+    CHECK(iv.id == 123);
+    CHECK(iv.data == "data");
 }
 
-TEST(ValuetypesTest, test_valuetype_supports_named) {
+TEST_CASE("valuetype_supports_named" * doctest::test_suite("valuetypes")) {
     valuetype_types::NamedValue nv("test_name", 456);
-    EXPECT_EQ(nv.name, "test_name");
-    EXPECT_EQ(nv.value, 456);
+    CHECK(nv.name == "test_name");
+    CHECK(nv.value == 456);
 }
 
-TEST(ValuetypesTest, test_valuetype_inheritance_and_supports) {
+TEST_CASE("valuetype_inheritance_and_supports" * doctest::test_suite("valuetypes")) {
     valuetype_types::FullValue fv(1, "name", "extra");
-    EXPECT_EQ(fv.id, 1);
-    EXPECT_EQ(fv.name, "name");
-    EXPECT_EQ(fv.extra, "extra");
+    CHECK(fv.id == 1);
+    CHECK(fv.name == "name");
+    CHECK(fv.extra == "extra");
 
     valuetype_types::SimpleValue* sv = &fv;
-    EXPECT_EQ(sv->id, 1);
-    EXPECT_EQ(sv->name, "name");
+    CHECK(sv->id == 1);
+    CHECK(sv->name == "name");
 }
 
-TEST(ValuetypesTest, test_valuetype_field_types) {
+TEST_CASE("valuetype_field_types" * doctest::test_suite("valuetypes")) {
     static_assert(
         std::is_same<decltype(valuetype_types::SimpleValue::id), int32_t>::value,
         "id should be int32_t"
@@ -115,7 +113,7 @@ TEST(ValuetypesTest, test_valuetype_field_types) {
     );
 }
 
-TEST(ValuetypesTest, test_valuetype_sequence_field_types) {
+TEST_CASE("valuetype_sequence_field_types" * doctest::test_suite("valuetypes")) {
     static_assert(
         std::is_same<decltype(valuetype_types::WithSequence::numbers), std::vector<int32_t>>::value,
         "numbers should be std::vector<int32_t>"
@@ -127,7 +125,7 @@ TEST(ValuetypesTest, test_valuetype_sequence_field_types) {
     );
 }
 
-TEST(ValuetypesTest, test_valuetype_derived_field_types) {
+TEST_CASE("valuetype_derived_field_types" * doctest::test_suite("valuetypes")) {
     static_assert(
         std::is_same<decltype(valuetype_types::DerivedValue::description), std::string>::value,
         "description should be std::string"
@@ -138,20 +136,18 @@ TEST(ValuetypesTest, test_valuetype_derived_field_types) {
     );
 }
 
-TEST(ValuetypesTest, test_valuetype_comparison_operators) {
+TEST_CASE("valuetype_comparison_operators" * doctest::test_suite("valuetypes")) {
     valuetype_types::SimpleValue v1(10, "test");
     valuetype_types::SimpleValue v2(10, "test");
     valuetype_types::SimpleValue v3(5, "other");
     valuetype_types::SimpleValue v4(10, "zzz");
 
-    EXPECT_TRUE(v1 == v2);
-    EXPECT_FALSE(v1 == v3);
-    EXPECT_TRUE(v1 != v3);
-    EXPECT_TRUE(v3 < v1);
-    EXPECT_TRUE(v1 > v3);
-    EXPECT_TRUE(v1 < v4);
-    EXPECT_TRUE(v1 <= v2);
-    EXPECT_TRUE(v1 >= v2);
+    CHECK(v1 == v2);
+    CHECK_FALSE(v1 == v3);
+    CHECK(v1 != v3);
+    CHECK(v3 < v1);
+    CHECK(v1 > v3);
+    CHECK(v1 < v4);
+    CHECK(v1 <= v2);
+    CHECK(v1 >= v2);
 }
-
-} // namespace

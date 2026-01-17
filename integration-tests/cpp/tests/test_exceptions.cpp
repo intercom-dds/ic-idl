@@ -25,93 +25,93 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#include <gtest/gtest.h>
+#include <doctest/doctest.h>
 
 #include <exception>
 #include <stdexcept>
 
 #include "generated/exceptions.h"
 
-namespace {
-
-TEST(ExceptionsTest, test_exception_inherits_from_exception) {
-    EXPECT_TRUE((std::is_base_of_v<std::exception, exception_types::SimpleError>));
+TEST_CASE("exception_inherits_from_exception" * doctest::test_suite("exceptions")) {
+    CHECK((std::is_base_of_v<std::exception, exception_types::SimpleError>));
 
     // Runtime RTTI check via dynamic_cast
     exception_types::SimpleError err(42, "test error");
     std::exception* base_ptr = dynamic_cast<std::exception*>(&err);
-    EXPECT_NE(nullptr, base_ptr);
-    EXPECT_STREQ(base_ptr->what(), "SimpleError");
+    CHECK(nullptr != base_ptr);
+    CHECK(std::string(base_ptr->what()) == "SimpleError");
 }
 
-TEST(ExceptionsTest, test_exception_instantiation) {
+TEST_CASE("exception_instantiation" * doctest::test_suite("exceptions")) {
     exception_types::SimpleError err(404, "Not found");
-    EXPECT_EQ(err.error_code, 404);
-    EXPECT_EQ(err.message, "Not found");
+    CHECK(err.error_code == 404);
+    CHECK(err.message == "Not found");
 }
 
-TEST(ExceptionsTest, test_exception_raise_and_catch) {
+TEST_CASE("exception_raise_and_catch" * doctest::test_suite("exceptions")) {
     try {
         throw exception_types::SimpleError(500, "Internal error");
-        FAIL() << "Expected SimpleError to be thrown";
     } catch (const exception_types::SimpleError& e) {
-        EXPECT_EQ(e.error_code, 500);
-        EXPECT_EQ(e.message, "Internal error");
+        CHECK(e.error_code == 500);
+        CHECK(e.message == "Internal error");
+    } catch (...) {
+        FAIL("Exception not caught properly");
     }
 }
 
-TEST(ExceptionsTest, test_exception_catch_as_base) {
+TEST_CASE("exception_catch_as_base" * doctest::test_suite("exceptions")) {
     try {
         throw exception_types::SimpleError(403, "Forbidden");
-        FAIL() << "Expected SimpleError to be thrown";
     } catch (const std::exception& e) {
-        EXPECT_NO_THROW(dynamic_cast<const exception_types::SimpleError&>(e));
+        CHECK_NOTHROW(std::ignore = dynamic_cast<const exception_types::SimpleError&>(e));
 
         const exception_types::SimpleError& simple =
             dynamic_cast<const exception_types::SimpleError&>(e);
-        EXPECT_EQ(simple.error_code, 403);
-        EXPECT_EQ(simple.message, "Forbidden");
+        CHECK(simple.error_code == 403);
+        CHECK(simple.message == "Forbidden");
+    } catch (...) {
+        FAIL("Exception not caught properly");
     }
 }
 
-TEST(ExceptionsTest, test_empty_exception) {
+TEST_CASE("empty_exception" * doctest::test_suite("exceptions")) {
     exception_types::EmptyError empty;
-    EXPECT_TRUE((std::is_base_of_v<std::exception, exception_types::EmptyError>));
+    CHECK((std::is_base_of_v<std::exception, exception_types::EmptyError>));
 
     try {
         throw empty;
-        FAIL() << "Expected EmptyError to be thrown";
     } catch (const exception_types::EmptyError&) {
-        SUCCEED();
+        CHECK(true);
+    } catch (...) {
+        FAIL("Exception not caught properly");
     }
 }
 
-TEST(ExceptionsTest, test_detailed_exception_fields) {
+TEST_CASE("detailed_exception_fields" * doctest::test_suite("exceptions")) {
     exception_types::DetailedError err(1001, "Database error", "Connection timeout", true);
-    EXPECT_EQ(err.code, 1001);
-    EXPECT_EQ(err.message, "Database error");
-    EXPECT_EQ(err.details, "Connection timeout");
-    EXPECT_TRUE(err.recoverable);
+    CHECK(err.code == 1001);
+    CHECK(err.message == "Database error");
+    CHECK(err.details == "Connection timeout");
+    CHECK(err.recoverable);
 
     exception_types::DetailedError err2(2002, "Fatal error", "Out of memory", false);
-    EXPECT_EQ(err2.code, 2002);
-    EXPECT_FALSE(err2.recoverable);
+    CHECK(err2.code == 2002);
+    CHECK_FALSE(err2.recoverable);
 }
 
-TEST(ExceptionsTest, test_validation_error) {
+TEST_CASE("validation_error" * doctest::test_suite("exceptions")) {
     exception_types::ValidationError verr("email", "Invalid format", 15);
-    EXPECT_EQ(verr.field_name, "email");
-    EXPECT_EQ(verr.error_message, "Invalid format");
-    EXPECT_EQ(verr.position, 15);
+    CHECK(verr.field_name == "email");
+    CHECK(verr.error_message == "Invalid format");
+    CHECK(verr.position == 15);
 
     try {
         throw verr;
-        FAIL() << "Expected ValidationError to be thrown";
     } catch (const exception_types::ValidationError& e) {
-        EXPECT_EQ(e.field_name, "email");
-        EXPECT_EQ(e.error_message, "Invalid format");
-        EXPECT_EQ(e.position, 15);
+        CHECK(e.field_name == "email");
+        CHECK(e.error_message == "Invalid format");
+        CHECK(e.position == 15);
+    } catch (...) {
+        FAIL("Exception not caught properly");
     }
 }
-
-} // namespace

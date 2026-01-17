@@ -25,234 +25,225 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#include <gtest/gtest.h>
+#include <doctest/doctest.h>
 
 #include <type_traits>
 
 #include "generated/strings.h"
 
-namespace {
-
-TEST(StringsTest, test_char_letter) {
-    EXPECT_EQ(char_wstring_types::CHAR_A, 'A');
+TEST_CASE("char_letter" * doctest::test_suite("strings")) {
+    CHECK(char_wstring_types::CHAR_A == 'A');
 }
 
-TEST(StringsTest, test_char_digit) {
-    EXPECT_EQ(char_wstring_types::CHAR_DIGIT, '5');
+TEST_CASE("char_digit" * doctest::test_suite("strings")) {
+    CHECK(char_wstring_types::CHAR_DIGIT == '5');
 }
 
-TEST(StringsTest, test_char_space) {
-    EXPECT_EQ(char_wstring_types::CHAR_SPACE, ' ');
+TEST_CASE("char_space" * doctest::test_suite("strings")) {
+    CHECK(char_wstring_types::CHAR_SPACE == ' ');
 }
 
-TEST(StringsTest, test_char_newline) {
-    EXPECT_EQ(char_wstring_types::CHAR_NEWLINE, '\n');
+TEST_CASE("char_newline" * doctest::test_suite("strings")) {
+    CHECK(char_wstring_types::CHAR_NEWLINE == '\n');
 }
 
-TEST(StringsTest, test_char_tab) {
-    EXPECT_EQ(char_wstring_types::CHAR_TAB, '\t');
+TEST_CASE("char_tab" * doctest::test_suite("strings")) {
+    CHECK(char_wstring_types::CHAR_TAB == '\t');
 }
 
-TEST(StringsTest, test_char_quote) {
-    EXPECT_EQ(char_wstring_types::CHAR_QUOTE, '\'');
+TEST_CASE("char_quote" * doctest::test_suite("strings")) {
+    CHECK(char_wstring_types::CHAR_QUOTE == '\'');
 }
 
-TEST(StringsTest, test_char_backslash) {
-    EXPECT_EQ(char_wstring_types::CHAR_BACKSLASH, '\\');
+TEST_CASE("char_backslash" * doctest::test_suite("strings")) {
+    CHECK(char_wstring_types::CHAR_BACKSLASH == '\\');
 }
 
-TEST(StringsTest, test_wchar_ascii) {
-    EXPECT_EQ(char_wstring_types::WCHAR_A, u'A');
+TEST_CASE("wchar_ascii" * doctest::test_suite("strings")) {
+    CHECK(char_wstring_types::WCHAR_A == u'A');
 }
 
-TEST(StringsTest, test_wchar_omega) {
-    EXPECT_EQ(char_wstring_types::WCHAR_OMEGA, u'Ω');
+TEST_CASE("wchar_omega" * doctest::test_suite("strings")) {
+    CHECK(char_wstring_types::WCHAR_OMEGA == u'Ω');
 }
 
-TEST(StringsTest, test_wchar_chinese) {
-    EXPECT_EQ(char_wstring_types::WCHAR_CHINESE, u'中');
+TEST_CASE("wchar_chinese" * doctest::test_suite("strings")) {
+    CHECK(char_wstring_types::WCHAR_CHINESE == u'中');
 }
 
-TEST(StringsTest, test_wstring_hello) {
-    EXPECT_EQ(std::u16string_view(char_wstring_types::WSTRING_HELLO), u"Hello");
+TEST_CASE("wstring_hello" * doctest::test_suite("strings")) {
+    CHECK(std::u16string_view(char_wstring_types::WSTRING_HELLO) == u"Hello");
 }
 
-TEST(StringsTest, test_wstring_unicode) {
-    EXPECT_EQ(std::u16string_view(char_wstring_types::WSTRING_UNICODE), u"日本語テスト");
+TEST_CASE("wstring_unicode" * doctest::test_suite("strings")) {
+    CHECK(std::u16string_view(char_wstring_types::WSTRING_UNICODE) == u"日本語テスト");
 }
 
-TEST(StringsTest, test_wstring_emoji) {
-    EXPECT_EQ(std::u16string_view(char_wstring_types::WSTRING_EMOJI), u"🎉🚀");
+TEST_CASE("wstring_emoji" * doctest::test_suite("strings")) {
+    CHECK(std::u16string_view(char_wstring_types::WSTRING_EMOJI) == u"🎉🚀");
 }
 
-TEST(StringsTest, test_wstring_empty) {
-    EXPECT_EQ(std::u16string_view(char_wstring_types::WSTRING_EMPTY), u"");
+TEST_CASE("wstring_empty" * doctest::test_suite("strings")) {
+    CHECK(std::u16string_view(char_wstring_types::WSTRING_EMPTY) == u"");
 }
 
-TEST(StringsTest, test_char_fields_struct) {
+TEST_CASE("char_fields_struct" * doctest::test_suite("strings")) {
     char_wstring_types::CharFields cf('X', u'Y');
-    EXPECT_EQ(cf.single_char, 'X');
-    EXPECT_EQ(cf.wide_char, u'Y');
+    CHECK(cf.single_char == 'X');
+    CHECK(cf.wide_char == u'Y');
 }
 
-TEST(StringsTest, test_wstring_fields_struct) {
+TEST_CASE("wstring_fields_struct" * doctest::test_suite("strings")) {
     char_wstring_types::WstringFields wf(L"Wide", "Narrow");
-    EXPECT_EQ(wf.wide_text, L"Wide");
-    EXPECT_EQ(wf.narrow_text, "Narrow");
+    CHECK(wf.wide_text == L"Wide");
+    CHECK(wf.narrow_text == "Narrow");
 }
 
-TEST(StringsTest, test_char_sequences) {
+TEST_CASE("char_sequences" * doctest::test_suite("strings")) {
     std::vector<char> chars = {'a', 'b', 'c'};
     std::vector<char16_t> wchars = {u'x', u'y', u'z'};
     char_wstring_types::CharSequences cs(chars, wchars);
-    EXPECT_EQ(cs.char_seq.size(), 3);
-    EXPECT_EQ(cs.wchar_seq.size(), 3);
-    EXPECT_EQ(cs.char_seq[0], 'a');
-    EXPECT_EQ(cs.wchar_seq[2], u'z');
+    CHECK(cs.char_seq.size() == 3);
+    CHECK(cs.wchar_seq.size() == 3);
+    CHECK(cs.char_seq[0] == 'a');
+    CHECK(cs.wchar_seq[2] == u'z');
 }
 
-TEST(StringsTest, test_mixed_char_types) {
+TEST_CASE("mixed_char_types" * doctest::test_suite("strings")) {
     char_wstring_types::MixedCharTypes mct('A', u'Ω', "text", L"wide");
-    EXPECT_EQ(mct.letter, 'A');
-    EXPECT_EQ(mct.wide_letter, u'Ω');
-    EXPECT_EQ(mct.text, "text");
-    EXPECT_EQ(mct.wide_text, L"wide");
+    CHECK(mct.letter == 'A');
+    CHECK(mct.wide_letter == u'Ω');
+    CHECK(mct.text == "text");
+    CHECK(mct.wide_text == L"wide");
 }
 
-TEST(StringsTest, test_unicode_french) {
-    EXPECT_STREQ(unicode_types::FRENCH, "café résumé naïve");
+TEST_CASE("unicode_french" * doctest::test_suite("strings")) {
+    CHECK(unicode_types::FRENCH == "café résumé naïve");
 }
 
-TEST(StringsTest, test_unicode_german) {
-    EXPECT_STREQ(unicode_types::GERMAN, "größe über müde");
+TEST_CASE("unicode_german" * doctest::test_suite("strings")) {
+    CHECK(unicode_types::GERMAN == "größe über müde");
 }
 
-TEST(StringsTest, test_unicode_spanish) {
-    EXPECT_STREQ(unicode_types::SPANISH, "señor mañana niño");
+TEST_CASE("unicode_spanish" * doctest::test_suite("strings")) {
+    CHECK(unicode_types::SPANISH == "señor mañana niño");
 }
 
-TEST(StringsTest, test_unicode_norwegian) {
-    EXPECT_STREQ(unicode_types::NORWEGIAN, "blåbær ærlig øl");
+TEST_CASE("unicode_norwegian" * doctest::test_suite("strings")) {
+    CHECK(unicode_types::NORWEGIAN == "blåbær ærlig øl");
 }
 
-TEST(StringsTest, test_unicode_swedish) {
-    EXPECT_STREQ(unicode_types::SWEDISH, "smörgås älg ö");
+TEST_CASE("unicode_swedish" * doctest::test_suite("strings")) {
+    CHECK(unicode_types::SWEDISH == "smörgås älg ö");
 }
 
-TEST(StringsTest, test_unicode_greek) {
-    EXPECT_STREQ(unicode_types::GREEK, "αβγδ Ωμέγα");
+TEST_CASE("unicode_greek" * doctest::test_suite("strings")) {
+    CHECK(unicode_types::GREEK == "αβγδ Ωμέγα");
 }
 
-TEST(StringsTest, test_unicode_russian) {
-    EXPECT_STREQ(unicode_types::RUSSIAN, "привет мир");
+TEST_CASE("unicode_russian" * doctest::test_suite("strings")) {
+    CHECK(unicode_types::RUSSIAN == "привет мир");
 }
 
-TEST(StringsTest, test_unicode_chinese) {
-    EXPECT_STREQ(unicode_types::CHINESE, "你好世界");
+TEST_CASE("unicode_chinese" * doctest::test_suite("strings")) {
+    CHECK(unicode_types::CHINESE == "你好世界");
 }
 
-TEST(StringsTest, test_unicode_japanese) {
-    EXPECT_STREQ(unicode_types::JAPANESE, "こんにちは世界");
+TEST_CASE("unicode_japanese" * doctest::test_suite("strings")) {
+    CHECK(unicode_types::JAPANESE == "こんにちは世界");
 }
 
-TEST(StringsTest, test_unicode_korean) {
-    EXPECT_STREQ(unicode_types::KOREAN, "안녕하세요");
+TEST_CASE("unicode_korean" * doctest::test_suite("strings")) {
+    CHECK(unicode_types::KOREAN == "안녕하세요");
 }
 
-TEST(StringsTest, test_unicode_emoji) {
-    EXPECT_STREQ(unicode_types::EMOJI, "🎉🚀💻🔥");
+TEST_CASE("unicode_emoji" * doctest::test_suite("strings")) {
+    CHECK(unicode_types::EMOJI == "🎉🚀💻🔥");
 }
 
-TEST(StringsTest, test_unicode_mixed) {
-    EXPECT_STREQ(unicode_types::MIXED, "Hello 世界 🌍 café");
+TEST_CASE("unicode_mixed" * doctest::test_suite("strings")) {
+    CHECK(unicode_types::MIXED == "Hello 世界 🌍 café");
 }
 
-TEST(StringsTest, test_unicode_quotes) {
-    EXPECT_STREQ(unicode_types::QUOTES, "He said \"hello\"");
+TEST_CASE("unicode_quotes" * doctest::test_suite("strings")) {
+    CHECK(unicode_types::QUOTES == "He said \"hello\"");
 }
 
-TEST(StringsTest, test_unicode_backslash) {
-    EXPECT_STREQ(unicode_types::BACKSLASH, "path\\to\\file");
+TEST_CASE("unicode_backslash" * doctest::test_suite("strings")) {
+    CHECK(unicode_types::BACKSLASH == "path\\to\\file");
 }
 
-TEST(StringsTest, test_unicode_newline) {
-    EXPECT_STREQ(unicode_types::NEWLINE, "line1\nline2");
+TEST_CASE("unicode_newline" * doctest::test_suite("strings")) {
+    CHECK(unicode_types::NEWLINE == "line1\nline2");
 }
 
-TEST(StringsTest, test_unicode_tab) {
-    EXPECT_STREQ(unicode_types::TAB, "col1\tcol2");
+TEST_CASE("unicode_tab" * doctest::test_suite("strings")) {
+    CHECK(unicode_types::TAB == "col1\tcol2");
 }
 
-TEST(StringsTest, test_unicode_empty) {
-    EXPECT_STREQ(unicode_types::EMPTY, "");
+TEST_CASE("unicode_empty" * doctest::test_suite("strings")) {
+    CHECK(unicode_types::EMPTY == "");
 }
 
-TEST(StringsTest, test_unicode_spaces) {
-    EXPECT_STREQ(unicode_types::SPACES, "   ");
+TEST_CASE("unicode_spaces" * doctest::test_suite("strings")) {
+    CHECK(unicode_types::SPACES == "   ");
 }
 
-TEST(StringsTest, test_unicode_unicode_spaces) {
-    EXPECT_STREQ(unicode_types::UNICODE_SPACES, " \u00A0 ");
+TEST_CASE("unicode_unicode_spaces" * doctest::test_suite("strings")) {
+    CHECK(unicode_types::UNICODE_SPACES == " \u00A0 ");
 }
 
-TEST(StringsTest, test_unicode_math) {
-    EXPECT_STREQ(unicode_types::MATH, "∑∏∫√∞≠≤≥");
+TEST_CASE("unicode_math" * doctest::test_suite("strings")) {
+    CHECK(unicode_types::MATH == "∑∏∫√∞≠≤≥");
 }
 
-TEST(StringsTest, test_unicode_currency) {
-    EXPECT_STREQ(unicode_types::CURRENCY, "$ € £ ¥ ₹ ₽");
+TEST_CASE("unicode_currency" * doctest::test_suite("strings")) {
+    CHECK(unicode_types::CURRENCY == "$ € £ ¥ ₹ ₽");
 }
 
-TEST(StringsTest, test_unicode_arrows) {
-    EXPECT_STREQ(unicode_types::ARROWS, "← → ↑ ↓ ↔ ⇒");
+TEST_CASE("unicode_arrows" * doctest::test_suite("strings")) {
+    CHECK(unicode_types::ARROWS == "← → ↑ ↓ ↔ ⇒");
 }
 
-TEST(StringsTest, test_unicode_data_struct) {
+TEST_CASE("unicode_data_struct" * doctest::test_suite("strings")) {
     unicode_types::UnicodeData ud("Label", "描述");
-    EXPECT_EQ(ud.label, "Label");
-    EXPECT_EQ(ud.description, "描述");
+    CHECK(ud.label == "Label");
+    CHECK(ud.description == "描述");
 }
 
-TEST(StringsTest, test_unicode_data_with_emoji) {
+TEST_CASE("unicode_data_with_emoji" * doctest::test_suite("strings")) {
     unicode_types::UnicodeData ud("🎉", "Celebration");
-    EXPECT_EQ(ud.label, "🎉");
-    EXPECT_EQ(ud.description, "Celebration");
+    CHECK(ud.label == "🎉");
+    CHECK(ud.description == "Celebration");
 }
 
-TEST(StringsTest, test_unicode_data_mixed_scripts) {
+TEST_CASE("unicode_data_mixed_scripts" * doctest::test_suite("strings")) {
     unicode_types::UnicodeData ud("Hello世界", "Mixed script text");
-    EXPECT_EQ(ud.label, "Hello世界");
-    EXPECT_EQ(ud.description, "Mixed script text");
+    CHECK(ud.label == "Hello世界");
+    CHECK(ud.description == "Mixed script text");
 }
 
-TEST(StringsTest, test_char_type_annotations) {
-    EXPECT_TRUE((std::is_same<decltype(char_wstring_types::CHAR_A), const char>::value));
-    EXPECT_TRUE((std::is_same<decltype(char_wstring_types::WCHAR_A), const char16_t>::value));
+TEST_CASE("char_type_annotations" * doctest::test_suite("strings")) {
+    CHECK((std::is_same<decltype(char_wstring_types::CHAR_A), const char>::value));
+    CHECK((std::is_same<decltype(char_wstring_types::WCHAR_A), const char16_t>::value));
 }
 
-TEST(StringsTest, test_string_type_annotations) {
-    EXPECT_TRUE((std::is_same_v<decltype(char_wstring_types::WSTRING_HELLO), const char16_t* const>)
-    );
-    EXPECT_TRUE((std::is_same_v<decltype(unicode_types::FRENCH), const char* const>));
+TEST_CASE("string_type_annotations" * doctest::test_suite("strings")) {
+    CHECK((std::is_same_v<decltype(char_wstring_types::WSTRING_HELLO), const char16_t* const>));
+    CHECK((std::is_same_v<decltype(unicode_types::FRENCH), const char* const>));
 }
 
-TEST(StringsTest, test_char_fields_type_annotations) {
-    EXPECT_TRUE((std::is_same_v<decltype(char_wstring_types::CharFields::single_char), char>));
-    EXPECT_TRUE((std::is_same_v<decltype(char_wstring_types::CharFields::wide_char), char16_t>));
+TEST_CASE("char_fields_type_annotations" * doctest::test_suite("strings")) {
+    CHECK((std::is_same_v<decltype(char_wstring_types::CharFields::single_char), char>));
+    CHECK((std::is_same_v<decltype(char_wstring_types::CharFields::wide_char), char16_t>));
 }
 
-TEST(StringsTest, test_wstring_fields_type_annotations) {
-    EXPECT_TRUE(
-        (std::is_same_v<decltype(char_wstring_types::WstringFields::wide_text), std::wstring>)
-    );
-    EXPECT_TRUE(
-        (std::is_same_v<decltype(char_wstring_types::WstringFields::narrow_text), std::string>)
-    );
+TEST_CASE("wstring_fields_type_annotations" * doctest::test_suite("strings")) {
+    CHECK((std::is_same_v<decltype(char_wstring_types::WstringFields::wide_text), std::wstring>));
+    CHECK((std::is_same_v<decltype(char_wstring_types::WstringFields::narrow_text), std::string>));
 }
 
-TEST(StringsTest, test_unicode_data_type_annotations) {
-    EXPECT_TRUE((std::is_same_v<decltype(unicode_types::UnicodeData::label), std::string>));
-    EXPECT_TRUE((std::is_same_v<decltype(unicode_types::UnicodeData::description), std::string>));
+TEST_CASE("unicode_data_type_annotations" * doctest::test_suite("strings")) {
+    CHECK((std::is_same_v<decltype(unicode_types::UnicodeData::label), std::string>));
+    CHECK((std::is_same_v<decltype(unicode_types::UnicodeData::description), std::string>));
 }
-
-} // namespace

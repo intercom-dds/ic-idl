@@ -25,193 +25,189 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#include <gtest/gtest.h>
+#include <doctest/doctest.h>
 
 #include <cstring>
 
 #include "generated/constants.h"
 
-namespace {
-
-TEST(ConstantsTest, test_int_constant) {
-    EXPECT_EQ(constant_types::INT_CONST, 42);
+TEST_CASE("int_constant" * doctest::test_suite("constants")) {
+    CHECK(constant_types::INT_CONST == 42);
 }
 
-TEST(ConstantsTest, test_uint_constant) {
-    EXPECT_EQ(constant_types::UINT_CONST, 100U);
+TEST_CASE("uint_constant" * doctest::test_suite("constants")) {
+    CHECK(constant_types::UINT_CONST == 100U);
 }
 
-TEST(ConstantsTest, test_short_constant) {
-    EXPECT_EQ(constant_types::SHORT_CONST, -10);
+TEST_CASE("short_constant" * doctest::test_suite("constants")) {
+    CHECK(constant_types::SHORT_CONST == -10);
 }
 
-TEST(ConstantsTest, test_longlong_constant) {
-    EXPECT_EQ(constant_types::LONGLONG_CONST, 9999999999LL);
+TEST_CASE("longlong_constant" * doctest::test_suite("constants")) {
+    CHECK(constant_types::LONGLONG_CONST == 9999999999LL);
 }
 
-TEST(ConstantsTest, test_double_constant) {
-    EXPECT_DOUBLE_EQ(constant_types::DOUBLE_CONST, 3.14159);
+TEST_CASE("double_constant" * doctest::test_suite("constants")) {
+    CHECK(constant_types::DOUBLE_CONST == doctest::Approx(3.14159));
 }
 
-TEST(ConstantsTest, test_float_constant) {
-    EXPECT_FLOAT_EQ(constant_types::FLOAT_CONST, 2.5f);
+TEST_CASE("float_constant" * doctest::test_suite("constants")) {
+    CHECK(constant_types::FLOAT_CONST == doctest::Approx(2.5f));
 }
 
-TEST(ConstantsTest, test_string_constant) {
-    EXPECT_STREQ(constant_types::STRING_CONST, "hello world");
+TEST_CASE("string_constant" * doctest::test_suite("constants")) {
+    CHECK(constant_types::STRING_CONST == "hello world");
 }
 
-TEST(ConstantsTest, test_bool_constants) {
-    EXPECT_EQ(constant_types::BOOL_TRUE, true);
-    EXPECT_EQ(constant_types::BOOL_FALSE, false);
+TEST_CASE("bool_constants" * doctest::test_suite("constants")) {
+    CHECK(constant_types::BOOL_TRUE == true);
+    CHECK(constant_types::BOOL_FALSE == false);
 }
 
-TEST(ConstantsTest, test_octet_constant) {
-    EXPECT_EQ(constant_types::OCTET_CONST, 255U);
+TEST_CASE("octet_constant" * doctest::test_suite("constants")) {
+    CHECK(constant_types::OCTET_CONST == 255U);
 }
 
-TEST(ConstantsTest, test_constant_chain) {
-    EXPECT_EQ(constant_types::CHAIN_1, 10);
-    EXPECT_EQ(constant_types::CHAIN_2, 10);
-    EXPECT_EQ(constant_types::CHAIN_3, 10);
-    EXPECT_EQ(constant_types::CHAIN_4, 10);
-    EXPECT_EQ(constant_types::CHAIN_5, 10);
-    EXPECT_EQ(constant_types::CHAIN_2, constant_types::CHAIN_1);
-    EXPECT_EQ(constant_types::CHAIN_3, constant_types::CHAIN_2);
-    EXPECT_EQ(constant_types::CHAIN_4, constant_types::CHAIN_3);
-    EXPECT_EQ(constant_types::CHAIN_5, constant_types::CHAIN_4);
+TEST_CASE("constant_chain" * doctest::test_suite("constants")) {
+    CHECK(constant_types::CHAIN_1 == 10);
+    CHECK(constant_types::CHAIN_2 == 10);
+    CHECK(constant_types::CHAIN_3 == 10);
+    CHECK(constant_types::CHAIN_4 == 10);
+    CHECK(constant_types::CHAIN_5 == 10);
+    CHECK(constant_types::CHAIN_2 == constant_types::CHAIN_1);
+    CHECK(constant_types::CHAIN_3 == constant_types::CHAIN_2);
+    CHECK(constant_types::CHAIN_4 == constant_types::CHAIN_3);
+    CHECK(constant_types::CHAIN_5 == constant_types::CHAIN_4);
 }
 
-TEST(ConstantsTest, test_arithmetic_chain) {
-    EXPECT_EQ(constant_types::ARITH_BASE, 100);
-    EXPECT_EQ(constant_types::ARITH_DOUBLED, 200);
-    EXPECT_EQ(constant_types::ARITH_QUADRUPLED, 400);
-    EXPECT_EQ(constant_types::ARITH_OCTUPLED, 800);
-    EXPECT_EQ(constant_types::ARITH_DOUBLED, constant_types::ARITH_BASE * 2);
-    EXPECT_EQ(constant_types::ARITH_QUADRUPLED, constant_types::ARITH_BASE * 4);
-    EXPECT_EQ(constant_types::ARITH_OCTUPLED, constant_types::ARITH_BASE * 8);
+TEST_CASE("arithmetic_chain" * doctest::test_suite("constants")) {
+    CHECK(constant_types::ARITH_BASE == 100);
+    CHECK(constant_types::ARITH_DOUBLED == 200);
+    CHECK(constant_types::ARITH_QUADRUPLED == 400);
+    CHECK(constant_types::ARITH_OCTUPLED == 800);
+    CHECK(constant_types::ARITH_DOUBLED == constant_types::ARITH_BASE * 2);
+    CHECK(constant_types::ARITH_QUADRUPLED == constant_types::ARITH_BASE * 4);
+    CHECK(constant_types::ARITH_OCTUPLED == constant_types::ARITH_BASE * 8);
 }
 
-TEST(ConstantsTest, test_mixed_arithmetic_chain) {
-    EXPECT_EQ(constant_types::MATH_1, 5);
-    EXPECT_EQ(constant_types::MATH_2, 15);
-    EXPECT_EQ(constant_types::MATH_3, 30);
-    EXPECT_EQ(constant_types::MATH_4, 25);
-    EXPECT_EQ(constant_types::MATH_5, 5);
+TEST_CASE("mixed_arithmetic_chain" * doctest::test_suite("constants")) {
+    CHECK(constant_types::MATH_1 == 5);
+    CHECK(constant_types::MATH_2 == 15);
+    CHECK(constant_types::MATH_3 == 30);
+    CHECK(constant_types::MATH_4 == 25);
+    CHECK(constant_types::MATH_5 == 5);
 }
 
-TEST(ConstantsTest, test_negation) {
-    EXPECT_EQ(constant_types::NEGATIVE, -50);
-    EXPECT_EQ(constant_types::NEGATED, 50);
-    EXPECT_EQ(constant_types::DOUBLE_NEGATED, -50);
-    EXPECT_EQ(constant_types::NEGATED, -constant_types::NEGATIVE);
-    EXPECT_EQ(constant_types::DOUBLE_NEGATED, -constant_types::NEGATED);
+TEST_CASE("negation" * doctest::test_suite("constants")) {
+    CHECK(constant_types::NEGATIVE == -50);
+    CHECK(constant_types::NEGATED == 50);
+    CHECK(constant_types::DOUBLE_NEGATED == -50);
+    CHECK(constant_types::NEGATED == -constant_types::NEGATIVE);
+    CHECK(constant_types::DOUBLE_NEGATED == -constant_types::NEGATED);
 }
 
-TEST(ConstantsTest, test_bitwise_operations) {
-    EXPECT_EQ(constant_types::BITS_A, 0x0F);
-    EXPECT_EQ(constant_types::BITS_B, 0xF0);
-    EXPECT_EQ(constant_types::BITS_OR, 0xFF);
-    EXPECT_EQ(constant_types::BITS_AND, 255);
-    EXPECT_EQ(constant_types::BITS_XOR, 240);
-    EXPECT_EQ(constant_types::BITS_SHIFT_LEFT, 16);
-    EXPECT_EQ(constant_types::BITS_SHIFT_RIGHT, 16);
-    EXPECT_EQ(constant_types::BITS_OR, constant_types::BITS_A | constant_types::BITS_B);
+TEST_CASE("bitwise_operations" * doctest::test_suite("constants")) {
+    CHECK(constant_types::BITS_A == 0x0F);
+    CHECK(constant_types::BITS_B == 0xF0);
+    CHECK(constant_types::BITS_OR == 0xFF);
+    CHECK(constant_types::BITS_AND == 255);
+    CHECK(constant_types::BITS_XOR == 240);
+    CHECK(constant_types::BITS_SHIFT_LEFT == 16);
+    CHECK(constant_types::BITS_SHIFT_RIGHT == 16);
+    CHECK(constant_types::BITS_OR == (constant_types::BITS_A | constant_types::BITS_B));
 }
 
-TEST(ConstantsTest, test_float_chain) {
-    EXPECT_DOUBLE_EQ(constant_types::FLOAT_A, 1.0);
-    EXPECT_DOUBLE_EQ(constant_types::FLOAT_B, 1.5);
-    EXPECT_DOUBLE_EQ(constant_types::FLOAT_C, 3.0);
-    EXPECT_DOUBLE_EQ(constant_types::FLOAT_D, 0.75);
+TEST_CASE("float_chain" * doctest::test_suite("constants")) {
+    CHECK(constant_types::FLOAT_A == doctest::Approx(1.0));
+    CHECK(constant_types::FLOAT_B == doctest::Approx(1.5));
+    CHECK(constant_types::FLOAT_C == doctest::Approx(3.0));
+    CHECK(constant_types::FLOAT_D == doctest::Approx(0.75));
 }
 
-TEST(ConstantsTest, test_enum_constant_reference) {
-    EXPECT_EQ(constant_types::PRIORITY_VALUE, constant_types::HIGH);
-    EXPECT_EQ(constant_types::PRIORITY_VALUE, 100);
-    EXPECT_EQ(static_cast<int32_t>(constant_types::HIGH), 100);
-    EXPECT_EQ(constant_types::PRIORITY_CHAIN, constant_types::PRIORITY_VALUE);
+TEST_CASE("enum_constant_reference" * doctest::test_suite("constants")) {
+    CHECK(constant_types::PRIORITY_VALUE == constant_types::HIGH);
+    CHECK(constant_types::PRIORITY_VALUE == 100);
+    CHECK(static_cast<int32_t>(constant_types::HIGH) == 100);
+    CHECK(constant_types::PRIORITY_CHAIN == constant_types::PRIORITY_VALUE);
 }
 
-TEST(ConstantsTest, test_parenthesized_expressions) {
-    EXPECT_EQ(constant_types::PAREN_A, 30);
-    EXPECT_EQ(constant_types::PAREN_B, 20);
-    EXPECT_EQ(constant_types::PAREN_C, 25);
+TEST_CASE("parenthesized_expressions" * doctest::test_suite("constants")) {
+    CHECK(constant_types::PAREN_A == 30);
+    CHECK(constant_types::PAREN_B == 20);
+    CHECK(constant_types::PAREN_C == 25);
 }
 
-TEST(ConstantsTest, test_modulo_operations) {
-    EXPECT_EQ(constant_types::MOD_A, 2);
-    EXPECT_EQ(constant_types::MOD_B, 2);
+TEST_CASE("modulo_operations" * doctest::test_suite("constants")) {
+    CHECK(constant_types::MOD_A == 2);
+    CHECK(constant_types::MOD_B == 2);
 }
 
-TEST(ConstantsTest, test_octet_limits) {
-    EXPECT_EQ(large_integer_types::OCTET_MAX, 255U);
-    EXPECT_EQ(large_integer_types::OCTET_MIN, 0U);
+TEST_CASE("octet_limits" * doctest::test_suite("constants")) {
+    CHECK(large_integer_types::OCTET_MAX == 255U);
+    CHECK(large_integer_types::OCTET_MIN == 0U);
 }
 
-TEST(ConstantsTest, test_short_limits) {
-    EXPECT_EQ(large_integer_types::SHORT_MAX, 32767);
-    EXPECT_EQ(large_integer_types::SHORT_MIN, -32768);
+TEST_CASE("short_limits" * doctest::test_suite("constants")) {
+    CHECK(large_integer_types::SHORT_MAX == 32767);
+    CHECK(large_integer_types::SHORT_MIN == -32768);
 }
 
-TEST(ConstantsTest, test_ushort_limits) {
-    EXPECT_EQ(large_integer_types::USHORT_MAX, 65535U);
-    EXPECT_EQ(large_integer_types::USHORT_MIN, 0U);
+TEST_CASE("ushort_limits" * doctest::test_suite("constants")) {
+    CHECK(large_integer_types::USHORT_MAX == 65535U);
+    CHECK(large_integer_types::USHORT_MIN == 0U);
 }
 
-TEST(ConstantsTest, test_long_limits) {
-    EXPECT_EQ(large_integer_types::LONG_MAX, 2147483647);
-    EXPECT_EQ(large_integer_types::LONG_MIN, -2147483648);
+TEST_CASE("long_limits" * doctest::test_suite("constants")) {
+    CHECK(large_integer_types::LONG_MAX == 2147483647);
+    CHECK(large_integer_types::LONG_MIN == -2147483648);
 }
 
-TEST(ConstantsTest, test_ulong_limits) {
-    EXPECT_EQ(large_integer_types::ULONG_MAX, 4294967295U);
-    EXPECT_EQ(large_integer_types::ULONG_MIN, 0U);
+TEST_CASE("ulong_limits" * doctest::test_suite("constants")) {
+    CHECK(large_integer_types::ULONG_MAX == 4294967295U);
+    CHECK(large_integer_types::ULONG_MIN == 0U);
 }
 
-TEST(ConstantsTest, test_longlong_limits) {
-    EXPECT_EQ(large_integer_types::LONGLONG_MAX, 9223372036854775807LL);
-    EXPECT_EQ(large_integer_types::LONGLONG_MIN, -9223372036854775807LL);
+TEST_CASE("longlong_limits" * doctest::test_suite("constants")) {
+    CHECK(large_integer_types::LONGLONG_MAX == 9223372036854775807LL);
+    CHECK(large_integer_types::LONGLONG_MIN == -9223372036854775807LL);
 }
 
-TEST(ConstantsTest, test_ulonglong_limits) {
-    EXPECT_EQ(large_integer_types::ULONGLONG_MAX, 18446744073709551615ULL);
-    EXPECT_EQ(large_integer_types::ULONGLONG_MIN, 0ULL);
+TEST_CASE("ulonglong_limits" * doctest::test_suite("constants")) {
+    CHECK(large_integer_types::ULONGLONG_MAX == 18446744073709551615ULL);
+    CHECK(large_integer_types::ULONGLONG_MIN == 0ULL);
 }
 
-TEST(ConstantsTest, test_hex_literals) {
-    EXPECT_EQ(large_integer_types::HEX_DEADBEEF, 0xDEADBEEFU);
-    EXPECT_EQ(large_integer_types::HEX_FFFFFFFF, 0xFFFFFFFFU);
-    EXPECT_EQ(large_integer_types::HEX_64BIT, 0x123456789ABCDEF0LL);
+TEST_CASE("hex_literals" * doctest::test_suite("constants")) {
+    CHECK(large_integer_types::HEX_DEADBEEF == 0xDEADBEEFU);
+    CHECK(large_integer_types::HEX_FFFFFFFF == 0xFFFFFFFFU);
+    CHECK(large_integer_types::HEX_64BIT == 0x123456789ABCDEF0LL);
 }
 
-TEST(ConstantsTest, test_octal_literals) {
-    EXPECT_EQ(large_integer_types::OCTAL_777, 511);
-    EXPECT_EQ(large_integer_types::OCTAL_777, 0777);
+TEST_CASE("octal_literals" * doctest::test_suite("constants")) {
+    CHECK(large_integer_types::OCTAL_777 == 511);
+    CHECK(large_integer_types::OCTAL_777 == 0777);
 }
 
-TEST(ConstantsTest, test_large_int_struct) {
+TEST_CASE("large_int_struct" * doctest::test_suite("constants")) {
     large_integer_types::LargeIntFields fields(9223372036854775807LL, 18446744073709551615ULL);
-    EXPECT_EQ(fields.big_signed, 9223372036854775807LL);
-    EXPECT_EQ(fields.big_unsigned, 18446744073709551615ULL);
-    EXPECT_EQ(fields.big_signed, large_integer_types::LONGLONG_MAX);
-    EXPECT_EQ(fields.big_unsigned, large_integer_types::ULONGLONG_MAX);
+    CHECK(fields.big_signed == 9223372036854775807LL);
+    CHECK(fields.big_unsigned == 18446744073709551615ULL);
+    CHECK(fields.big_signed == large_integer_types::LONGLONG_MAX);
+    CHECK(fields.big_unsigned == large_integer_types::ULONGLONG_MAX);
 
     large_integer_types::LargeIntFields default_fields;
-    EXPECT_EQ(default_fields.big_signed, 0);
-    EXPECT_EQ(default_fields.big_unsigned, 0ULL);
+    CHECK(default_fields.big_signed == 0);
+    CHECK(default_fields.big_unsigned == 0ULL);
 
     large_integer_types::LargeIntFields copy_fields = fields;
-    EXPECT_EQ(copy_fields, fields);
-    EXPECT_EQ(copy_fields.big_signed, fields.big_signed);
-    EXPECT_EQ(copy_fields.big_unsigned, fields.big_unsigned);
+    CHECK(copy_fields == fields);
+    CHECK(copy_fields.big_signed == fields.big_signed);
+    CHECK(copy_fields.big_unsigned == fields.big_unsigned);
 }
 
-TEST(ConstantsTest, test_derived_constants) {
-    EXPECT_EQ(large_integer_types::LONG_MAX_MINUS_ONE, 2147483646);
-    EXPECT_EQ(large_integer_types::LONG_MAX_MINUS_ONE, large_integer_types::LONG_MAX - 1);
-    EXPECT_EQ(large_integer_types::LONGLONG_MAX_MINUS_ONE, 9223372036854775806LL);
-    EXPECT_EQ(large_integer_types::LONGLONG_MAX_MINUS_ONE, large_integer_types::LONGLONG_MAX - 1);
+TEST_CASE("derived_constants" * doctest::test_suite("constants")) {
+    CHECK(large_integer_types::LONG_MAX_MINUS_ONE == 2147483646);
+    CHECK(large_integer_types::LONG_MAX_MINUS_ONE == large_integer_types::LONG_MAX - 1);
+    CHECK(large_integer_types::LONGLONG_MAX_MINUS_ONE == 9223372036854775806LL);
+    CHECK(large_integer_types::LONGLONG_MAX_MINUS_ONE == large_integer_types::LONGLONG_MAX - 1);
 }
-
-} // namespace

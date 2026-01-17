@@ -25,90 +25,90 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#include <gtest/gtest.h>
+#include <doctest/doctest.h>
 
 #include <type_traits>
 
 #include "generated/interfaces.h"
 
-namespace {
-
-TEST(InterfacesTest, test_interface_is_abc) {
-    EXPECT_TRUE(std::is_abstract<interface_types::Reader>::value);
+TEST_CASE("interface_is_abc" * doctest::test_suite("interfaces")) {
+    CHECK(std::is_abstract<interface_types::Reader>::value);
 }
 
-TEST(InterfacesTest, test_interface_has_abstract_methods) {
-    EXPECT_TRUE(std::is_abstract<interface_types::Reader>::value);
+TEST_CASE("interface_has_abstract_methods" * doctest::test_suite("interfaces")) {
+    CHECK(std::is_abstract<interface_types::Reader>::value);
 }
 
-TEST(InterfacesTest, test_interface_method_signature_no_params) {
+TEST_CASE("interface_method_signature_no_params" * doctest::test_suite("interfaces")) {
     using ReadReturnType = decltype(std::declval<interface_types::Reader>().read());
-    EXPECT_TRUE((std::is_same<ReadReturnType, std::string>::value));
+    CHECK((std::is_same<ReadReturnType, std::string>::value));
 }
 
-TEST(InterfacesTest, test_interface_method_signature_with_params) {
+TEST_CASE("interface_method_signature_with_params" * doctest::test_suite("interfaces")) {
     using AddReturnType = decltype(std::declval<interface_types::Calculator>().add(0, 0));
-    EXPECT_TRUE((std::is_same<AddReturnType, int32_t>::value));
+    CHECK((std::is_same<AddReturnType, int32_t>::value));
 }
 
-TEST(InterfacesTest, test_interface_void_return) {
+TEST_CASE("interface_void_return" * doctest::test_suite("interfaces")) {
     using FlushReturnType = decltype(std::declval<interface_types::Writer>().flush());
-    EXPECT_TRUE((std::is_same<FlushReturnType, void>::value));
+    CHECK((std::is_same<FlushReturnType, void>::value));
 }
 
-TEST(InterfacesTest, test_empty_interface) {
-    EXPECT_FALSE(std::is_abstract_v<interface_types::Empty>);
-    EXPECT_TRUE(std::has_virtual_destructor_v<interface_types::Empty>);
-    EXPECT_TRUE(std::is_polymorphic_v<interface_types::Empty>);
+TEST_CASE("empty_interface" * doctest::test_suite("interfaces")) {
+    CHECK_FALSE(std::is_abstract_v<interface_types::Empty>);
+    CHECK(std::has_virtual_destructor_v<interface_types::Empty>);
+    CHECK(std::is_polymorphic_v<interface_types::Empty>);
 }
 
-TEST(InterfacesTest, test_operation_failed_exception) {
+TEST_CASE("operation_failed_exception" * doctest::test_suite("interfaces")) {
     interface_types::OperationFailed ex(42, "Test error");
-    EXPECT_EQ(ex.error_code, 42);
-    EXPECT_EQ(ex.reason, "Test error");
+    CHECK(ex.error_code == 42);
+    CHECK(ex.reason == "Test error");
 }
 
-TEST(InterfacesTest, test_invalid_input_exception) {
+TEST_CASE("invalid_input_exception" * doctest::test_suite("interfaces")) {
     interface_types::InvalidInput ex("param_name");
-    EXPECT_EQ(ex.parameter_name, "param_name");
+    CHECK(ex.parameter_name == "param_name");
 }
 
-TEST(InterfacesTest, test_exception_can_be_raised) {
+TEST_CASE("exception_can_be_raised" * doctest::test_suite("interfaces")) {
     try {
         throw interface_types::OperationFailed(500, "Server error");
-        FAIL() << "Expected OperationFailed to be thrown";
+        FAIL("Expected OperationFailed to be thrown");
     } catch (const interface_types::OperationFailed& e) {
-        EXPECT_EQ(e.error_code, 500);
-        EXPECT_EQ(e.reason, "Server error");
+        CHECK(e.error_code == 500);
+        CHECK(e.reason == "Server error");
+    } catch (...) {
+        FAIL("Exception not caught properly");
     }
 }
 
-TEST(InterfacesTest, test_interface_with_out_params_exists) {
-    EXPECT_TRUE(std::is_abstract<interface_types::WithOutParams>::value);
+TEST_CASE("interface_with_out_params_exists" * doctest::test_suite("interfaces")) {
+    CHECK(std::is_abstract<interface_types::WithOutParams>::value);
 }
 
-TEST(InterfacesTest, test_interface_with_raises_exists) {
-    EXPECT_TRUE(std::is_abstract<interface_types::WithRaises>::value);
+TEST_CASE("interface_with_raises_exists" * doctest::test_suite("interfaces")) {
+    CHECK(std::is_abstract<interface_types::WithRaises>::value);
 }
 
-TEST(InterfacesTest, test_combined_features_interface) {
-    EXPECT_TRUE(std::is_abstract<interface_types::CombinedFeatures>::value);
+TEST_CASE("combined_features_interface" * doctest::test_suite("interfaces")) {
+    CHECK(std::is_abstract<interface_types::CombinedFeatures>::value);
 }
 
-TEST(InterfacesTest, test_interface_calculator_all_signatures) {
+TEST_CASE("interface_calculator_all_signatures" * doctest::test_suite("interfaces")) {
     using AddReturnType = decltype(std::declval<interface_types::Calculator>().add(0, 0));
     using SubtractReturnType = decltype(std::declval<interface_types::Calculator>().subtract(0, 0));
     using DivideReturnType = decltype(std::declval<interface_types::Calculator>().divide(0.0, 0.0));
 
-    EXPECT_TRUE((std::is_same<AddReturnType, int32_t>::value));
-    EXPECT_TRUE((std::is_same<SubtractReturnType, int32_t>::value));
-    EXPECT_TRUE((std::is_same<DivideReturnType, double>::value));
+    CHECK((std::is_same<AddReturnType, int32_t>::value));
+    CHECK((std::is_same<SubtractReturnType, int32_t>::value));
+    CHECK((std::is_same<DivideReturnType, double>::value));
 }
 
-TEST(InterfacesTest, test_interface_writer_parameter_types) {
+TEST_CASE("interface_writer_parameter_types" * doctest::test_suite("interfaces")) {
     using WriteMemberFunc = void (interface_types::Writer::*)(std::string);
     WriteMemberFunc write_ptr = &interface_types::Writer::write;
-    EXPECT_TRUE(write_ptr != nullptr);
+    CHECK(write_ptr != nullptr);
 }
 
 class ConcreteReader : public interface_types::Reader {
@@ -122,10 +122,8 @@ class ConcreteReader : public interface_types::Reader {
     }
 };
 
-TEST(InterfacesTest, test_interface_can_be_implemented) {
+TEST_CASE("interface_can_be_implemented" * doctest::test_suite("interfaces")) {
     ConcreteReader reader;
-    EXPECT_EQ(reader.read(), "test data");
-    EXPECT_FALSE(reader.has_more());
+    CHECK(reader.read() == "test data");
+    CHECK_FALSE(reader.has_more());
 }
-
-} // namespace

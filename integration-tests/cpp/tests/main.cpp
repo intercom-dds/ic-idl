@@ -25,16 +25,5 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+#define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
 #include <doctest/doctest.h>
-
-#include <type_traits>
-
-#include "generated/any_type.h"
-
-TEST_CASE("any_alias_typedef" * doctest::test_suite("any_type")) {
-    CHECK((std::is_same<any_types::AnyAlias, void>::value));
-}
-
-TEST_CASE("using_any_alias" * doctest::test_suite("any_type")) {
-    CHECK((std::is_same<decltype(any_types::UsingAnyAlias().data), any_types::AnyAlias>::value));
-}

@@ -25,84 +25,82 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#include <gtest/gtest.h>
+#include <doctest/doctest.h>
 
 #include <type_traits>
 
 #include "generated/typedefs.h"
 
-namespace {
-
-TEST(TypedefsTest, test_primitive_typedef_values) {
+TEST_CASE("primitive_typedef_values" * doctest::test_suite("typedefs")) {
     typedef_types::Integer i = 42;
-    EXPECT_EQ(i, 42);
+    CHECK(i == 42);
 
     typedef_types::UnsignedInteger ui = 100U;
-    EXPECT_EQ(ui, 100U);
+    CHECK(ui == 100U);
 
     typedef_types::Real r = 3.14;
-    EXPECT_DOUBLE_EQ(r, 3.14);
+    CHECK(r == doctest::Approx(3.14));
 
     typedef_types::Text t = "hello";
-    EXPECT_EQ(t, "hello");
+    CHECK(t == "hello");
 
     typedef_types::Flag f = true;
-    EXPECT_TRUE(f);
+    CHECK(f);
 
     typedef_types::Byte b = 255;
-    EXPECT_EQ(b, 255);
+    CHECK(b == 255);
 }
 
-TEST(TypedefsTest, test_sequence_typedef_values) {
+TEST_CASE("sequence_typedef_values" * doctest::test_suite("typedefs")) {
     typedef_types::IntList il = {1, 2, 3, 4, 5};
-    EXPECT_EQ(il.size(), 5);
-    EXPECT_EQ(il[0], 1);
-    EXPECT_EQ(il[4], 5);
+    CHECK(il.size() == 5);
+    CHECK(il[0] == 1);
+    CHECK(il[4] == 5);
 
     typedef_types::StringList sl = {"one", "two", "three"};
-    EXPECT_EQ(sl.size(), 3);
-    EXPECT_EQ(sl[0], "one");
-    EXPECT_EQ(sl[2], "three");
+    CHECK(sl.size() == 3);
+    CHECK(sl[0] == "one");
+    CHECK(sl[2] == "three");
 
     typedef_types::RealList rl = {1.1, 2.2, 3.3};
-    EXPECT_EQ(rl.size(), 3);
-    EXPECT_DOUBLE_EQ(rl[0], 1.1);
-    EXPECT_DOUBLE_EQ(rl[2], 3.3);
+    CHECK(rl.size() == 3);
+    CHECK(rl[0] == doctest::Approx(1.1));
+    CHECK(rl[2] == doctest::Approx(3.3));
 }
 
-TEST(TypedefsTest, test_nested_typedef_values) {
+TEST_CASE("nested_typedef_values" * doctest::test_suite("typedefs")) {
     typedef_types::Count c = 42;
-    EXPECT_EQ(c, 42);
+    CHECK(c == 42);
 
     typedef_types::Label l = "test_label";
-    EXPECT_EQ(l, "test_label");
+    CHECK(l == "test_label");
 }
 
-TEST(TypedefsTest, test_map_typedef_values) {
+TEST_CASE("map_typedef_values" * doctest::test_suite("typedefs")) {
     typedef_types::StringIntMap sim = {{"one", 1}, {"two", 2}};
-    EXPECT_EQ(sim.size(), 2);
-    EXPECT_EQ(sim["one"], 1);
-    EXPECT_EQ(sim["two"], 2);
+    CHECK(sim.size() == 2);
+    CHECK(sim["one"] == 1);
+    CHECK(sim["two"] == 2);
 
     typedef_types::StringStringMap ssm = {{"key1", "value1"}, {"key2", "value2"}};
-    EXPECT_EQ(ssm.size(), 2);
-    EXPECT_EQ(ssm["key1"], "value1");
+    CHECK(ssm.size() == 2);
+    CHECK(ssm["key1"] == "value1");
 }
 
-TEST(TypedefsTest, test_array_typedef_value) {
+TEST_CASE("array_typedef_value" * doctest::test_suite("typedefs")) {
     typedef_types::LongArray la = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
-    EXPECT_EQ(la.size(), 10);
-    EXPECT_EQ(la[0], 1);
-    EXPECT_EQ(la[9], 10);
+    CHECK(la.size() == 10);
+    CHECK(la[0] == 1);
+    CHECK(la[9] == 10);
 }
 
-TEST(TypedefsTest, test_struct_with_typedef_fields) {
+TEST_CASE("struct_with_typedef_fields" * doctest::test_suite("typedefs")) {
     typedef_types::Point p(10.5, 20.5);
-    EXPECT_DOUBLE_EQ(p.x, 10.5);
-    EXPECT_DOUBLE_EQ(p.y, 20.5);
+    CHECK(p.x == doctest::Approx(10.5));
+    CHECK(p.y == doctest::Approx(20.5));
 }
 
-TEST(TypedefsTest, test_struct_with_typedef_field_types) {
+TEST_CASE("struct_with_typedef_field_types" * doctest::test_suite("typedefs")) {
     static_assert(
         std::is_same<decltype(typedef_types::Point::x), typedef_types::Real>::value,
         "x should be Real"
@@ -113,7 +111,7 @@ TEST(TypedefsTest, test_struct_with_typedef_field_types) {
     );
 }
 
-TEST(TypedefsTest, test_person_struct_field_types) {
+TEST_CASE("person_struct_field_types" * doctest::test_suite("typedefs")) {
     static_assert(
         std::is_same<decltype(typedef_types::Person::name), typedef_types::Text>::value,
         "name should be Text"
@@ -128,14 +126,14 @@ TEST(TypedefsTest, test_person_struct_field_types) {
     );
 }
 
-TEST(TypedefsTest, test_person_struct_values) {
+TEST_CASE("person_struct_values" * doctest::test_suite("typedefs")) {
     typedef_types::Person person("Alice", 30, true);
-    EXPECT_EQ(person.name, "Alice");
-    EXPECT_EQ(person.age, 30);
-    EXPECT_TRUE(person.active);
+    CHECK(person.name == "Alice");
+    CHECK(person.age == 30);
+    CHECK(person.active);
 }
 
-TEST(TypedefsTest, test_container_struct_field_types) {
+TEST_CASE("container_struct_field_types" * doctest::test_suite("typedefs")) {
     static_assert(
         std::is_same<decltype(typedef_types::Container::numbers), typedef_types::IntList>::value,
         "numbers should be IntList"
@@ -151,21 +149,21 @@ TEST(TypedefsTest, test_container_struct_field_types) {
     );
 }
 
-TEST(TypedefsTest, test_container_struct_values) {
+TEST_CASE("container_struct_values" * doctest::test_suite("typedefs")) {
     typedef_types::IntList nums = {1, 2, 3};
     typedef_types::StringList labs = {"a", "b", "c"};
     typedef_types::StringIntMap lup = {{"x", 10}, {"y", 20}};
     typedef_types::Container container(nums, labs, lup);
 
-    EXPECT_EQ(container.numbers.size(), 3);
-    EXPECT_EQ(container.labels.size(), 3);
-    EXPECT_EQ(container.lookup.size(), 2);
-    EXPECT_EQ(container.numbers[0], 1);
-    EXPECT_EQ(container.labels[1], "b");
-    EXPECT_EQ(container.lookup["x"], 10);
+    CHECK(container.numbers.size() == 3);
+    CHECK(container.labels.size() == 3);
+    CHECK(container.lookup.size() == 2);
+    CHECK(container.numbers[0] == 1);
+    CHECK(container.labels[1] == "b");
+    CHECK(container.lookup["x"] == 10);
 }
 
-TEST(TypedefsTest, test_nested_typedef_in_struct) {
+TEST_CASE("nested_typedef_in_struct" * doctest::test_suite("typedefs")) {
     static_assert(
         std::is_same<decltype(typedef_types::Measurement::name), typedef_types::Label>::value,
         "name should be Label"
@@ -176,13 +174,13 @@ TEST(TypedefsTest, test_nested_typedef_in_struct) {
     );
 }
 
-TEST(TypedefsTest, test_nested_typedef_struct_values) {
+TEST_CASE("nested_typedef_struct_values" * doctest::test_suite("typedefs")) {
     typedef_types::Measurement m("temperature", 42);
-    EXPECT_EQ(m.name, "temperature");
-    EXPECT_EQ(m.value, 42);
+    CHECK(m.name == "temperature");
+    CHECK(m.value == 42);
 }
 
-TEST(TypedefsTest, test_array_typedef_in_struct) {
+TEST_CASE("array_typedef_in_struct" * doctest::test_suite("typedefs")) {
     static_assert(
         std::is_same<decltype(typedef_types::WithArrayTypedef::values), typedef_types::LongArray>::
             value,
@@ -190,52 +188,52 @@ TEST(TypedefsTest, test_array_typedef_in_struct) {
     );
 }
 
-TEST(TypedefsTest, test_array_typedef_struct_values) {
+TEST_CASE("array_typedef_struct_values" * doctest::test_suite("typedefs")) {
     typedef_types::LongArray arr = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
     typedef_types::WithArrayTypedef wat(arr);
-    EXPECT_EQ(wat.values.size(), 10);
-    EXPECT_EQ(wat.values[0], 1);
-    EXPECT_EQ(wat.values[9], 10);
+    CHECK(wat.values.size() == 10);
+    CHECK(wat.values[0] == 1);
+    CHECK(wat.values[9] == 10);
 }
 
-TEST(TypedefsTest, test_deep_typedef_chain_values) {
+TEST_CASE("deep_typedef_chain_values" * doctest::test_suite("typedefs")) {
     typedef_types::Level1 l1 = 100;
     typedef_types::Level2 l2 = 100;
     typedef_types::Level3 l3 = 100;
     typedef_types::Level4 l4 = 100;
     typedef_types::Level5 l5 = 100;
 
-    EXPECT_EQ(l1, 100);
-    EXPECT_EQ(l2, 100);
-    EXPECT_EQ(l3, 100);
-    EXPECT_EQ(l4, 100);
-    EXPECT_EQ(l5, 100);
+    CHECK(l1 == 100);
+    CHECK(l2 == 100);
+    CHECK(l3 == 100);
+    CHECK(l4 == 100);
+    CHECK(l5 == 100);
 }
 
-TEST(TypedefsTest, test_deep_sequence_typedef_chain) {
+TEST_CASE("deep_sequence_typedef_chain" * doctest::test_suite("typedefs")) {
     typedef_types::SeqLevel1 sl1 = {1, 2, 3};
     typedef_types::SeqLevel2 sl2 = {4, 5, 6};
     typedef_types::SeqLevel3 sl3 = {7, 8, 9};
 
-    EXPECT_EQ(sl1.size(), 3);
-    EXPECT_EQ(sl2.size(), 3);
-    EXPECT_EQ(sl3.size(), 3);
+    CHECK(sl1.size() == 3);
+    CHECK(sl2.size() == 3);
+    CHECK(sl3.size() == 3);
 }
 
-TEST(TypedefsTest, test_deep_map_typedef_chain) {
+TEST_CASE("deep_map_typedef_chain" * doctest::test_suite("typedefs")) {
     typedef_types::MapLevel1 ml1 = {{"a", 1}};
     typedef_types::MapLevel2 ml2 = {{"b", 2}};
     typedef_types::MapLevel3 ml3 = {{"c", 3}};
 
-    EXPECT_EQ(ml1.size(), 1);
-    EXPECT_EQ(ml2.size(), 1);
-    EXPECT_EQ(ml3.size(), 1);
-    EXPECT_EQ(ml1["a"], 1);
-    EXPECT_EQ(ml2["b"], 2);
-    EXPECT_EQ(ml3["c"], 3);
+    CHECK(ml1.size() == 1);
+    CHECK(ml2.size() == 1);
+    CHECK(ml3.size() == 1);
+    CHECK(ml1["a"] == 1);
+    CHECK(ml2["b"] == 2);
+    CHECK(ml3["c"] == 3);
 }
 
-TEST(TypedefsTest, test_deep_chain_struct_field_types) {
+TEST_CASE("deep_chain_struct_field_types" * doctest::test_suite("typedefs")) {
     static_assert(
         std::is_same<decltype(typedef_types::DeepChainStruct::deep_int), typedef_types::Level5>::
             value,
@@ -253,27 +251,25 @@ TEST(TypedefsTest, test_deep_chain_struct_field_types) {
     );
 }
 
-TEST(TypedefsTest, test_deep_chain_struct_values) {
+TEST_CASE("deep_chain_struct_values" * doctest::test_suite("typedefs")) {
     typedef_types::Level5 di = 999;
     typedef_types::SeqLevel3 ds = {1, 2, 3, 4, 5};
     typedef_types::MapLevel3 dm = {{"key1", 100}, {"key2", 200}};
     typedef_types::DeepChainStruct dcs(di, ds, dm);
 
-    EXPECT_EQ(dcs.deep_int, 999);
-    EXPECT_EQ(dcs.deep_seq.size(), 5);
-    EXPECT_EQ(dcs.deep_map.size(), 2);
-    EXPECT_EQ(dcs.deep_seq[0], 1);
-    EXPECT_EQ(dcs.deep_map["key1"], 100);
+    CHECK(dcs.deep_int == 999);
+    CHECK(dcs.deep_seq.size() == 5);
+    CHECK(dcs.deep_map.size() == 2);
+    CHECK(dcs.deep_seq[0] == 1);
+    CHECK(dcs.deep_map["key1"] == 100);
 }
 
-TEST(TypedefsTest, test_typedef_type_compatibility) {
+TEST_CASE("typedef_type_compatibility" * doctest::test_suite("typedefs")) {
     typedef_types::Integer i = 42;
     typedef_types::Count c = i;
-    EXPECT_EQ(c, 42);
+    CHECK(c == 42);
 
     typedef_types::Text t = "hello";
     typedef_types::Label l = t;
-    EXPECT_EQ(l, "hello");
+    CHECK(l == "hello");
 }
-
-} // namespace

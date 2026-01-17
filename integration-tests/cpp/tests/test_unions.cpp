@@ -25,103 +25,101 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#include <gtest/gtest.h>
+#include <doctest/doctest.h>
 
 #include "generated/unions.h"
 
-namespace {
-
-TEST(UnionsTest, test_union_int_variant) {
+TEST_CASE("union_int_variant" * doctest::test_suite("unions")) {
     union_types::IntOrString u;
     u.int_val(42);
-    EXPECT_EQ(u._d(), 1);
-    EXPECT_EQ(u.int_val(), 42);
+    REQUIRE(u._d() == 1);
+    REQUIRE(u.int_val() == 42);
 }
 
-TEST(UnionsTest, test_union_string_variant) {
+TEST_CASE("union_string_variant" * doctest::test_suite("unions")) {
     union_types::IntOrString u;
     u.str_val("hello");
-    EXPECT_EQ(u._d(), 2);
-    EXPECT_EQ(u.str_val(), "hello");
+    REQUIRE(u._d() == 2);
+    REQUIRE(u.str_val() == "hello");
 }
 
-TEST(UnionsTest, test_union_wrong_variant_raises) {
+TEST_CASE("union_wrong_variant_raises" * doctest::test_suite("unions")) {
     union_types::IntOrString u;
     u.int_val(42);
-    EXPECT_THROW(std::ignore = u.str_val(), std::logic_error);
+    REQUIRE_THROWS_AS(std::ignore = u.str_val(), std::logic_error);
 
     u.str_val("test");
-    EXPECT_THROW(std::ignore = u.int_val(), std::logic_error);
+    REQUIRE_THROWS_AS(std::ignore = u.int_val(), std::logic_error);
 }
 
-TEST(UnionsTest, test_union_enum_discriminator) {
+TEST_CASE("union_enum_discriminator" * doctest::test_suite("unions")) {
     union_types::TypedValue tv;
-    EXPECT_TRUE((std::is_same_v<decltype(tv._d()), union_types::ValueKind>));
+    REQUIRE((std::is_same_v<decltype(tv._d()), union_types::ValueKind>));
 }
 
-TEST(UnionsTest, test_union_enum_string_variant) {
+TEST_CASE("union_enum_string_variant" * doctest::test_suite("unions")) {
     union_types::TypedValue tv;
     tv.string_value("test string");
-    EXPECT_EQ(tv._d(), union_types::STRING_KIND);
-    EXPECT_EQ(tv.string_value(), "test string");
+    REQUIRE(tv._d() == union_types::STRING_KIND);
+    REQUIRE(tv.string_value() == "test string");
 }
 
-TEST(UnionsTest, test_union_bool_discriminator) {
+TEST_CASE("union_bool_discriminator" * doctest::test_suite("unions")) {
     union_types::BoolSwitch bs;
     bs.true_val(100);
-    EXPECT_TRUE(bs._d());
-    EXPECT_EQ(bs.true_val(), 100);
+    REQUIRE(bs._d());
+    REQUIRE(bs.true_val() == 100);
 
     bs.false_val("false branch");
-    EXPECT_FALSE(bs._d());
-    EXPECT_EQ(bs.false_val(), "false branch");
+    REQUIRE_FALSE(bs._d());
+    REQUIRE(bs.false_val() == "false branch");
 }
 
-TEST(UnionsTest, test_union_multi_case) {
+TEST_CASE("union_multi_case" * doctest::test_suite("unions")) {
     union_types::MultiCase mc;
     mc.small_val(5);
-    EXPECT_TRUE(mc._d() == 1);
+    REQUIRE(mc._d() == 1);
 
     mc._d(2);
-    EXPECT_EQ(mc._d(), 2);
-    EXPECT_EQ(mc.small_val(), 5);
+    REQUIRE(mc._d() == 2);
+    REQUIRE(mc.small_val() == 5);
     mc.small_val(10);
-    EXPECT_EQ(mc._d(), 2);
-    EXPECT_EQ(mc.small_val(), 10);
+    REQUIRE(mc._d() == 2);
+    REQUIRE(mc.small_val() == 10);
 
     mc._d(3);
-    EXPECT_EQ(mc._d(), 3);
-    EXPECT_EQ(mc.small_val(), 10);
+    REQUIRE(mc._d() == 3);
+    REQUIRE(mc.small_val() == 10);
 
     mc._d(10);
     mc.text_val("test");
-    EXPECT_TRUE(mc._d() == 10 || mc._d() == 20);
-    EXPECT_EQ(mc.text_val(), "test");
+    REQUIRE((mc._d() == 10 || mc._d() == 20));
+    REQUIRE(mc.text_val() == "test");
 }
 
-TEST(UnionsTest, test_union_default_method) {
+TEST_CASE("union_default_method" * doctest::test_suite("unions")) {
     union_types::IntOrString u;
     u.str_val("hello");
     u.default_val(true);
-    EXPECT_NE(u._d(), 1);
-    EXPECT_NE(u._d(), 2);
-    EXPECT_TRUE(u.default_val());
+    REQUIRE(u._d() != 1);
+    REQUIRE(u._d() != 2);
+    REQUIRE(u.default_val());
 }
 
-TEST(UnionsTest, test_union_discriminator_property) {
+TEST_CASE("union_discriminator_property" * doctest::test_suite("unions")) {
     union_types::IntOrString u;
     u.int_val(42);
-    EXPECT_EQ(u._d(), 1);
+    REQUIRE(u._d() == 1);
 
     u.str_val("test");
-    EXPECT_EQ(u._d(), 2);
+    REQUIRE(u._d() == 2);
 
     union_types::TypedValue tv;
     tv.int_value(100);
-    EXPECT_EQ(tv._d(), union_types::INT_KIND);
+    REQUIRE(tv._d() == union_types::INT_KIND);
 }
 
-TEST(UnionsTest, test_union_equality) {
+TEST_CASE("union_equality" * doctest::test_suite("unions")) {
     union_types::IntOrString u1;
     u1.int_val(42);
 
@@ -129,40 +127,38 @@ TEST(UnionsTest, test_union_equality) {
     u2.int_val(42);
 
     union_types::IntOrString u3;
-    u3.int_val(100);
+    u3.int_val(99);
 
-    EXPECT_TRUE(u1 == u2);
-    EXPECT_FALSE(u1 == u3);
-    EXPECT_FALSE(u1 != u2);
-    EXPECT_TRUE(u1 != u3);
+    REQUIRE(u1 == u2);
+    REQUIRE_FALSE(u1 == u3);
+    REQUIRE_FALSE(u1 != u2);
+    REQUIRE(u1 != u3);
 }
 
-TEST(UnionsTest, test_union_default_constructor_with_default_case) {
+TEST_CASE("union_default_constructor_with_default_case" * doctest::test_suite("unions")) {
     union_types::IntOrString u;
-    EXPECT_EQ(u._d(), 0);
-    EXPECT_FALSE(u.default_val());
+    REQUIRE(u._d() == 0);
+    REQUIRE_FALSE(u.default_val());
 }
 
-TEST(UnionsTest, test_union_default_constructor_without_default_case) {
+TEST_CASE("union_default_constructor_without_default_case" * doctest::test_suite("unions")) {
     union_types::MultiCase mc;
-    EXPECT_EQ(mc._d(), 0);
-    EXPECT_FALSE(mc.flag());
+    REQUIRE(mc._d() == 0);
+    REQUIRE_FALSE(mc.flag());
 }
 
-TEST(UnionsTest, test_union_default_constructor_enum_discriminator) {
+TEST_CASE("union_default_constructor_enum_discriminator" * doctest::test_suite("unions")) {
     union_types::TypedValue tv;
-    EXPECT_EQ(tv._d(), union_types::INT_KIND);
-    EXPECT_EQ(tv.int_value(), 0);
+    REQUIRE(tv._d() == union_types::INT_KIND);
+    REQUIRE(tv.int_value() == 0);
 }
 
-TEST(UnionsTest, test_union_default_variant_sets_discriminator) {
+TEST_CASE("union_default_variant_sets_discriminator" * doctest::test_suite("unions")) {
     union_types::IntOrString u;
     u.int_val(42);
-    EXPECT_EQ(u._d(), 1);
+    REQUIRE(u._d() == 1);
 
     u.default_val(true);
-    EXPECT_EQ(u._d(), 0);
-    EXPECT_TRUE(u.default_val());
+    REQUIRE(u._d() == 0);
+    REQUIRE(u.default_val());
 }
-
-} // namespace

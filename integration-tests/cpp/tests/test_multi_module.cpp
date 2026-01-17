@@ -25,99 +25,95 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#include <gtest/gtest.h>
+#include <doctest/doctest.h>
 
 #include "generated/multi_module.h"
 
-namespace {
-
-TEST(MultiModuleTest, test_module_a_exists) {
+TEST_CASE("module_a_exists" * doctest::test_suite("multi_module")) {
     module_a::StructA1 s1(42);
-    EXPECT_EQ(s1.value, 42);
+    CHECK(s1.value == 42);
 }
 
-TEST(MultiModuleTest, test_module_b_exists) {
+TEST_CASE("module_b_exists" * doctest::test_suite("multi_module")) {
     module_b::StructB1 s1("test");
-    EXPECT_EQ(s1.name, "test");
+    CHECK(s1.name == "test");
 }
 
-TEST(MultiModuleTest, test_module_a_first_opening) {
+TEST_CASE("module_a_first_opening" * doctest::test_suite("multi_module")) {
     module_a::StructA1 s1(10);
-    EXPECT_EQ(s1.value, 10);
-    EXPECT_EQ(module_a::CONST_A1, 100);
-    EXPECT_EQ(module_a::EnumA::X, 0);
-    EXPECT_EQ(module_a::EnumA::Y, 1);
+    CHECK(s1.value == 10);
+    CHECK(module_a::CONST_A1 == 100);
+    CHECK(module_a::EnumA::X == 0);
+    CHECK(module_a::EnumA::Y == 1);
 }
 
-TEST(MultiModuleTest, test_module_a_second_opening) {
+TEST_CASE("module_a_second_opening" * doctest::test_suite("multi_module")) {
     module_a::StructA1 a1(5);
     module_a::StructA2 s2(3.14, a1);
-    EXPECT_EQ(s2.data, 3.14);
-    EXPECT_EQ(s2.ref_to_a1.value, 5);
-    EXPECT_EQ(module_a::CONST_A2, 101);
-    EXPECT_EQ(module_a::EnumA2::P, 0);
-    EXPECT_EQ(module_a::EnumA2::Q, 1);
-    EXPECT_EQ(module_a::EnumA2::R, 2);
+    CHECK(s2.data == 3.14);
+    CHECK(s2.ref_to_a1.value == 5);
+    CHECK(module_a::CONST_A2 == 101);
+    CHECK(module_a::EnumA2::P == 0);
+    CHECK(module_a::EnumA2::Q == 1);
+    CHECK(module_a::EnumA2::R == 2);
 }
 
-TEST(MultiModuleTest, test_module_a_third_opening) {
+TEST_CASE("module_a_third_opening" * doctest::test_suite("multi_module")) {
     module_a::StructA1 a1(1);
     module_a::StructA2 a2(2.0, a1);
     module_a::StructA3 s3(true, a1, a2);
-    EXPECT_EQ(s3.flag, true);
-    EXPECT_EQ(s3.a1.value, 1);
-    EXPECT_EQ(s3.a2.data, 2.0);
-    EXPECT_EQ(module_a::CONST_A3, 102);
+    CHECK(s3.flag == true);
+    CHECK(s3.a1.value == 1);
+    CHECK(s3.a2.data == 2.0);
+    CHECK(module_a::CONST_A3 == 102);
 }
 
-TEST(MultiModuleTest, test_module_b_both_openings) {
+TEST_CASE("module_b_both_openings" * doctest::test_suite("multi_module")) {
     module_b::StructB1 b1("first");
-    EXPECT_EQ(b1.name, "first");
-    EXPECT_EQ(module_b::CONST_B1, 200);
+    CHECK(b1.name == "first");
+    CHECK(module_b::CONST_B1 == 200);
 
     module_b::StructB2 b2(42, b1);
-    EXPECT_EQ(b2.id, 42);
-    EXPECT_EQ(b2.ref_to_b1.name, "first");
-    EXPECT_EQ(module_b::CONST_B2, 201);
+    CHECK(b2.id == 42);
+    CHECK(b2.ref_to_b1.name == "first");
+    CHECK(module_b::CONST_B2 == 201);
 }
 
-TEST(MultiModuleTest, test_reopened_module_types_can_reference_earlier) {
+TEST_CASE("reopened_module_types_can_reference_earlier" * doctest::test_suite("multi_module")) {
     module_a::StructA1 a1(100);
     module_a::StructA2 a2(99.5, a1);
-    EXPECT_EQ(a2.ref_to_a1.value, 100);
-    EXPECT_EQ(a2.data, 99.5);
+    CHECK(a2.ref_to_a1.value == 100);
+    CHECK(a2.data == 99.5);
 }
 
-TEST(MultiModuleTest, test_reopened_module_chain) {
+TEST_CASE("reopened_module_chain" * doctest::test_suite("multi_module")) {
     module_a::StructA1 a1(10);
     module_a::StructA2 a2(20.0, a1);
     module_a::StructA3 a3(false, a1, a2);
-    EXPECT_EQ(a3.a1.value, 10);
-    EXPECT_EQ(a3.a2.data, 20.0);
-    EXPECT_EQ(a3.a2.ref_to_a1.value, 10);
-    EXPECT_EQ(a3.flag, false);
+    CHECK(a3.a1.value == 10);
+    CHECK(a3.a2.data == 20.0);
+    CHECK(a3.a2.ref_to_a1.value == 10);
+    CHECK(a3.flag == false);
 }
 
-TEST(MultiModuleTest, test_constants_only_module) {
-    EXPECT_EQ(constants_only::C1, 1);
-    EXPECT_EQ(constants_only::C2, 2);
-    EXPECT_EQ(constants_only::C3, 3);
+TEST_CASE("constants_only_module" * doctest::test_suite("multi_module")) {
+    CHECK(constants_only::C1 == 1);
+    CHECK(constants_only::C2 == 2);
+    CHECK(constants_only::C3 == 3);
 }
 
-TEST(MultiModuleTest, test_enums_only_module) {
-    EXPECT_EQ(enums_only::Color::RED, 0);
-    EXPECT_EQ(enums_only::Color::GREEN, 1);
-    EXPECT_EQ(enums_only::Color::BLUE, 2);
-    EXPECT_EQ(enums_only::Size::SMALL, 0);
-    EXPECT_EQ(enums_only::Size::MEDIUM, 1);
-    EXPECT_EQ(enums_only::Size::LARGE, 2);
+TEST_CASE("enums_only_module" * doctest::test_suite("multi_module")) {
+    CHECK(enums_only::Color::RED == 0);
+    CHECK(enums_only::Color::GREEN == 1);
+    CHECK(enums_only::Color::BLUE == 2);
+    CHECK(enums_only::Size::SMALL == 0);
+    CHECK(enums_only::Size::MEDIUM == 1);
+    CHECK(enums_only::Size::LARGE == 2);
 }
 
-TEST(MultiModuleTest, test_cross_module_references) {
+TEST_CASE("cross_module_references" * doctest::test_suite("multi_module")) {
     module_a::StructA1 a1(50);
     module_b::StructB1 b1("cross");
-    EXPECT_EQ(a1.value, 50);
-    EXPECT_EQ(b1.name, "cross");
+    CHECK(a1.value == 50);
+    CHECK(b1.name == "cross");
 }
-
-} // namespace

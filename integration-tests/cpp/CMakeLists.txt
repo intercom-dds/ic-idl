@@ -31,15 +31,33 @@ project(ic_idl_cpp_integration_tests CXX)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
+set(CMAKE_COMPILE_WARNING_AS_ERROR ON)
 
-# Add compiler warnings
 if(MSVC)
-    add_compile_options(/W4)
+    add_compile_options(
+        /MP
+        /W4
+        /w14265
+        /w14263
+        /w14242
+    )
 else()
-    add_compile_options(-Wall -Wextra -pedantic)
+    add_compile_options(
+        -Wall
+        -Wextra
+        -Wpedantic
+        -Wconversion
+        -Wshadow
+        -Wnon-virtual-dtor
+        -Wold-style-cast
+        -Woverloaded-virtual
+        -Wunused
+        -Wcast-align
+        -Wno-switch-bool
+        -Wnull-dereference
+    )
 endif()
 
-# Sanitizer support (ASAN + UBSAN are compatible and commonly used together)
 option(ENABLE_SANITIZERS "Enable AddressSanitizer and UndefinedBehaviorSanitizer" OFF)
 
 if(ENABLE_SANITIZERS)
@@ -49,17 +67,16 @@ if(ENABLE_SANITIZERS)
 endif()
 
 include(FetchContent)
+
 FetchContent_Declare(
-    googletest
-    GIT_REPOSITORY https://github.com/google/googletest.git
-    GIT_TAG v1.14.0
+    doctest
+    GIT_REPOSITORY https://github.com/doctest/doctest.git
+    GIT_TAG v2.4.12
 )
-FetchContent_MakeAvailable(googletest)
+FetchContent_MakeAvailable(doctest)
 
-enable_testing()
-
-set(GENERATED_SOURCES
-    # generated/annotations.cpp
+add_library(generated_idl
+    generated/annotations.cpp
     # generated/any_type.cpp
     generated/bitmasks.cpp
     generated/bounded_types.cpp
@@ -79,15 +96,14 @@ set(GENERATED_SOURCES
     generated/valuetypes.cpp
 )
 
-add_library(generated_idl ${GENERATED_SOURCES})
-
 target_include_directories(generated_idl PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}/
     ${CMAKE_CURRENT_SOURCE_DIR}/../../library/cpp/defs
 )
 
 add_executable(integration_tests
-    # tests/test_annotations.cpp
+    tests/main.cpp
+    tests/test_annotations.cpp
     # tests/test_any_type.cpp
     tests/test_bitmasks.cpp
     tests/test_bounded_types.cpp
@@ -110,13 +126,10 @@ add_executable(integration_tests
 
 target_link_libraries(integration_tests PRIVATE
     generated_idl
-    GTest::gtest_main
+    doctest::doctest
 )
 
 target_include_directories(integration_tests PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/
     ${CMAKE_CURRENT_SOURCE_DIR}/../../library/cpp/defs
 )
-
-include(GoogleTest)
-gtest_discover_tests(integration_tests)

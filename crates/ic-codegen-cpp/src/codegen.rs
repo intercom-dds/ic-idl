@@ -26,6 +26,7 @@
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use std::collections::HashMap;
+use std::fmt::Write;
 use std::path::PathBuf;
 
 use ic_emit::File;
@@ -353,7 +354,7 @@ impl<'a> CppGen<'a> {
         match value {
             Numeric::Null => w!(w, "nullptr"),
             Numeric::Bool(v) => w!(w, if *v { "true" } else { "false" }),
-            Numeric::Char(v) => w!(w, "'", v.to_string(), "'"),
+            Numeric::Char(v) => escape_char(w, *v),
             Numeric::Int8(v) => w!(w, v.to_string()),
             Numeric::UInt8(v) => w!(w, v.to_string(), "U"),
             Numeric::Int16(v) => w!(w, v.to_string()),
@@ -364,11 +365,7 @@ impl<'a> CppGen<'a> {
             Numeric::UInt64(v) => w!(w, v.to_string(), "ULL"),
             Numeric::Float(v) => w!(w, format!("{:.7}", v), "f"),
             Numeric::Double(v) => w!(w, format!("{:.16}", v)),
-            Numeric::String(s) => {
-                w!(w, "\"");
-                emit_escaped_string(w, s);
-                w!(w, "\"");
-            }
+            Numeric::String(s) => emit_escaped_string(w, s),
             Numeric::Const(const_def_id) => {
                 let name = self.scoped_name(*const_def_id, relative_def_opt);
                 w!(w, name);
@@ -851,15 +848,48 @@ pub(crate) fn cpp_primitive(prim: PrimitiveTy) -> &'static str {
     }
 }
 
-pub(crate) fn emit_escaped_string(w: &mut Twine, s: &str) {
-    for ch in s.chars() {
-        match ch {
-            '"' => w!(w, "\\\""),
-            '\\' => w!(w, "\\\\"),
-            '\n' => w!(w, "\\n"),
-            '\r' => w!(w, "\\r"),
-            '\t' => w!(w, "\\t"),
-            _ => w!(w, ch.to_string()),
+fn write_escaped_char<W: Write>(w: &mut W, c: char) -> std::fmt::Result {
+    match c {
+        '\0' => w.write_str("\\0"),
+        '\x07' => w.write_str("\\a"),
+        '\x08' => w.write_str("\\b"),
+        '\t' => w.write_str("\\t"),
+        '\n' => w.write_str("\\n"),
+        '\x0B' => w.write_str("\\v"),
+        '\x0C' => w.write_str("\\f"),
+        '\r' => w.write_str("\\r"),
+        '"' => w.write_str("\\\""),
+        '\'' => w.write_str("\\'"),
+        '\\' => w.write_str("\\\\"),
+        '?' => w.write_str("\\?"),
+
+        c if c.is_ascii_graphic() || c == ' ' => w.write_char(c),
+
+        c => {
+            let code = c as u32;
+            if code <= 0xFFFF {
+                write!(w, "\\u{code:04X}")
+            } else {
+                write!(w, "\\U{code:08X}")
+            }
         }
     }
+}
+
+fn escape_char(w: &mut Twine, c: char) {
+    if !c.is_ascii() {
+        w!(w, "L");
+    }
+
+    w!(w, "'");
+    _ = write_escaped_char(w, c);
+    w!(w, "'");
+}
+
+pub(crate) fn emit_escaped_string(w: &mut Twine, s: &str) {
+    w!(w, '"');
+    for c in s.chars() {
+        _ = write_escaped_char(w, c);
+    }
+    w!(w, '"');
 }

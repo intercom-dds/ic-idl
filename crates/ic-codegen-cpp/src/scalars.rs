@@ -176,9 +176,9 @@ impl CppGen<'_> {
 
         match &const_ty.value {
             ic_hir::hir::Numeric::String(s) => {
-                w!(decl_w, "inline ", static_keyword, "constexpr const char* ", const_name, " = \"");
+                w!(decl_w, "inline ", static_keyword, "constexpr const char* ", const_name, " = ");
                 emit_escaped_string(decl_w, s);
-                w!(decl_w, "\";\n\n");
+                w!(decl_w, ";\n\n");
             }
             ic_hir::hir::Numeric::Const(const_def_id) => {
                 let referenced_const_def = self.hir.context.definitions.get(*const_def_id);

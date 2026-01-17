@@ -26,6 +26,7 @@
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use std::collections::HashMap;
+use std::fmt::Write;
 use std::path::PathBuf;
 
 use ic_emit::File;
@@ -79,7 +80,7 @@ impl<'a> CSharpGen<'a> {
         match value {
             Numeric::Null => "null".to_string(),
             Numeric::Bool(b) => if *b { "true" } else { "false" }.to_string(),
-            Numeric::Char(c) => format!("'{}'", c.escape_default()),
+            Numeric::Char(c) => escape_char(*c),
             Numeric::Int8(v) => v.to_string(),
             Numeric::UInt8(v) => v.to_string(),
             Numeric::Int16(v) => v.to_string(),
@@ -90,7 +91,7 @@ impl<'a> CSharpGen<'a> {
             Numeric::UInt64(v) => v.to_string(),
             Numeric::Float(v) => format!("{v}f"),
             Numeric::Double(v) => format!("{v}d"),
-            Numeric::String(s) => format!("\"{}\"", s.escape_default()),
+            Numeric::String(s) => escape_str(s),
             _ => String::new(),
         }
     }
@@ -99,7 +100,7 @@ impl<'a> CSharpGen<'a> {
         match value {
             Numeric::Null => "null".to_string(),
             Numeric::Bool(b) => if *b { "true" } else { "false" }.to_string(),
-            Numeric::Char(c) => format!("'{}'", c.escape_default()),
+            Numeric::Char(c) => escape_char(*c),
             Numeric::Int8(v) => v.to_string(),
             Numeric::UInt8(v) => v.to_string(),
             Numeric::Int16(v) => v.to_string(),
@@ -110,7 +111,7 @@ impl<'a> CSharpGen<'a> {
             Numeric::UInt64(v) => format!("{v}UL"),
             Numeric::Float(v) => format!("{v}f"),
             Numeric::Double(v) => format!("{v}d"),
-            Numeric::String(s) => format!("\"{}\"", s.escape_default()),
+            Numeric::String(s) => escape_str(s),
             Numeric::Const(def_id) => self.scoped_name(*def_id, relative_to_def_id),
             Numeric::Array { values, .. } => {
                 let formatted: Vec<_> = values
@@ -414,7 +415,7 @@ impl<'a> CSharpGen<'a> {
             self.emit_definition(w, nested_id);
             w!(w, "\n");
         }
-        w!(w, "}\n");
+        w!(w, "}\n\n");
     }
 
     /// Emit a synthesized `Constants` module as a static class containing constants.
@@ -1290,4 +1291,49 @@ fn is_doc(ctx: &Context, ann: &Ann) -> bool {
 /// Check if a type can be used with `const` in C#
 fn is_const_eligible(ty: &Ty) -> bool {
     matches!(ty.kind, TyKind::Primitive(_) | TyKind::String { .. })
+}
+
+fn write_escaped_char<W: Write>(w: &mut W, c: char) -> std::fmt::Result {
+    match c {
+        '\0' => w.write_str("\\0"),
+        '\x07' => w.write_str("\\a"),
+        '\x08' => w.write_str("\\b"),
+        '\t' => w.write_str("\\t"),
+        '\n' => w.write_str("\\n"),
+        '\x0B' => w.write_str("\\v"),
+        '\x0C' => w.write_str("\\f"),
+        '\r' => w.write_str("\\r"),
+        '"' => w.write_str("\\\""),
+        '\'' => w.write_str("\\'"),
+        '\\' => w.write_str("\\\\"),
+
+        c if c.is_ascii_graphic() || c == ' ' => w.write_char(c),
+
+        c => {
+            let code = c as u32;
+            if code <= 0xFFFF {
+                write!(w, "\\u{code:04X}")
+            } else {
+                write!(w, "\\U{code:08X}")
+            }
+        }
+    }
+}
+
+fn escape_char(c: char) -> String {
+    let mut result = String::new();
+    result.push('\'');
+    _ = write_escaped_char(&mut result, c);
+    result.push('\'');
+    result
+}
+
+fn escape_str(s: &str) -> String {
+    let mut result = String::with_capacity(s.len());
+    result.push('"');
+    for c in s.chars() {
+        _ = write_escaped_char(&mut result, c);
+    }
+    result.push('"');
+    result
 }

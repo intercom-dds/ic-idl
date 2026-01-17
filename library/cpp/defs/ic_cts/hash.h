@@ -31,6 +31,7 @@
 #include <cstddef>
 #include <functional>
 #include <map>
+#include <optional>
 #include <vector>
 
 namespace ic_cts {
@@ -46,6 +47,9 @@ inline void hash_combine(std::size_t& seed, const std::array<T, N>& x);
 
 template <typename K, typename V>
 inline void hash_combine(std::size_t& seed, const std::map<K, V>& x);
+
+template <class T>
+inline void hash_combine(std::size_t& seed, const std::optional<T>& x);
 
 template <class T>
 inline void hash_combine(std::size_t& seed, const T& x) {
@@ -75,6 +79,14 @@ inline void hash_combine(std::size_t& seed, const std::map<K, V>& x) {
     for (const auto& [key, value] : x) {
         hash_combine(seed, key);
         hash_combine(seed, value);
+    }
+}
+
+template <class T>
+inline void hash_combine(std::size_t& seed, const std::optional<T>& x) {
+    hash_combine(seed, x.has_value());
+    if (x.has_value()) {
+        hash_combine(seed, *x);
     }
 }
 

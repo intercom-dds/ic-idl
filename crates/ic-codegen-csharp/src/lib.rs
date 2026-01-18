@@ -145,6 +145,9 @@ pub fn codegen_csharp(
     // Resolve and strip typedefs
     let hir = ic_hir_xform::strip_typedefs::transform(hir.clone());
 
+    // Squash modules together
+    let hir = ic_hir_xform::squash_modules::transform(hir);
+
     // Group constants into a `Constants` class by default
     let hir = if options.const_classes {
         hir

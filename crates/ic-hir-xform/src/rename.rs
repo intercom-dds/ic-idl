@@ -28,7 +28,7 @@
 use std::collections::{HashMap, HashSet};
 
 use ic_emit::case::{self, Case};
-use ic_hir::hir::DefKind;
+use ic_hir::hir::{Decl, DefKind};
 use ic_hir::{ResolvedGraph, hir};
 use tracing::{debug, debug_span};
 
@@ -214,7 +214,6 @@ pub struct Target {
     pub moved_defs: HashSet<hir::DefId>,
 }
 
-/// Represents a node that needs renaming
 #[derive(Debug)]
 struct NodeRename {
     def_id: hir::DefId,
@@ -233,11 +232,9 @@ fn is_natural_fallback(original: &str, desired: &str) -> bool {
         return false;
     }
 
-    // Check if the remainder is all underscores
     original[desired.len()..].chars().all(|c| c == '_')
 }
 
-/// Apply case conversion and keyword escaping to a name
 fn apply_rename(name: &str, case: Option<Case>, kind: IdentifierKind, target: &Target) -> String {
     let mut new_name = name.to_string();
 
@@ -265,7 +262,6 @@ fn apply_rename(name: &str, case: Option<Case>, kind: IdentifierKind, target: &T
     new_name
 }
 
-/// Check if a string starts with an alphabetic character (allowing leading underscores)
 fn starts_with_alpha(s: &str) -> bool {
     for c in s.chars() {
         if c.is_alphabetic() {
@@ -278,8 +274,6 @@ fn starts_with_alpha(s: &str) -> bool {
     false
 }
 
-/// Find the last delimiter (underscore or case change) in a string.
-/// Returns the position where the prefix ends (exclusive).
 fn rfind_delimiter(s: &str) -> Option<usize> {
     let chars: Vec<char> = s.chars().collect();
     let mut was_upper = false;
@@ -301,8 +295,6 @@ fn rfind_delimiter(s: &str) -> Option<usize> {
     None
 }
 
-/// Find common prefix to strip from a list of names, given the parent type name.
-/// Returns the prefix length to strip, or 0 if no prefix should be stripped.
 fn find_prefix_to_strip(type_name: &str, names: &[String]) -> usize {
     if names.is_empty() {
         return 0;
@@ -327,11 +319,8 @@ fn find_prefix_to_strip(type_name: &str, names: &[String]) -> usize {
         });
 
         if all_have_prefix {
-            // Convert both type name and prefix to snake_case for comparison
             let found_prefix = case::convert(&prefix, Case::Snake);
             let type_name_snake = case::convert(type_name, Case::Snake);
-
-            // Check if the type name starts with the same prefix
             if type_name_snake.len() >= found_prefix.len()
                 && type_name_snake.starts_with(&found_prefix)
             {
@@ -339,7 +328,6 @@ fn find_prefix_to_strip(type_name: &str, names: &[String]) -> usize {
             }
         }
 
-        // Try a shorter prefix
         match rfind_delimiter(&prefix) {
             Some(pos) => prefix = prefix[..pos].to_string(),
             None => return 0,
@@ -367,9 +355,7 @@ pub fn transform(mut hir: ResolvedGraph, target: &Target) -> ResolvedGraph {
     hir
 }
 
-/// Recursively process all modules, interfaces, and valuetypes and their contents
 fn process_module_contents(hir: &mut ResolvedGraph, target: &Target) {
-    // Collect all container IDs to process (modules, interfaces, valuetypes)
     let container_ids: Vec<_> = hir
         .context
         .definitions
@@ -382,7 +368,6 @@ fn process_module_contents(hir: &mut ResolvedGraph, target: &Target) {
         })
         .collect();
 
-    // Process each container's children
     for (container_id, child_ids) in container_ids {
         if !child_ids.is_empty() {
             rename_breadth(hir, &child_ids, Some(container_id), target);
@@ -390,16 +375,13 @@ fn process_module_contents(hir: &mut ResolvedGraph, target: &Target) {
     }
 }
 
-/// Process enum constants and bitmask flags
 fn process_enum_constants(hir: &mut ResolvedGraph, target: &Target) {
-    // Strip enum prefixes if enabled
     if target.convention.strip_enum_prefix {
         strip_enum_prefixes(hir);
         strip_bitmask_prefixes(hir);
     }
 
-    // Process enum constants with case conversion
-    if target.convention.enumerator.is_some() {
+    if target.convention.enumerator.is_some() || target.keyword_escape.is_some() {
         let enum_constants: Vec<_> = hir
             .context
             .definitions
@@ -420,8 +402,7 @@ fn process_enum_constants(hir: &mut ResolvedGraph, target: &Target) {
         }
     }
 
-    // Process bitmask flags with case conversion
-    if target.convention.bit_flag.is_some() {
+    if target.convention.bit_flag.is_some() || target.keyword_escape.is_some() {
         let bitmask_flags: Vec<_> = hir
             .context
             .definitions
@@ -443,7 +424,6 @@ fn process_enum_constants(hir: &mut ResolvedGraph, target: &Target) {
     }
 }
 
-/// Strip common prefixes from all enum constants
 fn strip_enum_prefixes(hir: &mut ResolvedGraph) {
     let enums: Vec<_> = hir
         .context
@@ -505,8 +485,6 @@ fn strip_bitmask_prefixes(hir: &mut ResolvedGraph) {
     }
 }
 
-/// Rename all definitions at the current breadth level with collision handling
-/// Check if a constant is an enum constant by checking all enums
 fn is_enum_constant(hir: &ResolvedGraph, const_id: hir::DefId) -> bool {
     for (_, def) in &hir.context.definitions {
         if let DefKind::Enum(enum_ty) = &def.kind
@@ -538,21 +516,16 @@ fn rename_breadth(
         }
     }
 
-    // Collect all definitions at this breadth level, but only one representative per module group
     for &id in def_ids {
         let def = hir.context.type_of(id);
-
-        // Skip non-representative modules
         if let DefKind::Module(_) = &def.kind
             && let Some(group) = module_groups.get(&def.ident.name)
             && group[0] != id
         {
-            continue; // Skip non-representative modules
+            continue;
         }
 
-        // Determine the appropriate case and identifier kind for this definition
         let (case, kind) = if matches!(def.kind, hir::DefKind::Const(_)) {
-            // Check if this is an enum constant
             if is_enum_constant(hir, id) {
                 (target.convention.enumerator, IdentifierKind::Enumerator)
             } else {
@@ -562,11 +535,19 @@ fn rename_breadth(
             match &def.kind {
                 DefKind::Module(_) => (target.convention.module, IdentifierKind::Module),
                 DefKind::Const(_) => (target.convention.constant, IdentifierKind::Constant),
-                DefKind::Struct(_) => (target.convention.struct_type, IdentifierKind::Struct),
-                DefKind::Union(_) => (target.convention.union_type, IdentifierKind::Union),
+                DefKind::Struct(_) | DefKind::Decl(Decl::Struct) => {
+                    (target.convention.struct_type, IdentifierKind::Struct)
+                }
+                DefKind::Union(_) | DefKind::Decl(Decl::Union) => {
+                    (target.convention.union_type, IdentifierKind::Union)
+                }
                 DefKind::Enum(_) => (target.convention.enum_type, IdentifierKind::Enum),
-                DefKind::Interface(_) => (target.convention.interface, IdentifierKind::Interface),
-                DefKind::Valuetype(_) => (target.convention.valuetype, IdentifierKind::Valuetype),
+                DefKind::Interface(_) | DefKind::Decl(Decl::Interface) => {
+                    (target.convention.interface, IdentifierKind::Interface)
+                }
+                DefKind::Valuetype(_) | DefKind::Decl(Decl::Valuetype) => {
+                    (target.convention.valuetype, IdentifierKind::Valuetype)
+                }
                 DefKind::Alias(_) => (target.convention.alias, IdentifierKind::Alias),
                 DefKind::Bitmask(_) => (target.convention.bitmask, IdentifierKind::Bitmask),
                 DefKind::Bitset(_) => (target.convention.bitset, IdentifierKind::Bitset),
@@ -574,7 +555,7 @@ fn rename_breadth(
                 DefKind::Annotation(_) => {
                     (target.convention.annotation, IdentifierKind::Annotation)
                 }
-                DefKind::Decl(_) => (None, IdentifierKind::Struct), // Decl doesn't matter, won't rename
+                DefKind::Decl(Decl::Native) => (None, IdentifierKind::Struct),
             }
         };
 
@@ -605,7 +586,6 @@ fn rename_breadth(
     }
 }
 
-/// Helper to rename a list of items with collision detection
 fn rename_items<T, F>(
     items: &mut [T],
     case: Option<Case>,
@@ -615,7 +595,6 @@ fn rename_items<T, F>(
 ) where
     F: FnMut(&mut T) -> &mut hir::Ident,
 {
-    // Collect existing names for collision detection
     let mut occupied: HashSet<String> = items
         .iter_mut()
         .map(|item| get_ident(item).name.clone())
@@ -624,7 +603,6 @@ fn rename_items<T, F>(
     rename_items_with_occupied(items, case, kind, get_ident, &mut occupied, target);
 }
 
-/// Helper to rename items using an existing occupied set (for shared namespaces)
 fn rename_items_with_occupied<T, F>(
     items: &mut [T],
     case: Option<Case>,
@@ -655,7 +633,6 @@ fn rename_items_with_occupied<T, F>(
     }
 }
 
-/// Rename members, variants, parameters, etc. within a definition
 #[allow(clippy::too_many_lines)]
 fn rename_members(target: &Target, mut def: hir::Def) -> hir::Def {
     match &mut def.kind {
@@ -687,15 +664,13 @@ fn rename_members(target: &Target, mut def: hir::Def) -> hir::Def {
             );
         }
         DefKind::Interface(i) => {
-            // Operations and attributes share the same namespace
-            let mut occupied: HashSet<String> = i
+            let mut occupied: HashSet<_> = i
                 .prototypes
                 .iter()
                 .map(|p| p.ident.name.clone())
                 .chain(i.attributes.iter().map(|a| a.ident.name.clone()))
                 .collect();
 
-            // Rename operations
             rename_items_with_occupied(
                 &mut i.prototypes,
                 target.convention.operation,
@@ -705,7 +680,6 @@ fn rename_members(target: &Target, mut def: hir::Def) -> hir::Def {
                 target,
             );
 
-            // Rename attributes
             rename_items_with_occupied(
                 &mut i.attributes,
                 target.convention.attribute,
@@ -715,7 +689,6 @@ fn rename_members(target: &Target, mut def: hir::Def) -> hir::Def {
                 target,
             );
 
-            // Rename parameters (no collision detection needed)
             for proto in &mut i.prototypes {
                 rename_items(
                     &mut proto.params,
@@ -727,8 +700,7 @@ fn rename_members(target: &Target, mut def: hir::Def) -> hir::Def {
             }
         }
         DefKind::Valuetype(v) => {
-            // Members, operations, and attributes share the same namespace
-            let mut occupied: HashSet<String> = v
+            let mut occupied: HashSet<_> = v
                 .members
                 .iter()
                 .map(|m| m.ident.name.clone())
@@ -736,7 +708,6 @@ fn rename_members(target: &Target, mut def: hir::Def) -> hir::Def {
                 .chain(v.attributes.iter().map(|a| a.ident.name.clone()))
                 .collect();
 
-            // Rename members
             rename_items_with_occupied(
                 &mut v.members,
                 target.convention.member,
@@ -746,7 +717,6 @@ fn rename_members(target: &Target, mut def: hir::Def) -> hir::Def {
                 target,
             );
 
-            // Rename operations
             rename_items_with_occupied(
                 &mut v.prototypes,
                 target.convention.operation,
@@ -756,7 +726,6 @@ fn rename_members(target: &Target, mut def: hir::Def) -> hir::Def {
                 target,
             );
 
-            // Rename attributes
             rename_items_with_occupied(
                 &mut v.attributes,
                 target.convention.attribute,
@@ -766,7 +735,6 @@ fn rename_members(target: &Target, mut def: hir::Def) -> hir::Def {
                 target,
             );
 
-            // Rename parameters (no collision detection needed)
             for proto in &mut v.prototypes {
                 rename_items(
                     &mut proto.params,
@@ -792,13 +760,12 @@ fn rename_members(target: &Target, mut def: hir::Def) -> hir::Def {
     def
 }
 
-/// Categorize nodes by their rename priority
 fn categorize_renames(
     renames: &[NodeRename],
 ) -> (Vec<&NodeRename>, Vec<&NodeRename>, Vec<&NodeRename>) {
-    let mut priority1 = Vec::new(); // Nodes that want to keep their original name
-    let mut priority2 = Vec::new(); // Nodes that want to change their name
-    let mut moved_nodes = Vec::new(); // Moved nodes (lowest priority)
+    let mut priority1 = vec![];
+    let mut priority2 = vec![];
+    let mut moved_nodes = vec![];
 
     for rename in renames {
         if rename.is_moved {
@@ -841,7 +808,6 @@ fn process_priority2_renames(
 
             let target = &rename.desired;
 
-            // Try to get desired name if it's available
             if !occupied.contains(target) && !will_keep_original.contains(target) {
                 final_assignments.insert(rename.def_id, target.clone());
                 occupied.insert(target.clone());
@@ -849,9 +815,7 @@ fn process_priority2_renames(
                     vacated.insert(rename.original.clone());
                 }
                 made_progress = true;
-            }
-            // Try to use a vacated name
-            else if vacated.contains(target) {
+            } else if vacated.contains(target) {
                 final_assignments.insert(rename.def_id, target.clone());
                 occupied.insert(target.clone());
                 vacated.remove(target);
@@ -887,7 +851,6 @@ fn process_priority2_renames(
     }
 }
 
-/// Apply computed renames to definitions
 fn apply_final_renames(
     hir: &mut ResolvedGraph,
     final_assignments: &HashMap<hir::DefId, String>,
@@ -897,7 +860,6 @@ fn apply_final_renames(
     for (def_id, new_name) in final_assignments {
         let def = hir.context.type_of(*def_id);
         if let DefKind::Module(_) = &def.kind {
-            // Find the original name to look up the group
             let original_name = renames
                 .iter()
                 .find(|r| r.def_id == *def_id)
@@ -905,7 +867,6 @@ fn apply_final_renames(
                 .unwrap();
 
             if let Some(group_ids) = module_groups.get(original_name) {
-                // Apply the same name to all modules in the group
                 for &module_id in group_ids {
                     hir.context
                         .definitions
@@ -926,7 +887,6 @@ fn apply_final_renames(
     }
 }
 
-/// Apply renames to top-level definitions with collision handling
 fn apply_renames_with_collision_handling(
     hir: &mut ResolvedGraph,
     renames: &[NodeRename],
@@ -934,7 +894,6 @@ fn apply_renames_with_collision_handling(
 ) {
     // Categorize nodes by priority
     let (priority1, priority2, moved_nodes) = categorize_renames(renames);
-
     let mut final_assignments: HashMap<hir::DefId, String> = HashMap::new();
     let mut occupied: HashSet<String> = HashSet::new();
 
@@ -944,7 +903,7 @@ fn apply_renames_with_collision_handling(
         occupied.insert(rename.original.clone());
     }
 
-    // Process moved nodes: they must get unique names
+    // Process moved nodes
     for rename in &moved_nodes {
         let mut name = rename.desired.clone();
         while occupied.contains(&name) {

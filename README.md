@@ -58,18 +58,27 @@ cargo run --release
 
 ## Development
 
-Run all tests:
+Run unit tests:
 
 ```sh
 cargo nextest run --workspace --all-targets
 ```
 
-Running the end-to-end tests requires Python and [uv](https://docs.astral.sh/uv/). See the
-`e2e-tests` directory for more information. The tests can be run through `xtask`:
+Run the codegen tests:
 
 ```sh
-cargo xtask e2e
+cargo xtask codegen
 ```
+
+See the `codegen-tests` directory for more information.
+
+Run integration tests:
+
+```sh
+cargo xtask integration
+```
+
+See the `integration-tests` directory for more information.
 
 Generate development documentation:
 

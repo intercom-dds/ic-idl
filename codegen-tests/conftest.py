@@ -125,7 +125,7 @@ def make_output_dir(request: pytest.FixtureRequest, lang: str) -> Path:
     if "[" in test_name:
         test_name = test_name.split("[")[1].rstrip("]")
     test_name = test_name.replace("/", "_").replace("\\", "_").replace("..", "_")
-    out = Path("..") / "target" / "e2e-tests" / lang / test_name
+    out = Path("..") / "target" / "codegen-tests" / lang / test_name
     out.mkdir(parents=True, exist_ok=True)
     return out
 

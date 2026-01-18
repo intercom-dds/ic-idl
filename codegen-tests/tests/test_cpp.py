@@ -122,7 +122,7 @@ def cxx_compiler(request: pytest.FixtureRequest) -> CxxCompiler:
 @pytest.fixture(scope="session")
 def cpp_include_path() -> Path:
     root = Path(__file__).parent.parent.parent
-    return (root / "runtime" / "cpp" / "defs").resolve()
+    return (root / "runtime" / "cpp" / "include").resolve()
 
 
 @pytest.fixture

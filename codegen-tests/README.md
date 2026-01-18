@@ -27,11 +27,12 @@
     OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 -->
 
-# End-to-end tests
+# Compilation tests
 
-This directory contains the e2e test suite for validating generated code across all backends. Each
-file placed in the `corpus` directory will be considered its own test case, and will be tested
-against all available backends.
+This directory contains the codegen test suite for validating generated code across all backends.
+Each file placed in the `corpus` directory will be considered its own test case, and will be tested
+against all available backends. Note that these tests only check that the generated code compiles;
+they do not actually test or validate that the output matches the input IDL.
 
 ## Running the tests
 
@@ -42,16 +43,16 @@ The easiest way to run the tests is through `xtask`:
 cargo build
 
 # run all tests
-cargo xtask e2e
+cargo xtask codegen
 
 # run only Python tests
-cargo xtask e2e -l python
+cargo xtask codegen -l python
 ```
 
 You can also run `pytest` directly if you prefer:
 
 ```bash
-cd e2e-tests
+cd codegen-tests
 uv run pytest . -n auto
 ```
 

@@ -28,7 +28,7 @@
 use std::path::PathBuf;
 use std::process::Command;
 
-/// Run end-to-end integration tests
+/// Run codegen compilation tests
 #[derive(ic_cli::Command, Default)]
 pub struct Options {
     /// Languages to test (default: all)
@@ -112,7 +112,7 @@ fn lang_to_test_file(lang: &str) -> Option<&'static str> {
 
 pub fn run(opts: Options) {
     let workspace_root = git_root();
-    let e2e_tests_dir = workspace_root.join("e2e-tests");
+    let codegen_tests_dir = workspace_root.join("codegen-tests");
     let idl_compiler = opts.idl_compiler.unwrap_or_else(|| {
         let profile = if opts.release { "release" } else { "debug" };
         workspace_root
@@ -130,7 +130,7 @@ pub fn run(opts: Options) {
     }
 
     let corpus = opts.corpus.map_or_else(
-        || e2e_tests_dir.join("corpus"),
+        || codegen_tests_dir.join("corpus"),
         |c| std::env::current_dir().unwrap().join(c),
     );
 
@@ -158,7 +158,7 @@ pub fn run(opts: Options) {
         .map_or_else(|| "auto".to_string(), |n| n.to_string());
 
     let mut cmd = Command::new("uv");
-    cmd.current_dir(&e2e_tests_dir)
+    cmd.current_dir(&codegen_tests_dir)
         .args(["run", "pytest"])
         .args(&test_files)
         .arg(format!("--idl-compiler={idl_compiler}"))

@@ -126,22 +126,39 @@ fn format_primitive_value(value: i64, ty: &Ty) -> String {
     }
 }
 
-fn escape_java_string(s: &str) -> String {
-    let mut result = String::from("\"");
-    for ch in s.chars() {
-        match ch {
-            '"' => result.push_str("\\\""),
-            '\\' => result.push_str("\\\\"),
-            '\n' => result.push_str("\\n"),
-            '\r' => result.push_str("\\r"),
-            '\t' => result.push_str("\\t"),
-            '\x20'..='\x7E' => result.push(ch),
-            _ => {
-                for code_unit in ch.encode_utf16(&mut [0; 2]) {
-                    _ = write!(result, "\\u{code_unit:04x}");
-                }
+fn write_escaped_char<W: Write>(w: &mut W, c: char) -> std::fmt::Result {
+    match c {
+        '\x08' => w.write_str("\\b"),
+        '\t' => w.write_str("\\t"),
+        '\n' => w.write_str("\\n"),
+        '\x0C' => w.write_str("\\f"),
+        '\r' => w.write_str("\\r"),
+        '"' => w.write_str("\\\""),
+        '\'' => w.write_str("\\'"),
+        '\\' => w.write_str("\\\\"),
+        c if c.is_ascii_graphic() || c == ' ' => w.write_char(c),
+        c => {
+            for code_unit in c.encode_utf16(&mut [0; 2]) {
+                write!(w, "\\u{code_unit:04x}")?;
             }
+            Ok(())
         }
+    }
+}
+
+fn escape_char(c: char) -> String {
+    let mut result = String::new();
+    result.push('\'');
+    _ = write_escaped_char(&mut result, c);
+    result.push('\'');
+    result
+}
+
+fn escape_str(s: &str) -> String {
+    let mut result = String::with_capacity(s.len());
+    result.push('"');
+    for c in s.chars() {
+        write_escaped_char(&mut result, c).unwrap();
     }
     result.push('"');
     result
@@ -1616,7 +1633,7 @@ impl<'a> JavaGen<'a> {
         let resolved_ty = self.hir.context.resolve_ty(ty);
         match value {
             Numeric::Bool(b) => b.to_string(),
-            Numeric::Char(c) => format!("'\\u{:04x}'", u32::from(*c)),
+            Numeric::Char(c) => escape_char(*c),
             Numeric::Int8(i) => format_primitive_value(i64::from(*i), &resolved_ty),
             Numeric::UInt8(i) => {
                 if *i > i8::MAX as u8 {
@@ -1661,7 +1678,7 @@ impl<'a> JavaGen<'a> {
             }
             Numeric::Float(f) => format!("(float){f:e}"),
             Numeric::Double(f) => format!("(double){f:e}"),
-            Numeric::String(s) => escape_java_string(s),
+            Numeric::String(s) => escape_str(s),
             Numeric::Const(const_def_id) => {
                 let const_def = self.hir.context.type_of(*const_def_id);
                 if let Some(parent_id) = const_def.parent

@@ -60,5 +60,5 @@ module enum_types {
         AUTO_HUNDRED_ONE
     };
 
-    const long ENUM_CONST = WARNING;
+    const Status ENUM_CONST = WARNING;
 };

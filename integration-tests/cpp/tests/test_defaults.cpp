@@ -27,7 +27,7 @@
 
 #include <doctest/doctest.h>
 
-#include "generated/defaults.h"
+#include "defaults.h"
 
 TEST_CASE("const_string_values" * doctest::test_suite("defaults")) {
     CHECK(default_types::DEFAULT_NAME == "unnamed");

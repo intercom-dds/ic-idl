@@ -29,7 +29,7 @@
 
 #include <type_traits>
 
-#include "generated/interfaces.h"
+#include "interfaces.h"
 
 TEST_CASE("interface_is_abc" * doctest::test_suite("interfaces")) {
     CHECK(std::is_abstract<interface_types::Reader>::value);

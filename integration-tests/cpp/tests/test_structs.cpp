@@ -27,7 +27,7 @@
 
 #include <doctest/doctest.h>
 
-#include "generated/structs.h"
+#include "structs.h"
 
 TEST_CASE("point_instantiation" * doctest::test_suite("structs")) {
     struct_types::Point p(10, 20);

@@ -27,7 +27,7 @@
 
 #include <doctest/doctest.h>
 
-#include "generated/deep_generics.h"
+#include "deep_generics.h"
 
 TEST_CASE("two_level_seq" * doctest::test_suite("deep_generics")) {
     std::vector<std::vector<int32_t>> matrix = {{1, 2, 3}, {4, 5, 6}};

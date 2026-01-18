@@ -29,7 +29,7 @@
 
 #include <cstring>
 
-#include "generated/constants.h"
+#include "constants.h"
 
 TEST_CASE("int_constant" * doctest::test_suite("constants")) {
     CHECK(constant_types::INT_CONST == 42);

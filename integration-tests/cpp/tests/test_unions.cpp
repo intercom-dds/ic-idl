@@ -27,7 +27,7 @@
 
 #include <doctest/doctest.h>
 
-#include "generated/unions.h"
+#include "unions.h"
 
 TEST_CASE("union_int_variant" * doctest::test_suite("unions")) {
     union_types::IntOrString u;

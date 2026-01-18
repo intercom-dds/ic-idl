@@ -29,7 +29,7 @@
 
 #include <type_traits>
 
-#include "generated/any_type.h"
+#include "any_type.h"
 
 TEST_CASE("any_alias_typedef" * doctest::test_suite("any_type")) {
     CHECK((std::is_same<any_types::AnyAlias, ic_cts::Any>::value));

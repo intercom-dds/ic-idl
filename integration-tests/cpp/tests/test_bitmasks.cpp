@@ -28,7 +28,7 @@
 #include <doctest/doctest.h>
 #include <ic_cts/member_info.h>
 
-#include "generated/bitmasks.h"
+#include "bitmasks.h"
 
 TEST_CASE("bitmask_is_flag_type" * doctest::test_suite("bitmasks")) {
     CHECK(ic_cts::TypeTraits<bitmask_types::PermissionsBits>::is_bitmask);

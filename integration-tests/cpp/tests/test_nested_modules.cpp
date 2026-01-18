@@ -27,7 +27,7 @@
 
 #include <doctest/doctest.h>
 
-#include "generated/nested_modules.h"
+#include "nested_modules.h"
 
 TEST_CASE("top_level_types_exist" * doctest::test_suite("nested_modules")) {
     nested_module_types::TopLevelStruct s(42);

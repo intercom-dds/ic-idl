@@ -29,7 +29,7 @@
 
 #include <type_traits>
 
-#include "generated/enums.h"
+#include "enums.h"
 
 TEST_CASE("enum_members_exist" * doctest::test_suite("enums")) {
     enum_types::Color red = enum_types::RED;

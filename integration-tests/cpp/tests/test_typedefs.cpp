@@ -29,7 +29,7 @@
 
 #include <type_traits>
 
-#include "generated/typedefs.h"
+#include "typedefs.h"
 
 TEST_CASE("primitive_typedef_values" * doctest::test_suite("typedefs")) {
     typedef_types::Integer i = 42;

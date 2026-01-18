@@ -30,7 +30,7 @@
 #include <exception>
 #include <stdexcept>
 
-#include "generated/exceptions.h"
+#include "exceptions.h"
 
 TEST_CASE("exception_inherits_from_exception" * doctest::test_suite("exceptions")) {
     CHECK((std::is_base_of_v<std::exception, exception_types::SimpleError>));

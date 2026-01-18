@@ -29,7 +29,7 @@
 
 #include <type_traits>
 
-#include "generated/bounded_types.h"
+#include "bounded_types.h"
 
 TEST_CASE("bounded_string_typedef_maps_to_str" * doctest::test_suite("bounded_types")) {
     bounded_types::ShortString short_str = "Hello";

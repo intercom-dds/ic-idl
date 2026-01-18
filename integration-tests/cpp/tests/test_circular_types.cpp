@@ -29,7 +29,7 @@
 
 #include <type_traits>
 
-#include "generated/circular_types.h"
+#include "circular_types.h"
 
 TEST_CASE("tree_node_instantiation" * doctest::test_suite("circular_types")) {
     circular_types::TreeNode node(42, {});

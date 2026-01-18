@@ -27,7 +27,7 @@
 
 #include <doctest/doctest.h>
 
-#include "generated/multi_module.h"
+#include "multi_module.h"
 
 TEST_CASE("module_a_exists" * doctest::test_suite("multi_module")) {
     module_a::StructA1 s1(42);

@@ -36,9 +36,9 @@
 # If the DESTINATION is a relative path, it will be explicitly relative
 # to CMAKE_CURRENT_BINARY_DIR.
 #
-# INPUT_IDL should be a list of relative or absolute paths, with or with file
-# extensions. The base directory for each INPUT_IDL is added to
-# INCLUDE_DIRECTORIES automatically.
+# INPUT_IDL should be a list of relative or absolute paths to .idl files
+# or directories. Directories will be traversed by ic-idl to find all .idl files.
+# The base directory for each INPUT_IDL is added to INCLUDE_DIRECTORIES automatically.
 #
 # INCLUDE_DIRECTORIES are added as preprocessor include directories when
 # parsing the INPUT_IDL files.
@@ -48,8 +48,6 @@
 # all calls in the current scope.
 #
 # Any unparsed parameters will be added to the INPUT_IDL list.
-# "idl_generate( myType )" will set ${CMAKE_CURRENT_SOURCE_DIR}/myType.idl
-# as your input.
 #
 # The OUTPUT_VAR list will be populated with ${DESTINATION}/<idl-file> and set
 # in PARENT_SCOPE. OUTPUT_VAR will default to being named IC_GENERATE_OUTPUTS,
@@ -83,12 +81,14 @@ function(IDL_GENERATE)
 
     cmake_parse_arguments(_IC_GENERATE "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
 
-    if(NOT IC_EXE)
-        if(TARGET ic_idl::ic_idl)
-            set(IC_EXE $<TARGET_FILE:ic_idl::ic_idl>)
+    if(NOT IC_IDL_EXECUTABLE)
+        if(TARGET ic_idl::ic-idl)
+            set(IC_EXE $<TARGET_FILE:ic_idl::ic-idl>)
         else()
-            message(SEND_ERROR "idl_generate could not locate ic_idl::ic_idl target exectuable")
+            message(SEND_ERROR "idl_generate could not locate ic_idl::ic-idl target executable")
         endif()
+    else()
+        set(IC_EXE "${IC_IDL_EXECUTABLE}")
     endif()
 
     if( NOT _IC_GENERATE_DESTINATION )
@@ -179,18 +179,19 @@ function(IDL_GENERATE)
 
         get_filename_component( _FILE_NAME "${_INPUT}" NAME )
         get_filename_component( _ABS_DIRECTORY "${_INPUT}" DIRECTORY )
-        get_filename_component( _ABS_DIRECTORY "${_ABS_DIRECTORY}" REALPATH )
 
-        set( _INPUT_INCLUDES ${_INCLUDES} -I ${_ABS_DIRECTORY} )
-
-        if( "${_FILE_NAME}" MATCHES "\\.idl$" )
+        # Handle directories: ic-idl will traverse them
+        if(IS_DIRECTORY "${_INPUT}")
+            get_filename_component( _ABS_INPUT "${_INPUT}" REALPATH )
+            set( _FILE_BASENAME "${_FILE_NAME}" )
+            get_filename_component( _ABS_DIRECTORY "${_ABS_DIRECTORY}" REALPATH )
+        else()
+            get_filename_component( _ABS_DIRECTORY "${_ABS_DIRECTORY}" REALPATH )
             get_filename_component( _FILE_BASENAME "${_INPUT}" NAME_WE )
-        elseif(NOT IS_DIRECTORY "${_INPUT}")
-            set( _FILE_BASENAME ${_FILE_NAME} )
-            set( _FILE_NAME ${_FILE_BASENAME}.idl )
+            set( _ABS_INPUT ${_ABS_DIRECTORY}/${_FILE_NAME} )
         endif()
 
-        set( _ABS_INPUT ${_ABS_DIRECTORY}/${_FILE_NAME} )
+        set( _INPUT_INCLUDES ${_INCLUDES} -I ${_ABS_DIRECTORY} )
 
         set( _IC_ARGS ${_INPUT_INCLUDES} ${_IC_GENERATE_FLAGS} ${_ABS_INPUT} )
 
@@ -201,10 +202,10 @@ function(IDL_GENERATE)
 
         if( _IC_GENERATE_OVERRIDE_OUTPUTS )
             set( _ABS_OUTPUT ${_IC_GENERATE_OVERRIDE_OUTPUTS} )
-        elseif(IC_L_EXE)
+        elseif(IC_EXE)
             execute_process(
                 COMMAND
-                    ${_ENV_CMD} ${IC_L_EXE} ${_IC_ARGS} -l
+                    ${_ENV_CMD} ${IC_EXE} ${_IC_ARGS} -l
                 OUTPUT_VARIABLE
                     _IC_FILE_LIST
                 ERROR_VARIABLE
@@ -214,11 +215,11 @@ function(IDL_GENERATE)
                 OUTPUT_STRIP_TRAILING_WHITESPACE )
 
             if( NOT _IC_RESULT EQUAL 0 )
-                message( FATAL_ERROR "[${IC_L_EXE} -l ${_IC_ARGS_PRETTY}] returned ${_IC_RESULT}: ${_IC_ERROR}" )
+                message( FATAL_ERROR "[${IC_EXE} -l ${_IC_ARGS_PRETTY}] returned ${_IC_RESULT}: ${_IC_ERROR}" )
             endif()
 
             if( _IC_FILE_LIST STREQUAL "" )
-                message( FATAL_ERROR "[${IC_L_EXE} -l ${_IC_ARGS_PRETTY}] returned no output" )
+                message( FATAL_ERROR "[${IC_EXE} -l ${_IC_ARGS_PRETTY}] returned no output" )
             endif()
 
             string( REGEX REPLACE "\n" ";" _IC_FILE_LIST "${_IC_FILE_LIST}")
@@ -230,7 +231,7 @@ function(IDL_GENERATE)
                 endif()
             endforeach()
         else()
-            message(FATAL_ERROR "Unable to locate the ic-idl executable ${IC_L_EXE}")
+            message(FATAL_ERROR "Unable to locate the ic-idl executable ${IC_EXE}")
         endif()
 
         list( APPEND _OUTPUT_LIST ${_ABS_OUTPUT} )
@@ -272,7 +273,7 @@ function(IDL_GENERATE)
     list( REMOVE_DUPLICATES _OUTPUT_LIST )
 
     if( NOT _IC_GENERATE_OUTPUT_VAR )
-        set( _IC_GENERATE_OUTPUT_VAR IC_GENERATE_OUTPUTS )
+        set( _IC_GENERATE_OUTPUT_VAR IDL_GENERATE_OUTPUTS )
     endif()
 
     # NB: IC_GENERATE_OUTPUTS is only defined for the PARENT_SCOPE

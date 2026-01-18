@@ -29,7 +29,7 @@
 
 #include <type_traits>
 
-#include "generated/valuetypes.h"
+#include "valuetypes.h"
 
 TEST_CASE("valuetype_instantiation" * doctest::test_suite("valuetypes")) {
     valuetype_types::SimpleValue sv(42, "test");

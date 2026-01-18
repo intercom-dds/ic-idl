@@ -29,7 +29,7 @@
 
 #include <type_traits>
 
-#include "generated/strings.h"
+#include "string_types.h"
 
 TEST_CASE("char_letter" * doctest::test_suite("strings")) {
     CHECK(char_wstring_types::CHAR_A == 'A');

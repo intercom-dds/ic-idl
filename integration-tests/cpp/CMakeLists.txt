@@ -26,12 +26,13 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 cmake_minimum_required(VERSION 3.20)
-project(integration_tests CXX)
+project(cpp_integration_tests CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_COMPILE_WARNING_AS_ERROR ON)
+set(CMAKE_INCLUDE_CURRENT_DIR ON)
 
 if(MSVC)
     add_compile_options(
@@ -75,33 +76,20 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(doctest)
 
-add_library(generated_idl
-    generated/annotations.cpp
-    generated/any_type.cpp
-    generated/bitmasks.cpp
-    generated/bounded_types.cpp
-    generated/circular_types.cpp
-    generated/constants.cpp
-    generated/deep_generics.cpp
-    generated/defaults.cpp
-    generated/enums.cpp
-    generated/exceptions.cpp
-    generated/interfaces.cpp
-    generated/multi_module.cpp
-    generated/nested_modules.cpp
-    generated/strings.cpp
-    generated/structs.cpp
-    generated/typedefs.cpp
-    generated/unions.cpp
-    generated/valuetypes.cpp
+set(IC_IDL_EXECUTABLE "${CMAKE_CURRENT_SOURCE_DIR}/../../target/debug/ic-idl")
+
+find_package(
+    ic_idl REQUIRED
+    PATHS ../../runtime/cpp/cmake
+    NO_DEFAULT_PATH
 )
 
-target_include_directories(generated_idl PUBLIC
-    ${CMAKE_CURRENT_SOURCE_DIR}/
-    ${CMAKE_CURRENT_SOURCE_DIR}/../../runtime/cpp/include
+idl_generate(
+    LANGUAGE CPP
+    INPUT_IDL ../corpus
 )
 
-add_executable(integration_tests
+add_executable(cpp_integration_tests
     tests/main.cpp
     tests/test_annotations.cpp
     tests/test_any_type.cpp
@@ -122,14 +110,16 @@ add_executable(integration_tests
     tests/test_typedefs.cpp
     tests/test_unions.cpp
     tests/test_valuetypes.cpp
+    ${IDL_GENERATE_OUTPUTS}
 )
 
-target_link_libraries(integration_tests PRIVATE
-    generated_idl
+target_link_libraries(cpp_integration_tests PRIVATE
+    ic_idl::ic_cts
     doctest::doctest
 )
 
-target_include_directories(integration_tests PRIVATE
-    ${CMAKE_CURRENT_SOURCE_DIR}/
-    ${CMAKE_CURRENT_SOURCE_DIR}/../../runtime/cpp/include
+add_custom_target(test
+    COMMAND cpp_integration_tests
+    DEPENDS cpp_integration_tests
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
 )

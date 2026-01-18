@@ -29,7 +29,7 @@
 
 #include <type_traits>
 
-#include "generated/annotations.h"
+#include "annotations.h"
 
 TEST_CASE("keyed_struct_exists" * doctest::test_suite("annotations")) {
     annotation_types::KeyedStruct ks(1, "test", 3.14);

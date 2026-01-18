@@ -31,10 +31,10 @@
 #include <unordered_set>
 #include <vector>
 
-#include "generated/circular_types.h"
-#include "generated/exceptions.h"
-#include "generated/structs.h"
-#include "generated/unions.h"
+#include "circular_types.h"
+#include "exceptions.h"
+#include "structs.h"
+#include "unions.h"
 
 TEST_CASE("struct_equality" * doctest::test_suite("comparison")) {
     struct_types::Point p1(10, 20);

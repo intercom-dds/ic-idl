@@ -104,6 +104,7 @@ fn whitelist(name: &str) -> bool {
         ext.eq_ignore_ascii_case("json")
             || ext.eq_ignore_ascii_case("snap")
             || ext.eq_ignore_ascii_case("md")
+            || ext.eq_ignore_ascii_case("xml")
     });
 
     !extension

@@ -31,6 +31,7 @@ use ic_cli::Command;
 
 mod codegen;
 mod deny;
+mod integration;
 mod ipr;
 mod release;
 
@@ -41,6 +42,7 @@ enum Commands {
     Deny(deny::Options),
     Release(release::Options),
     Codegen(codegen::Options),
+    Integration(integration::Options),
 }
 
 fn main() {
@@ -52,5 +54,6 @@ fn main() {
         Commands::Release(v) => release::build(v),
         Commands::Deny(_) => deny::check(),
         Commands::Codegen(v) => codegen::run(v),
+        Commands::Integration(v) => integration::run(&v),
     }
 }

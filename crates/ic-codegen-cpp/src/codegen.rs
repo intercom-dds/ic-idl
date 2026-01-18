@@ -260,7 +260,8 @@ impl<'a> CppGen<'a> {
                 let inner = self.cpp_type(ty, relative_def_opt);
                 format!("::std::array<{inner}, {len}>")
             }
-            TyKind::Any | TyKind::Fixed | TyKind::Null => "void".to_string(),
+            TyKind::Any => "::ic_cts::Any".to_string(),
+            TyKind::Fixed | TyKind::Null => "void".to_string(),
         }
     }
 
@@ -786,6 +787,7 @@ impl<'a> CppGen<'a> {
             w!(header, "#include <optional>\n");
             w!(header, "#include <string>\n");
             w!(header, "#include <vector>\n\n");
+            w!(header, "#include <ic_cts/any.h>\n");
             w!(header, "#include <ic_cts/member_info.h>\n");
             w!(header, "#include <ic_cts/memory.h>\n");
 

@@ -35,6 +35,7 @@
 #include <string>
 #include <vector>
 
+#include "ic_cts/any.h"
 #include "ic_cts/json_parser.h"
 #include "ic_cts/member_info.h"
 
@@ -437,6 +438,11 @@ struct Serializer<Archive, std::vector<bool>::reference> {
         a.primitive_io(copy, type_info);
         value = copy;
     }
+};
+
+template <class Archive>
+struct Serializer<Archive, ic_cts::Any> {
+    void operator()(Archive&, ic_cts::Any&, const TypeInfo*) {}
 };
 
 CTS_DEFINE_PRIMITIVE_TYPE(bool);

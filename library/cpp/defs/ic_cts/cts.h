@@ -34,6 +34,7 @@
 #include <stdexcept>
 #include <string>
 
+#include "any.h"
 #include "bounded.h"
 #include "member_info.h"
 #include "memory.h"
@@ -51,9 +52,6 @@
 #endif
 
 namespace ic_cts {
-
-struct Any {};
-struct Object {};
 
 template <typename T>
 using traits = TypeTraits<T>;

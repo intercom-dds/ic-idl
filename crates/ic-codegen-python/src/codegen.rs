@@ -686,7 +686,7 @@ impl<'a> PyGen<'a> {
 
             for member in &value_ty.members {
                 let ty_str = self.py_type(w, &member.ty);
-                let default = self.default_value(w, &member.ty);
+                let default = self.field_default(w, &member.ty);
                 py!(w, member.ident.name, ": ", ty_str, " = ", default, "\n");
             }
 

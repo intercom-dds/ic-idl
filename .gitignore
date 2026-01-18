@@ -37,4 +37,6 @@ uv.lock
 bun.lock
 
 # artifacts from integration tests
+integration-tests/csharp/bin/
+integration-tests/csharp/obj/
 integration-tests/typescript/generated

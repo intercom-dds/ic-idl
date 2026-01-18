@@ -41,8 +41,7 @@
 # INCLUDE_DIRECTORIES automatically.
 #
 # INCLUDE_DIRECTORIES are added as preprocessor include directories when
-# parsing the INPUT_IDL files. The idl-directory bundled with the InterCOM
-# redistributables are automatically included.
+# parsing the INPUT_IDL files.
 #
 # FLAGS will be passed as options to IC when generating.
 # If IC_GENERATE_DEFAULT_FLAGS is defined, this will always be prepended to
@@ -85,10 +84,10 @@ function(IDL_GENERATE)
     cmake_parse_arguments(_IC_GENERATE "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
 
     if(NOT IC_EXE)
-        if(TARGET InterCOM::ic_idl)
-            set(IC_EXE $<TARGET_FILE:InterCOM::ic_idl>)
+        if(TARGET ic_idl::ic_idl)
+            set(IC_EXE $<TARGET_FILE:ic_idl::ic_idl>)
         else()
-            message(SEND_ERROR "idl_generate could not locate InterCOM::ic_idl target exectuable")
+            message(SEND_ERROR "idl_generate could not locate ic_idl::ic_idl target exectuable")
         endif()
     endif()
 
@@ -98,10 +97,6 @@ function(IDL_GENERATE)
 
     if( NOT IS_ABSOLUTE "${_IC_GENERATE_DESTINATION}" )
         set( _IC_GENERATE_DESTINATION "${CMAKE_CURRENT_BINARY_DIR}/${_IC_GENERATE_DESTINATION}" )
-    endif()
-
-    if( InterCOM_DIR )
-        list( APPEND _IC_GENERATE_INCLUDE_DIRECTORIES ${InterCOM_DIR}/../idl )
     endif()
 
     foreach( _DIR ${_IC_GENERATE_INCLUDE_DIRECTORIES} )
@@ -141,12 +136,12 @@ function(IDL_GENERATE)
     endif()
 
     if( _IC_GENERATE_LANGUAGE STREQUAL "IDL" )
-         list( APPEND _IC_GENERATE_FLAGS --idl-destination ${_ABS_DESTINATION} )
+         list( APPEND _IC_GENERATE_FLAGS --idl-out ${_ABS_DESTINATION} )
          list( APPEND _OUTPUT_SUFFIXES .idl )
     endif()
 
     if( _IC_GENERATE_LANGUAGE STREQUAL "PROTOBUF" )
-         list( APPEND _IC_GENERATE_FLAGS --idl-destination ${_ABS_DESTINATION} )
+         list( APPEND _IC_GENERATE_FLAGS --proto-out ${_ABS_DESTINATION} )
          list( APPEND _OUTPUT_SUFFIXES .idl )
     endif()
 
@@ -163,7 +158,7 @@ function(IDL_GENERATE)
         list( APPEND _ENV_CMD_ARGS LD_LIBRARY_PATH=${_IC_RPATH} )
     endif()
 
-    if( _IC_GENERATE_INTERCOM_BUILD OR _IC_RPATH )
+    if( _IC_RPATH )
         set( _ENV_CMD ${CMAKE_COMMAND} -E env ${_ENV_CMD_ARGS} )
     endif()
 

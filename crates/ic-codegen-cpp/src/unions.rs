@@ -58,7 +58,7 @@ impl CppGen<'_> {
         w!(decl_w, "friend void swap(", def, "& a_first, ", def, "& a_second) noexcept;\n\n");
 
         // Discriminator accessors
-        w!(decl_w, disc_type, " _d() const { return ", UNION_DISC_FIELD, "; }\n");
+        w!(decl_w, "[[nodiscard]]", disc_type, " _d() const { return ", UNION_DISC_FIELD, "; }\n");
         w!(decl_w, "void _d(", disc_type, " discriminator);\n\n");
 
         // Member accessors
@@ -132,7 +132,7 @@ impl CppGen<'_> {
             w!(w, member_type, "& ", member_name, "();\n");
 
             // Getter (const reference)
-            w!(w, "const ", member_type, "& ", member_name, "() const;\n");
+            w!(w, "[[nodiscard]] const ", member_type, "& ", member_name, "() const;\n");
 
             // Setter (const reference)
             w!(w, "void ", member_name, "(const ", member_type, "& a_value);\n");
@@ -141,10 +141,10 @@ impl CppGen<'_> {
             w!(w, "void ", member_name, "(", member_type, "&& a_value);\n");
         } else {
             // Primitive: getter (reference)
-            w!(w, member_type, "& ", member_name, "();\n");
+            w!(w, "[[nodiscard]] ", member_type, "& ", member_name, "();\n");
 
             // Primitive: getter (by value)
-            w!(w, member_type, " ", member_name, "() const;\n");
+            w!(w, "[[nodiscard]] ", member_type, " ", member_name, "() const;\n");
 
             // Primitive: setter (by value)
             w!(w, "void ", member_name, "(", member_type, " a_value);\n");
@@ -212,9 +212,13 @@ impl CppGen<'_> {
                 }
             }
         } else {
-            w!(w, UNION_DISC_FIELD, " != ");
-            if let Some(first_label) = variant.labels.first() {
-                self.emit_numeric_value(w, &first_label.value, None);
+            for (i, label) in variant.labels.iter().enumerate() {
+                if i > 0 {
+                    w!(w, " && ", UNION_DISC_FIELD, " != ");
+                } else {
+                    w!(w, UNION_DISC_FIELD, " != ");
+                }
+                self.emit_numeric_value(w, &label.value, None);
             }
         }
     }
@@ -247,7 +251,7 @@ impl CppGen<'_> {
     fn get_variant_default_expr(&self, variant: &Variant, def_id: DefId) -> String {
         if let Some(default) = Self::default_value(&variant.annotations) {
             let mut w = ic_emit::printer::Twine::new();
-            self.emit_numeric_value(&mut w, default, def_id);
+            self.emit_numeric_value_with_ty(&mut w, default, &variant.ty, def_id);
             w.finish()
         } else {
             self.get_default_value_expr(&variant.ty, def_id)
@@ -268,13 +272,15 @@ impl CppGen<'_> {
         }
 
         w!(w, "if (");
-        for (i, v) in non_default_variants.iter().enumerate() {
-            if i > 0 {
-                w!(w, " || ");
-            }
-            w!(w, discriminator_var, " == ");
-            if let Some(first_label) = v.labels.first() {
-                self.emit_numeric_value(w, &first_label.value, None);
+        let mut first = true;
+        for v in &non_default_variants {
+            for label in &v.labels {
+                if !first {
+                    w!(w, " || ");
+                }
+                first = false;
+                w!(w, discriminator_var, " == ");
+                self.emit_numeric_value(w, &label.value, None);
             }
         }
         w!(w, ") {\n");
@@ -298,17 +304,23 @@ impl CppGen<'_> {
         let qualified_name = self.scoped_name(def.id, None);
         w!(w, "inline ", qualified_name, "::", def, "() {\n");
 
-        if let Some(first_variant) = union_ty.variants.first() {
-            self.emit_set_discriminator_to_variant(w, first_variant, union_ty, def.id);
-            let default_val = self.get_variant_default_expr(first_variant, def.id);
-            self.emit_variant_init(w, first_variant, &default_val);
+        let init_variant = union_ty
+            .variants
+            .iter()
+            .find(|v| v.is_default)
+            .or_else(|| union_ty.variants.first());
+
+        if let Some(variant) = init_variant {
+            self.emit_set_discriminator_to_variant(w, variant, union_ty, def.id);
+            let default_val = self.get_variant_default_expr(variant, def.id);
+            self.emit_variant_init(w, variant, &default_val);
         }
         w!(w, "}\n\n");
     }
 
     fn get_default_value_expr(&self, ty: &Ty, relative_def: DefId) -> String {
         match &ty.kind {
-            TyKind::String { .. } => "std::string{}".to_string(),
+            TyKind::String { .. } => "::std::string{}".to_string(),
             TyKind::Array { .. } | TyKind::Sequence { .. } | TyKind::Map { .. } => {
                 let type_name = self.cpp_type(ty, relative_def);
                 format!("{type_name}{{}}")
@@ -584,9 +596,14 @@ impl CppGen<'_> {
                     w!(w, "}\n");
                 }
             } else if !matches!(variant.ty.kind, TyKind::Null) {
-                w!(w, "if (", UNION_DISC_FIELD, " != ");
-                if let Some(first_label) = variant.labels.first() {
-                    self.emit_numeric_value(w, &first_label.value, None);
+                w!(w, "if (");
+                for (i, label) in variant.labels.iter().enumerate() {
+                    if i > 0 {
+                        w!(w, " && ", UNION_DISC_FIELD, " != ");
+                    } else {
+                        w!(w, UNION_DISC_FIELD, " != ");
+                    }
+                    self.emit_numeric_value(w, &label.value, None);
                 }
                 w!(w, ") {\n");
                 w!(w, "free_union_();\n");
@@ -705,9 +722,7 @@ impl CppGen<'_> {
         self.emit_variant_check_condition(w, union_ty, variant);
         w!(w, ") {\n");
         w!(w, "free_union_();\n");
-        if !variant.is_default {
-            self.emit_set_discriminator_to_variant(w, variant, union_ty, def.id);
-        }
+        self.emit_set_discriminator_to_variant(w, variant, union_ty, def.id);
 
         if self.should_use_move(&variant.ty) {
             w!(w, "::ic_cts::construct_at(&ic_union_value_.", member_name, ", a_value);\n");
@@ -736,9 +751,7 @@ impl CppGen<'_> {
         self.emit_variant_check_condition(w, union_ty, variant);
         w!(w, ") {\n");
         w!(w, "free_union_();\n");
-        if !variant.is_default {
-            self.emit_set_discriminator_to_variant(w, variant, union_ty, def.id);
-        }
+        self.emit_set_discriminator_to_variant(w, variant, union_ty, def.id);
         w!(w, "::ic_cts::construct_at(&ic_union_value_.", member_name, ", std::move(a_value));\n");
         w!(w, "} else {\n");
         w!(w, "ic_union_value_.", member_name, " = std::move(a_value);\n");

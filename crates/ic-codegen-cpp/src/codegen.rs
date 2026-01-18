@@ -294,7 +294,7 @@ impl<'a> CppGen<'a> {
                 if !is_array {
                     w!(w, "{");
                 }
-                self.emit_numeric_value(w, default, def_id);
+                self.emit_numeric_value_with_ty(w, default, &member.ty, def_id);
                 if !is_array {
                     w!(w, "}");
                 }
@@ -342,6 +342,16 @@ impl<'a> CppGen<'a> {
         self.emit_numeric_value_impl(w, value, relative_def, None, false);
     }
 
+    pub fn emit_numeric_value_with_ty(
+        &self,
+        w: &mut Twine,
+        value: &Numeric,
+        ty: &Ty,
+        relative_def: impl Into<Option<DefId>>,
+    ) {
+        self.emit_numeric_value_impl(w, value, relative_def, Some(ty), false);
+    }
+
     fn emit_numeric_value_impl(
         &self,
         w: &mut Twine,
@@ -365,7 +375,15 @@ impl<'a> CppGen<'a> {
             Numeric::UInt64(v) => w!(w, v.to_string(), "ULL"),
             Numeric::Float(v) => w!(w, format!("{:.7}", v), "f"),
             Numeric::Double(v) => w!(w, format!("{:.16}", v)),
-            Numeric::String(s) => emit_escaped_string(w, s),
+            Numeric::String(s) => {
+                if let Some(ty) = expected_ty {
+                    let resolved_ty = self.hir.context.resolve_ty(ty);
+                    if matches!(resolved_ty.kind, TyKind::String { wide: true, .. }) {
+                        w!(w, "u");
+                    }
+                }
+                emit_escaped_string(w, s);
+            }
             Numeric::Const(const_def_id) => {
                 let name = self.scoped_name(*const_def_id, relative_def_opt);
                 w!(w, name);
@@ -878,7 +896,7 @@ fn write_escaped_char<W: Write>(w: &mut W, c: char) -> std::fmt::Result {
 
 fn escape_char(w: &mut Twine, c: char) {
     if !c.is_ascii() {
-        w!(w, "L");
+        w!(w, "u");
     }
 
     w!(w, "'");

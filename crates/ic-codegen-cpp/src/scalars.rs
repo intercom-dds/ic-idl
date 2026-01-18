@@ -26,24 +26,20 @@
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use ic_emit::printer::{Twine, w};
-use ic_hir::hir::Def;
+use ic_hir::hir::{
+    AliasTy, BitmaskTy, ConstTy, Def, DefFlags, DefKind, EnumTy, Numeric, Ty, TyKind,
+};
 
-use crate::codegen::{CppGen, cpp_primitive, emit_escaped_string};
+use crate::codegen::{CppGen, cpp_primitive};
 
 impl CppGen<'_> {
-    pub fn emit_typedef(&self, decl_w: &mut Twine, def: &Def, alias_ty: &ic_hir::hir::AliasTy) {
+    pub fn emit_typedef(&self, decl_w: &mut Twine, def: &Def, alias_ty: &AliasTy) {
         let alias_name = &def.ident.name;
         let ty_str = self.cpp_type(&alias_ty.ty, def.id);
         w!(decl_w, "using ", alias_name, " = ", ty_str, ";\n\n");
     }
 
-    pub fn emit_enum(
-        &self,
-        decl_w: &mut Twine,
-        impl_w: &mut Twine,
-        def: &Def,
-        enum_ty: &ic_hir::hir::EnumTy,
-    ) {
+    pub fn emit_enum(&self, decl_w: &mut Twine, impl_w: &mut Twine, def: &Def, enum_ty: &EnumTy) {
         let enum_name = &def.ident.name;
 
         if self.options.scoped_enums {
@@ -58,10 +54,8 @@ impl CppGen<'_> {
 
             w!(decl_w, field_name);
 
-            if field_def
-                .flags
-                .contains(ic_hir::hir::DefFlags::IS_ENUMERATED)
-                && let ic_hir::hir::DefKind::Const(const_ty) = &field_def.kind
+            if field_def.flags.contains(DefFlags::IS_ENUMERATED)
+                && let DefKind::Const(const_ty) = &field_def.kind
             {
                 w!(decl_w, " = ");
                 self.emit_numeric_value(decl_w, &const_ty.value, def.id);
@@ -98,7 +92,7 @@ impl CppGen<'_> {
         decl_w: &mut Twine,
         impl_w: &mut Twine,
         def: &Def,
-        bitmask_ty: &ic_hir::hir::BitmaskTy,
+        bitmask_ty: &BitmaskTy,
     ) {
         let bitmask_name = &def.ident.name;
         let underlying_type = cpp_primitive(bitmask_ty.ty);
@@ -111,7 +105,7 @@ impl CppGen<'_> {
 
             w!(decl_w, flag_name, " = ");
 
-            if let ic_hir::hir::DefKind::Const(const_ty) = &flag_def.kind {
+            if let DefKind::Const(const_ty) = &flag_def.kind {
                 self.emit_numeric_value(decl_w, &const_ty.value, def.id);
             }
 
@@ -129,12 +123,7 @@ impl CppGen<'_> {
         self.emit_bitmask_serializer(impl_w, def, bitmask_ty);
     }
 
-    fn emit_bitmask_serializer(
-        &self,
-        w: &mut Twine,
-        def: &Def,
-        bitmask_ty: &ic_hir::hir::BitmaskTy,
-    ) {
+    fn emit_bitmask_serializer(&self, w: &mut Twine, def: &Def, bitmask_ty: &BitmaskTy) {
         let qualified_name = self.scoped_name(def.id, None);
         let underlying_type = cpp_primitive(bitmask_ty.ty);
 
@@ -153,14 +142,25 @@ impl CppGen<'_> {
             let parent_def = self.hir.context.definitions.get(parent_id);
             matches!(
                 parent_def.kind,
-                ic_hir::hir::DefKind::Valuetype(_) | ic_hir::hir::DefKind::Interface(_)
+                DefKind::Valuetype(_) | DefKind::Interface(_)
             )
         } else {
             false
         }
     }
 
-    pub fn emit_const(&self, decl_w: &mut Twine, def: &Def, const_ty: &ic_hir::hir::ConstTy) {
+    fn string_literal_ty(&self, const_ty: &ConstTy) -> &str {
+        if matches!(
+            self.hir.context.resolve_ty(&const_ty.ty).kind,
+            TyKind::String { wide: true, .. }
+        ) {
+            "char16_t"
+        } else {
+            "char"
+        }
+    }
+
+    pub fn emit_const(&self, decl_w: &mut Twine, def: &Def, const_ty: &ConstTy) {
         let const_name = &def.ident.name;
         let constness = if self.is_constexpr_type(&const_ty.ty) {
             "constexpr"
@@ -175,56 +175,56 @@ impl CppGen<'_> {
         };
 
         match &const_ty.value {
-            ic_hir::hir::Numeric::String(s) => {
-                w!(decl_w, "inline ", static_keyword, "constexpr const char* ", const_name, " = ");
-                emit_escaped_string(decl_w, s);
+            Numeric::String(_) => {
+                let string_ty = self.string_literal_ty(const_ty);
+                w!(decl_w, "inline ", static_keyword, "constexpr const ", string_ty, "* ", const_name, " = ");
+                self.emit_numeric_value_with_ty(decl_w, &const_ty.value, &const_ty.ty, def.id);
                 w!(decl_w, ";\n\n");
             }
-            ic_hir::hir::Numeric::Const(const_def_id) => {
+            Numeric::Const(const_def_id) => {
                 let referenced_const_def = self.hir.context.definitions.get(*const_def_id);
                 let scoped_name = self.scoped_name(*const_def_id, def.id);
 
-                let ty_str =
-                    if let ic_hir::hir::DefKind::Const(ref_const_ty) = &referenced_const_def.kind {
-                        if matches!(ref_const_ty.value, ic_hir::hir::Numeric::String(_)) {
-                            "const char*".to_string()
-                        } else {
-                            self.cpp_type(&const_ty.ty, def.id)
-                        }
+                let ty_str = if let DefKind::Const(ref_const_ty) = &referenced_const_def.kind {
+                    if matches!(ref_const_ty.value, Numeric::String(_)) {
+                        "const char*".to_string()
                     } else {
                         self.cpp_type(&const_ty.ty, def.id)
-                    };
+                    }
+                } else {
+                    self.cpp_type(&const_ty.ty, def.id)
+                };
 
                 w!(decl_w, "inline ", static_keyword, constness, " ", ty_str, " ", const_name, "{");
                 w!(decl_w, scoped_name, "};\n\n");
             }
             _ => {
                 let ty_str = self.cpp_type(&const_ty.ty, def.id);
-                let is_array = matches!(const_ty.value, ic_hir::hir::Numeric::Array { .. });
+                let is_array = matches!(const_ty.value, Numeric::Array { .. });
                 if is_array {
                     w!(decl_w, "inline ", static_keyword, constness, " ", ty_str, " ", const_name);
-                    self.emit_numeric_value(decl_w, &const_ty.value, def.id);
+                    self.emit_numeric_value_with_ty(decl_w, &const_ty.value, &const_ty.ty, def.id);
                     w!(decl_w, ";\n\n");
                 } else {
                     w!(decl_w, "inline ", static_keyword, constness, " ", ty_str, " ", const_name, "{");
-                    self.emit_numeric_value(decl_w, &const_ty.value, def.id);
+                    self.emit_numeric_value_with_ty(decl_w, &const_ty.value, &const_ty.ty, def.id);
                     w!(decl_w, "};\n\n");
                 }
             }
         }
     }
 
-    fn is_constexpr_type(&self, ty: &ic_hir::hir::Ty) -> bool {
+    fn is_constexpr_type(&self, ty: &Ty) -> bool {
         let resolved_ty = match &ty.kind {
-            ic_hir::hir::TyKind::Adt(def_id) => self.hir.context.base_type_of(*def_id),
+            TyKind::Adt(def_id) => self.hir.context.base_type_of(*def_id),
             _ => ty.clone(),
         };
 
         match &resolved_ty.kind {
-            ic_hir::hir::TyKind::Primitive(_) => true,
-            ic_hir::hir::TyKind::Adt(def_id) => {
+            TyKind::Primitive(_) => true,
+            TyKind::Adt(def_id) => {
                 let def = self.hir.context.definitions.get(*def_id);
-                matches!(def.kind, ic_hir::hir::DefKind::Enum(_))
+                matches!(def.kind, DefKind::Enum(_))
             }
             _ => false,
         }

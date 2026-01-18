@@ -153,11 +153,11 @@ impl<'a> CSharpGen<'a> {
     }
 
     fn get_scope(&self, def_id: DefId) -> Option<DefId> {
-        let def = self.hir.context.definitions.get(def_id);
+        let def = self.hir.context.type_of(def_id);
         let mut current = def.parent?;
 
         loop {
-            let def = self.hir.context.definitions.get(current);
+            let def = self.hir.context.type_of(current);
             if matches!(def.kind, DefKind::Module(_) | DefKind::Interface(_)) {
                 return Some(current);
             }
@@ -173,10 +173,10 @@ impl<'a> CSharpGen<'a> {
         let mut current = scope1;
         loop {
             ancestors1.push(current);
-            let def = self.hir.context.definitions.get(current);
+            let def = self.hir.context.type_of(current);
             match def.parent {
                 Some(parent_id) => {
-                    let parent_def = self.hir.context.definitions.get(parent_id);
+                    let parent_def = self.hir.context.type_of(parent_id);
                     if matches!(parent_def.kind, DefKind::Module(_) | DefKind::Interface(_)) {
                         current = parent_id;
                     } else {
@@ -192,10 +192,10 @@ impl<'a> CSharpGen<'a> {
             if ancestors1.contains(&current) {
                 return Some(current);
             }
-            let def = self.hir.context.definitions.get(current);
+            let def = self.hir.context.type_of(current);
             match def.parent {
                 Some(parent_id) => {
-                    let parent_def = self.hir.context.definitions.get(parent_id);
+                    let parent_def = self.hir.context.type_of(parent_id);
                     if matches!(parent_def.kind, DefKind::Module(_) | DefKind::Interface(_)) {
                         current = parent_id;
                     } else {
@@ -218,7 +218,7 @@ impl<'a> CSharpGen<'a> {
                 break;
             }
 
-            let def = self.hir.context.definitions.get(current);
+            let def = self.hir.context.type_of(current);
             // Use I prefix for interfaces in path
             let name = if matches!(def.kind, DefKind::Interface(_)) {
                 format!("I{}", def.ident.name)
@@ -229,7 +229,7 @@ impl<'a> CSharpGen<'a> {
 
             match def.parent {
                 Some(parent_id) => {
-                    let parent_def = self.hir.context.definitions.get(parent_id);
+                    let parent_def = self.hir.context.type_of(parent_id);
                     if matches!(parent_def.kind, DefKind::Module(_) | DefKind::Interface(_)) {
                         current = parent_id;
                     } else {
@@ -434,17 +434,13 @@ impl<'a> CSharpGen<'a> {
     fn emit_struct(&self, w: &mut Twine, def: &Def, struct_ty: &StructTy) {
         self.emit_doc_comments(w, &def.annotations);
 
-        // Emit class declaration with IEquatable<T>
         w!(w, "public partial class ", def.ident.name);
-
-        // Handle inheritance
         if let Some(parent_id) = struct_ty.parent {
             let parent_name = self.scoped_name(parent_id, def.id);
             w!(w, " : ", parent_name);
         } else {
-            w!(w, " : IEquatable<", def.ident.name, ">");
+            w!(w, " : IComparable<", def, ">, IEquatable<", def, ">");
         }
-
         w!(w, "\n");
         w!(w, "{\n");
 
@@ -455,13 +451,13 @@ impl<'a> CSharpGen<'a> {
             w!(w, "\n");
         }
 
-        // Emit default constructor
+        // Default constructor
         w!(w, "\n");
         w!(w, "public ", def.ident.name, "()\n");
         w!(w, "{\n");
         w!(w, "}\n");
 
-        // Emit copy constructor
+        // Copy constructor
         w!(w, "\n");
         w!(w, "public ", def.ident.name, "(", def.ident.name, " other)\n");
         w!(w, "{\n");
@@ -485,7 +481,7 @@ impl<'a> CSharpGen<'a> {
         }
         w!(w, "}\n");
 
-        // Emit constructor with all fields
+        // Constructor with all fields
         if !struct_ty.members.is_empty() {
             w!(w, "\n");
             w!(w, "public ", def.ident.name, "(");
@@ -504,10 +500,8 @@ impl<'a> CSharpGen<'a> {
             w!(w, "}\n");
         }
 
-        // Emit Equals method
         self.emit_struct_equals(w, def, struct_ty);
-
-        // Emit GetHashCode method
+        self.emit_struct_compare_to(w, def, struct_ty);
         Self::emit_struct_hashcode(w, struct_ty);
 
         w!(w, "}\n\n");
@@ -589,20 +583,12 @@ impl<'a> CSharpGen<'a> {
     }
 
     fn emit_struct_equals(&self, w: &mut Twine, def: &Def, struct_ty: &StructTy) {
-        let name = &def.ident.name;
-
         // IEquatable<T>.Equals
         w!(w, "\n");
-        w!(w, "public bool Equals(", name, "? other)\n");
+        w!(w, "public bool Equals(", def, "? other)\n");
         w!(w, "{\n");
-        w!(w, "if (other is null)\n");
-        w!(w, "{\n");
-        w!(w, "return false;\n");
-        w!(w, "}\n");
-        w!(w, "if (ReferenceEquals(this, other))\n");
-        w!(w, "{\n");
-        w!(w, "return true;\n");
-        w!(w, "}\n");
+        w!(w, "if (other is null) return false;\n");
+        w!(w, "if (ReferenceEquals(this, other)) return true;\n");
 
         if struct_ty.parent.is_some() {
             w!(w, "if (!base.Equals(other))\n");
@@ -616,22 +602,49 @@ impl<'a> CSharpGen<'a> {
             w!(
                 w,
                 "if (!EqualityComparer<", self.csharp_type(&member.ty, def.id),
-                ">.Default.Equals(", member_name, ", other.", member_name, "))\n",
+                ">.Default.Equals(", member_name, ", other.", member_name, ")) ",
+                "return false;\n",
             );
-            w!(w, "{\n");
-            w!(w, "return false;\n");
-            w!(w, "}\n");
         }
 
         w!(w, "return true;\n");
-        w!(w, "}\n");
+        w!(w, "}\n\n");
 
         // object.Equals override
-        w!(w, "\n");
         w!(w, "public override bool Equals(object? obj)\n");
+        w!(w, "\t => Equals(obj as ", def, ");\n");
+    }
+
+    fn emit_struct_compare_to(&self, w: &mut Twine, def: &Def, struct_ty: &StructTy) {
+        // IEquatable<T>.Equals
+        w!(w, "\n");
+        w!(w, "public int CompareTo(", def, "? other)\n");
         w!(w, "{\n");
-        w!(w, "return Equals(obj as ", name, ");\n");
-        w!(w, "}\n");
+        w!(w, "if (other is null) return 1;\n");
+        w!(w, "if (ReferenceEquals(this, other)) return 0;\n");
+
+        if struct_ty.parent.is_some() || !struct_ty.members.is_empty() {
+            w!(w, "int result;\n");
+        }
+
+        if struct_ty.parent.is_some() {
+            w!(w, "result = base.CompareTo(other);\n");
+            w!(w, "if (result != 0) return result;\n");
+        }
+
+        for member in &struct_ty.members {
+            let member_type = self.csharp_type(&member.ty, def.id);
+            w!(
+                w,
+                "result = Comparer<", member_type, ">.Default.Compare(",
+                "this.", member.ident.name, ", other.", member.ident.name, ");\n",
+            );
+
+            w!(w, "if (result != 0) return result;\n");
+        }
+
+        w!(w, "return 0;\n");
+        w!(w, "}\n\n");
     }
 
     fn emit_struct_hashcode(w: &mut Twine, struct_ty: &StructTy) {
@@ -660,11 +673,8 @@ impl<'a> CSharpGen<'a> {
 
         w!(w, "public partial class ", name, " : IEquatable<", name, ">\n");
         w!(w, "{\n");
-
-        // Discriminator property (read-only per spec)
         w!(w, "public ", disc_ty, " Discriminator { get; private set; }\n");
 
-        // Private field for each variant
         for variant in &union_ty.variants {
             if matches!(variant.ty.kind, TyKind::Null) {
                 continue;
@@ -708,8 +718,6 @@ impl<'a> CSharpGen<'a> {
 
             let ty_str = self.csharp_type(&variant.ty, def.id);
             let var_name = &variant.ident.name;
-
-            // Build condition for discriminator check (true when variant is NOT active)
             let inactive_condition = self.build_inactive_condition(variant, union_ty, def.id);
 
             w!(w, "public ", ty_str, " ", var_name, "\n");
@@ -764,17 +772,13 @@ impl<'a> CSharpGen<'a> {
             }
         }
 
-        // Emit Equals method (IEquatable<T>)
         self.emit_union_equals(w, def, union_ty);
-
-        // Emit GetHashCode
+        self.emit_union_compare_to(w, def, union_ty);
         Self::emit_union_hashcode(w, union_ty);
 
         w!(w, "}\n\n");
     }
 
-    /// Build a condition string that is true when the variant is NOT active.
-    /// Used to guard property getters: `if (condition) throw ...`
     fn build_inactive_condition(
         &self,
         variant: &ic_hir::hir::Variant,
@@ -782,7 +786,6 @@ impl<'a> CSharpGen<'a> {
         relative_def: DefId,
     ) -> String {
         if variant.is_default {
-            // Default is inactive when discriminator matches any explicit label
             let other_labels: Vec<String> = union_ty
                 .variants
                 .iter()
@@ -797,7 +800,6 @@ impl<'a> CSharpGen<'a> {
             return other_labels.join(" || ");
         }
 
-        // Non-default variant is inactive when discriminator doesn't match any of its labels
         let conditions: Vec<String> = variant
             .labels
             .iter()
@@ -810,7 +812,6 @@ impl<'a> CSharpGen<'a> {
         conditions.join(" && ")
     }
 
-    /// Emit Set<MemberName> modifier method for union variants with multiple labels.
     fn emit_union_set_method(
         &self,
         w: &mut Twine,
@@ -825,7 +826,6 @@ impl<'a> CSharpGen<'a> {
         w!(w, "public void Set", var_name, "(", ty_str, " value, ", disc_ty, " discriminator)\n");
         w!(w, "{\n");
 
-        // Validate discriminator is one of the valid labels
         let valid_labels: Vec<String> = variant
             .labels
             .iter()
@@ -856,46 +856,69 @@ impl<'a> CSharpGen<'a> {
         w!(w, "public bool Equals(", name, "? other)\n");
         w!(w, "{\n");
 
-        w!(w, "if (other is null)\n");
-        w!(w, "{\n");
-        w!(w, "return false;\n");
-        w!(w, "}\n");
-
-        w!(w, "if (ReferenceEquals(this, other))\n");
-        w!(w, "{\n");
-        w!(w, "return true;\n");
-        w!(w, "}\n");
+        w!(w, "if (other is null) return false;\n");
+        w!(w, "if (ReferenceEquals(this, other)) return true;\n");
 
         w!(
             w,
             "if (!EqualityComparer<", self.csharp_type(&union_ty.disc.ty, def.id),
-            ">.Default.Equals(Discriminator, other.Discriminator))\n"
+            ">.Default.Equals(Discriminator, other.Discriminator)) ",
+            "return false;\n",
         );
-        w!(w, "{\n");
-        w!(w, "return false;\n");
-        w!(w, "}\n");
 
-        // Compare the active variant based on discriminator
         for variant in &union_ty.variants {
             if matches!(variant.ty.kind, TyKind::Null) {
                 continue;
             }
             let var_name = &variant.ident.name;
             let ty_str = self.csharp_type(&variant.ty, def.id);
-            w!(w, "if (!EqualityComparer<", ty_str, "?>.Default.Equals(_", var_name, ", other._", var_name, "))\n");
-            w!(w, "{\n");
-            w!(w, "return false;\n");
-            w!(w, "}\n");
+            w!(
+                w,
+                "if (!EqualityComparer<", ty_str, "?>",
+                ".Default.Equals(_", var_name, ", other._", var_name, ")) return false;\n",
+            );
         }
 
         w!(w, "return true;\n");
-        w!(w, "}\n");
+        w!(w, "}\n\n");
 
-        w!(w, "\n");
+        // object.Equals override
         w!(w, "public override bool Equals(object? obj)\n");
+        w!(w, "\t => Equals(obj as ", def, ");\n");
+    }
+
+    fn emit_union_compare_to(&self, w: &mut Twine, def: &Def, union_ty: &UnionTy) {
+        w!(w, "\n");
+        w!(w, "public int CompareTo(", def, "? other)\n");
         w!(w, "{\n");
-        w!(w, "return Equals(obj as ", name, ");\n");
-        w!(w, "}\n");
+        w!(w, "if (other is null) return 1;\n");
+        w!(w, "if (ReferenceEquals(this, other)) return 0;\n");
+
+        let disc_ty = self.csharp_type(&union_ty.disc.ty, def.id);
+        w!(
+            w,
+            "int result = Comparer<", disc_ty, ">.Default.Compare(",
+            "Discriminator, other.Discriminator);\n",
+        );
+        w!(w, "if (result != 0) return result;\n");
+
+        for variant in &union_ty.variants {
+            if matches!(variant.ty.kind, TyKind::Null) {
+                continue;
+            }
+
+            let var_name = &variant.ident.name;
+            let ty_str = self.csharp_type(&variant.ty, def.id);
+            w!(
+                w,
+                "result = Comparer<", ty_str, "?>.Default.Compare(",
+                "_", var_name, ", other._", var_name, ");\n",
+            );
+            w!(w, "if (result != 0) return result;\n");
+        }
+
+        w!(w, "return 0;\n");
+        w!(w, "}\n\n");
     }
 
     fn emit_union_hashcode(w: &mut Twine, union_ty: &UnionTy) {
@@ -924,7 +947,7 @@ impl<'a> CSharpGen<'a> {
         w!(w, "{\n");
 
         for (i, &field_id) in enum_ty.fields.iter().enumerate() {
-            let field_def = self.hir.context.definitions.get(field_id);
+            let field_def = self.hir.context.type_of(field_id);
             let field_name = &field_def.ident.name;
 
             if i > 0 {
@@ -1098,12 +1121,9 @@ impl<'a> CSharpGen<'a> {
 
     fn emit_exception(&self, w: &mut Twine, def: &Def, except: &ExceptTy) {
         self.emit_doc_comments(w, &def.annotations);
-
-        // C# exceptions extend `System.Exception`
         w!(w, "public partial class ", def.ident.name, " : Exception\n");
         w!(w, "{\n");
 
-        // Emit properties for each member
         for member in &except.members {
             self.emit_doc_comments(w, &member.annotations);
             let ty_str = self.csharp_type(&member.ty, def.id);
@@ -1187,7 +1207,7 @@ impl<'a> CSharpGen<'a> {
         w!(w, "{\n");
 
         for (i, &flag_id) in bitmask.flags.iter().enumerate() {
-            let flag_def = self.hir.context.definitions.get(flag_id);
+            let flag_def = self.hir.context.type_of(flag_id);
             let flag_name = &flag_def.ident.name;
 
             if i > 0 {
@@ -1211,7 +1231,7 @@ impl<'a> CSharpGen<'a> {
     }
 
     fn emit_definition(&self, w: &mut Twine, def_id: DefId) {
-        let def = self.hir.context.definitions.get(def_id);
+        let def = self.hir.context.type_of(def_id);
         match &def.kind {
             DefKind::Module(module) => self.emit_module(w, def, module),
             DefKind::Struct(struct_ty) => self.emit_struct(w, def, struct_ty),
@@ -1232,7 +1252,7 @@ impl<'a> CSharpGen<'a> {
         let mut files_map: HashMap<FileId, Vec<DefId>> = HashMap::new();
 
         for &def_id in &self.hir.order {
-            let def = self.hir.context.definitions.get(def_id);
+            let def = self.hir.context.type_of(def_id);
             let file_id = def.ident.span.start.file_id;
             files_map.entry(file_id).or_default().push(def_id);
         }

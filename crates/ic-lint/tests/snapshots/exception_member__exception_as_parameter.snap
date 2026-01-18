@@ -1,0 +1,17 @@
+---
+source: crates/ic-lint/tests/exception_member.rs
+expression: test_lint_hir(source)
+---
+error[exception-member]: exceptions can only be used in `raises` expressions
+   ┌ test.idl:7:22
+   │
+ 2 │ exception ValidationError {
+   ·           ^^^^^^^^^^^^^^^ defined as an exception here
+ 3 │     string field;
+ 4 │ };
+ 5 │ 
+ 6 │ interface ErrorHandler {
+ 7 │     void logError(in ValidationError error);
+   ·                      ^^^^^^^^^^^^^^^ invalid exception use
+ 8 │ };
+   └──

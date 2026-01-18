@@ -563,6 +563,7 @@ define_lints! {
         semantic::duplicate_case_labels::DuplicateCaseLabels,
         semantic::duplicate_enum_values::DuplicateEnumValues,
         semantic::duplicate_name::DuplicateName,
+        semantic::exception_member::ExceptionMember,
         semantic::exhaustive_union_default::ExhaustiveUnionDefaultLint,
         semantic::initializer_list_size::InitializerListSize,
         semantic::invalid_annotation_target::InvalidAnnotationTarget,

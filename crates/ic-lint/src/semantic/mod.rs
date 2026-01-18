@@ -35,6 +35,7 @@ pub mod duplicate_bounds;
 pub mod duplicate_case_labels;
 pub mod duplicate_enum_values;
 pub mod duplicate_name;
+pub mod exception_member;
 pub mod exhaustive_union_default;
 pub mod initializer_list_size;
 pub mod invalid_annotation_target;

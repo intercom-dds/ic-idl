@@ -1,0 +1,15 @@
+---
+source: crates/ic-lint/tests/exception_member.rs
+expression: test_lint_hir(source)
+---
+error[exception-member]: exceptions can only be used in `raises` expressions
+   ┌ test.idl:5:5
+   │
+ 2 │ exception TimeoutError {};
+   ·           ^^^^^^^^^^^^ defined as an exception here
+ 3 │ 
+ 4 │ interface Service {
+ 5 │     TimeoutError getLastError();
+   ·     ^^^^^^^^^^^^ invalid exception use
+ 6 │ };
+   └──

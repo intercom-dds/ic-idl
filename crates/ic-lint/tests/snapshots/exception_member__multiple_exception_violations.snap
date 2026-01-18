@@ -1,0 +1,67 @@
+---
+source: crates/ic-lint/tests/exception_member.rs
+expression: test_lint_hir(source)
+---
+error[exception-member]: exceptions can only be used in `raises` expressions
+   ┌ test.idl:7:5
+   │
+ 2 │ exception GenericError {
+   ·           ^^^^^^^^^^^^ defined as an exception here
+ 3 │     string message;
+ 4 │ };
+ 5 │ 
+ 6 │ struct Data {
+ 7 │     GenericError error1;
+   ·     ^^^^^^^^^^^^ invalid exception use
+ 8 │     sequence<GenericError> errors;
+ 9 │ };
+   └──
+
+error[exception-member]: exceptions can only be used in `raises` expressions
+     ┌ test.idl:8:14
+     │
+   2 │ exception GenericError {
+     ·           ^^^^^^^^^^^^ defined as an exception here
+   3 │     string message;
+   4 │ };
+ ··· │
+   6 │ struct Data {
+   7 │     GenericError error1;
+   8 │     sequence<GenericError> errors;
+     ·              ^^^^^^^^^^^^ invalid exception use
+   9 │ };
+  10 │ 
+  11 │ interface Service {
+     └──
+
+error[exception-member]: exceptions can only be used in `raises` expressions
+     ┌ test.idl:12:21
+     │
+   2 │ exception GenericError {
+     ·           ^^^^^^^^^^^^ defined as an exception here
+   3 │     string message;
+   4 │ };
+ ··· │
+   9 │ };
+  10 │ 
+  11 │ interface Service {
+  12 │     void process(in GenericError err);
+     ·                     ^^^^^^^^^^^^ invalid exception use
+  13 │     GenericError getError();
+  14 │ };
+     └──
+
+error[exception-member]: exceptions can only be used in `raises` expressions
+     ┌ test.idl:13:5
+     │
+   2 │ exception GenericError {
+     ·           ^^^^^^^^^^^^ defined as an exception here
+   3 │     string message;
+   4 │ };
+ ··· │
+  11 │ interface Service {
+  12 │     void process(in GenericError err);
+  13 │     GenericError getError();
+     ·     ^^^^^^^^^^^^ invalid exception use
+  14 │ };
+     └──

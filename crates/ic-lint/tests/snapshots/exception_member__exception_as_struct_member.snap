@@ -1,0 +1,19 @@
+---
+source: crates/ic-lint/tests/exception_member.rs
+expression: test_lint_hir(source)
+---
+error[exception-member]: exceptions can only be used in `raises` expressions
+    ┌ test.idl:8:5
+    │
+  2 │ exception NetworkError {
+    ·           ^^^^^^^^^^^^ defined as an exception here
+  3 │     long code;
+  4 │     string message;
+  5 │ };
+  6 │ 
+  7 │ struct ErrorLog {
+  8 │     NetworkError error;
+    ·     ^^^^^^^^^^^^ invalid exception use
+  9 │     string timestamp;
+ 10 │ };
+    └──

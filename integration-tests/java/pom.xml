@@ -30,6 +30,54 @@
     <build>
         <plugins>
             <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>build-helper-maven-plugin</artifactId>
+                <version>3.5.0</version>
+                <executions>
+                    <execution>
+                        <id>add-generated-sources</id>
+                        <phase>generate-sources</phase>
+                        <goals>
+                            <goal>add-source</goal>
+                        </goals>
+                        <configuration>
+                            <sources>
+                                <source>${project.build.directory}/generated-sources/idl</source>
+                            </sources>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-antrun-plugin</artifactId>
+                <version>3.1.0</version>
+                <executions>
+                    <execution>
+                        <id>generate-java-from-idl</id>
+                        <phase>generate-sources</phase>
+                        <goals>
+                            <goal>run</goal>
+                        </goals>
+                        <configuration>
+                            <target>
+                                <available file="${project.basedir}/../../target/debug/ic-idl" property="ic-idl.exists"/>
+                                <fail unless="ic-idl.exists" message="ic-idl binary not found at ${project.basedir}/../../target/debug/ic-idl"/>
+
+                                <mkdir dir="${project.build.directory}/generated-sources/idl"/>
+                                <apply executable="${project.basedir}/../../target/debug/ic-idl"
+                                       failonerror="true"
+                                       parallel="false">
+                                    <arg value="--java-out"/>
+                                    <arg value="${project.build.directory}/generated-sources/idl"/>
+                                    <fileset dir="${project.basedir}/../corpus" includes="*.idl"/>
+                                </apply>
+                            </target>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-surefire-plugin</artifactId>
                 <version>3.2.5</version>

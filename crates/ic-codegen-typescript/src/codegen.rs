@@ -53,6 +53,19 @@ impl<'a> TsGen<'a> {
         &self.hir.context.type_of(def_id).ident.name
     }
 
+    fn is_type_only(&self, def_id: DefId) -> bool {
+        let def = self.hir.context.type_of(def_id);
+        matches!(
+            def.kind,
+            DefKind::Struct(_)
+                | DefKind::Union(_)
+                | DefKind::Except(_)
+                | DefKind::Interface(_)
+                | DefKind::Valuetype(_)
+                | DefKind::Alias(_)
+        )
+    }
+
     fn scope_of(&self, def_id: DefId) -> Option<DefId> {
         let def = self.hir.context.type_of(def_id);
         let mut current = def.parent?;
@@ -715,6 +728,119 @@ impl<'a> TsGen<'a> {
         parts
     }
 
+    fn emit_re_exports(&self, w: &mut Twine, re_exports: &[DefId], referenced: &[DefId]) {
+        let is_in_module = |def_id: DefId, module_id: DefId| -> bool {
+            self.module_ancestors(def_id).contains(&module_id)
+        };
+
+        for &nested_id in re_exports {
+            let nested_def = self.hir.context.type_of(nested_id);
+            let refs_in_module: Vec<DefId> = referenced
+                .iter()
+                .copied()
+                .filter(|&ref_id| is_in_module(ref_id, nested_id))
+                .collect();
+
+            let is_used = !refs_in_module.is_empty();
+
+            if is_used {
+                let all_types = refs_in_module.iter().all(|&id| self.is_type_only(id));
+                if all_types {
+                    w!(w, "import type * as ", nested_def, " from \"./", nested_def, "\";\n");
+                    w!(w, "export type { ", nested_def, " };\n");
+                } else {
+                    w!(w, "import * as ", nested_def, " from \"./", nested_def, "\";\n");
+                    w!(w, "export { ", nested_def, " };\n");
+                }
+            } else {
+                w!(w, "export * as ", nested_def, " from \"./", nested_def, "\";\n");
+            }
+        }
+    }
+
+    fn compute_import_sources(
+        &self,
+        referenced: &[DefId],
+        dir_module: Option<DefId>,
+        file_name: &str,
+        exclude_from_deps: &[DefId],
+        re_exports: Option<&[DefId]>,
+    ) -> HashSet<Option<DefId>> {
+        let mut import_sources: HashSet<Option<DefId>> = referenced
+            .iter()
+            .map(|&id| self.get_root_module(id))
+            .collect();
+
+        for &exclude in exclude_from_deps {
+            import_sources.remove(&Some(exclude));
+        }
+
+        if file_name == "index.ts" && dir_module.is_none() {
+            import_sources.remove(&None);
+        }
+
+        if let Some(current_module) = dir_module
+            && let Some(root) = self.get_root_module(current_module)
+        {
+            import_sources.remove(&Some(root));
+        }
+
+        if let Some(nested_modules) = re_exports {
+            for &nested_id in nested_modules {
+                import_sources.remove(&Some(nested_id));
+            }
+        }
+
+        import_sources
+    }
+
+    fn emit_imports(
+        &self,
+        w: &mut Twine,
+        import_sources: &HashSet<Option<DefId>>,
+        referenced: &[DefId],
+        dir_module: Option<DefId>,
+    ) {
+        if import_sources.is_empty() {
+            return;
+        }
+
+        let ups = dir_module.map_or(0, |m| self.module_ancestors(m).len());
+
+        for &source in import_sources {
+            let (name, import_path) = match source {
+                None => {
+                    let path = match ups {
+                        0 => ".".to_string(),
+                        n => vec![".."; n].join("/"),
+                    };
+                    ("types".to_string(), path)
+                }
+                Some(module_id) => {
+                    let module_def = self.hir.context.type_of(module_id);
+                    (
+                        module_def.ident.name.clone(),
+                        self.relative_import_path(dir_module, module_id),
+                    )
+                }
+            };
+
+            let refs_from_source: Vec<DefId> = referenced
+                .iter()
+                .copied()
+                .filter(|&ref_id| self.get_root_module(ref_id) == source)
+                .collect();
+
+            let all_types = refs_from_source.iter().all(|&id| self.is_type_only(id));
+
+            if all_types {
+                w!(w, "import type * as ", name, " from \"", import_path, "\";\n");
+            } else {
+                w!(w, "import * as ", name, " from \"", import_path, "\";\n");
+            }
+        }
+    }
+
     fn emit_file(
         &self,
         dir_module: Option<DefId>,
@@ -726,72 +852,26 @@ impl<'a> TsGen<'a> {
         let mut w = Twine::with_indent(2);
         Self::emit_header(&mut w);
 
-        let referenced = self.collect_deps(defs);
-
-        // For each referenced def, find which module ancestors it has
-        let is_in_module = |def_id: DefId, module_id: DefId| -> bool {
-            self.module_ancestors(def_id).contains(&module_id)
-        };
+        let referenced: Vec<DefId> = self.collect_deps(defs).into_iter().collect();
 
         if let Some(nested_modules) = re_exports {
-            for &nested_id in nested_modules {
-                let nested_def = self.hir.context.type_of(nested_id);
-                let is_used = referenced
-                    .iter()
-                    .any(|&ref_id| is_in_module(ref_id, nested_id));
-
-                if is_used {
-                    w!(w, "import * as ", nested_def, " from \"./", nested_def, "\";\n");
-                    w!(w, "export { ", nested_def, " };\n");
-                } else {
-                    w!(w, "export * as ", nested_def, " from \"./", nested_def, "\";\n");
-                }
-            }
+            self.emit_re_exports(&mut w, nested_modules, &referenced);
         }
 
-        let mut import_sources: HashSet<Option<DefId>> = referenced
-            .iter()
-            .map(|&id| self.get_root_module(id))
-            .collect();
-
-        for &exclude in exclude_from_deps {
-            import_sources.remove(&Some(exclude));
-        }
-        if file_name == "index.ts" && dir_module.is_none() {
-            import_sources.remove(&None);
-        }
-        // Remove re-exported modules since they're already handled above
-        if let Some(nested_modules) = re_exports {
-            for &nested_id in nested_modules {
-                import_sources.remove(&Some(nested_id));
-            }
-        }
+        let import_sources = self.compute_import_sources(
+            &referenced,
+            dir_module,
+            file_name,
+            exclude_from_deps,
+            re_exports,
+        );
 
         let has_re_exports = re_exports.is_some_and(|r| !r.is_empty());
         if !import_sources.is_empty() {
             if has_re_exports {
                 w!(w, "\n");
             }
-            let ups = dir_module.map_or(0, |m| self.module_ancestors(m).len());
-            for &source in &import_sources {
-                let (name, import_path) = match source {
-                    None => {
-                        let path = match ups {
-                            0 => ".".to_string(),
-                            n => vec![".."; n].join("/"),
-                        };
-                        ("types".to_string(), path)
-                    }
-                    Some(module_id) => {
-                        let module_def = self.hir.context.type_of(module_id);
-                        (
-                            module_def.ident.name.clone(),
-                            self.relative_import_path(dir_module, module_id),
-                        )
-                    }
-                };
-                w!(w, "import * as ", name, " from \"", import_path, "\";\n");
-            }
+            self.emit_imports(&mut w, &import_sources, &referenced, dir_module);
         }
 
         if (has_re_exports || !import_sources.is_empty()) && !defs.is_empty() {
@@ -802,7 +882,6 @@ impl<'a> TsGen<'a> {
             self.emit_non_module_definition(&mut w, def_id);
         }
 
-        // Ensure the file is a valid module even if empty
         if defs.is_empty() && !has_re_exports && import_sources.is_empty() {
             w!(w, "export {}\n");
         }
@@ -813,6 +892,7 @@ impl<'a> TsGen<'a> {
             .iter()
             .map(|&id| &self.hir.context.type_of(id).ident.name)
             .collect();
+
         path.push(file_name);
         File::Generated {
             path,

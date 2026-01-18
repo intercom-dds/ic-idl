@@ -308,8 +308,10 @@ impl CppGen<'_> {
 
         if let Some(variant) = init_variant {
             self.emit_set_discriminator_to_variant(w, variant, union_ty, def.id);
-            let default_val = self.get_variant_default_expr(variant, def.id);
-            self.emit_variant_init(w, variant, &default_val);
+            if !matches!(variant.ty.kind, TyKind::Null) {
+                let default_val = self.get_variant_default_expr(variant, def.id);
+                self.emit_variant_init(w, variant, &default_val);
+            }
         }
         w!(w, "}\n\n");
     }

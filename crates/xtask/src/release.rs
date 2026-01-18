@@ -88,7 +88,7 @@ fn build_info() -> String {
 
     format!(
         "\
-# Copyright 2024 KONGSBERG
+# Copyright 2026 KONGSBERG
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions are met:
@@ -123,18 +123,53 @@ commit: {hash}
     )
 }
 
-fn library_files() -> Vec<PathBuf> {
+fn library_files() -> Vec<(PathBuf, PathBuf)> {
+    let mut files = Vec::new();
+
+    // C++ include files
     let output = Command::new("git")
-        .args(["ls-files", "--full-name", ":/runtime"])
+        .args(["ls-files", "--full-name", ":/runtime/cpp/include"])
         .output()
         .unwrap();
 
-    String::from_utf8(output.stdout)
-        .unwrap()
-        .trim()
-        .lines()
-        .map(PathBuf::from)
-        .collect()
+    for line in String::from_utf8(output.stdout).unwrap().trim().lines() {
+        let src = PathBuf::from(line);
+        let rel = src.strip_prefix("runtime/cpp/include").unwrap();
+        let dst = PathBuf::from("include").join(rel);
+        files.push((src, dst));
+    }
+
+    // CMake files
+    let output = Command::new("git")
+        .args(["ls-files", "--full-name", ":/runtime/cpp/cmake"])
+        .output()
+        .unwrap();
+
+    for line in String::from_utf8(output.stdout).unwrap().trim().lines() {
+        let src = PathBuf::from(line);
+        let rel = src.strip_prefix("runtime/cpp/cmake").unwrap();
+        let dst = PathBuf::from("cmake").join(rel);
+        files.push((src, dst));
+    }
+
+    // Rust files
+    let output = Command::new("git")
+        .args(["ls-files", "--full-name", ":/runtime/rust"])
+        .output()
+        .unwrap();
+
+    for line in String::from_utf8(output.stdout).unwrap().trim().lines() {
+        let src = PathBuf::from(line);
+        if src.starts_with("runtime/rust/intercom-test") {
+            continue;
+        }
+
+        let rel = src.strip_prefix("runtime/rust").unwrap();
+        let dst = PathBuf::from("rust").join(rel);
+        files.push((src, dst));
+    }
+
+    files
 }
 
 fn install_binary(cwd: &Path, dst: &Path) {
@@ -162,11 +197,6 @@ pub fn build(options: Options) {
         .unwrap_or_else(|| PathBuf::from(&root).join(INSTALL_DIR));
 
     let files_dir = install_dir.join(INSTALL_NAME);
-
-    if install_dir.exists() {
-        // std::fs::remove_dir_all(install_dir).unwrap();
-    }
-
     std::fs::create_dir_all(&files_dir).unwrap();
 
     // Generate a buildinfo.txt
@@ -179,9 +209,9 @@ pub fn build(options: Options) {
 
     // Installl the serialization libraries
     let libraries = library_files();
-    for file in libraries {
-        let src = root.join(&file);
-        let dst = files_dir.join(&file);
+    for (src_rel, dst_rel) in libraries {
+        let src = root.join(&src_rel);
+        let dst = files_dir.join(&dst_rel);
 
         if let Some(v) = dst.parent() {
             std::fs::create_dir_all(v).unwrap();

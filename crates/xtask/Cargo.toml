@@ -27,9 +27,9 @@
 
 [package]
 name = "xtask"
-version = "0.0.0"
 edition = "2024"
 
+version.workspace = true
 rust-version.workspace = true
 publish.workspace = true
 

@@ -1,0 +1,112 @@
+// Copyright 2026 KONGSBERG
+//
+// Redistribution and use in source and binary forms, with or without
+// modification, are permitted provided that the following conditions are met:
+//
+// 1. Redistributions of source code must retain the above copyright notice,
+//    this list of conditions and the following disclaimer.
+//
+// 2. Redistributions in binary form must reproduce the above copyright notice,
+//    this list of conditions and the following disclaimer in the documentation
+//    and/or other materials provided with the distribution.
+//
+// 3. Neither the name of the copyright holder nor the names of its contributors
+//    may be used to endorse or promote products derived from this software
+//    without specific prior written permission.
+//
+// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
+// ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+// WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+// DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
+// FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+// DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+// SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+// CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+// OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+// OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+module default_types {
+    const string DEFAULT_NAME = "unnamed";
+    const long DEFAULT_COUNT = 100;
+    const double DEFAULT_RATE = 0.5;
+
+    struct PrimitiveDefaults {
+        boolean bool_empty;
+        @default(TRUE) boolean bool_true;
+        @default(FALSE) boolean bool_false;
+
+        long int_empty;
+        @default(42) long int_value;
+        @default(-100) long int_negative;
+
+        double float_empty;
+        @default(3.14159) double float_value;
+        @default(-0.5) double float_negative;
+
+        string string_empty;
+        @default("hello") string string_value;
+        @default(DEFAULT_NAME) string string_from_const;
+    };
+
+    struct ArrayDefaults {
+        long array_empty[3];
+        @default({1, 2, 3}) long array_values[3];
+        @default({10, 20}) long array_partial[2];
+
+        string string_array_empty[2];
+        @default({"foo", "bar"}) string string_array_values[2];
+    };
+
+    struct SequenceDefaults {
+        sequence<long> seq_empty;
+        @default({1, 2, 3, 4, 5}) sequence<long> seq_values;
+
+        sequence<string> string_seq_empty;
+        @default({"a", "b", "c"}) sequence<string> string_seq_values;
+    };
+
+    struct MapDefaults {
+        map<string, long> map_empty;
+        @default({{"one", 1}, {"two", 2}}) map<string, long> map_values;
+
+        map<long, string> reverse_map_empty;
+        @default({{1, "one"}, {2, "two"}}) map<long, string> reverse_map_values;
+    };
+
+    struct Inner {
+        long x;
+        string y;
+    };
+
+    // Workaround: inline struct literals not supported, must use const
+    const Inner DEFAULT_INNER = {10, "default"};
+    const Inner NESTED_INNER = {99, "nested"};
+
+    struct OuterDefaults {
+        Inner inner_empty;
+        @default(NESTED_INNER) Inner inner_literal;
+        @default(DEFAULT_INNER) Inner inner_from_const;
+    };
+
+    enum Priority {
+        LOW = 0,
+        @default_literal MEDIUM = 1,
+        HIGH = 2
+    };
+
+    struct EnumDefaults {
+        Priority priority_empty;
+        @default(HIGH) Priority priority_high;
+    };
+
+    struct OptionalFields {
+        @optional long maybe_int;
+        @optional string maybe_string;
+        @optional Inner maybe_struct;
+    };
+
+    struct ComplexDefaults {
+        @default({{1, 2}, {3, 4}}) sequence<sequence<long>> nested_seq;
+        @default({{"a", {1, 2}}, {"b", {3, 4}}}) map<string, sequence<long>> map_of_seq;
+    };
+};

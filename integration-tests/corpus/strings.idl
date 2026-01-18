@@ -1,0 +1,130 @@
+// Copyright 2026 KONGSBERG
+//
+// Redistribution and use in source and binary forms, with or without
+// modification, are permitted provided that the following conditions are met:
+//
+// 1. Redistributions of source code must retain the above copyright notice,
+//    this list of conditions and the following disclaimer.
+//
+// 2. Redistributions in binary form must reproduce the above copyright notice,
+//    this list of conditions and the following disclaimer in the documentation
+//    and/or other materials provided with the distribution.
+//
+// 3. Neither the name of the copyright holder nor the names of its contributors
+//    may be used to endorse or promote products derived from this software
+//    without specific prior written permission.
+//
+// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
+// ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+// WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+// DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
+// FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+// DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+// SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+// CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+// OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+// OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+// Test string, char, wchar, wstring types and Unicode handling
+
+module char_wstring_types {
+    // Char constants
+    const char CHAR_A = 'A';
+    const char CHAR_DIGIT = '5';
+    const char CHAR_SPACE = ' ';
+    const char CHAR_NEWLINE = '\n';
+    const char CHAR_TAB = '\t';
+    const char CHAR_QUOTE = '\'';
+    const char CHAR_BACKSLASH = '\\';
+
+    // Wchar constants (without L prefix - using regular char literals)
+    const wchar WCHAR_A = 'A';
+    const wchar WCHAR_OMEGA = 937;
+    const wchar WCHAR_CHINESE = 20013;
+
+    // Wstring constants (without L prefix)
+    const wstring WSTRING_HELLO = "Hello";
+    const wstring WSTRING_UNICODE = "日本語テスト";
+    const wstring WSTRING_EMOJI = "🎉🚀";
+    const wstring WSTRING_EMPTY = "";
+
+    // Struct with char fields
+    struct CharFields {
+        char single_char;
+        wchar wide_char;
+    };
+
+    // Struct with wstring fields
+    struct WstringFields {
+        wstring wide_text;
+        string narrow_text;
+    };
+
+    // Sequence of chars
+    struct CharSequences {
+        sequence<char> char_seq;
+        sequence<wchar> wchar_seq;
+    };
+
+    // Mixed char and wstring
+    struct MixedCharTypes {
+        char letter;
+        wchar wide_letter;
+        string text;
+        wstring wide_text;
+    };
+};
+
+module unicode_types {
+    // Basic Latin with accents
+    const string FRENCH = "café résumé naïve";
+    const string GERMAN = "größe über müde";
+    const string SPANISH = "señor mañana niño";
+
+    // Nordic characters
+    const string NORWEGIAN = "blåbær ærlig øl";
+    const string SWEDISH = "smörgås älg ö";
+
+    // Greek
+    const string GREEK = "αβγδ Ωμέγα";
+
+    // Cyrillic
+    const string RUSSIAN = "привет мир";
+
+    // CJK (Chinese, Japanese, Korean)
+    const string CHINESE = "你好世界";
+    const string JAPANESE = "こんにちは世界";
+    const string KOREAN = "안녕하세요";
+
+    // Emoji
+    const string EMOJI = "🎉🚀💻🔥";
+
+    // Mixed scripts in one string
+    const string MIXED = "Hello 世界 🌍 café";
+
+    // Special characters that need escaping
+    const string QUOTES = "He said \"hello\"";
+    const string BACKSLASH = "path\\to\\file";
+    const string NEWLINE = "line1\nline2";
+    const string TAB = "col1\tcol2";
+
+    // Empty and whitespace
+    const string EMPTY = "";
+    const string SPACES = "   ";
+    const string UNICODE_SPACES = " \u00A0 ";
+
+    // Mathematical symbols
+    const string MATH = "∑∏∫√∞≠≤≥";
+
+    // Currency symbols
+    const string CURRENCY = "$ € £ ¥ ₹ ₽";
+
+    // Arrows and symbols
+    const string ARROWS = "← → ↑ ↓ ↔ ⇒";
+
+    // Struct with Unicode field values for runtime testing
+    struct UnicodeData {
+        string label;
+        string description;
+    };
+};

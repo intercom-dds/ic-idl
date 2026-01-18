@@ -1,0 +1,104 @@
+// Copyright 2026 KONGSBERG
+//
+// Redistribution and use in source and binary forms, with or without
+// modification, are permitted provided that the following conditions are met:
+//
+// 1. Redistributions of source code must retain the above copyright notice,
+//    this list of conditions and the following disclaimer.
+//
+// 2. Redistributions in binary form must reproduce the above copyright notice,
+//    this list of conditions and the following disclaimer in the documentation
+//    and/or other materials provided with the distribution.
+//
+// 3. Neither the name of the copyright holder nor the names of its contributors
+//    may be used to endorse or promote products derived from this software
+//    without specific prior written permission.
+//
+// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
+// ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+// WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+// DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
+// FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+// DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+// SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+// CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+// OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+// OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+module deep_generic_types {
+    struct TwoLevelSeq {
+        sequence<sequence<long>> matrix;
+    };
+
+    struct ThreeLevelSeq {
+        sequence<sequence<sequence<long>>> cube;
+    };
+
+    struct MapOfSeq {
+        map<string, sequence<long>> indexed_lists;
+    };
+
+    struct SeqOfMap {
+        sequence<map<string, long>> list_of_dicts;
+    };
+
+    struct MapOfMap {
+        map<string, map<string, long>> nested_dict;
+    };
+
+    struct MapSeqMap {
+        map<string, sequence<map<string, long>>> complex_structure;
+    };
+
+    struct SeqMapSeq {
+        sequence<map<string, sequence<long>>> inverse_structure;
+    };
+
+    struct FourLevelDeep {
+        sequence<sequence<sequence<sequence<long>>>> hypercube;
+    };
+
+    struct Point {
+        long x;
+        long y;
+    };
+
+    struct SeqOfPoints {
+        sequence<Point> points;
+    };
+
+    struct MapOfPoints {
+        map<string, Point> named_points;
+    };
+
+    struct SeqOfSeqOfPoints {
+        sequence<sequence<Point>> point_matrix;
+    };
+
+    struct MapOfSeqOfPoints {
+        map<string, sequence<Point>> point_lists;
+    };
+
+    typedef sequence<long> IntList;
+    typedef sequence<IntList> IntMatrix;
+    typedef map<string, IntMatrix> NamedMatrices;
+
+    struct UsingTypedefChain {
+        NamedMatrices data;
+    };
+
+    struct ArrayOfSeq {
+        sequence<long> items[3];
+    };
+
+    // Requires typedef indirection - can't write sequence<long[3]> directly
+    typedef long ThreeInts[3];
+
+    struct SeqOfArray {
+        sequence<ThreeInts> fixed_triples;
+    };
+
+    struct MapOfArray {
+        map<string, ThreeInts> named_triples;
+    };
+};

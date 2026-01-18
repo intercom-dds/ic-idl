@@ -1,0 +1,348 @@
+// Copyright 2026 KONGSBERG
+//
+// Redistribution and use in source and binary forms, with or without
+// modification, are permitted provided that the following conditions are met:
+//
+// 1. Redistributions of source code must retain the above copyright notice,
+//    this list of conditions and the following disclaimer.
+//
+// 2. Redistributions in binary form must reproduce the above copyright notice,
+//    this list of conditions and the following disclaimer in the documentation
+//    and/or other materials provided with the distribution.
+//
+// 3. Neither the name of the copyright holder nor the names of its contributors
+//    may be used to endorse or promote products derived from this software
+//    without specific prior written permission.
+//
+// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
+// ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+// WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+// DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
+// FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+// DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+// SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+// CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+// OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+// OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+#pragma once
+
+module ProblematicTypes {
+    struct file {
+        long x;
+    };
+
+    struct record {
+        long x;
+    };
+
+    struct required {
+        long x;
+    };
+
+    struct scoped {
+        long x;
+    };
+};
+
+module WarningTypes {
+    struct add {
+        long x;
+    };
+
+    struct and {
+        long x;
+    };
+
+    struct args {
+        long x;
+    };
+
+    struct ascending {
+        long x;
+    };
+
+    struct async {
+        long x;
+    };
+
+    struct await {
+        long x;
+    };
+
+    struct by {
+        long x;
+    };
+
+    struct descending {
+        long x;
+    };
+
+    struct dynamic {
+        long x;
+    };
+
+    struct equals {
+        long x;
+    };
+
+    struct from {
+        long x;
+    };
+
+    struct get {
+        long x;
+    };
+
+    struct global {
+        long x;
+    };
+
+    struct group {
+        long x;
+    };
+
+    struct init {
+        long x;
+    };
+
+    struct into {
+        long x;
+    };
+
+    struct join {
+        long x;
+    };
+
+    struct let {
+        long x;
+    };
+
+    struct managed {
+        long x;
+    };
+
+    struct nameof {
+        long x;
+    };
+
+    struct nint {
+        long x;
+    };
+
+    struct not {
+        long x;
+    };
+
+    struct notnull {
+        long x;
+    };
+
+    struct nuint {
+        long x;
+    };
+
+    struct on {
+        long x;
+    };
+
+    struct or {
+        long x;
+    };
+
+    struct orderby {
+        long x;
+    };
+
+    struct partial {
+        long x;
+    };
+
+    struct remove {
+        long x;
+    };
+
+    struct select {
+        long x;
+    };
+
+    struct set {
+        long x;
+    };
+
+    struct unmanaged {
+        long x;
+    };
+
+    struct value {
+        long x;
+    };
+
+    struct var {
+        long x;
+    };
+
+    struct when {
+        long x;
+    };
+
+    struct where {
+        long x;
+    };
+
+    struct with {
+        long x;
+    };
+
+    struct yield {
+        long x;
+    };
+};
+
+module MemberTests {
+    struct MemberKeywords {
+        long add;
+        long and;
+        long args;
+        long ascending;
+        long async;
+        long await;
+        long by;
+        long descending;
+        long dynamic;
+        long equals;
+        long file;
+        long from;
+        long get;
+        long global;
+        long group;
+        long init;
+        long into;
+        long join;
+        long let;
+        long managed;
+        long nameof;
+        long nint;
+        long not;
+        long notnull;
+        long nuint;
+        long on;
+        long or;
+        long orderby;
+        long partial;
+        long record;
+        long remove;
+        long required;
+        long scoped;
+        long select;
+        long set;
+        long unmanaged;
+        long value;
+        long var;
+        long when;
+        long where;
+        long with;
+        long yield;
+    };
+};
+
+module OperationTests {
+    interface KeywordOperations {
+        void add();
+        void and();
+        void args();
+        void ascending();
+        void async();
+        void await();
+        void by();
+        void descending();
+        void dynamic();
+        void equals();
+        void file();
+        void from();
+        void get();
+        void global();
+        void group();
+        void init();
+        void into();
+        void join();
+        void let();
+        void managed();
+        void nameof();
+        void nint();
+        void not();
+        void notnull();
+        void nuint();
+        void on();
+        void or();
+        void orderby();
+        void partial();
+        void record();
+        void remove();
+        void required();
+        void scoped();
+        void select();
+        void set();
+        void unmanaged();
+        void value();
+        void var();
+        void when();
+        void where();
+        void with();
+        void yield();
+    };
+};
+
+module ParameterTests {
+    interface KeywordParameters {
+        void testParams1(in long add, in long and, in long args);
+        void testParams2(in long ascending, in long async, in long await, in long by);
+        void testParams3(in long descending, in long dynamic, in long equals, in long file);
+        void testParams4(in long from, in long get, in long global, in long group);
+        void testParams5(in long init, in long into, in long join, in long let);
+        void testParams6(in long managed, in long nameof, in long nint, in long not);
+        void testParams7(in long notnull, in long nuint, in long on, in long or);
+        void testParams8(in long orderby, in long partial, in long record, in long remove);
+        void testParams9(in long required, in long scoped, in long select, in long set);
+        void testParams10(in long unmanaged, in long value, in long var, in long when);
+        void testParams11(in long where, in long with, in long yield);
+    };
+};
+
+module TypeReferenceTests {
+    struct UsesProblematicTypes {
+        ProblematicTypes::file fileField;
+        ProblematicTypes::record recordField;
+        ProblematicTypes::required requiredField;
+        ProblematicTypes::scoped scopedField;
+    };
+};
+
+module UnionTests {
+    union KeywordUnion switch (long) {
+        case 1: ProblematicTypes::file fileCase;
+        case 2: ProblematicTypes::record recordCase;
+        case 3: ProblematicTypes::required requiredCase;
+        case 4: ProblematicTypes::scoped scopedCase;
+        default: long defaultCase;
+    };
+};
+
+module EnumTests {
+    enum KeywordEnum {
+        add,
+        file,
+        record,
+        required,
+        scoped,
+        value,
+        var
+    };
+};
+
+module CollectionTests {
+    typedef sequence<ProblematicTypes::file> FileSequence;
+    typedef sequence<ProblematicTypes::record> RecordSequence;
+    typedef map<string, ProblematicTypes::file> FileMap;
+    typedef map<string, ProblematicTypes::record> RecordMap;
+};

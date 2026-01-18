@@ -1,0 +1,149 @@
+// Copyright 2026 KONGSBERG
+//
+// Redistribution and use in source and binary forms, with or without
+// modification, are permitted provided that the following conditions are met:
+//
+// 1. Redistributions of source code must retain the above copyright notice,
+//    this list of conditions and the following disclaimer.
+//
+// 2. Redistributions in binary form must reproduce the above copyright notice,
+//    this list of conditions and the following disclaimer in the documentation
+//    and/or other materials provided with the distribution.
+//
+// 3. Neither the name of the copyright holder nor the names of its contributors
+//    may be used to endorse or promote products derived from this software
+//    without specific prior written permission.
+//
+// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
+// ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+// WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+// DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
+// FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+// DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+// SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+// CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+// OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+// OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+module constant_types {
+    // Primitive constants
+    const long INT_CONST = 42;
+    const unsigned long UINT_CONST = 100;
+    const short SHORT_CONST = -10;
+    const long long LONGLONG_CONST = 9999999999;
+    const double DOUBLE_CONST = 3.14159;
+    const float FLOAT_CONST = 2.5;
+    const string STRING_CONST = "hello world";
+    const boolean BOOL_TRUE = TRUE;
+    const boolean BOOL_FALSE = FALSE;
+    const octet OCTET_CONST = 255;
+
+    // Constant chains
+    const long CHAIN_1 = 10;
+    const long CHAIN_2 = CHAIN_1;
+    const long CHAIN_3 = CHAIN_2;
+    const long CHAIN_4 = CHAIN_3;
+    const long CHAIN_5 = CHAIN_4;
+
+    // Arithmetic chains
+    const long ARITH_BASE = 100;
+    const long ARITH_DOUBLED = ARITH_BASE * 2;
+    const long ARITH_QUADRUPLED = ARITH_DOUBLED * 2;
+    const long ARITH_OCTUPLED = ARITH_QUADRUPLED * 2;
+
+    // Mixed arithmetic chains
+    const long MATH_1 = 5;
+    const long MATH_2 = MATH_1 + 10;
+    const long MATH_3 = MATH_2 * 2;
+    const long MATH_4 = MATH_3 - 5;
+    const long MATH_5 = MATH_4 / 5;
+
+    // Negative and expressions
+    const long NEGATIVE = -50;
+    const long NEGATED = -NEGATIVE;
+    const long DOUBLE_NEGATED = -NEGATED;
+
+    // Bitwise operations
+    const long BITS_A = 0x0F;
+    const long BITS_B = 0xF0;
+    const long BITS_OR = BITS_A | BITS_B;
+    const long BITS_AND = BITS_OR & 0xFF;
+    const long BITS_XOR = BITS_A ^ 0xFF;
+    const long BITS_SHIFT_LEFT = 1 << 4;
+    const long BITS_SHIFT_RIGHT = 256 >> 4;
+
+    // Float chains
+    const double FLOAT_A = 1.0;
+    const double FLOAT_B = FLOAT_A + 0.5;
+    const double FLOAT_C = FLOAT_B * 2.0;
+    const double FLOAT_D = FLOAT_C / 4.0;
+
+    // Enum for constant references
+    enum Priority {
+        LOW = 0,
+        MEDIUM = 50,
+        HIGH = 100
+    };
+    const Priority PRIORITY_VALUE = HIGH;
+    const Priority PRIORITY_CHAIN = PRIORITY_VALUE;
+
+    // String constants
+    const string GREETING = "Hello";
+    const string FAREWELL = "Goodbye";
+
+    // Parenthesized expressions
+    const long PAREN_A = (10 + 5) * 2;
+    const long PAREN_B = 10 + (5 * 2);
+    const long PAREN_C = ((PAREN_A + PAREN_B) / 2);
+
+    // Modulo
+    const long MOD_A = 17 % 5;
+    const long MOD_B = MOD_A % 3;
+};
+
+module large_integer_types {
+    // 8-bit limits
+    const octet OCTET_MAX = 255;
+    const octet OCTET_MIN = 0;
+
+    // 16-bit signed limits
+    const short SHORT_MAX = 32767;
+    const short SHORT_MIN = -32768;
+
+    // 16-bit unsigned limits
+    const unsigned short USHORT_MAX = 65535;
+    const unsigned short USHORT_MIN = 0;
+
+    // 32-bit signed limits
+    const long LONG_MAX = 2147483647;
+    const long LONG_MIN = -2147483648;
+
+    // 32-bit unsigned limits
+    const unsigned long ULONG_MAX = 4294967295;
+    const unsigned long ULONG_MIN = 0;
+
+    // 64-bit signed limits
+    const long long LONGLONG_MAX = 9223372036854775807;
+    const long long LONGLONG_MIN = -9223372036854775807;
+
+    // 64-bit unsigned limits
+    const unsigned long long ULONGLONG_MAX = 18446744073709551615;
+    const unsigned long long ULONGLONG_MIN = 0;
+
+    // Hex literals
+    const unsigned long HEX_DEADBEEF = 0xDEADBEEF;
+    const unsigned long HEX_FFFFFFFF = 0xFFFFFFFF;
+    const long long HEX_64BIT = 0x123456789ABCDEF0;
+
+    // Octal literals
+    const long OCTAL_777 = 0777;
+    const long OCTAL_LARGE = 017777777777;
+
+    struct LargeIntFields {
+        long long big_signed;
+        unsigned long long big_unsigned;
+    };
+
+    const long LONG_MAX_MINUS_ONE = 2147483646;
+    const long long LONGLONG_MAX_MINUS_ONE = 9223372036854775806;
+};

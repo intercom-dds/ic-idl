@@ -1,0 +1,82 @@
+// Copyright 2026 KONGSBERG
+//
+// Redistribution and use in source and binary forms, with or without
+// modification, are permitted provided that the following conditions are met:
+//
+// 1. Redistributions of source code must retain the above copyright notice,
+//    this list of conditions and the following disclaimer.
+//
+// 2. Redistributions in binary form must reproduce the above copyright notice,
+//    this list of conditions and the following disclaimer in the documentation
+//    and/or other materials provided with the distribution.
+//
+// 3. Neither the name of the copyright holder nor the names of its contributors
+//    may be used to endorse or promote products derived from this software
+//    without specific prior written permission.
+//
+// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
+// ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+// WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+// DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
+// FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+// DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+// SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+// CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+// OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+// OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+module struct_types {
+    struct Point {
+        long x;
+        long y;
+    };
+
+    struct Point3D : Point {
+        long z;
+    };
+
+    struct Point4D : Point3D {
+        long w;
+    };
+
+    struct Rectangle {
+        Point top_left;
+        Point bottom_right;
+    };
+
+    struct AllPrimitives {
+        boolean bool_val;
+        octet byte_val;
+        short short_val;
+        unsigned short ushort_val;
+        long long_val;
+        unsigned long ulong_val;
+        long long longlong_val;
+        unsigned long long ulonglong_val;
+        float float_val;
+        double double_val;
+        string string_val;
+    };
+
+    struct WithDefaults {
+        long count;
+        string name;
+        double value;
+    };
+
+    struct WithSequence {
+        sequence<long> numbers;
+        sequence<string> names;
+    };
+
+    struct WithArray {
+        long fixed_numbers[5];
+    };
+
+    struct WithMap {
+        map<string, long> string_to_int;
+    };
+
+    struct Empty {
+    };
+};

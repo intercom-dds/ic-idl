@@ -1,0 +1,99 @@
+// Copyright 2026 KONGSBERG
+//
+// Redistribution and use in source and binary forms, with or without
+// modification, are permitted provided that the following conditions are met:
+//
+// 1. Redistributions of source code must retain the above copyright notice,
+//    this list of conditions and the following disclaimer.
+//
+// 2. Redistributions in binary form must reproduce the above copyright notice,
+//    this list of conditions and the following disclaimer in the documentation
+//    and/or other materials provided with the distribution.
+//
+// 3. Neither the name of the copyright holder nor the names of its contributors
+//    may be used to endorse or promote products derived from this software
+//    without specific prior written permission.
+//
+// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
+// ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+// WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+// DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
+// FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+// DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+// SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+// CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+// OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+// OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+module typedef_types {
+    // Primitive typedefs
+    typedef long Integer;
+    typedef unsigned long UnsignedInteger;
+    typedef double Real;
+    typedef string Text;
+    typedef boolean Flag;
+    typedef octet Byte;
+
+    // Sequence typedefs
+    typedef sequence<long> IntList;
+    typedef sequence<string> StringList;
+    typedef sequence<double> RealList;
+
+    // Nested typedef (typedef of typedef)
+    typedef Integer Count;
+    typedef Text Label;
+
+    // Deep typedef chains (5 levels)
+    typedef long Level1;
+    typedef Level1 Level2;
+    typedef Level2 Level3;
+    typedef Level3 Level4;
+    typedef Level4 Level5;
+
+    typedef sequence<long> SeqLevel1;
+    typedef SeqLevel1 SeqLevel2;
+    typedef SeqLevel2 SeqLevel3;
+
+    typedef map<string, long> MapLevel1;
+    typedef MapLevel1 MapLevel2;
+    typedef MapLevel2 MapLevel3;
+
+    // Map typedefs
+    typedef map<string, long> StringIntMap;
+    typedef map<string, string> StringStringMap;
+
+    // Array typedef
+    typedef long LongArray[10];
+
+    struct Point {
+        Real x;
+        Real y;
+    };
+
+    struct Person {
+        Text name;
+        Integer age;
+        Flag active;
+    };
+
+    struct Container {
+        IntList numbers;
+        StringList labels;
+        StringIntMap lookup;
+    };
+
+    struct Measurement {
+        Label name;
+        Count value;
+    };
+
+    struct WithArrayTypedef {
+        LongArray values;
+    };
+
+    struct DeepChainStruct {
+        Level5 deep_int;
+        SeqLevel3 deep_seq;
+        MapLevel3 deep_map;
+    };
+};

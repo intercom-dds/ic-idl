@@ -1,0 +1,126 @@
+// Copyright 2026 KONGSBERG
+//
+// Redistribution and use in source and binary forms, with or without
+// modification, are permitted provided that the following conditions are met:
+//
+// 1. Redistributions of source code must retain the above copyright notice,
+//    this list of conditions and the following disclaimer.
+//
+// 2. Redistributions in binary form must reproduce the above copyright notice,
+//    this list of conditions and the following disclaimer in the documentation
+//    and/or other materials provided with the distribution.
+//
+// 3. Neither the name of the copyright holder nor the names of its contributors
+//    may be used to endorse or promote products derived from this software
+//    without specific prior written permission.
+//
+// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
+// ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+// WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+// DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
+// FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+// DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+// SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+// CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+// OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+// OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+module python_keyword_types {
+    // Struct with keyword field names
+    struct KeywordFields {
+        long class;
+        long def;
+        long _import;
+        long from;
+        long type;
+        long return;
+        long yield;
+        long async;
+        long await;
+        long pass;
+        long break;
+        long continue;
+        long if;
+        long else;
+        long elif;
+        long for;
+        long while;
+        long try;
+        long except;
+        long finally;
+        long with;
+        long as;
+        long lambda;
+        long global;
+        long nonlocal;
+        long assert;
+        long raise;
+        long _in;
+        long _is;
+        long _and;
+        long _or;
+        long _not;
+        long _True;
+        long _False;
+        long _None;
+    };
+
+    enum KeywordEnum {
+        class,
+        def,
+        _import,
+        return,
+        type,
+        _in,
+        _is,
+        _and,
+        _or,
+        _not
+    };
+
+    interface KeywordMethods {
+        void class();
+        void def();
+        long _import(in long from);
+        string type();
+        boolean _in();
+        boolean _is();
+        boolean _and();
+        boolean _or();
+        boolean _not();
+    };
+
+    struct KeywordParams {
+        long lambda;
+        string global;
+    };
+
+    // Constants with keyword names
+    module constants {
+        const long class = 1;
+        const long def = 2;
+        const long _import = 3;
+        const string type = "keyword";
+        const long _in = 4;
+        const long and = 5;
+        const long or = 6;
+        const long not = 7;
+        const long lambda = 8;
+        const long global = 9;
+    };
+
+    // Typedefs with keyword names
+    module typedefs {
+        typedef long class;
+        typedef long def;
+        typedef long _import;
+        typedef long from;
+        typedef long type;
+        typedef long return;
+        typedef long lambda;
+        typedef long _in;
+        typedef long _and;
+        typedef long _or;
+        typedef long _not;
+    };
+};

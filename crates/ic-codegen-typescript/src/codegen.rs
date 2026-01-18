@@ -741,10 +741,10 @@ impl<'a> TsGen<'a> {
                     .any(|&ref_id| is_in_module(ref_id, nested_id));
 
                 if is_used {
-                    w!(w, "import * as ", nested_def, " from './", nested_def, "';\n");
+                    w!(w, "import * as ", nested_def, " from \"./", nested_def, "\";\n");
                     w!(w, "export { ", nested_def, " };\n");
                 } else {
-                    w!(w, "export * as ", nested_def, " from './", nested_def, "';\n");
+                    w!(w, "export * as ", nested_def, " from \"./", nested_def, "\";\n");
                 }
             }
         }
@@ -790,7 +790,7 @@ impl<'a> TsGen<'a> {
                         )
                     }
                 };
-                w!(w, "import * as ", name, " from '", import_path, "';\n");
+                w!(w, "import * as ", name, " from \"", import_path, "\";\n");
             }
         }
 

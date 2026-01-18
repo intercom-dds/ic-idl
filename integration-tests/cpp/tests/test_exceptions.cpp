@@ -115,3 +115,34 @@ TEST_CASE("validation_error" * doctest::test_suite("exceptions")) {
         FAIL("Exception not caught properly");
     }
 }
+
+TEST_CASE("exception_swap" * doctest::test_suite("exceptions")) {
+    exception_types::SimpleError e1(404, "not found");
+    exception_types::SimpleError e2(500, "server error");
+
+    using std::swap;
+    swap(e1, e2);
+
+    CHECK(e1.error_code == 500);
+    CHECK(e1.message == "server error");
+    CHECK(e2.error_code == 404);
+    CHECK(e2.message == "not found");
+}
+
+TEST_CASE("exception_swap_detailed" * doctest::test_suite("exceptions")) {
+    exception_types::DetailedError e1(1001, "Error A", "Details A", true);
+    exception_types::DetailedError e2(2002, "Error B", "Details B", false);
+
+    using std::swap;
+    swap(e1, e2);
+
+    CHECK(e1.code == 2002);
+    CHECK(e1.message == "Error B");
+    CHECK(e1.details == "Details B");
+    CHECK_FALSE(e1.recoverable);
+
+    CHECK(e2.code == 1001);
+    CHECK(e2.message == "Error A");
+    CHECK(e2.details == "Details A");
+    CHECK(e2.recoverable);
+}

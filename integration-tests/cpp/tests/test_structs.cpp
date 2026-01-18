@@ -299,3 +299,34 @@ TEST_CASE("struct_with_defaults" * doctest::test_suite("structs")) {
     CHECK(w2.name == "test");
     CHECK(w2.value == doctest::Approx(3.14));
 }
+
+TEST_CASE("struct_swap" * doctest::test_suite("structs")) {
+    struct_types::Point p1(10, 20);
+    struct_types::Point p2(30, 40);
+
+    using std::swap;
+    swap(p1, p2);
+
+    CHECK(p1.x == 30);
+    CHECK(p1.y == 40);
+    CHECK(p2.x == 10);
+    CHECK(p2.y == 20);
+}
+
+TEST_CASE("struct_swap_nested" * doctest::test_suite("structs")) {
+    struct_types::Rectangle r1(struct_types::Point(0, 0), struct_types::Point(10, 10));
+    struct_types::Rectangle r2(struct_types::Point(20, 20), struct_types::Point(30, 30));
+
+    using std::swap;
+    swap(r1, r2);
+
+    CHECK(r1.top_left.x == 20);
+    CHECK(r1.top_left.y == 20);
+    CHECK(r1.bottom_right.x == 30);
+    CHECK(r1.bottom_right.y == 30);
+
+    CHECK(r2.top_left.x == 0);
+    CHECK(r2.top_left.y == 0);
+    CHECK(r2.bottom_right.x == 10);
+    CHECK(r2.bottom_right.y == 10);
+}

@@ -162,3 +162,35 @@ TEST_CASE("union_default_variant_sets_discriminator" * doctest::test_suite("unio
     REQUIRE(u._d() == 0);
     REQUIRE(u.default_val());
 }
+
+TEST_CASE("union_swap" * doctest::test_suite("unions")) {
+    union_types::IntOrString u1;
+    u1.int_val(42);
+
+    union_types::IntOrString u2;
+    u2.str_val("hello");
+
+    using std::swap;
+    swap(u1, u2);
+
+    REQUIRE(u1._d() == 2);
+    REQUIRE(u1.str_val() == "hello");
+    REQUIRE(u2._d() == 1);
+    REQUIRE(u2.int_val() == 42);
+}
+
+TEST_CASE("union_swap_same_discriminator" * doctest::test_suite("unions")) {
+    union_types::TypedValue tv1;
+    tv1.int_value(100);
+
+    union_types::TypedValue tv2;
+    tv2.int_value(200);
+
+    using std::swap;
+    swap(tv1, tv2);
+
+    REQUIRE(tv1._d() == union_types::INT_KIND);
+    REQUIRE(tv1.int_value() == 200);
+    REQUIRE(tv2._d() == union_types::INT_KIND);
+    REQUIRE(tv2.int_value() == 100);
+}

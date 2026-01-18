@@ -106,6 +106,47 @@ TEST_CASE("union_equality" * doctest::test_suite("comparison")) {
     CHECK(u1 != u4);
 }
 
+TEST_CASE("union_sorting" * doctest::test_suite("comparison")) {
+    std::vector<union_types::IntOrString> unions;
+
+    union_types::IntOrString u1;
+    u1.int_val(50);
+    unions.push_back(u1);
+
+    union_types::IntOrString u2;
+    u2.int_val(10);
+    unions.push_back(u2);
+
+    union_types::IntOrString u3;
+    u3.int_val(30);
+    unions.push_back(u3);
+
+    std::sort(unions.begin(), unions.end());
+
+    CHECK(unions[0].int_val() == 10);
+    CHECK(unions[1].int_val() == 30);
+    CHECK(unions[2].int_val() == 50);
+}
+
+TEST_CASE("union_hashable" * doctest::test_suite("comparison")) {
+    union_types::IntOrString u1;
+    u1.int_val(42);
+    union_types::IntOrString u2;
+    u2.int_val(42);
+
+    std::hash<union_types::IntOrString> hasher;
+    CHECK(hasher(u1) == hasher(u2));
+
+    std::unordered_set<union_types::IntOrString> set;
+    set.insert(u1);
+    CHECK(set.find(u2) != set.end());
+
+    union_types::IntOrString u3;
+    u3.str_val("test");
+    set.insert(u3);
+    CHECK(set.size() == 2);
+}
+
 TEST_CASE("exception_equality" * doctest::test_suite("comparison")) {
     exception_types::SimpleError e1(100, "error");
     exception_types::SimpleError e2(100, "error");
@@ -118,6 +159,35 @@ TEST_CASE("exception_equality" * doctest::test_suite("comparison")) {
     CHECK(e1.message == e2.message);
     CHECK(e1.error_code != e3.error_code);
     CHECK(e1.message != e3.message);
+}
+
+TEST_CASE("exception_sorting" * doctest::test_suite("comparison")) {
+    std::vector<exception_types::SimpleError> errors;
+    errors.push_back(exception_types::SimpleError(500, "server error"));
+    errors.push_back(exception_types::SimpleError(100, "continue"));
+    errors.push_back(exception_types::SimpleError(404, "not found"));
+
+    std::sort(errors.begin(), errors.end());
+
+    CHECK(errors[0].error_code == 100);
+    CHECK(errors[1].error_code == 404);
+    CHECK(errors[2].error_code == 500);
+}
+
+TEST_CASE("exception_hashable" * doctest::test_suite("comparison")) {
+    exception_types::SimpleError e1(404, "not found");
+    exception_types::SimpleError e2(404, "not found");
+
+    std::hash<exception_types::SimpleError> hasher;
+    CHECK(hasher(e1) == hasher(e2));
+
+    std::unordered_set<exception_types::SimpleError> set;
+    set.insert(e1);
+    CHECK(set.find(e2) != set.end());
+
+    exception_types::SimpleError e3(500, "server error");
+    set.insert(e3);
+    CHECK(set.size() == 2);
 }
 
 TEST_CASE("circular_type_hash" * doctest::test_suite("comparison")) {

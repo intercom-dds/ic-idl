@@ -54,9 +54,6 @@ impl CppGen<'_> {
         // Comparison operators
         self.emit_union_comparison_operators(decl_w, def);
 
-        // Swap friend
-        w!(decl_w, "friend void swap(", def, "& a_first, ", def, "& a_second) noexcept;\n\n");
-
         // Discriminator accessors
         w!(decl_w, "[[nodiscard]]", disc_type, " _d() const { return ", UNION_DISC_FIELD, "; }\n");
         w!(decl_w, "void _d(", disc_type, " discriminator);\n\n");
@@ -294,7 +291,6 @@ impl CppGen<'_> {
         self.emit_union_move_assignment(w, def, union_ty, disc_type);
         self.emit_union_destructor(w, def);
         self.emit_union_comparison_impl(w, def, union_ty);
-        self.emit_union_swap(w, def);
         self.emit_union_discriminator_setter(w, def, union_ty, disc_type);
         self.emit_union_member_impl(w, def, union_ty, disc_type);
         self.emit_union_free(w, def, union_ty);
@@ -555,15 +551,6 @@ impl CppGen<'_> {
         });
 
         w!(w, "return true;\n");
-        w!(w, "}\n\n");
-    }
-
-    fn emit_union_swap(&self, w: &mut Twine, def: &Def) {
-        let qualified_name = self.scoped_name(def.id, None);
-        w!(w, "inline void swap(", qualified_name, "& a_first, ", qualified_name, "& a_second) noexcept {\n");
-        w!(w, qualified_name, " a_first_tmp = std::move(a_first);\n");
-        w!(w, "a_first = std::move(a_second);\n");
-        w!(w, "a_second = std::move(a_first_tmp);\n");
         w!(w, "}\n\n");
     }
 

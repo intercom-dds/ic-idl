@@ -768,12 +768,27 @@ impl<'ctx> TypeItemProcessor<'ctx> {
                 flags: DefFlags::nil(),
             });
 
-            self.ctx
-                .context
-                .scopes
-                .add_definition(self.current_scope, ident.name.clone(), def_id);
+            if self
+                .ctx
+                .registry
+                .register_definition(
+                    self.current_scope,
+                    &ident,
+                    DefKindTag::Alias,
+                    def_id,
+                    &mut self.ctx.diagnostics,
+                    &self.ctx.context,
+                )
+                .is_some()
+            {
+                self.ctx.context.scopes.add_definition(
+                    self.current_scope,
+                    ident.name.clone(),
+                    def_id,
+                );
 
-            def_ids.push(def_id);
+                def_ids.push(def_id);
+            }
         }
 
         def_ids

@@ -26,7 +26,7 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 cmake_minimum_required(VERSION 3.20)
-project(ic_idl_cpp_integration_tests CXX)
+project(integration_tests CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -77,7 +77,7 @@ FetchContent_MakeAvailable(doctest)
 
 add_library(generated_idl
     generated/annotations.cpp
-    # generated/any_type.cpp
+    generated/any_type.cpp
     generated/bitmasks.cpp
     generated/bounded_types.cpp
     generated/circular_types.cpp
@@ -98,13 +98,13 @@ add_library(generated_idl
 
 target_include_directories(generated_idl PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}/
-    ${CMAKE_CURRENT_SOURCE_DIR}/../../library/cpp/defs
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../runtime/cpp/defs
 )
 
 add_executable(integration_tests
     tests/main.cpp
     tests/test_annotations.cpp
-    # tests/test_any_type.cpp
+    tests/test_any_type.cpp
     tests/test_bitmasks.cpp
     tests/test_bounded_types.cpp
     tests/test_circular_types.cpp
@@ -131,5 +131,5 @@ target_link_libraries(integration_tests PRIVATE
 
 target_include_directories(integration_tests PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/
-    ${CMAKE_CURRENT_SOURCE_DIR}/../../library/cpp/defs
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../runtime/cpp/defs
 )

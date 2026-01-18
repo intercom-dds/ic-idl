@@ -125,7 +125,7 @@ commit: {hash}
 
 fn library_files() -> Vec<PathBuf> {
     let output = Command::new("git")
-        .args(["ls-files", "--full-name", ":/library"])
+        .args(["ls-files", "--full-name", ":/runtime"])
         .output()
         .unwrap();
 

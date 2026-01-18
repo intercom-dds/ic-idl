@@ -98,7 +98,7 @@ add_library(generated_idl
 
 target_include_directories(generated_idl PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}/
-    ${CMAKE_CURRENT_SOURCE_DIR}/../../runtime/cpp/defs
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../runtime/cpp/include
 )
 
 add_executable(integration_tests
@@ -131,5 +131,5 @@ target_link_libraries(integration_tests PRIVATE
 
 target_include_directories(integration_tests PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/
-    ${CMAKE_CURRENT_SOURCE_DIR}/../../runtime/cpp/defs
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../runtime/cpp/include
 )

@@ -211,6 +211,20 @@ fn eval_negate_uint8_overflow() {
 }
 
 #[test]
+fn eval_negate_uint8_zero() {
+    let expr = unary(Op::Sub, u8lit(0));
+    let result = eval(&expr, &mut SimpleCtx).unwrap();
+    assert_eq!(result.to_i128(), Some(0));
+    match result {
+        Value::Int(v, rank) => {
+            assert_eq!(v, 0);
+            assert_eq!(rank, IntRank::I8);
+        }
+        _ => panic!("Expected Int value"),
+    }
+}
+
+#[test]
 fn eval_negate_uint16_i16_min() {
     let expr = unary(Op::Sub, u16lit(32768));
     let result = eval(&expr, &mut SimpleCtx).unwrap();
@@ -252,13 +266,27 @@ fn eval_negate_uint16_overflow() {
 }
 
 #[test]
-fn eval_negate_uint32_i32_min() {
-    let expr = unary(Op::Sub, u32lit(2147483648));
+fn eval_negate_uint16_zero() {
+    let expr = unary(Op::Sub, u16lit(0));
     let result = eval(&expr, &mut SimpleCtx).unwrap();
-    assert_eq!(result.to_i128(), Some(-2147483648));
+    assert_eq!(result.to_i128(), Some(0));
     match result {
         Value::Int(v, rank) => {
-            assert_eq!(v, -2147483648);
+            assert_eq!(v, 0);
+            assert_eq!(rank, IntRank::I16);
+        }
+        _ => panic!("Expected Int value"),
+    }
+}
+
+#[test]
+fn eval_negate_uint32_i32_min() {
+    let expr = unary(Op::Sub, u32lit(2_147_483_648));
+    let result = eval(&expr, &mut SimpleCtx).unwrap();
+    assert_eq!(result.to_i128(), Some(-2_147_483_648));
+    match result {
+        Value::Int(v, rank) => {
+            assert_eq!(v, -2_147_483_648);
             assert_eq!(rank, IntRank::I32);
         }
         _ => panic!("Expected Int value"),
@@ -293,13 +321,27 @@ fn eval_negate_uint32_overflow() {
 }
 
 #[test]
-fn eval_negate_uint64_i64_min() {
-    let expr = unary(Op::Sub, u64lit(9223372036854775808));
+fn eval_negate_uint32_zero() {
+    let expr = unary(Op::Sub, u32lit(0));
     let result = eval(&expr, &mut SimpleCtx).unwrap();
-    assert_eq!(result.to_i128(), Some(-9223372036854775808));
+    assert_eq!(result.to_i128(), Some(0));
     match result {
         Value::Int(v, rank) => {
-            assert_eq!(v, -9223372036854775808);
+            assert_eq!(v, 0);
+            assert_eq!(rank, IntRank::I32);
+        }
+        _ => panic!("Expected Int value"),
+    }
+}
+
+#[test]
+fn eval_negate_uint64_i64_min() {
+    let expr = unary(Op::Sub, u64lit(9_223_372_036_854_775_808));
+    let result = eval(&expr, &mut SimpleCtx).unwrap();
+    assert_eq!(result.to_i128(), Some(-9_223_372_036_854_775_808));
+    match result {
+        Value::Int(v, rank) => {
+            assert_eq!(v, -9_223_372_036_854_775_808);
             assert_eq!(rank, IntRank::I64);
         }
         _ => panic!("Expected Int value"),
@@ -330,5 +372,19 @@ fn eval_negate_uint64_overflow() {
             assert_eq!(rank, IntRank::U64);
         }
         _ => panic!("Expected UInt value for overflow case"),
+    }
+}
+
+#[test]
+fn eval_negate_uint64_zero() {
+    let expr = unary(Op::Sub, u64lit(0));
+    let result = eval(&expr, &mut SimpleCtx).unwrap();
+    assert_eq!(result.to_i128(), Some(0));
+    match result {
+        Value::Int(v, rank) => {
+            assert_eq!(v, 0);
+            assert_eq!(rank, IntRank::I64);
+        }
+        _ => panic!("Expected Int value"),
     }
 }

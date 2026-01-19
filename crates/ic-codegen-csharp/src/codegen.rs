@@ -431,6 +431,26 @@ impl<'a> CSharpGen<'a> {
         w!(w, "}\n\n");
     }
 
+    fn collect_members(&self, struct_def_id: DefId) -> Vec<(String, Ty)> {
+        let mut members = Vec::new();
+        let mut current_id = Some(struct_def_id);
+
+        while let Some(id) = current_id {
+            let def = self.hir.context.type_of(id);
+            if let DefKind::Struct(struct_ty) = &def.kind {
+                for member in struct_ty.members.iter().rev() {
+                    members.push((member.ident.name.clone(), member.ty.clone()));
+                }
+                current_id = struct_ty.parent;
+            } else {
+                break;
+            }
+        }
+
+        members.reverse();
+        members
+    }
+
     fn emit_struct(&self, w: &mut Twine, def: &Def, struct_ty: &StructTy) {
         self.emit_doc_comments(w, &def.annotations);
 
@@ -479,16 +499,36 @@ impl<'a> CSharpGen<'a> {
         w!(w, "}\n\n");
 
         // Constructor with all fields
-        if !struct_ty.members.is_empty() {
+        if !struct_ty.members.is_empty() || struct_ty.parent.is_some() {
+            let all_members = self.collect_members(def.id);
+
             w!(w, "public ", def.ident.name, "(");
-            for (i, member) in struct_ty.members.iter().enumerate() {
+
+            for (i, (name, ty)) in all_members.iter().enumerate() {
                 if i > 0 {
                     w!(w, ", ");
                 }
-                let ty_str = self.csharp_type(&member.ty, def.id);
-                w!(w, ty_str, " ", member.ident.name);
+                let ty_str = self.csharp_type(ty, def.id);
+                w!(w, ty_str, " ", name);
             }
-            w!(w, ")\n");
+
+            w!(w, ")");
+
+            if let Some(parent_id) = struct_ty.parent {
+                let parent_members = self.collect_members(parent_id);
+                if !parent_members.is_empty() {
+                    w!(w, " : base(");
+                    for (i, (name, _)) in parent_members.iter().enumerate() {
+                        if i > 0 {
+                            w!(w, ", ");
+                        }
+                        w!(w, name);
+                    }
+                    w!(w, ")");
+                }
+            }
+
+            w!(w, "\n");
             w!(w, "{\n");
             for member in &struct_ty.members {
                 w!(w, "this.", member.ident.name, " = ", member.ident.name, ";\n");

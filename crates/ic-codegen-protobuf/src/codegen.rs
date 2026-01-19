@@ -31,7 +31,7 @@ use std::path::PathBuf;
 use ic_emit::File;
 use ic_emit::printer::{Twine, w};
 use ic_hir::ResolvedGraph;
-use ic_hir::hir::{DefFlags, DefId, DefKind, PrimitiveTy, Ty, TyKind};
+use ic_hir::hir::{Def, DefFlags, DefId, DefKind, EnumTy, PrimitiveTy, Ty, TyKind, UnionTy};
 
 use crate::group::{
     collect_struct_members, collect_type_dependencies, group_types_by_scc, is_proto_type,
@@ -234,14 +234,13 @@ impl<'a> ProtoGen<'a> {
         }
     }
 
-    fn emit_message(&self, def_id: DefId) -> String {
+    fn emit_message(&self, def: &Def) -> String {
         let mut w = Twine::new();
-        let name = self.proto_name(def_id);
-        let members = collect_struct_members(self.hir, def_id);
-        let current_package = self.package_path(def_id);
+        let members = collect_struct_members(self.hir, def.id);
+        let current_package = self.package_path(def.id);
         let mut wrappers = BTreeMap::new();
 
-        w!(w, "message ", name, " ", "{\n");
+        w!(w, "message ", def, " ", "{\n");
 
         let mut field_id = 0;
         for (member_name, member_ty) in members {
@@ -258,42 +257,37 @@ impl<'a> ProtoGen<'a> {
         w.finish()
     }
 
-    fn emit_enum(&self, def_id: DefId) -> String {
+    fn emit_enum(&self, def: &Def, enum_ty: &EnumTy) -> String {
         let mut w = Twine::new();
-        let def = self.hir.context.definitions.get(def_id);
-        let name = self.proto_name(def_id);
+        w!(w, "enum ", def, " ", "{\n");
 
-        w!(w, "enum ", name, " ", "{\n");
-
-        if let DefKind::Enum(enum_ty) = &def.kind {
-            // Check if enum has a zero value; proto3 requires first value to be 0
-            let zero_field = enum_ty.fields.iter().find(|&&field_id| {
-                let field_def = self.hir.context.definitions.get(field_id);
-                if let DefKind::Const(const_ty) = &field_def.kind {
-                    self.hir.context.integer_value(&const_ty.value) == 0
-                } else {
-                    false
-                }
-            });
-
-            if let Some(&zero_id) = zero_field {
-                let field_def = self.hir.context.definitions.get(zero_id);
-                w!(w, field_def.ident.name, " = 0;\n");
+        // Check if enum has a zero value; proto3 requires first value to be 0
+        let zero_field = enum_ty.fields.iter().find(|&&field_id| {
+            let field_def = self.hir.context.definitions.get(field_id);
+            if let DefKind::Const(const_ty) = &field_def.kind {
+                self.hir.context.integer_value(&const_ty.value) == 0
             } else {
-                w!(w, name, "_UNKNOWN = 0;\n");
+                false
+            }
+        });
+
+        if let Some(&zero_id) = zero_field {
+            let field_def = self.hir.context.definitions.get(zero_id);
+            w!(w, field_def.ident.name, " = 0;\n");
+        } else {
+            w!(w, def, "_UNKNOWN = 0;\n");
+        }
+
+        for field_id in &enum_ty.fields {
+            if Some(field_id) == zero_field {
+                continue;
             }
 
-            for field_id in &enum_ty.fields {
-                if Some(field_id) == zero_field {
-                    continue;
-                }
-
-                let field_def = self.hir.context.definitions.get(*field_id);
-                if let DefKind::Const(const_ty) = &field_def.kind {
-                    let value = self.hir.context.integer_value(&const_ty.value);
-                    let field_name = &field_def.ident.name;
-                    w!(w, field_name, " = ", value, ";\n");
-                }
+            let field_def = self.hir.context.definitions.get(*field_id);
+            if let DefKind::Const(const_ty) = &field_def.kind {
+                let value = self.hir.context.integer_value(&const_ty.value);
+                let field_name = &field_def.ident.name;
+                w!(w, field_name, " = ", value, ";\n");
             }
         }
 
@@ -301,39 +295,34 @@ impl<'a> ProtoGen<'a> {
         w.finish()
     }
 
-    fn emit_union(&self, def_id: DefId) -> String {
+    fn emit_union(&self, def: &Def, union_ty: &UnionTy) -> String {
         let mut w = Twine::new();
-        let def = self.hir.context.definitions.get(def_id);
-        let name = self.proto_name(def_id);
-        let current_package = self.package_path(def_id);
+        let current_package = self.package_path(def.id);
         let mut wrappers = BTreeMap::new();
         let mut variant_wrappers = vec![];
 
-        w!(w, "message ", name, " {\n");
+        w!(w, "message ", def, " {\n");
         w!(w, "oneof inner {\n");
 
-        if let DefKind::Union(union_ty) = &def.kind {
-            let mut field_id = 0;
-            for variant in &union_ty.variants {
-                if let TyKind::Null = variant.ty.kind {
-                    continue;
-                }
+        let mut field_id = 0;
+        for variant in &union_ty.variants {
+            if let TyKind::Null = variant.ty.kind {
+                continue;
+            }
 
-                field_id += 1;
-                let variant_name = &variant.ident.name;
+            field_id += 1;
+            let variant_name = &variant.ident.name;
 
-                // Check if this is a sequence/array/map type - if so, wrap it
-                if self.contains_sequence(&variant.ty) || self.contains_map(&variant.ty) {
-                    let wrapper_name = format!("{variant_name}_wrapper");
-                    let inner_type = self.proto_type(&variant.ty, &current_package, &mut wrappers);
-                    let wrapper_def =
-                        format!("message {wrapper_name} {{\n{inner_type} value = 1;\n}}\n");
-                    variant_wrappers.push(wrapper_def);
-                    w!(w, wrapper_name, " ", variant_name, " = ", field_id, ";\n");
-                } else {
-                    let ty_str = self.proto_type(&variant.ty, &current_package, &mut wrappers);
-                    w!(w, ty_str, " ", variant_name, " = ", field_id, ";\n");
-                }
+            if self.contains_sequence(&variant.ty) || self.contains_map(&variant.ty) {
+                let wrapper_name = format!("{variant_name}_wrapper");
+                let inner_type = self.proto_type(&variant.ty, &current_package, &mut wrappers);
+                let wrapper_def =
+                    format!("message {wrapper_name} {{\n{inner_type} value = 1;\n}}\n");
+                variant_wrappers.push(wrapper_def);
+                w!(w, wrapper_name, " ", variant_name, " = ", field_id, ";\n");
+            } else {
+                let ty_str = self.proto_type(&variant.ty, &current_package, &mut wrappers);
+                w!(w, ty_str, " ", variant_name, " = ", field_id, ";\n");
             }
         }
 
@@ -355,10 +344,10 @@ impl<'a> ProtoGen<'a> {
         let def = self.hir.context.definitions.get(def_id);
         match &def.kind {
             DefKind::Struct(_) | DefKind::Except(_) | DefKind::Valuetype(_) => {
-                self.emit_message(def_id)
+                self.emit_message(def)
             }
-            DefKind::Union(_) => self.emit_union(def_id),
-            DefKind::Enum(_) => self.emit_enum(def_id),
+            DefKind::Union(union_ty) => self.emit_union(def, union_ty),
+            DefKind::Enum(enum_ty) => self.emit_enum(def, enum_ty),
             _ => String::new(),
         }
     }

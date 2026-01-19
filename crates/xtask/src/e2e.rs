@@ -119,6 +119,7 @@ pub fn run(opts: Options) {
             .join("target")
             .join(profile)
             .join("ic-idl")
+            .with_extension(std::env::consts::EXE_EXTENSION)
             .to_string_lossy()
             .to_string()
     });

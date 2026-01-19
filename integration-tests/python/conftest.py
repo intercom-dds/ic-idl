@@ -28,6 +28,7 @@
 import importlib
 import subprocess
 import sys
+import sysconfig
 import tempfile
 from collections.abc import Generator
 from pathlib import Path
@@ -38,10 +39,11 @@ import pytest
 
 
 def pytest_addoption(parser: pytest.Parser) -> None:
+    exe_ext = sysconfig.get_config_var("EXE")
     parser.addoption(
         "--idl-compiler",
         action="store",
-        default="../../target/debug/ic-idl",
+        default=f"../../target/debug/ic-idl{exe_ext}",
         help="Path to ic-idl compiler binary",
     )
     parser.addoption(

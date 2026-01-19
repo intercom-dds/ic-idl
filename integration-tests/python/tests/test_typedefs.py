@@ -26,6 +26,7 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 from types import ModuleType
+from typing import get_type_hints
 
 
 def test_primitive_typedef_values(generated_modules: dict[str, ModuleType]) -> None:
@@ -73,17 +74,17 @@ def test_struct_with_typedef_field_types(
     generated_modules: dict[str, ModuleType],
 ) -> None:
     td = generated_modules["typedef_types"]
-    annotations = td.Point.__annotations__
-    assert annotations["x"] == "Real"
-    assert annotations["y"] == "Real"
+    hints = get_type_hints(td.Point, globalns=vars(td))
+    assert hints["x"] == td.Real
+    assert hints["y"] == td.Real
 
 
 def test_person_struct_field_types(generated_modules: dict[str, ModuleType]) -> None:
     td = generated_modules["typedef_types"]
-    annotations = td.Person.__annotations__
-    assert annotations["name"] == "Text"
-    assert annotations["age"] == "Integer"
-    assert annotations["active"] == "Flag"
+    hints = get_type_hints(td.Person, globalns=vars(td))
+    assert hints["name"] == td.Text
+    assert hints["age"] == td.Integer
+    assert hints["active"] == td.Flag
 
 
 def test_person_struct_values(generated_modules: dict[str, ModuleType]) -> None:
@@ -96,10 +97,10 @@ def test_person_struct_values(generated_modules: dict[str, ModuleType]) -> None:
 
 def test_container_struct_field_types(generated_modules: dict[str, ModuleType]) -> None:
     td = generated_modules["typedef_types"]
-    annotations = td.Container.__annotations__
-    assert annotations["numbers"] == "IntList"
-    assert annotations["labels"] == "StringList"
-    assert annotations["lookup"] == "StringIntMap"
+    hints = get_type_hints(td.Container, globalns=vars(td))
+    assert hints["numbers"] == td.IntList
+    assert hints["labels"] == td.StringList
+    assert hints["lookup"] == td.StringIntMap
 
 
 def test_container_struct_values(generated_modules: dict[str, ModuleType]) -> None:
@@ -116,9 +117,9 @@ def test_container_struct_values(generated_modules: dict[str, ModuleType]) -> No
 
 def test_nested_typedef_in_struct(generated_modules: dict[str, ModuleType]) -> None:
     td = generated_modules["typedef_types"]
-    annotations = td.Measurement.__annotations__
-    assert annotations["name"] == "Label"
-    assert annotations["value"] == "Count"
+    hints = get_type_hints(td.Measurement, globalns=vars(td))
+    assert hints["name"] == td.Label
+    assert hints["value"] == td.Count
 
 
 def test_nested_typedef_struct_values(generated_modules: dict[str, ModuleType]) -> None:
@@ -130,8 +131,8 @@ def test_nested_typedef_struct_values(generated_modules: dict[str, ModuleType]) 
 
 def test_array_typedef_in_struct(generated_modules: dict[str, ModuleType]) -> None:
     td = generated_modules["typedef_types"]
-    annotations = td.WithArrayTypedef.__annotations__
-    assert annotations["values"] == "LongArray"
+    hints = get_type_hints(td.WithArrayTypedef, globalns=vars(td))
+    assert hints["values"] == td.LongArray
 
 
 def test_array_typedef_struct_values(generated_modules: dict[str, ModuleType]) -> None:
@@ -167,10 +168,10 @@ def test_deep_chain_struct_field_types(
     generated_modules: dict[str, ModuleType],
 ) -> None:
     td = generated_modules["typedef_types"]
-    annotations = td.DeepChainStruct.__annotations__
-    assert annotations["deep_int"] == "Level5"
-    assert annotations["deep_seq"] == "SeqLevel3"
-    assert annotations["deep_map"] == "MapLevel3"
+    hints = get_type_hints(td.DeepChainStruct, globalns=vars(td))
+    assert hints["deep_int"] == td.Level5
+    assert hints["deep_seq"] == td.SeqLevel3
+    assert hints["deep_map"] == td.MapLevel3
 
 
 def test_deep_chain_struct_values(generated_modules: dict[str, ModuleType]) -> None:

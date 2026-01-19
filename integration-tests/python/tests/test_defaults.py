@@ -58,7 +58,7 @@ def test_optional_fields_type_annotations(
     generated_modules: dict[str, ModuleType],
 ) -> None:
     dt = generated_modules["default_types"]
-    hints = get_type_hints(dt.OptionalFields)
+    hints = get_type_hints(dt.OptionalFields, globalns=vars(dt))
     assert set(get_args(hints["maybe_int"])) == {int, type(None)}
     assert set(get_args(hints["maybe_string"])) == {str, type(None)}
     assert set(get_args(hints["maybe_struct"])) == {dt.Inner, type(None)}
@@ -81,14 +81,14 @@ def test_enum_default_literal_exists(generated_modules: dict[str, ModuleType]) -
     assert dt.Priority.MEDIUM.value == 1
 
 
-@pytest.mark.xfail(reason="@default annotation ignored in Python codegen")
+@pytest.mark.xfail(reason="@default annotation ignored in Python codegen", strict=True)
 def test_primitive_bool_default(generated_modules: dict[str, ModuleType]) -> None:
     dt = generated_modules["default_types"]
     p = dt.PrimitiveDefaults()
     assert p.bool_true is True
 
 
-@pytest.mark.xfail(reason="@default annotation ignored in Python codegen")
+@pytest.mark.xfail(reason="@default annotation ignored in Python codegen", strict=True)
 def test_primitive_int_default(generated_modules: dict[str, ModuleType]) -> None:
     dt = generated_modules["default_types"]
     p = dt.PrimitiveDefaults()
@@ -96,14 +96,14 @@ def test_primitive_int_default(generated_modules: dict[str, ModuleType]) -> None
     assert p.int_negative == -100
 
 
-@pytest.mark.xfail(reason="@default annotation ignored in Python codegen")
+@pytest.mark.xfail(reason="@default annotation ignored in Python codegen", strict=True)
 def test_primitive_float_default(generated_modules: dict[str, ModuleType]) -> None:
     dt = generated_modules["default_types"]
     p = dt.PrimitiveDefaults()
     assert abs(p.float_value - 3.14159) < 0.0001
 
 
-@pytest.mark.xfail(reason="@default annotation ignored in Python codegen")
+@pytest.mark.xfail(reason="@default annotation ignored in Python codegen", strict=True)
 def test_primitive_string_default(generated_modules: dict[str, ModuleType]) -> None:
     dt = generated_modules["default_types"]
     p = dt.PrimitiveDefaults()
@@ -111,14 +111,14 @@ def test_primitive_string_default(generated_modules: dict[str, ModuleType]) -> N
     assert p.string_from_const == "unnamed"
 
 
-@pytest.mark.xfail(reason="@default annotation ignored in Python codegen")
+@pytest.mark.xfail(reason="@default annotation ignored in Python codegen", strict=True)
 def test_array_default_values(generated_modules: dict[str, ModuleType]) -> None:
     dt = generated_modules["default_types"]
     a = dt.ArrayDefaults()
     assert a.array_values == [1, 2, 3]
 
 
-@pytest.mark.xfail(reason="@default annotation ignored in Python codegen")
+@pytest.mark.xfail(reason="@default annotation ignored in Python codegen", strict=True)
 def test_sequence_default_values(generated_modules: dict[str, ModuleType]) -> None:
     dt = generated_modules["default_types"]
     s = dt.SequenceDefaults()
@@ -126,14 +126,14 @@ def test_sequence_default_values(generated_modules: dict[str, ModuleType]) -> No
     assert s.string_seq_values == ["a", "b", "c"]
 
 
-@pytest.mark.xfail(reason="@default annotation ignored in Python codegen")
+@pytest.mark.xfail(reason="@default annotation ignored in Python codegen", strict=True)
 def test_map_default_values(generated_modules: dict[str, ModuleType]) -> None:
     dt = generated_modules["default_types"]
     m = dt.MapDefaults()
     assert m.map_values == {"one": 1, "two": 2}
 
 
-@pytest.mark.xfail(reason="@default annotation ignored in Python codegen")
+@pytest.mark.xfail(reason="@default annotation ignored in Python codegen", strict=True)
 def test_enum_field_default(generated_modules: dict[str, ModuleType]) -> None:
     dt = generated_modules["default_types"]
     e = dt.EnumDefaults()

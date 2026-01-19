@@ -55,15 +55,19 @@ impl<'a> TsGen<'a> {
 
     fn is_type_only(&self, def_id: DefId) -> bool {
         let def = self.hir.context.type_of(def_id);
-        matches!(
-            def.kind,
+        match &def.kind {
             DefKind::Struct(_)
-                | DefKind::Union(_)
-                | DefKind::Except(_)
-                | DefKind::Interface(_)
-                | DefKind::Valuetype(_)
-                | DefKind::Alias(_)
-        )
+            | DefKind::Union(_)
+            | DefKind::Except(_)
+            | DefKind::Interface(_)
+            | DefKind::Valuetype(_)
+            | DefKind::Alias(_) => true,
+            DefKind::Module(module) => module
+                .definitions
+                .iter()
+                .all(|&child_id| self.is_type_only(child_id)),
+            _ => false,
+        }
     }
 
     fn scope_of(&self, def_id: DefId) -> Option<DefId> {
@@ -741,10 +745,12 @@ impl<'a> TsGen<'a> {
                 .filter(|&ref_id| is_in_module(ref_id, nested_id))
                 .collect();
 
-            let is_used = !refs_in_module.is_empty();
+            if refs_in_module.is_empty() {
+                w!(w, "export * as ", nested_def, " from \"./", nested_def, "\";\n");
+            } else {
+                let all_types = self.is_type_only(nested_id)
+                    && refs_in_module.iter().all(|&id| self.is_type_only(id));
 
-            if is_used {
-                let all_types = refs_in_module.iter().all(|&id| self.is_type_only(id));
                 if all_types {
                     w!(w, "import type * as ", nested_def, " from \"./", nested_def, "\";\n");
                     w!(w, "export type { ", nested_def, " };\n");
@@ -752,8 +758,6 @@ impl<'a> TsGen<'a> {
                     w!(w, "import * as ", nested_def, " from \"./", nested_def, "\";\n");
                     w!(w, "export { ", nested_def, " };\n");
                 }
-            } else {
-                w!(w, "export * as ", nested_def, " from \"./", nested_def, "\";\n");
             }
         }
     }

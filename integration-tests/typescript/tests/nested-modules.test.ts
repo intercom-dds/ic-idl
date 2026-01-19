@@ -1,0 +1,158 @@
+// Copyright 2026 KONGSBERG
+//
+// Redistribution and use in source and binary forms, with or without
+// modification, are permitted provided that the following conditions are met:
+//
+// 1. Redistributions of source code must retain the above copyright notice,
+//    this list of conditions and the following disclaimer.
+//
+// 2. Redistributions in binary form must reproduce the above copyright notice,
+//    this list of conditions and the following disclaimer in the documentation
+//    and/or other materials provided with the distribution.
+//
+// 3. Neither the name of the copyright holder nor the names of its contributors
+//    may be used to endorse or promote products derived from this software
+//    without specific prior written permission.
+//
+// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
+// ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+// WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+// DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
+// FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+// DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+// SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+// CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+// OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+// OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+import { describe, expect, test } from "bun:test";
+import type {
+  TopLevelStruct,
+  TopUsingNested,
+} from "../generated/nestedModuleTypes";
+import { TopLevelEnum, level1, sibling } from "../generated/nestedModuleTypes";
+
+describe("nested modules", () => {
+  describe("top level types", () => {
+    test("TopLevelStruct instantiation", () => {
+      const s: TopLevelStruct = { value: 42 };
+      expect(s.value).toBe(42);
+    });
+
+    test("TopLevelEnum exists", () => {
+      expect(TopLevelEnum.First).toBe(0);
+      expect(TopLevelEnum.Second).toBe(1);
+    });
+  });
+
+  describe("level1 module", () => {
+    test("Level1Struct exists", () => {
+      const parent: TopLevelStruct = { value: 1 };
+      const s: level1.Level1Struct = { data: 10, parentRef: parent };
+      expect(s.data).toBe(10);
+      expect(s.parentRef.value).toBe(1);
+    });
+
+    test("Level1Enum exists", () => {
+      expect(level1.Level1Enum.A).toBe(0);
+      expect(level1.Level1Enum.B).toBe(1);
+      expect(level1.Level1Enum.C).toBe(2);
+    });
+  });
+
+  describe("level2 module", () => {
+    test("Level2Struct exists", () => {
+      const top: TopLevelStruct = { value: 1 };
+      const l1: level1.Level1Struct = { data: 2, parentRef: top };
+      const l2: level1.level2.Level2Struct = {
+        name: "test",
+        level1Ref: l1,
+        topRef: top,
+      };
+      expect(l2.name).toBe("test");
+      expect(l2.level1Ref.data).toBe(2);
+      expect(l2.topRef.value).toBe(1);
+    });
+  });
+
+  describe("level3 module", () => {
+    test("Level3Struct exists", () => {
+      const top: TopLevelStruct = { value: 1 };
+      const l1: level1.Level1Struct = { data: 2, parentRef: top };
+      const l2: level1.level2.Level2Struct = {
+        name: "l2",
+        level1Ref: l1,
+        topRef: top,
+      };
+      const l3: level1.level2.level3.Level3Struct = {
+        id: 100,
+        level2Ref: l2,
+        level1Ref: l1,
+        topRef: top,
+      };
+      expect(l3.id).toBe(100);
+      expect(l3.level2Ref.name).toBe("l2");
+      expect(l3.level1Ref.data).toBe(2);
+      expect(l3.topRef.value).toBe(1);
+    });
+
+    test("DEEP_CONST exists", () => {
+      expect(level1.level2.level3.DEEP_CONST).toBe(42);
+    });
+  });
+
+  describe("sibling module", () => {
+    test("SiblingStruct exists", () => {
+      const s: sibling.SiblingStruct = { id: 4 };
+      expect(s.id).toBe(4);
+    });
+
+    test("CrossRef can reference types from sibling modules", () => {
+      const top: TopLevelStruct = { value: 1 };
+      const l1: level1.Level1Struct = { data: 2, parentRef: top };
+      const l2: level1.level2.Level2Struct = {
+        name: "l2",
+        level1Ref: l1,
+        topRef: top,
+      };
+      const l3: level1.level2.level3.Level3Struct = {
+        id: 3,
+        level2Ref: l2,
+        level1Ref: l1,
+        topRef: top,
+      };
+      const cross: sibling.CrossRef = {
+        fromLevel1: l1,
+        fromLevel2: l2,
+        fromLevel3: l3,
+      };
+      expect(cross.fromLevel1.data).toBe(2);
+      expect(cross.fromLevel2.name).toBe("l2");
+      expect(cross.fromLevel3.id).toBe(3);
+    });
+  });
+
+  describe("TopUsingNested", () => {
+    test("can reference deeply nested types", () => {
+      const top: TopLevelStruct = { value: 1 };
+      const l1: level1.Level1Struct = { data: 2, parentRef: top };
+      const l2: level1.level2.Level2Struct = {
+        name: "l2",
+        level1Ref: l1,
+        topRef: top,
+      };
+      const l3: level1.level2.level3.Level3Struct = {
+        id: 3,
+        level2Ref: l2,
+        level1Ref: l1,
+        topRef: top,
+      };
+      const sib: sibling.SiblingStruct = { id: 4 };
+      const using: TopUsingNested = { l1, l2, l3, sib };
+      expect(using.l1.data).toBe(2);
+      expect(using.l2.name).toBe("l2");
+      expect(using.l3.id).toBe(3);
+      expect(using.sib.id).toBe(4);
+    });
+  });
+});

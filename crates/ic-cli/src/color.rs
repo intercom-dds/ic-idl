@@ -88,16 +88,16 @@ impl<T: Display> Display for Colored<T> {
 
         if let Some(color) = self.style.fg {
             codes.push(match color {
-                Color::Black => "30",
-                Color::Red => "31",
-                Color::Green => "32",
-                Color::Yellow => "33",
-                Color::Blue => "34",
-                Color::Purple => "35",
-                Color::Cyan => "36",
-                Color::White => "37",
-                Color::Gray => "90",
-                Color::Clear => "0",
+                Color::Black => "38;5;0",
+                Color::Red => "38;5;9",
+                Color::Green => "38;5;10",
+                Color::Yellow => "38;5;11",
+                Color::Blue => "38;5;12",
+                Color::Purple => "38;5;13",
+                Color::Cyan => "38;5;14",
+                Color::White => "38;5;15",
+                Color::Gray => "38;5;8",
+                Color::Clear => "39",
             });
         }
 
@@ -343,12 +343,10 @@ pub fn supports_color<W: std::io::IsTerminal>(stream: W) -> bool {
 /// - `NO_COLOR`: If set (to any value), colors are disabled
 /// - `FORCE_COLOR`: If set to a non-zero value, colors are forced on
 pub fn detect_color_mode<W: std::io::IsTerminal>(stream: W) -> ColorMode {
-    // Check NO_COLOR first (it takes precedence)
     if std::env::var("NO_COLOR").is_ok() {
         return ColorMode::Never;
     }
 
-    // Check FORCE_COLOR
     if let Ok(force) = std::env::var("FORCE_COLOR")
         && force != "0"
         && !force.is_empty()
@@ -356,7 +354,6 @@ pub fn detect_color_mode<W: std::io::IsTerminal>(stream: W) -> ColorMode {
         return ColorMode::Always;
     }
 
-    // Otherwise, auto-detect
     if supports_color(stream) {
         ColorMode::Auto
     } else {
@@ -385,6 +382,9 @@ fn virtual_term() -> bool {
     const STD_ERROR_HANDLE: u32 = 0xFFFF_FFF4;
     const STD_OUTPUT_HANDLE: u32 = 0xFFFF_FFF5;
 
+    // SAFETY: Windows console API functions handle invalid inputs gracefully by
+    // returning error values. The `dw_mode` pointer is valid for the duration
+    // of `GetConsoleMode` call.
     let enable_virt = |handle| unsafe {
         let handle = GetStdHandle(handle);
         if handle == 0 || handle == -1 {
@@ -428,15 +428,13 @@ mod tests {
 
         let always = text.red().bold().mode(ColorMode::Always).to_string();
         assert!(always.contains("\x1b["));
-        assert!(always.contains("31"));
+        assert!(always.contains("38"));
         assert!(always.contains('1'));
     }
 
     #[test]
     fn test_should_colorize() {
-        // Test explicit modes
         assert!(should_colorize(ColorMode::Always, std::io::stdout()));
         assert!(!should_colorize(ColorMode::Never, std::io::stdout()));
-        // Auto mode result depends on terminal detection
     }
 }

@@ -26,6 +26,7 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 from types import ModuleType
+from typing import get_args, get_type_hints
 
 import pytest
 
@@ -57,10 +58,10 @@ def test_optional_fields_type_annotations(
     generated_modules: dict[str, ModuleType],
 ) -> None:
     dt = generated_modules["default_types"]
-    annotations = dt.OptionalFields.__annotations__
-    assert annotations["maybe_int"] == "int | None"
-    assert annotations["maybe_string"] == "str | None"
-    assert annotations["maybe_struct"] == "Inner | None"
+    hints = get_type_hints(dt.OptionalFields)
+    assert set(get_args(hints["maybe_int"])) == {int, type(None)}
+    assert set(get_args(hints["maybe_string"])) == {str, type(None)}
+    assert set(get_args(hints["maybe_struct"])) == {dt.Inner, type(None)}
 
 
 def test_optional_fields_can_be_set(generated_modules: dict[str, ModuleType]) -> None:

@@ -32,18 +32,18 @@ def test_bounded_string_typedef_maps_to_str(
     generated_modules: dict[str, ModuleType],
 ) -> None:
     bt = generated_modules["bounded_types"]
-    assert bt.ShortString == "str"
-    assert bt.MediumString == "str"
-    assert bt.LongString == "str"
+    assert bt.ShortString is str
+    assert bt.MediumString is str
+    assert bt.LongString is str
 
 
 def test_bounded_sequence_typedef_maps_to_list(
     generated_modules: dict[str, ModuleType],
 ) -> None:
     bt = generated_modules["bounded_types"]
-    assert bt.SmallIntList == "list[int]"
-    assert bt.StringList100 == "list[str]"
-    assert bt.LargeDoubleList == "list[float]"
+    assert bt.SmallIntList == list[int]
+    assert bt.StringList100 == list[str]
+    assert bt.LargeDoubleList == list[float]
 
 
 def test_bounded_fields_struct(generated_modules: dict[str, ModuleType]) -> None:
@@ -88,9 +88,9 @@ def test_nested_bounded_annotations(generated_modules: dict[str, ModuleType]) ->
 
 def test_typedef_chain_with_bounds(generated_modules: dict[str, ModuleType]) -> None:
     bt = generated_modules["bounded_types"]
-    assert bt.Name == "str"
-    assert bt.NameList == "list[Name]"
-    assert bt.NameMap == "dict[Name, NameList]"
+    assert bt.Name is str
+    assert bt.NameList == list[bt.Name]
+    assert bt.NameMap == dict[bt.Name, bt.NameList]
 
 
 def test_mixed_bounds_struct(generated_modules: dict[str, ModuleType]) -> None:

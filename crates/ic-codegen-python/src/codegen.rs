@@ -555,7 +555,7 @@ impl<'a> PyGen<'a> {
 
     fn emit_alias(&self, w: &mut PyWriter, def: &Def, alias: &AliasTy) {
         let ty_str = self.py_type(w, &alias.ty);
-        py!(w, def, ": _typing_.TypeAlias = \"", ty_str, "\"\n");
+        py!(w, def, ": _typing_.TypeAlias = ", ty_str, "\n");
         py!(w, "\n\n");
     }
 

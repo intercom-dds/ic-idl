@@ -26,6 +26,7 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 from types import ModuleType
+from typing import Any
 
 
 def test_any_default_is_none(generated_modules: dict[str, ModuleType]) -> None:
@@ -116,6 +117,7 @@ def test_optional_any_with_value(generated_modules: dict[str, ModuleType]) -> No
 def test_any_alias_typedef(generated_modules: dict[str, ModuleType]) -> None:
     at = generated_modules["any_types"]
     assert hasattr(at, "AnyAlias")
+    assert at.AnyAlias is Any
 
 
 def test_using_any_alias(generated_modules: dict[str, ModuleType]) -> None:

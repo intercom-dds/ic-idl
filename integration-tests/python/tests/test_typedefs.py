@@ -30,36 +30,36 @@ from types import ModuleType
 
 def test_primitive_typedef_values(generated_modules: dict[str, ModuleType]) -> None:
     td = generated_modules["typedef_types"]
-    assert td.Integer == "int"
-    assert td.UnsignedInteger == "int"
-    assert td.Real == "float"
-    assert td.Text == "str"
-    assert td.Flag == "bool"
-    assert td.Byte == "int"
+    assert td.Integer is int
+    assert td.UnsignedInteger is int
+    assert td.Real is float
+    assert td.Text is str
+    assert td.Flag is bool
+    assert td.Byte is int
 
 
 def test_sequence_typedef_values(generated_modules: dict[str, ModuleType]) -> None:
     td = generated_modules["typedef_types"]
-    assert td.IntList == "list[int]"
-    assert td.StringList == "list[str]"
-    assert td.RealList == "list[float]"
+    assert td.IntList == list[int]
+    assert td.StringList == list[str]
+    assert td.RealList == list[float]
 
 
 def test_nested_typedef_values(generated_modules: dict[str, ModuleType]) -> None:
     td = generated_modules["typedef_types"]
-    assert td.Count == "Integer"
-    assert td.Label == "Text"
+    assert td.Count is td.Integer
+    assert td.Label is td.Text
 
 
 def test_map_typedef_values(generated_modules: dict[str, ModuleType]) -> None:
     td = generated_modules["typedef_types"]
-    assert td.StringIntMap == "dict[str, int]"
-    assert td.StringStringMap == "dict[str, str]"
+    assert td.StringIntMap == dict[str, int]
+    assert td.StringStringMap == dict[str, str]
 
 
 def test_array_typedef_value(generated_modules: dict[str, ModuleType]) -> None:
     td = generated_modules["typedef_types"]
-    assert td.LongArray == "list[int]"
+    assert td.LongArray == list[int]
 
 
 def test_struct_with_typedef_fields(generated_modules: dict[str, ModuleType]) -> None:
@@ -142,25 +142,25 @@ def test_array_typedef_struct_values(generated_modules: dict[str, ModuleType]) -
 
 def test_deep_typedef_chain_values(generated_modules: dict[str, ModuleType]) -> None:
     td = generated_modules["typedef_types"]
-    assert td.Level1 == "int"
-    assert td.Level2 == "Level1"
-    assert td.Level3 == "Level2"
-    assert td.Level4 == "Level3"
-    assert td.Level5 == "Level4"
+    assert td.Level1 is int
+    assert td.Level2 is td.Level1
+    assert td.Level3 is td.Level2
+    assert td.Level4 is td.Level3
+    assert td.Level5 is td.Level4
 
 
 def test_deep_sequence_typedef_chain(generated_modules: dict[str, ModuleType]) -> None:
     td = generated_modules["typedef_types"]
-    assert td.SeqLevel1 == "list[int]"
-    assert td.SeqLevel2 == "SeqLevel1"
-    assert td.SeqLevel3 == "SeqLevel2"
+    assert td.SeqLevel1 == list[int]
+    assert td.SeqLevel2 is td.SeqLevel1
+    assert td.SeqLevel3 is td.SeqLevel2
 
 
 def test_deep_map_typedef_chain(generated_modules: dict[str, ModuleType]) -> None:
     td = generated_modules["typedef_types"]
-    assert td.MapLevel1 == "dict[str, int]"
-    assert td.MapLevel2 == "MapLevel1"
-    assert td.MapLevel3 == "MapLevel2"
+    assert td.MapLevel1 == dict[str, int]
+    assert td.MapLevel2 is td.MapLevel1
+    assert td.MapLevel3 is td.MapLevel2
 
 
 def test_deep_chain_struct_field_types(

@@ -468,9 +468,23 @@ fn neg<R: Clone>(val: Value<R>) -> Result<Value<R>, ArithError<R>> {
         Value::UInt(u, r) => {
             let i = u as i128;
             let neg = i.wrapping_neg();
-            let mask = rank_mask(r);
-            let unsigned_val = (neg as u128) & mask;
-            Ok(Value::UInt(unsigned_val, r))
+
+            let signed_rank = match r {
+                IntRank::U8 => IntRank::I8,
+                IntRank::U16 => IntRank::I16,
+                IntRank::U32 => IntRank::I32,
+                IntRank::U64 => IntRank::I64,
+                _ => r,
+            };
+
+            let (min, max) = int_bounds(signed_rank);
+            if neg >= min && neg <= max {
+                Ok(Value::Int(neg, signed_rank))
+            } else {
+                let mask = rank_mask(r);
+                let unsigned_val = (neg as u128) & mask;
+                Ok(Value::UInt(unsigned_val, r))
+            }
         }
         Value::Float(f, r) => Ok(Value::Float(-f, r)),
         Value::Ref(r) => Err(ArithError::UnresolvedRef(r)),

@@ -64,13 +64,17 @@ Run unit tests:
 cargo nextest run --workspace --all-targets
 ```
 
-Run the codegen tests:
+---
+
+Run codegen tests:
 
 ```sh
 cargo xtask codegen
 ```
 
 See the `codegen-tests` directory for more information.
+
+---
 
 Run integration tests:
 
@@ -79,6 +83,8 @@ cargo xtask integration
 ```
 
 See the `integration-tests` directory for more information.
+
+---
 
 Generate development documentation:
 

@@ -34,6 +34,7 @@
     <IsPackable>false</IsPackable>
 
     <IdlCompiler>$(MSBuildProjectDirectory)/../../target/debug/ic-idl</IdlCompiler>
+    <IdlCompiler Condition="'$(IDL_COMPILER)' != ''">$(IDL_COMPILER)</IdlCompiler>
   </PropertyGroup>
 
   <ItemGroup>
@@ -49,7 +50,7 @@
     <IdlFiles Include="../corpus/*.idl" />
   </ItemGroup>
 
-  <Target Name="GenerateFromIdl" BeforeTargets="CoreCompile" Inputs="@(IdlFiles)" Outputs="$(IntermediateOutputPath)Generated/sentinel.txt">
+  <Target Name="GenerateFromIdl" BeforeTargets="CoreCompile" Inputs="@(IdlFiles);$(IdlCompiler)" Outputs="$(IntermediateOutputPath)Generated/sentinel.txt">
     <PropertyGroup>
       <GeneratedSourcesPath>$(IntermediateOutputPath)Generated</GeneratedSourcesPath>
     </PropertyGroup>

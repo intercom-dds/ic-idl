@@ -366,14 +366,20 @@ impl<'a> CppGen<'a> {
             Numeric::Null => w!(w, "nullptr"),
             Numeric::Bool(v) => w!(w, if *v { "true" } else { "false" }),
             Numeric::Char(v) => escape_char(w, *v),
-            Numeric::Int8(v) => w!(w, v.to_string()),
-            Numeric::UInt8(v) => w!(w, v.to_string(), "U"),
-            Numeric::Int16(v) => w!(w, v.to_string()),
-            Numeric::UInt16(v) => w!(w, v.to_string(), "U"),
-            Numeric::Int32(v) => w!(w, v.to_string()),
-            Numeric::UInt32(v) => w!(w, v.to_string(), "U"),
-            Numeric::Int64(v) => w!(w, v.to_string(), "LL"),
-            Numeric::UInt64(v) => w!(w, v.to_string(), "ULL"),
+            Numeric::Int8(v) => w!(w, v),
+            Numeric::UInt8(v) => w!(w, v, "U"),
+            Numeric::Int16(v) => w!(w, v),
+            Numeric::UInt16(v) => w!(w, v, "U"),
+            Numeric::Int32(v) => w!(w, v),
+            Numeric::UInt32(v) => w!(w, v, "U"),
+            Numeric::Int64(v) => {
+                if *v == i64::MIN {
+                    w!(w, "INT64_MIN");
+                } else {
+                    w!(w, v, "LL");
+                }
+            }
+            Numeric::UInt64(v) => w!(w, v, "ULL"),
             Numeric::Float(v) => w!(w, format!("{:.7}", v), "f"),
             Numeric::Double(v) => w!(w, format!("{:.16}", v)),
             Numeric::String(s) => {

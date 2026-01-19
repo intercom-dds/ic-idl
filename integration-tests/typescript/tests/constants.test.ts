@@ -231,7 +231,7 @@ describe("large integer constants", () => {
 
     test("longlong limits (as strings due to JS number limits)", () => {
       expect(LONGLONG_MAX).toBe("9223372036854775807");
-      expect(LONGLONG_MIN).toBe("-9223372036854775807");
+      expect(LONGLONG_MIN).toBe("-9223372036854775808");
     });
 
     test("ulonglong limits (as strings due to JS number limits)", () => {

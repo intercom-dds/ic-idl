@@ -220,7 +220,7 @@ public class ConstantsTests
     public void LargeIntegers_LonglongBounds()
     {
         Assert.Equal(9223372036854775807L, LargeIntegerTypes.Constants.LonglongMax);
-        Assert.Equal(-9223372036854775807L, LargeIntegerTypes.Constants.LonglongMin);
+        Assert.Equal(-9223372036854775808L, LargeIntegerTypes.Constants.LonglongMin);
     }
 
     [Fact]

@@ -191,7 +191,7 @@ def test_ulong_limits(generated_modules: dict[str, ModuleType]) -> None:
 def test_longlong_limits(generated_modules: dict[str, ModuleType]) -> None:
     li = generated_modules["large_integer_types"]
     assert li.LONGLONG_MAX == 9223372036854775807
-    assert li.LONGLONG_MIN == -9223372036854775807
+    assert li.LONGLONG_MIN == -9223372036854775808
 
 
 def test_ulonglong_limits(generated_modules: dict[str, ModuleType]) -> None:

@@ -124,7 +124,7 @@ module large_integer_types {
 
     // 64-bit signed limits
     const long long LONGLONG_MAX = 9223372036854775807;
-    const long long LONGLONG_MIN = -9223372036854775807;
+    const long long LONGLONG_MIN = -9223372036854775808;
 
     // 64-bit unsigned limits
     const unsigned long long ULONGLONG_MAX = 18446744073709551615;

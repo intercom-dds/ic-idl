@@ -28,6 +28,7 @@
 #include <doctest/doctest.h>
 
 #include <cstring>
+#include <limits>
 
 #include "constants.h"
 
@@ -169,7 +170,7 @@ TEST_CASE("ulong_limits" * doctest::test_suite("constants")) {
 
 TEST_CASE("longlong_limits" * doctest::test_suite("constants")) {
     CHECK(large_integer_types::LONGLONG_MAX == 9223372036854775807LL);
-    CHECK(large_integer_types::LONGLONG_MIN == -9223372036854775807LL);
+    CHECK(large_integer_types::LONGLONG_MIN == std::numeric_limits<int64_t>::min());
 }
 
 TEST_CASE("ulonglong_limits" * doctest::test_suite("constants")) {

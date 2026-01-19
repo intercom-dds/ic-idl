@@ -455,19 +455,16 @@ impl<'a> CSharpGen<'a> {
         w!(w, "\n");
         w!(w, "public ", def.ident.name, "()\n");
         w!(w, "{\n");
-        w!(w, "}\n");
+        w!(w, "}\n\n");
 
         // Copy constructor
-        w!(w, "\n");
         w!(w, "public ", def.ident.name, "(", def.ident.name, " other)\n");
         w!(w, "{\n");
         w!(w, "if (other is null)\n");
         w!(w, "{\n");
         w!(w, "throw new ArgumentNullException(nameof(other));\n");
-        w!(w, "}\n");
-        if struct_ty.parent.is_some() {
-            w!(w, "// Copy base members\n");
-        }
+        w!(w, "}\n\n");
+
         for member in &struct_ty.members {
             let member_name = &member.ident.name;
             if let TyKind::Array { .. } = &member.ty.kind {
@@ -479,11 +476,10 @@ impl<'a> CSharpGen<'a> {
                 w!(w, "this.", member_name, " = other.", member_name, ";\n");
             }
         }
-        w!(w, "}\n");
+        w!(w, "}\n\n");
 
         // Constructor with all fields
         if !struct_ty.members.is_empty() {
-            w!(w, "\n");
             w!(w, "public ", def.ident.name, "(");
             for (i, member) in struct_ty.members.iter().enumerate() {
                 if i > 0 {
@@ -497,7 +493,7 @@ impl<'a> CSharpGen<'a> {
             for member in &struct_ty.members {
                 w!(w, "this.", member.ident.name, " = ", member.ident.name, ";\n");
             }
-            w!(w, "}\n");
+            w!(w, "}\n\n");
         }
 
         self.emit_struct_equals(w, def, struct_ty);
@@ -584,7 +580,6 @@ impl<'a> CSharpGen<'a> {
 
     fn emit_struct_equals(&self, w: &mut Twine, def: &Def, struct_ty: &StructTy) {
         // IEquatable<T>.Equals
-        w!(w, "\n");
         w!(w, "public bool Equals(", def, "? other)\n");
         w!(w, "{\n");
         w!(w, "if (other is null) return false;\n");
@@ -612,12 +607,11 @@ impl<'a> CSharpGen<'a> {
 
         // object.Equals override
         w!(w, "public override bool Equals(object? obj)\n");
-        w!(w, "\t => Equals(obj as ", def, ");\n");
+        w!(w, "\t => Equals(obj as ", def, ");\n\n");
     }
 
     fn emit_struct_compare_to(&self, w: &mut Twine, def: &Def, struct_ty: &StructTy) {
         // IEquatable<T>.Equals
-        w!(w, "\n");
         w!(w, "public int CompareTo(", def, "? other)\n");
         w!(w, "{\n");
         w!(w, "if (other is null) return 1;\n");
@@ -648,7 +642,6 @@ impl<'a> CSharpGen<'a> {
     }
 
     fn emit_struct_hashcode(w: &mut Twine, struct_ty: &StructTy) {
-        w!(w, "\n");
         w!(w, "public override int GetHashCode()\n");
         w!(w, "{\n");
         w!(w, "HashCode hash = new HashCode();\n");
@@ -687,10 +680,9 @@ impl<'a> CSharpGen<'a> {
         w!(w, "\n");
         w!(w, "public ", name, "()\n");
         w!(w, "{\n");
-        w!(w, "}\n");
+        w!(w, "}\n\n");
 
         // Copy constructor
-        w!(w, "\n");
         w!(w, "public ", name, "(", name, " other)\n");
         w!(w, "{\n");
         w!(w, "if (other is null)\n");
@@ -850,10 +842,7 @@ impl<'a> CSharpGen<'a> {
     }
 
     fn emit_union_equals(&self, w: &mut Twine, def: &Def, union_ty: &UnionTy) {
-        let name = &def.ident.name;
-
-        w!(w, "\n");
-        w!(w, "public bool Equals(", name, "? other)\n");
+        w!(w, "public bool Equals(", def, "? other)\n");
         w!(w, "{\n");
 
         w!(w, "if (other is null) return false;\n");
@@ -888,7 +877,6 @@ impl<'a> CSharpGen<'a> {
     }
 
     fn emit_union_compare_to(&self, w: &mut Twine, def: &Def, union_ty: &UnionTy) {
-        w!(w, "\n");
         w!(w, "public int CompareTo(", def, "? other)\n");
         w!(w, "{\n");
         w!(w, "if (other is null) return 1;\n");
@@ -922,7 +910,6 @@ impl<'a> CSharpGen<'a> {
     }
 
     fn emit_union_hashcode(w: &mut Twine, union_ty: &UnionTy) {
-        w!(w, "\n");
         w!(w, "public override int GetHashCode()\n");
         w!(w, "{\n");
         w!(w, "HashCode hash = new HashCode();\n");

@@ -89,13 +89,13 @@ impl<T: Display> Display for Colored<T> {
         if let Some(color) = self.style.fg {
             codes.push(match color {
                 Color::Black => "38;5;0",
-                Color::Red => "38;5;9",
-                Color::Green => "38;5;10",
-                Color::Yellow => "38;5;11",
-                Color::Blue => "38;5;12",
-                Color::Purple => "38;5;13",
-                Color::Cyan => "38;5;14",
-                Color::White => "38;5;15",
+                Color::Red => "38;5;1",
+                Color::Green => "38;5;2",
+                Color::Yellow => "38;5;3",
+                Color::Blue => "38;5;4",
+                Color::Purple => "38;5;5",
+                Color::Cyan => "38;5;6",
+                Color::White => "38;5;7",
                 Color::Gray => "38;5;8",
                 Color::Clear => "39",
             });

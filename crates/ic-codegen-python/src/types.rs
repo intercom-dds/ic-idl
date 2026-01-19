@@ -157,7 +157,7 @@ impl PyGen<'_> {
             }
             TyKind::Map { .. } => "_dataclasses_.field(default_factory=dict)".to_string(),
             TyKind::Adt(def_id) => {
-                if self.needs_lambda_default(*def_id) {
+                if self.needs_lambda_default(w, *def_id) {
                     let val = self.default_value(w, ty);
                     format!("_dataclasses_.field(default_factory=lambda: {val})")
                 } else {
@@ -168,12 +168,20 @@ impl PyGen<'_> {
         }
     }
 
-    fn needs_lambda_default(&self, def_id: DefId) -> bool {
+    fn needs_lambda_default(&self, w: &PyWriter, def_id: DefId) -> bool {
         let def = self.hir.context.type_of(def_id);
-        matches!(
+        if matches!(
             def.kind,
             DefKind::Enum(_) | DefKind::Bitmask(_) | DefKind::Const(_)
-        )
+        ) {
+            return true;
+        }
+
+        if let Some(module_id) = parent_module(self.hir, def_id) {
+            w.import_context.module_imports.contains_key(&module_id)
+        } else {
+            false
+        }
     }
 
     fn adt_default(&self, w: &PyWriter, def_id: DefId) -> Option<String> {

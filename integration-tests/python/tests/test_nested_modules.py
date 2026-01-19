@@ -27,10 +27,6 @@
 
 from types import ModuleType
 
-import pytest
-
-pytestmark = pytest.mark.skip(reason="circular import issues")
-
 
 def test_top_level_types_exist(generated_modules: dict[str, ModuleType]) -> None:
     mod = generated_modules["nested_module_types"]

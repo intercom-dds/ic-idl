@@ -28,7 +28,6 @@
 #include <doctest/doctest.h>
 
 #include <exception>
-#include <stdexcept>
 
 #include "exceptions.h"
 

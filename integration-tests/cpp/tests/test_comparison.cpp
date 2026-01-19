@@ -43,7 +43,6 @@ TEST_CASE("struct_equality" * doctest::test_suite("comparison")) {
 
     CHECK(p1 == p2);
     CHECK(p1 != p3);
-    CHECK(p1 == p2);
     CHECK_FALSE(p1 == p3);
 }
 

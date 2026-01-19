@@ -27,7 +27,10 @@
 
 #include <doctest/doctest.h>
 
+#include <string>
+#include <string_view>
 #include <type_traits>
+#include <vector>
 
 #include "string_types.h"
 

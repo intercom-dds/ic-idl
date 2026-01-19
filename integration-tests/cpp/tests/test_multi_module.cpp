@@ -62,7 +62,7 @@ TEST_CASE("module_a_third_opening" * doctest::test_suite("multi_module")) {
     module_a::StructA1 a1(1);
     module_a::StructA2 a2(2.0, a1);
     module_a::StructA3 s3(true, a1, a2);
-    CHECK(s3.flag == true);
+    CHECK(s3.flag);
     CHECK(s3.a1.value == 1);
     CHECK(s3.a2.data == 2.0);
     CHECK(module_a::CONST_A3 == 102);

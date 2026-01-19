@@ -31,7 +31,6 @@ project(cpp_integration_tests CXX)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
-set(CMAKE_COMPILE_WARNING_AS_ERROR ON)
 set(CMAKE_INCLUDE_CURRENT_DIR ON)
 
 if(MSVC)
@@ -41,6 +40,7 @@ if(MSVC)
         /w14265
         /w14263
         /w14242
+        /WX
     )
 else()
     add_compile_options(
@@ -56,6 +56,7 @@ else()
         -Wcast-align
         -Wno-switch-bool
         -Wnull-dereference
+        -Werror
     )
 endif()
 

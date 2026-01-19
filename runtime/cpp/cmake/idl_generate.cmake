@@ -50,7 +50,7 @@
 # Any unparsed parameters will be added to the INPUT_IDL list.
 #
 # The OUTPUT_VAR list will be populated with ${DESTINATION}/<idl-file> and set
-# in PARENT_SCOPE. OUTPUT_VAR will default to being named IC_GENERATE_OUTPUTS,
+# in PARENT_SCOPE. OUTPUT_VAR will default to being named IDL_GENERATE_OUTPUTS,
 # and is assigned in the parent scope. Note that OUTPUT_VAR will be overwritten
 # with each call to idl_generate().
 #
@@ -58,7 +58,7 @@
 # overwriting the entire list each time. This is useful for cases where
 # switches may change, but you would still like to give multiple outputs
 # to the same target. Avoid using the same variable for OUTPUT_VAR (default
-# IC_GENERATE_OUTPUTS) and OUTPUT_ACCUMULATED, as the former will overwrite
+# IDL_GENERATE_OUTPUTS) and OUTPUT_ACCUMULATED, as the former will overwrite
 # the latter.
 #
 # If you know your generated code will not match the output expected by this
@@ -140,9 +140,19 @@ function(IDL_GENERATE)
          list( APPEND _OUTPUT_SUFFIXES .idl )
     endif()
 
+    if( _IC_GENERATE_LANGUAGE STREQUAL "CSHARP" )
+         list( APPEND _IC_GENERATE_FLAGS --csharp-out ${_ABS_DESTINATION} )
+         list( APPEND _OUTPUT_SUFFIXES .cs )
+    endif()
+
+    if( _IC_GENERATE_LANGUAGE STREQUAL "JAVA" )
+         list( APPEND _IC_GENERATE_FLAGS --java-out ${_ABS_DESTINATION} )
+         list( APPEND _OUTPUT_SUFFIXES .java )
+    endif()
+
     if( _IC_GENERATE_LANGUAGE STREQUAL "PROTOBUF" )
          list( APPEND _IC_GENERATE_FLAGS --proto-out ${_ABS_DESTINATION} )
-         list( APPEND _OUTPUT_SUFFIXES .idl )
+         list( APPEND _OUTPUT_SUFFIXES .proto )
     endif()
 
     if( DEFINED ENV{LD_LIBRARY_PATH} )
@@ -276,7 +286,7 @@ function(IDL_GENERATE)
         set( _IC_GENERATE_OUTPUT_VAR IDL_GENERATE_OUTPUTS )
     endif()
 
-    # NB: IC_GENERATE_OUTPUTS is only defined for the PARENT_SCOPE
+    # NB: IDL_GENERATE_OUTPUTS is only defined for the PARENT_SCOPE
     set( ${_IC_GENERATE_OUTPUT_VAR} ${_OUTPUT_LIST} PARENT_SCOPE )
 
     if( _IC_GENERATE_OUTPUT_ACCUMULATED )

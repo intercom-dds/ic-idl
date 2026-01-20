@@ -241,9 +241,8 @@ pub fn equivalence_kind(ident: &TypeIdentifier) -> EquivalenceKind {
     }
 }
 
-// TODO: should be CDR2
 pub fn type_object_size(obj: &TypeObject) -> usize {
-    intercom_cts::cdr1::to_le_bytes(obj)
+    intercom_cts::cdr2::to_le_bytes(obj)
         .expect("failed to serialize TypeObject")
         .len()
 }
@@ -268,7 +267,7 @@ pub fn get_holder_type(ty: &hir::Ty) -> TypeKind {
 
 pub fn equivalence_hash(type_obj: &TypeObject) -> TypeIdentifier {
     let serialized =
-        intercom_cts::cdr1::to_le_bytes(type_obj).expect("failed to serialize TypeObject");
+        intercom_cts::cdr2::to_le_bytes(type_obj).expect("failed to serialize TypeObject");
     let digest = md5::digest(&serialized);
 
     let mut hash = [0u8; 14];

@@ -55,5 +55,5 @@ pub fn type_definition(def_id: DefId, cache: &mut TypeObjectCache<'_>) -> TypeDe
 pub fn type_library(ctx: &Context, def_id: DefId) -> Vec<u8> {
     let mut cache = TypeObjectCache::new(ctx);
     let type_def = type_definition(def_id, &mut cache);
-    intercom_cts::cdr1::to_be_bytes(&type_def).expect("failed to serialize TypeDefinition")
+    intercom_cts::cdr2::to_be_bytes(&type_def).expect("failed to serialize TypeDefinition")
 }

@@ -340,8 +340,11 @@ impl Compiler {
             // Coalesce multiple null variants in unions
             let hir = ic_hir_xform::coalesce_null_variants::transform(hir);
 
-            // Final normalization after all transformations
-            ic_hir_xform::normalize::normalize(hir)
+            // Verify that, after all transformations, the HIR is still consistent
+            #[cfg(debug_assertions)]
+            ic_hir_xform::normalize::normalize(&hir);
+
+            hir
         };
 
         Ok((hir, all_diagnostics))

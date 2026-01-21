@@ -226,6 +226,9 @@ pub struct Options {
     #[option(section = "json schema options")]
     pub json_schema: ic_codegen_json_schema::JsonSchemaOptions,
 
+    #[option(section = "typeobj options")]
+    pub typeobj: ic_codegen_typeobj::TypeObjOptions,
+
     #[option(section = "typescript options")]
     pub typescript: ic_codegen_typescript::TypeScriptOptions,
 
@@ -271,6 +274,10 @@ pub struct CodegenOptions {
     /// Generate Rust files in <dir>
     #[option(long, arg = "dir")]
     pub rust_out: Option<PathBuf>,
+
+    /// Generate TypeObject files in <dir>
+    #[option(long, arg = "dir")]
+    pub typeobj_out: Option<PathBuf>,
 
     /// Generate TypeScript files in <dir>
     #[option(long, arg = "dir")]

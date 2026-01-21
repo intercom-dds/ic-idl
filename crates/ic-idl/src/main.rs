@@ -244,7 +244,19 @@ fn try_compile(options: CompilerOptions) {
     );
 }
 
-#[allow(clippy::too_many_lines)]
+macro_rules! backends {
+    ($generated:ident, $options:ident; $( $field:ident, $name:literal => $codegen:expr );* $(;)?) => {
+        $(
+            if let Some(output_dir) = &$options.codegen.$field {
+                let _span = info_span!($name, output_dir = %output_dir.display()).entered();
+                let files = invoke_backend(output_dir, || $codegen, $options.purge_dirs)?;
+                info!(files = files.len(), "generated");
+                $generated.extend(files);
+            }
+        )*
+    };
+}
+
 fn generate_code(
     options: &CompilerOptions,
     hir: &ic_hir::ResolvedGraph,
@@ -253,125 +265,26 @@ fn generate_code(
     let _codegen_span = info_span!("codegen").entered();
     let mut generated = vec![];
 
-    if let Some(output_dir) = &options.codegen.cpp_out {
-        let _span = info_span!("cpp", output_dir = %output_dir.display()).entered();
-        let files = invoke_backend(
-            output_dir,
-            || ic_codegen_cpp::codegen_cpp(hir, vfs, options.cpp.clone()),
-            options.purge_dirs,
-        )?;
-        info!(files = files.len(), "generated");
-        generated.extend(files);
-    }
-
-    if let Some(output_dir) = &options.codegen.csharp_out {
-        let _span = info_span!("csharp", output_dir = %output_dir.display()).entered();
-        let files = invoke_backend(
-            output_dir,
-            || ic_codegen_csharp::codegen_csharp(hir, vfs, options.csharp),
-            options.purge_dirs,
-        )?;
-        info!(files = files.len(), "generated");
-        generated.extend(files);
-    }
-
-    if let Some(output_dir) = &options.codegen.rust_out {
-        let _span = info_span!("rust", output_dir = %output_dir.display()).entered();
-        let files = invoke_backend(
-            output_dir,
-            || ic_codegen_rust::codegen_rust(hir, options.rust),
-            options.purge_dirs,
-        )?;
-        info!(files = files.len(), "generated");
-        generated.extend(files);
-    }
-
-    if let Some(output_dir) = &options.codegen.python_out {
-        let _span = info_span!("python", output_dir = %output_dir.display()).entered();
-        let files = invoke_backend(
-            output_dir,
-            || ic_codegen_python::codegen_python(hir, vfs, options.python.clone()),
-            options.purge_dirs,
-        )?;
-        info!(files = files.len(), "generated");
-        generated.extend(files);
-    }
-
-    if let Some(output_dir) = &options.codegen.idl_out {
-        let _span = info_span!("idl", output_dir = %output_dir.display()).entered();
-        let files = invoke_backend(
-            output_dir,
-            || ic_codegen_idl::codegen_idl(hir, vfs, options.idl),
-            options.purge_dirs,
-        )?;
-        info!(files = files.len(), "generated");
-        generated.extend(files);
-    }
-
-    if let Some(output_dir) = &options.codegen.java_out {
-        let _span = info_span!("java", output_dir = %output_dir.display()).entered();
-        let files = invoke_backend(
-            output_dir,
-            || ic_codegen_java::codegen_java(hir, options.java.clone()),
-            options.purge_dirs,
-        )?;
-        info!(files = files.len(), "generated");
-        generated.extend(files);
-    }
-
-    if let Some(output_dir) = &options.codegen.json_out {
-        let _span = info_span!("json", output_dir = %output_dir.display()).entered();
-        let files = invoke_backend(
-            output_dir,
-            || ic_codegen_json::codegen_json(hir, vfs),
-            options.purge_dirs,
-        )?;
-        info!(files = files.len(), "generated");
-        generated.extend(files);
-    }
-
-    if let Some(output_dir) = &options.codegen.json_schema_out {
-        let _span = info_span!("json_schema", output_dir = %output_dir.display()).entered();
-        let files = invoke_backend(
-            output_dir,
-            || ic_codegen_json_schema::codegen_schema(hir, vfs, options.json_schema.clone()),
-            options.purge_dirs,
-        )?;
-        info!(files = files.len(), "generated");
-        generated.extend(files);
-    }
-
-    if let Some(output_dir) = &options.codegen.xml_out {
-        let _span = info_span!("xml", output_dir = %output_dir.display()).entered();
-        let files = invoke_backend(
-            output_dir,
-            || ic_codegen_xml::codegen_xml(hir, vfs),
-            options.purge_dirs,
-        )?;
-        info!(files = files.len(), "generated");
-        generated.extend(files);
-    }
-
-    if let Some(output_dir) = &options.codegen.proto_out {
-        let _span = info_span!("proto", output_dir = %output_dir.display()).entered();
-        let files = invoke_backend(
-            output_dir,
-            || ic_codegen_protobuf::codegen_proto(hir),
-            options.purge_dirs,
-        )?;
-        info!(files = files.len(), "generated");
-        generated.extend(files);
-    }
-
-    if let Some(output_dir) = &options.codegen.typescript_out {
-        let _span = info_span!("typescript", output_dir = %output_dir.display()).entered();
-        let files = invoke_backend(
-            output_dir,
-            || ic_codegen_typescript::codegen_typescript(hir, options.typescript.clone()),
-            options.purge_dirs,
-        )?;
-        info!(files = files.len(), "generated");
-        generated.extend(files);
+    backends! {
+        generated, options;
+        cpp_out, "cpp" => ic_codegen_cpp::codegen_cpp(hir, vfs, options.cpp.clone());
+        csharp_out, "csharp" => ic_codegen_csharp::codegen_csharp(hir, vfs, options.csharp);
+        rust_out, "rust" => ic_codegen_rust::codegen_rust(hir, options.rust);
+        python_out, "python" => {
+            ic_codegen_python::codegen_python(hir, vfs, options.python.clone())
+        };
+        idl_out, "idl" => ic_codegen_idl::codegen_idl(hir, vfs, options.idl);
+        java_out, "java" => ic_codegen_java::codegen_java(hir, options.java.clone());
+        json_out, "json" => ic_codegen_json::codegen_json(hir, vfs);
+        json_schema_out, "json_schema" => {
+            ic_codegen_json_schema::codegen_schema(hir, vfs, options.json_schema.clone())
+        };
+        xml_out, "xml" => ic_codegen_xml::codegen_xml(hir, vfs);
+        proto_out, "proto" => ic_codegen_protobuf::codegen_proto(hir);
+        typeobj_out, "typeobj" => ic_codegen_typeobj::codegen_typeobj(hir, options.typeobj);
+        typescript_out, "typescript"  => {
+            ic_codegen_typescript::codegen_typescript(hir, options.typescript.clone())
+        };
     }
 
     Ok(generated)

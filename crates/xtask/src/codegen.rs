@@ -99,6 +99,7 @@ fn lang_to_test_file(lang: &str) -> Option<&'static str> {
         "java" => Some("tests/test_java.py"),
         "protobuf" => Some("tests/test_protobuf.py"),
         "python" => Some("tests/test_python.py"),
+        "typeobj" => Some("tests/test_typeobj.py"),
         "typescript" | "ts" => Some("tests/test_typescript.py"),
         "json" => Some("tests/test_json.py"),
         "json-schema" => Some("tests/test_json_schema.py"),
@@ -144,8 +145,8 @@ pub fn run(opts: Options) {
             } else {
                 eprintln!("error: unknown or unsupported language '{lang}'");
                 eprintln!(
-                    "supported languages: cpp, csharp, java, protobuf, python, rust, typescript, \
-                     json, json-schema, xml, idl, all"
+                    "supported languages: cpp, csharp, java, protobuf, python, rust, typeobj, \
+                     typescript, json, json-schema, xml, idl, all"
                 );
                 std::process::exit(1);
             }

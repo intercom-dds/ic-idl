@@ -27,16 +27,27 @@
 
 //! Case-insensitive strings and maps.
 
+use std::borrow::Borrow;
 use std::collections::hash_map::Entry;
 use std::collections::{HashMap, HashSet};
 use std::hash::{Hash, Hasher};
 
-/// A wrapper type for case-insensitive string comparison.
-/// Used internally for lookups without allocating.
+/// A DST wrapper for case-insensitive string comparison.
+/// Used for zero-allocation lookups via the `Borrow` trait.
 #[derive(Debug)]
-struct CaseInsensitiveStr<'a>(&'a str);
+#[repr(transparent)]
+pub struct CaseInsensitiveStr(str);
 
-impl Hash for CaseInsensitiveStr<'_> {
+impl CaseInsensitiveStr {
+    #[inline]
+    #[must_use]
+    pub fn new(s: &str) -> &Self {
+        // SAFETY: CaseInsensitiveStr is #[repr(transparent)] over str
+        unsafe { &*(std::ptr::from_ref::<str>(s) as *const Self) }
+    }
+}
+
+impl Hash for CaseInsensitiveStr {
     fn hash<H: Hasher>(&self, state: &mut H) {
         for byte in self.0.bytes() {
             state.write_u8(byte.to_ascii_lowercase());
@@ -44,13 +55,13 @@ impl Hash for CaseInsensitiveStr<'_> {
     }
 }
 
-impl PartialEq for CaseInsensitiveStr<'_> {
+impl PartialEq for CaseInsensitiveStr {
     fn eq(&self, other: &Self) -> bool {
-        self.0.eq_ignore_ascii_case(other.0)
+        self.0.eq_ignore_ascii_case(&other.0)
     }
 }
 
-impl Eq for CaseInsensitiveStr<'_> {}
+impl Eq for CaseInsensitiveStr {}
 
 /// A string that preserves its original casing but compares case-insensitively.
 #[derive(Clone, Debug)]
@@ -85,7 +96,13 @@ impl std::fmt::Display for CaseString {
 
 impl Hash for CaseString {
     fn hash<H: Hasher>(&self, state: &mut H) {
-        CaseInsensitiveStr(&self.original).hash(state);
+        CaseInsensitiveStr::new(&self.original).hash(state);
+    }
+}
+
+impl Borrow<CaseInsensitiveStr> for CaseString {
+    fn borrow(&self) -> &CaseInsensitiveStr {
+        CaseInsensitiveStr::new(&self.original)
     }
 }
 
@@ -116,60 +133,36 @@ impl<T> CaseMap<T> {
     /// Inserts a key-value pair into the map.
     /// Returns the previous value if the key was already present.
     pub fn insert<K: Into<String>>(&mut self, key: K, value: T) -> Option<T> {
-        let key_str = key.into();
-        // First check if key already exists (case-insensitive)
-        if let Some((existing_key, _)) = self
-            .inner
-            .iter()
-            .find(|(k, _)| k.as_str().eq_ignore_ascii_case(&key_str))
-        {
-            let existing_key = existing_key.clone();
-            self.inner.insert(existing_key, value)
-        } else {
-            let key = CaseString::new(key_str);
-            self.inner.insert(key, value)
-        }
+        let case_key = CaseString::new(key.into());
+        self.inner.insert(case_key, value)
     }
 
     /// Gets a reference to the value for the given key.
     pub fn get<Q: AsRef<str>>(&self, key: Q) -> Option<&T> {
-        self.inner
-            .iter()
-            .find(|(k, _)| k.as_str().eq_ignore_ascii_case(key.as_ref()))
-            .map(|(_, v)| v)
+        self.inner.get(CaseInsensitiveStr::new(key.as_ref()))
     }
 
     /// Gets a mutable reference to the value for the given key.
     pub fn get_mut<Q: AsRef<str>>(&mut self, key: Q) -> Option<&mut T> {
-        self.inner
-            .iter_mut()
-            .find(|(k, _)| k.as_str().eq_ignore_ascii_case(key.as_ref()))
-            .map(|(_, v)| v)
+        self.inner.get_mut(CaseInsensitiveStr::new(key.as_ref()))
     }
 
     /// Gets the original casing of a key if it exists in the map.
     pub fn get_key<Q: AsRef<str>>(&self, key: Q) -> Option<&str> {
         self.inner
-            .keys()
-            .find(|k| k.as_str().eq_ignore_ascii_case(key.as_ref()))
-            .map(CaseString::as_str)
+            .get_key_value(CaseInsensitiveStr::new(key.as_ref()))
+            .map(|(k, _)| k.as_str())
     }
 
     /// Removes a key from the map, returning the value if it was present.
     pub fn remove<Q: AsRef<str>>(&mut self, key: Q) -> Option<T> {
-        let key_to_remove = self
-            .inner
-            .keys()
-            .find(|k| k.as_str().eq_ignore_ascii_case(key.as_ref()))
-            .cloned()?;
-        self.inner.remove(&key_to_remove)
+        self.inner.remove(CaseInsensitiveStr::new(key.as_ref()))
     }
 
     /// Checks if the map contains the given key.
     pub fn contains_key<Q: AsRef<str>>(&self, key: Q) -> bool {
         self.inner
-            .keys()
-            .any(|k| k.as_str().eq_ignore_ascii_case(key.as_ref()))
+            .contains_key(CaseInsensitiveStr::new(key.as_ref()))
     }
 
     /// Returns the number of entries in the map.
@@ -206,23 +199,9 @@ impl<T> CaseMap<T> {
 
     /// Gets the given key's corresponding entry in the map for in-place manipulation.
     pub fn entry<K: Into<String>>(&mut self, key: K) -> CaseMapEntry<'_, T> {
-        let key_str = key.into();
-
-        // Check if key already exists (case-insensitive)
-        if let Some(existing_key) = self
-            .inner
-            .keys()
-            .find(|k| k.as_str().eq_ignore_ascii_case(&key_str))
-            .cloned()
-        {
-            CaseMapEntry {
-                inner: self.inner.entry(existing_key),
-            }
-        } else {
-            let case_key = CaseString::new(key_str);
-            CaseMapEntry {
-                inner: self.inner.entry(case_key),
-            }
+        let case_key = CaseString::new(key.into());
+        CaseMapEntry {
+            inner: self.inner.entry(case_key),
         }
     }
 }
@@ -279,48 +258,26 @@ impl CaseSet {
     /// Inserts a string into the set.
     /// Returns true if the value was newly inserted.
     pub fn insert<K: Into<String>>(&mut self, key: K) -> bool {
-        let key_str = key.into();
-        // Check if key already exists (case-insensitive)
-        if self
-            .inner
-            .iter()
-            .any(|k| k.as_str().eq_ignore_ascii_case(&key_str))
-        {
-            false
-        } else {
-            let key = CaseString::new(key_str);
-            self.inner.insert(key)
-        }
+        let case_key = CaseString::new(key.into());
+        self.inner.insert(case_key)
     }
 
     /// Checks if the set contains the given string.
     pub fn contains<Q: AsRef<str>>(&self, key: Q) -> bool {
-        self.inner
-            .iter()
-            .any(|k| k.as_str().eq_ignore_ascii_case(key.as_ref()))
+        self.inner.contains(CaseInsensitiveStr::new(key.as_ref()))
     }
 
     /// Gets the original casing of a string if it exists in the set.
     pub fn get<Q: AsRef<str>>(&self, key: Q) -> Option<&str> {
         self.inner
-            .iter()
-            .find(|k| k.as_str().eq_ignore_ascii_case(key.as_ref()))
+            .get(CaseInsensitiveStr::new(key.as_ref()))
             .map(CaseString::as_str)
     }
 
     /// Removes a string from the set.
     /// Returns true if the value was present.
     pub fn remove<Q: AsRef<str>>(&mut self, key: Q) -> bool {
-        if let Some(key_to_remove) = self
-            .inner
-            .iter()
-            .find(|k| k.as_str().eq_ignore_ascii_case(key.as_ref()))
-            .cloned()
-        {
-            self.inner.remove(&key_to_remove)
-        } else {
-            false
-        }
+        self.inner.remove(CaseInsensitiveStr::new(key.as_ref()))
     }
 
     /// Returns the number of strings in the set.
@@ -716,10 +673,10 @@ mod tests {
         use std::collections::hash_map::DefaultHasher;
         use std::hash::{Hash, Hasher};
 
-        let s1 = CaseInsensitiveStr("Hello");
-        let s2 = CaseInsensitiveStr("HELLO");
-        let s3 = CaseInsensitiveStr("hello");
-        let s4 = CaseInsensitiveStr("world");
+        let s1 = CaseInsensitiveStr::new("Hello");
+        let s2 = CaseInsensitiveStr::new("HELLO");
+        let s3 = CaseInsensitiveStr::new("hello");
+        let s4 = CaseInsensitiveStr::new("world");
 
         assert_eq!(s1, s2);
         assert_eq!(s2, s3);
@@ -742,7 +699,7 @@ mod tests {
 
     #[test]
     fn case_insensitive_str_debug() {
-        let s = CaseInsensitiveStr("Test");
+        let s = CaseInsensitiveStr::new("Test");
         let debug_str = format!("{s:?}");
         assert!(debug_str.contains("CaseInsensitiveStr"));
         assert!(debug_str.contains("Test"));

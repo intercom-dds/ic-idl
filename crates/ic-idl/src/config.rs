@@ -275,7 +275,7 @@ pub struct CodegenOptions {
     #[option(long, arg = "dir")]
     pub rust_out: Option<PathBuf>,
 
-    /// Generate TypeObject files in <dir>
+    /// Generate XTypes TypeObject files in <dir>
     #[option(long, arg = "dir")]
     pub typeobj_out: Option<PathBuf>,
 

@@ -187,7 +187,6 @@ pub fn compute_group_window(
     source: &str,
     index: &LineIndex,
     max_width: Option<usize>,
-    labels: &[Label],
 ) -> LineWindow {
     let common_indent = compute_common_indent(group, source, index);
 
@@ -204,15 +203,6 @@ pub fn compute_group_window(
             ..Default::default()
         };
     }
-
-    let max_label_len = group
-        .labels
-        .iter()
-        .map(|lr| labels[lr.label_index].msg.len())
-        .max()
-        .unwrap_or(0);
-    let label_space = if max_label_len > 0 { max_label_len + 1 } else { 0 };
-    let max_width = max_width.saturating_sub(label_space);
 
     let mut max_line_len = 0u32;
     for line_num in group.start_line..=group.end_line {
@@ -253,6 +243,16 @@ pub fn compute_group_window(
     let right_ellipsis = ELLIPSIS_LEN;
     let content_budget = max_width.saturating_sub(left_ellipsis + right_ellipsis);
 
+    if content_budget == 0 {
+        return LineWindow {
+            start_col: min_col,
+            end_col: min_col,
+            truncate_left: will_truncate_left,
+            truncate_right: true,
+            common_indent,
+        };
+    }
+
     if label_span >= content_budget {
         return LineWindow {
             start_col: min_col,
@@ -270,6 +270,15 @@ pub fn compute_group_window(
     let truncate_left = start_col > 1;
     let actual_left_ellipsis = if truncate_left { ELLIPSIS_LEN } else { 0 };
     let actual_content_budget = max_width.saturating_sub(actual_left_ellipsis + right_ellipsis);
+    if actual_content_budget == 0 {
+        return LineWindow {
+            start_col,
+            end_col: start_col,
+            truncate_left,
+            truncate_right: true,
+            common_indent,
+        };
+    }
     let end_col = start_col + actual_content_budget - 1;
     let truncate_right = end_col < max_line_len;
 
@@ -358,7 +367,7 @@ pub fn compute_frame_layout(
 
     for group in &mut groups {
         trim_blank_context(group, source, index);
-        group.window = compute_group_window(group, source, index, content_width, labels);
+        group.window = compute_group_window(group, source, index, content_width);
     }
 
     FrameLayout {

@@ -300,7 +300,15 @@ impl<'a, W: fmt::Write + ?Sized> Renderer<'a, W> {
             self.charset.vertical.blue().bold()
         )?;
 
-        let win_offset = WindowOffset::from_window(window);
+        let mut win_offset = WindowOffset::from_window(window);
+
+        let label_text_len = labels_starting_here
+            .first()
+            .map(|lr| labels[lr.label_index].msg.len() + 1)
+            .unwrap_or(0);
+        if let Some(ref mut max_w) = win_offset.max_content_width {
+            *max_w = max_w.saturating_sub(label_text_len).max(1);
+        }
 
         self.draw_highlights_windowed(&col_labels, labels, win_offset)?;
 
@@ -389,15 +397,23 @@ impl<'a, W: fmt::Write + ?Sized> Renderer<'a, W> {
                 return Ok(());
             }
 
-            let max_end = win
-                .max_content_width
-                .map_or(max_pos, |w| (start + w).saturating_sub(1).min(max_pos));
+            let first_highlight_pos = col_labels[start..]
+                .iter()
+                .position(|l| !l.is_empty())
+                .map(|p| p + start);
+
+            let max_end = win.max_content_width.map_or(max_pos, |w| {
+                let budget_end = (start + w).saturating_sub(1).min(max_pos);
+                first_highlight_pos.map_or(budget_end, |fh| budget_end.max(fh))
+            });
 
             let mut i = start;
             let mut chars_written = 0usize;
+            let mut highlights_written = false;
             while i <= max_end {
                 if let Some(max_w) = win.max_content_width
                     && chars_written >= max_w
+                    && highlights_written
                 {
                     break;
                 }
@@ -421,7 +437,7 @@ impl<'a, W: fmt::Write + ?Sized> Renderer<'a, W> {
 
                     if let Some(max_w) = win.max_content_width {
                         let remaining = max_w.saturating_sub(chars_written);
-                        highlight_len = highlight_len.min(remaining);
+                        highlight_len = highlight_len.min(remaining).max(1);
                     }
 
                     write!(
@@ -434,6 +450,7 @@ impl<'a, W: fmt::Write + ?Sized> Renderer<'a, W> {
                             .fg(primary_label.color),
                     )?;
                     chars_written += highlight_len;
+                    highlights_written = true;
                     i = end;
                 }
             }

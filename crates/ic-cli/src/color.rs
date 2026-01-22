@@ -129,7 +129,12 @@ impl<T: Display> Display for Colored<T> {
         if codes.is_empty() {
             write!(f, "{}", self.value)
         } else {
-            write!(f, "\x1b[{}m{}\x1b[0m", codes.join(";"), self.value)
+            const CLEAR: &str = "\x1b[0m";
+            let code = format!("\x1b[{}m", codes.join(";"));
+            let input = self.value.to_string();
+            let restore = format!("{CLEAR}{code}");
+            let result = input.replace(CLEAR, &restore);
+            write!(f, "{code}{result}{CLEAR}")
         }
     }
 }
@@ -408,5 +413,20 @@ mod tests {
     fn test_should_colorize() {
         assert!(should_colorize(ColorMode::Always, std::io::stdout()));
         assert!(!should_colorize(ColorMode::Never, std::io::stdout()));
+    }
+
+    #[test]
+    fn test_color_stacking() {
+        let inner = "world".blue().mode(ColorMode::Always).to_string();
+        let outer = format!("hello {inner} foo!")
+            .red()
+            .mode(ColorMode::Always)
+            .to_string();
+
+        // Should be: red, "hello ", blue, "world", reset, red restored, " foo!", reset
+        assert_eq!(
+            outer,
+            "\x1b[38;5;1mhello \x1b[38;5;4mworld\x1b[0m\x1b[38;5;1m foo!\x1b[0m"
+        );
     }
 }

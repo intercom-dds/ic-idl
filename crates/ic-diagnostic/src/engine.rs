@@ -187,6 +187,7 @@ pub fn compute_group_window(
     source: &str,
     index: &LineIndex,
     max_width: Option<usize>,
+    labels: &[Label],
 ) -> LineWindow {
     let common_indent = compute_common_indent(group, source, index);
 
@@ -203,6 +204,15 @@ pub fn compute_group_window(
             ..Default::default()
         };
     }
+
+    let max_label_len = group
+        .labels
+        .iter()
+        .map(|lr| labels[lr.label_index].msg.len())
+        .max()
+        .unwrap_or(0);
+    let label_space = if max_label_len > 0 { max_label_len + 1 } else { 0 };
+    let max_width = max_width.saturating_sub(label_space);
 
     let mut max_line_len = 0u32;
     for line_num in group.start_line..=group.end_line {
@@ -344,11 +354,11 @@ pub fn compute_frame_layout(
     let max_line = groups.iter().map(|g| g.end_line).max().unwrap_or(1);
     let gutter_width = (max_line.checked_ilog10().unwrap_or(0) + 1) as usize;
 
-    let content_width = max_width.map(|w| w.saturating_sub(gutter_width + 4));
+    let content_width = max_width.map(|w| w.saturating_sub(gutter_width + 5));
 
     for group in &mut groups {
         trim_blank_context(group, source, index);
-        group.window = compute_group_window(group, source, index, content_width);
+        group.window = compute_group_window(group, source, index, content_width, labels);
     }
 
     FrameLayout {

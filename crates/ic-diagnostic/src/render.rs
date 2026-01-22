@@ -42,6 +42,7 @@ struct WindowOffset {
     col_offset: usize,
     left_pad: usize,
     common_indent: usize,
+    max_content_width: Option<usize>,
 }
 
 impl WindowOffset {
@@ -52,10 +53,16 @@ impl WindowOffset {
             0
         };
         let left_pad = if window.truncate_left { 3 } else { 0 };
+        let max_content_width = if window.start_col > 0 && window.end_col >= window.start_col {
+            Some((window.end_col - window.start_col + 1) as usize)
+        } else {
+            None
+        };
         Self {
             col_offset,
             left_pad,
             common_indent: window.common_indent as usize,
+            max_content_width,
         }
     }
 }
@@ -382,22 +389,40 @@ impl<'a, W: fmt::Write + ?Sized> Renderer<'a, W> {
                 return Ok(());
             }
 
+            let max_end = win
+                .max_content_width
+                .map_or(max_pos, |w| (start + w).saturating_sub(1).min(max_pos));
+
             let mut i = start;
-            while i <= max_pos {
+            let mut chars_written = 0usize;
+            while i <= max_end {
+                if let Some(max_w) = win.max_content_width
+                    && chars_written >= max_w
+                {
+                    break;
+                }
+
                 if col_labels[i].is_empty() {
                     write!(self.writer, " ")?;
+                    chars_written += 1;
                     i += 1;
                 } else {
                     let primary_idx = col_labels[i][0];
                     let primary_label = &labels[primary_idx];
                     let mut end = i + 1;
                     while end < col_labels.len()
+                        && end <= max_end
                         && !col_labels[end].is_empty()
                         && col_labels[end][0] == primary_idx
                     {
                         end += 1;
                     }
-                    let highlight_len = end - i;
+                    let mut highlight_len = end - i;
+
+                    if let Some(max_w) = win.max_content_width {
+                        let remaining = max_w.saturating_sub(chars_written);
+                        highlight_len = highlight_len.min(remaining);
+                    }
 
                     write!(
                         self.writer,
@@ -408,6 +433,7 @@ impl<'a, W: fmt::Write + ?Sized> Renderer<'a, W> {
                             .bold()
                             .fg(primary_label.color),
                     )?;
+                    chars_written += highlight_len;
                     i = end;
                 }
             }

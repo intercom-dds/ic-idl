@@ -85,7 +85,9 @@ pub trait Visitor<'a> {
         walk_union_label(self, def);
     }
 
-    fn visit_union_member(&mut self, def: &'a UnionMember) {}
+    fn visit_union_member(&mut self, def: &'a UnionMember) {
+        walk_union_member(self, def);
+    }
 
     fn visit_union_null(&mut self, def: &'a UnionNull) {}
 
@@ -341,6 +343,14 @@ where
     if let Label::Case(v) = def {
         visitor.visit_expr(v);
     }
+}
+
+pub fn walk_union_member<'a, V>(visitor: &mut V, def: &'a UnionMember)
+where
+    V: Visitor<'a> + ?Sized,
+{
+    visitor.visit_type(&def.ty);
+    visitor.visit_declarator(&def.decl);
 }
 
 pub fn walk_enum<'a, V>(visitor: &mut V, def: &'a EnumDef)

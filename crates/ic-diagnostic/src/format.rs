@@ -112,7 +112,13 @@ pub fn with_file_cached(
             .map(|&idx| diag.labels[idx].clone())
             .collect();
 
-        let layout = compute_frame_layout(index, source, &file_labels, max_width);
+        let layout = compute_frame_layout(
+            index,
+            source,
+            &file_labels,
+            max_width,
+            diag.get_context_lines(),
+        );
 
         let mut file_renderer = Renderer::new(
             f,

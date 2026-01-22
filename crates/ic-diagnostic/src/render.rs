@@ -32,8 +32,8 @@ use std::fmt;
 use ic_cli::color::Colorize as _;
 
 use crate::engine::{
-    FrameLayout, LabelRef, LineGroup, LineIndex, LineWindow, apply_window, expand_tabs,
-    visual_column,
+    FrameLayout, LabelRef, LineGroup, LineIndex, LineWindow, apply_window, compute_frame_layout,
+    expand_tabs, visual_column,
 };
 use crate::{Color, Diag, Label};
 
@@ -190,7 +190,6 @@ impl<'a, W: fmt::Write + ?Sized> Renderer<'a, W> {
             let is_primary = line_num == primary_line;
             self.render_source_line(line_num, &group.window, is_primary)?;
             self.render_labels_for_line(line_num, indent, &group.window, &group.labels, labels)?;
-
             *prev_line = Some(line_num);
         }
         Ok(())
@@ -206,13 +205,12 @@ impl<'a, W: fmt::Write + ?Sized> Renderer<'a, W> {
         let line_end = self.source[line_start..]
             .find('\n')
             .map_or(self.source.len(), |i| line_start + i);
+
         let line_text = &self.source[line_start..line_end];
         let expanded = expand_tabs(line_text.trim_end());
-
         let display_text = apply_window(&expanded, window);
-
         let prefix = if is_primary {
-            format!(">").fg(self.title_color).to_string()
+            ">".fg(self.title_color).to_string()
         } else {
             " ".to_string()
         };
@@ -529,9 +527,14 @@ pub fn render_diagnostic(
     filename: Option<&str>,
     max_width: Option<usize>,
 ) -> fmt::Result {
-    use crate::engine::compute_frame_layout;
+    let layout = compute_frame_layout(
+        index,
+        source,
+        &diag.labels,
+        max_width,
+        diag.get_context_lines(),
+    );
 
-    let layout = compute_frame_layout(index, source, &diag.labels, max_width);
     let mut renderer = Renderer::new(
         writer,
         index,

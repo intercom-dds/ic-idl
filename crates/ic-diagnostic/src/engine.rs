@@ -31,8 +31,6 @@ use crate::Label;
 
 pub const TAB_WIDTH: usize = 4;
 
-pub const CONTEXT_LINES_BEFORE: u32 = 2;
-pub const CONTEXT_LINES_AFTER: u32 = 2;
 pub const MAX_LINES_PER_SPAN: u32 = 10;
 
 #[derive(Debug, Clone)]
@@ -330,6 +328,7 @@ pub fn compute_frame_layout(
     source: &str,
     labels: &[Label],
     max_width: Option<usize>,
+    context_lines: u32,
 ) -> FrameLayout {
     let label_refs = resolve_labels(index, source, labels);
     let total_lines = index.line_count();
@@ -337,8 +336,8 @@ pub fn compute_frame_layout(
     let mut groups = compute_line_groups(
         &label_refs,
         total_lines,
-        CONTEXT_LINES_BEFORE,
-        CONTEXT_LINES_AFTER,
+        context_lines,
+        context_lines,
         MAX_LINES_PER_SPAN,
     );
 

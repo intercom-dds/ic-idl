@@ -80,6 +80,7 @@ pub struct Diag {
     note: Option<String>,
     desc: Option<String>,
     labels: Vec<Label>,
+    context_lines: u32,
 }
 
 impl Diag {
@@ -160,6 +161,18 @@ impl Diag {
         self
     }
 
+    /// Sets the number of context lines to show around the primary label.
+    pub fn context_lines(mut self, lines: u32) -> Self {
+        self.context_lines = lines;
+        self
+    }
+
+    /// Returns the number of context lines configured for this diagnostic.
+    #[must_use]
+    pub fn get_context_lines(&self) -> u32 {
+        self.context_lines
+    }
+
     fn with_title(title: Line, msg: String) -> Self {
         Self {
             title,
@@ -169,6 +182,7 @@ impl Diag {
             note: None,
             desc: None,
             labels: vec![],
+            context_lines: 2,
         }
     }
 }

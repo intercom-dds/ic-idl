@@ -103,13 +103,15 @@ fn test_lint_with_includes(main_source: &str) -> String {
 
     // Format all diagnostics
     let mut output = String::new();
+    let mut emitter = ic_diagnostic::DiagnosticEmitter::new();
 
     // Emit errors
     for (i, diag) in report.errors.iter().enumerate() {
         if i > 0 {
             output.push('\n');
         }
-        ic_diagnostic::emit_with_source(&mut output, "test.idl", main_source, diag)
+        emitter
+            .emit_with_source(&mut output, "test.idl", main_source, diag)
             .expect("Failed to format diagnostic");
     }
 
@@ -118,7 +120,8 @@ fn test_lint_with_includes(main_source: &str) -> String {
         if i > 0 || !report.errors.is_empty() {
             output.push('\n');
         }
-        ic_diagnostic::emit_with_source(&mut output, "test.idl", main_source, diag)
+        emitter
+            .emit_with_source(&mut output, "test.idl", main_source, diag)
             .expect("Failed to format diagnostic");
     }
 

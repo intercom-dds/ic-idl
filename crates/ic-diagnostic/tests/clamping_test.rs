@@ -1,4 +1,4 @@
-// Copyright 2025 KONGSBERG
+// Copyright 2026 KONGSBERG
 //
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions are met:
@@ -26,11 +26,10 @@
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use ic_cli::color::ColorMode;
-use ic_diagnostic::{Color, Diag, Label};
+use ic_diagnostic::{Color, Diag, DiagnosticEmitter, Label};
 use ic_vfs::{FileId, Location, Span};
 
-fn make_span(start: u32, end: u32) -> Span {
-    let file_id = FileId::_do_not_use();
+fn make_span(file_id: FileId, start: u32, end: u32) -> Span {
     Span {
         start: Location::new(start, file_id),
         end: Location::new(end, file_id),
@@ -38,31 +37,24 @@ fn make_span(start: u32, end: u32) -> Span {
 }
 
 #[test]
-fn test_overlap_colors() {
+fn test_horizontal_clamping() {
     ic_cli::color::set_color_override(ColorMode::Never);
-    let source = "void process(struct Data { int x; int y; } data);";
 
-    // Create spans with specific colors
-    let diag = Diag::error("nested structures")
-        .label(
-            Label::new(make_span(13, 43))
-                .message("struct (should be blue)")
-                .color(Color::Blue),
-        )
-        .label(
-            Label::new(make_span(27, 33))
-                .message("int x (should be yellow)")
-                .color(Color::Yellow),
-        )
-        .label(
-            Label::new(make_span(34, 40))
-                .message("int y (should be green)")
-                .color(Color::Green),
-        );
+    let source = "x".repeat(200);
+    let file_id = FileId::_do_not_use();
+    let span = make_span(file_id, 150, 160);
+
+    let diag =
+        Diag::error("value too long").label(Label::new(span).message("here").color(Color::Red));
 
     let mut buf = String::new();
-    ic_diagnostic::DiagnosticEmitter::new()
-        .emit_with_source(&mut buf, "test.idl", source, &diag)
+    let mut emitter = DiagnosticEmitter::with_max_width(80);
+    emitter
+        .emit_with_source(&mut buf, "test.idl", &source, &diag)
         .unwrap();
-    insta::assert_snapshot!(buf);
+
+    assert!(
+        buf.contains("..."),
+        "Expected truncation markers in output:\n{buf}"
+    );
 }

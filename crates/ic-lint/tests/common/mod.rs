@@ -32,11 +32,13 @@ use ic_vfs::SourceMap;
 
 fn format_report(source: &str, report: &Report) -> String {
     let mut output = String::new();
+    let mut emitter = ic_diagnostic::DiagnosticEmitter::new();
     for (i, diag) in report.errors.iter().enumerate() {
         if i > 0 {
             output.push('\n');
         }
-        ic_diagnostic::emit_with_source(&mut output, "test.idl", source, diag)
+        emitter
+            .emit_with_source(&mut output, "test.idl", source, diag)
             .expect("Failed to format diagnostic");
     }
 
@@ -44,7 +46,8 @@ fn format_report(source: &str, report: &Report) -> String {
         if i > 0 || !report.errors.is_empty() {
             output.push('\n');
         }
-        ic_diagnostic::emit_with_source(&mut output, "test.idl", source, diag)
+        emitter
+            .emit_with_source(&mut output, "test.idl", source, diag)
             .expect("Failed to format diagnostic");
     }
 

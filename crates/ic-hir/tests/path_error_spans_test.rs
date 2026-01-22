@@ -50,7 +50,9 @@ fn test_unresolved_type_error_span_highlights_failing_segment() {
     // Snapshot test the error messages
     let mut output = String::new();
     for error in &result.errors {
-        ic_diagnostic::emit_diagnostic(&mut output, &source_map, error).unwrap();
+        ic_diagnostic::DiagnosticEmitter::new()
+            .emit(&mut output, &source_map, error)
+            .unwrap();
         output.push('\n');
     }
     insta::assert_snapshot!(output);
@@ -79,7 +81,9 @@ fn test_deeply_nested_path_error() {
     // Snapshot test the error messages
     let mut output = String::new();
     for error in &result.errors {
-        ic_diagnostic::emit_diagnostic(&mut output, &source_map, error).unwrap();
+        ic_diagnostic::DiagnosticEmitter::new()
+            .emit(&mut output, &source_map, error)
+            .unwrap();
         output.push('\n');
     }
     insta::assert_snapshot!(output);
@@ -104,7 +108,9 @@ fn test_global_path_unresolved_segment() {
     // Snapshot test the error messages
     let mut output = String::new();
     for error in &result.errors {
-        ic_diagnostic::emit_diagnostic(&mut output, &source_map, error).unwrap();
+        ic_diagnostic::DiagnosticEmitter::new()
+            .emit(&mut output, &source_map, error)
+            .unwrap();
         output.push('\n');
     }
     insta::assert_snapshot!(output);

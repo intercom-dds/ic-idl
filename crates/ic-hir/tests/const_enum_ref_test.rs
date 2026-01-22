@@ -130,7 +130,9 @@ fn test_undefined_enum_field() {
     // Snapshot test the error message
     let mut output = String::new();
     for error in &result.errors {
-        ic_diagnostic::emit_diagnostic(&mut output, &source_map, error).unwrap();
+        ic_diagnostic::DiagnosticEmitter::new()
+            .emit(&mut output, &source_map, error)
+            .unwrap();
         output.push('\n');
     }
     insta::assert_snapshot!(output);
@@ -153,7 +155,9 @@ fn test_undefined_variable() {
     // Snapshot test the error message
     let mut output = String::new();
     for error in &result.errors {
-        ic_diagnostic::emit_diagnostic(&mut output, &source_map, error).unwrap();
+        ic_diagnostic::DiagnosticEmitter::new()
+            .emit(&mut output, &source_map, error)
+            .unwrap();
         output.push('\n');
     }
     insta::assert_snapshot!(output);
@@ -176,7 +180,9 @@ fn test_self_referential_const() {
     // Snapshot test the error message
     let mut output = String::new();
     for error in &result.errors {
-        ic_diagnostic::emit_diagnostic(&mut output, &source_map, error).unwrap();
+        ic_diagnostic::DiagnosticEmitter::new()
+            .emit(&mut output, &source_map, error)
+            .unwrap();
         output.push('\n');
     }
     insta::assert_snapshot!(output);

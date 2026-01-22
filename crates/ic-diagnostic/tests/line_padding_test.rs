@@ -28,7 +28,7 @@
 #![allow(clippy::cast_possible_truncation)]
 
 use ic_cli::color::ColorMode;
-use ic_diagnostic::{Diag, Label, emit_with_source};
+use ic_diagnostic::{Diag, DiagnosticEmitter, Label};
 use ic_vfs::{FileId, Location, Span};
 
 fn make_span(file_id: FileId, start: u32, end: u32) -> Span {
@@ -50,7 +50,9 @@ fn test_line_padding_two_digits() {
         .label(Label::new(make_span(file_id, 63, 70)).message("on line 10"));
 
     let mut buf = String::new();
-    emit_with_source(&mut buf, "test.idl", source, &diag).unwrap();
+    DiagnosticEmitter::new()
+        .emit_with_source(&mut buf, "test.idl", source, &diag)
+        .unwrap();
 
     insta::assert_snapshot!(buf);
 }
@@ -86,7 +88,9 @@ fn test_line_padding_three_digits() {
         );
 
     let mut buf = String::new();
-    emit_with_source(&mut buf, "test.idl", &source, &diag).unwrap();
+    DiagnosticEmitter::new()
+        .emit_with_source(&mut buf, "test.idl", &source, &diag)
+        .unwrap();
 
     insta::assert_snapshot!(buf);
 }
@@ -123,7 +127,9 @@ fn test_line_padding_with_multiline_spans() {
         );
 
     let mut buf = String::new();
-    emit_with_source(&mut buf, "test.idl", &source, &diag).unwrap();
+    DiagnosticEmitter::new()
+        .emit_with_source(&mut buf, "test.idl", &source, &diag)
+        .unwrap();
 
     insta::assert_snapshot!(buf);
 }
@@ -155,7 +161,9 @@ fn test_line_padding_with_ellipsis() {
     );
 
     let mut buf = String::new();
-    emit_with_source(&mut buf, "test.idl", &source, &diag).unwrap();
+    DiagnosticEmitter::new()
+        .emit_with_source(&mut buf, "test.idl", &source, &diag)
+        .unwrap();
 
     insta::assert_snapshot!(buf);
 }
@@ -196,7 +204,9 @@ fn test_line_padding_four_digits() {
         );
 
     let mut buf = String::new();
-    emit_with_source(&mut buf, "test.idl", &source, &diag).unwrap();
+    DiagnosticEmitter::new()
+        .emit_with_source(&mut buf, "test.idl", &source, &diag)
+        .unwrap();
 
     insta::assert_snapshot!(buf);
 }
@@ -231,7 +241,9 @@ fn test_line_padding_mixed_extreme() {
         );
 
     let mut buf = String::new();
-    emit_with_source(&mut buf, "test.idl", &source, &diag).unwrap();
+    DiagnosticEmitter::new()
+        .emit_with_source(&mut buf, "test.idl", &source, &diag)
+        .unwrap();
 
     insta::assert_snapshot!(buf);
 }

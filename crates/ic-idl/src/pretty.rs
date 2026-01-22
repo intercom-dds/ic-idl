@@ -129,6 +129,7 @@ pub fn fmt_errors(
 ) -> String {
     let mut buf = String::new();
     let prefix = "error:".red().bold();
+    let mut emitter = ic_diagnostic::DiagnosticEmitter::new();
 
     for err in errors {
         if !buf.is_empty() {
@@ -138,13 +139,13 @@ pub fn fmt_errors(
         _ = match err {
             Error::Parse(e) => {
                 let diag = parse_error_to_diag(e, false, exp);
-                ic_diagnostic::emit_diagnostic(&mut buf, vfs, &diag)
+                emitter.emit(&mut buf, vfs, &diag)
             }
             Error::Preproc(e) => {
                 let diag = preproc_to_diag(e, vfs, false, exp);
-                ic_diagnostic::emit_diagnostic(&mut buf, vfs, &diag)
+                emitter.emit(&mut buf, vfs, &diag)
             }
-            Error::Lower(diag) => ic_diagnostic::emit_diagnostic(&mut buf, vfs, diag),
+            Error::Lower(diag) => emitter.emit(&mut buf, vfs, diag),
             Error::Io(e) => writeln!(&mut buf, "{prefix} {e}"),
         };
     }
@@ -189,11 +190,12 @@ fn preproc_to_diag(
 #[must_use]
 pub fn fmt_warnings(warnings: &[Diag], vfs: &SourceMap) -> String {
     let mut buf = String::new();
+    let mut emitter = ic_diagnostic::DiagnosticEmitter::new();
     for diag in warnings {
         if !buf.is_empty() {
             _ = writeln!(&mut buf);
         }
-        _ = ic_diagnostic::emit_diagnostic(&mut buf, vfs, diag);
+        _ = emitter.emit(&mut buf, vfs, diag);
     }
     buf
 }

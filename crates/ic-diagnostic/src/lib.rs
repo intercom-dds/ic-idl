@@ -30,12 +30,16 @@
 //! Machinery for crafting diagnostics, mapping them to source files, and
 //! pretty-printing them.
 
+mod engine;
 mod format;
+mod render;
 
+use std::collections::HashMap;
 use std::fmt;
 
+use engine::LineIndex;
 use format::Line;
-use ic_vfs::{SourceMap, Span};
+use ic_vfs::{FileId, SourceMap, Span};
 
 /// Different ways a diagnostic can be formatted.
 #[must_use]
@@ -173,6 +177,12 @@ impl Diag {
     }
 }
 
+impl fmt::Display for Diag {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}: {}", self.title.text, self.msg)
+    }
+}
+
 /// A label that points to a specific location in the source code.
 ///
 /// Labels are used to highlight specific spans of code that are relevant
@@ -230,32 +240,63 @@ pub fn level_span<S: Into<String>>(level: Level, msg: S, label: Label) -> Option
     Diag::with_level(level, msg).map(|d| d.label(label.color(color)))
 }
 
-/// # Errors
-///
-/// May fail if writing to the given buffer fails.
-pub fn emit_diagnostic(f: &mut dyn fmt::Write, vfs: &SourceMap, diag: &Diag) -> fmt::Result {
-    format::with_file(f, vfs, diag)
+pub struct DiagnosticEmitter {
+    line_indices: HashMap<FileId, LineIndex>,
+    max_width: Option<usize>,
 }
 
-/// # Errors
-///
-/// May fail if writing to the given buffer fails.
-pub fn emit_with_source(
-    f: &mut dyn fmt::Write,
-    name: &str,
-    source: &str,
-    diag: &Diag,
-) -> fmt::Result {
-    format::with_source(f, name, source, diag)
+impl DiagnosticEmitter {
+    #[must_use]
+    pub fn new() -> Self {
+        Self {
+            line_indices: HashMap::new(),
+            max_width: None,
+        }
+    }
+
+    #[must_use]
+    pub fn with_max_width(max_width: usize) -> Self {
+        Self {
+            line_indices: HashMap::new(),
+            max_width: Some(max_width),
+        }
+    }
+
+    pub fn set_max_width(&mut self, max_width: Option<usize>) {
+        self.max_width = max_width;
+    }
+
+    /// # Errors
+    ///
+    /// May fail if writing to the given buffer fails.
+    pub fn emit(&mut self, f: &mut dyn fmt::Write, vfs: &SourceMap, diag: &Diag) -> fmt::Result {
+        format::with_file_cached(f, vfs, diag, &mut self.line_indices, self.max_width)
+    }
+
+    /// # Errors
+    ///
+    /// May fail if writing to the given buffer fails.
+    pub fn emit_with_source(
+        &mut self,
+        f: &mut dyn fmt::Write,
+        name: &str,
+        source: &str,
+        diag: &Diag,
+    ) -> fmt::Result {
+        let index = LineIndex::new(source);
+        format::with_source_indexed(f, name, source, diag, &index, self.max_width)
+    }
+
+    /// # Errors
+    ///
+    /// May fail if writing to the given buffer fails.
+    pub fn emit_compact(&self, f: &mut dyn fmt::Write, filename: &str, diag: &Diag) -> fmt::Result {
+        format::compact(f, filename, diag)
+    }
 }
 
-/// A compact representation of the diagnostic. Only includes the origin of the
-/// diagnostic; it does not include any of the labels, nor does it display any
-/// parts of the source code.
-///
-/// # Errors
-///
-/// May fail if writing to the given buffer fails.
-pub fn emit_compact(f: &mut dyn fmt::Write, filename: &str, diag: &Diag) -> fmt::Result {
-    format::compact(f, filename, diag)
+impl Default for DiagnosticEmitter {
+    fn default() -> Self {
+        Self::new()
+    }
 }

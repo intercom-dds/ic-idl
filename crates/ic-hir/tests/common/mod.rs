@@ -63,10 +63,11 @@ pub fn parse_and_resolve(input: &str) -> (ResolvedGraph, SourceMap, String) {
 
     // Render all diagnostics (errors and warnings)
     let mut output = String::new();
+    let mut emitter = ic_diagnostic::DiagnosticEmitter::new();
 
     // Render errors
     for error in &result.errors {
-        ic_diagnostic::emit_diagnostic(&mut output, &source_map, error).unwrap();
+        emitter.emit(&mut output, &source_map, error).unwrap();
         if !output.ends_with('\n') {
             output.push('\n');
         }
@@ -74,7 +75,7 @@ pub fn parse_and_resolve(input: &str) -> (ResolvedGraph, SourceMap, String) {
 
     // Render warnings (if any)
     for warning in &result.warnings {
-        ic_diagnostic::emit_diagnostic(&mut output, &source_map, warning).unwrap();
+        emitter.emit(&mut output, &source_map, warning).unwrap();
         if !output.ends_with('\n') {
             output.push('\n');
         }
@@ -176,14 +177,15 @@ pub fn parse_with_custom_builtins(
 
     // Render all diagnostics
     let mut output = String::new();
+    let mut emitter = ic_diagnostic::DiagnosticEmitter::new();
     for error in &result.errors {
-        ic_diagnostic::emit_diagnostic(&mut output, &source_map, error).unwrap();
+        emitter.emit(&mut output, &source_map, error).unwrap();
         if !output.ends_with('\n') {
             output.push('\n');
         }
     }
     for warning in &result.warnings {
-        ic_diagnostic::emit_diagnostic(&mut output, &source_map, warning).unwrap();
+        emitter.emit(&mut output, &source_map, warning).unwrap();
         if !output.ends_with('\n') {
             output.push('\n');
         }

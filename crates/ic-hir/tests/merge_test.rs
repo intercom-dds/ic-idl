@@ -336,7 +336,9 @@ fn test_merge_conflicting_definitions() {
 
     // Snapshot test the error message
     let mut output = String::new();
-    ic_diagnostic::emit_diagnostic(&mut output, &source_map, &merged.errors[0]).unwrap();
+    ic_diagnostic::DiagnosticEmitter::new()
+        .emit(&mut output, &source_map, &merged.errors[0])
+        .unwrap();
     insta::assert_snapshot!(output);
 
     // Despite the error, we should still have the definition (mapped to one of them)
@@ -396,8 +398,9 @@ enum Color { RED, GREEN, BLUE };
 
     // Snapshot test all error messages
     let mut output = String::new();
+    let mut emitter = ic_diagnostic::DiagnosticEmitter::new();
     for error in &merged.errors {
-        ic_diagnostic::emit_diagnostic(&mut output, &source_map, error).unwrap();
+        emitter.emit(&mut output, &source_map, error).unwrap();
         output.push('\n');
     }
     insta::assert_snapshot!(output);

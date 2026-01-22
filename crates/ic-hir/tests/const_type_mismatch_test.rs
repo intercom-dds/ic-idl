@@ -45,7 +45,9 @@ fn test_string_to_int_assignment() {
     // Snapshot test the error message
     let mut output = String::new();
     for error in &result.errors {
-        ic_diagnostic::emit_diagnostic(&mut output, &source_map, error).unwrap();
+        ic_diagnostic::DiagnosticEmitter::new()
+            .emit(&mut output, &source_map, error)
+            .unwrap();
         output.push('\n');
     }
     insta::assert_snapshot!(output);
@@ -69,7 +71,9 @@ fn test_bool_to_string_assignment() {
     // Snapshot test the error message
     let mut output = String::new();
     for error in &result.errors {
-        ic_diagnostic::emit_diagnostic(&mut output, &source_map, error).unwrap();
+        ic_diagnostic::DiagnosticEmitter::new()
+            .emit(&mut output, &source_map, error)
+            .unwrap();
         output.push('\n');
     }
     insta::assert_snapshot!(output);
@@ -111,7 +115,9 @@ fn test_out_of_range_direct_literal() {
     // Snapshot test the error message
     let mut output = String::new();
     for error in &result.errors {
-        ic_diagnostic::emit_diagnostic(&mut output, &source_map, error).unwrap();
+        ic_diagnostic::DiagnosticEmitter::new()
+            .emit(&mut output, &source_map, error)
+            .unwrap();
         output.push('\n');
     }
     insta::assert_snapshot!(output);

@@ -56,7 +56,9 @@ fn test_overlapping_spans() {
         );
 
     let mut buf = String::new();
-    ic_diagnostic::emit_with_source(&mut buf, "test.idl", source, &diag).unwrap();
+    ic_diagnostic::DiagnosticEmitter::new()
+        .emit_with_source(&mut buf, "test.idl", source, &diag)
+        .unwrap();
     insta::assert_snapshot!(buf);
 }
 
@@ -73,7 +75,9 @@ fn test_single_char_span() {
     );
 
     let mut buf = String::new();
-    ic_diagnostic::emit_with_source(&mut buf, "test.idl", source, &diag).unwrap();
+    ic_diagnostic::DiagnosticEmitter::new()
+        .emit_with_source(&mut buf, "test.idl", source, &diag)
+        .unwrap();
     insta::assert_snapshot!(buf);
 }
 
@@ -96,7 +100,9 @@ fn test_adjacent_spans() {
         );
 
     let mut buf = String::new();
-    ic_diagnostic::emit_with_source(&mut buf, "test.idl", source, &diag).unwrap();
+    ic_diagnostic::DiagnosticEmitter::new()
+        .emit_with_source(&mut buf, "test.idl", source, &diag)
+        .unwrap();
     insta::assert_snapshot!(buf);
 }
 
@@ -124,7 +130,9 @@ fn test_nested_spans() {
         );
 
     let mut buf = String::new();
-    ic_diagnostic::emit_with_source(&mut buf, "test.idl", source, &diag).unwrap();
+    ic_diagnostic::DiagnosticEmitter::new()
+        .emit_with_source(&mut buf, "test.idl", source, &diag)
+        .unwrap();
     insta::assert_snapshot!(buf);
 }
 
@@ -141,7 +149,9 @@ fn test_empty_lines() {
     );
 
     let mut buf = String::new();
-    ic_diagnostic::emit_with_source(&mut buf, "test.idl", source, &diag).unwrap();
+    ic_diagnostic::DiagnosticEmitter::new()
+        .emit_with_source(&mut buf, "test.idl", source, &diag)
+        .unwrap();
     insta::assert_snapshot!(buf);
 }
 
@@ -174,6 +184,8 @@ fn test_many_labels_single_line() {
         );
 
     let mut buf = String::new();
-    ic_diagnostic::emit_with_source(&mut buf, "test.idl", source, &diag).unwrap();
+    ic_diagnostic::DiagnosticEmitter::new()
+        .emit_with_source(&mut buf, "test.idl", source, &diag)
+        .unwrap();
     insta::assert_snapshot!(buf);
 }

@@ -26,7 +26,7 @@
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use ic_cli::color::ColorMode;
-use ic_diagnostic::{Color, Diag, Label, emit_with_source};
+use ic_diagnostic::{Color, Diag, DiagnosticEmitter, Label};
 use ic_vfs::{FileId, Location, Span};
 
 fn make_span(start: u32, end: u32) -> Span {
@@ -48,7 +48,9 @@ fn single_tab() {
     );
 
     let mut buf = String::new();
-    emit_with_source(&mut buf, "test.rs", source, &diag).unwrap();
+    DiagnosticEmitter::new()
+        .emit_with_source(&mut buf, "test.rs", source, &diag)
+        .unwrap();
     insta::assert_snapshot!(buf);
 }
 
@@ -63,7 +65,9 @@ fn multiple_tabs() {
     );
 
     let mut buf = String::new();
-    emit_with_source(&mut buf, "test.rs", source, &diag).unwrap();
+    DiagnosticEmitter::new()
+        .emit_with_source(&mut buf, "test.rs", source, &diag)
+        .unwrap();
     insta::assert_snapshot!(buf);
 }
 
@@ -78,7 +82,9 @@ fn mixed_spaces_and_tabs() {
     );
 
     let mut buf = String::new();
-    emit_with_source(&mut buf, "test.rs", source, &diag).unwrap();
+    DiagnosticEmitter::new()
+        .emit_with_source(&mut buf, "test.rs", source, &diag)
+        .unwrap();
     insta::assert_snapshot!(buf);
 }
 
@@ -94,7 +100,9 @@ fn tabs_between_tokens() {
     );
 
     let mut buf = String::new();
-    emit_with_source(&mut buf, "test.rs", source, &diag).unwrap();
+    DiagnosticEmitter::new()
+        .emit_with_source(&mut buf, "test.rs", source, &diag)
+        .unwrap();
     insta::assert_snapshot!(buf);
 }
 
@@ -109,7 +117,9 @@ fn tab_at_end_of_line() {
     );
 
     let mut buf = String::new();
-    emit_with_source(&mut buf, "test.rs", source, &diag).unwrap();
+    DiagnosticEmitter::new()
+        .emit_with_source(&mut buf, "test.rs", source, &diag)
+        .unwrap();
     insta::assert_snapshot!(buf);
 }
 
@@ -135,7 +145,9 @@ fn multiple_errors_with_tabs() {
         );
 
     let mut buf = String::new();
-    emit_with_source(&mut buf, "test.rs", source, &diag).unwrap();
+    DiagnosticEmitter::new()
+        .emit_with_source(&mut buf, "test.rs", source, &diag)
+        .unwrap();
     insta::assert_snapshot!(buf);
 }
 
@@ -156,6 +168,8 @@ fn tab_in_multiline_error() {
         );
 
     let mut buf = String::new();
-    emit_with_source(&mut buf, "test.rs", source, &diag).unwrap();
+    DiagnosticEmitter::new()
+        .emit_with_source(&mut buf, "test.rs", source, &diag)
+        .unwrap();
     insta::assert_snapshot!(buf);
 }

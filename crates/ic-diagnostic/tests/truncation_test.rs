@@ -28,7 +28,7 @@
 #![allow(clippy::cast_possible_truncation)]
 
 use ic_cli::color::ColorMode;
-use ic_diagnostic::{Color, Diag, Label, emit_with_source};
+use ic_diagnostic::{Color, Diag, DiagnosticEmitter, Label};
 use ic_vfs::{FileId, Location, Span};
 
 fn make_span(file_id: FileId, start: u32, end: u32) -> Span {
@@ -88,7 +88,9 @@ fn test_large_span_truncation() {
         .help("remove either @optional or @key");
 
     let mut buf = String::new();
-    emit_with_source(&mut buf, "test.idl", &source, &diag).unwrap();
+    DiagnosticEmitter::new()
+        .emit_with_source(&mut buf, "test.idl", &source, &diag)
+        .unwrap();
 
     insta::assert_snapshot!(buf);
 }
@@ -157,7 +159,9 @@ fn test_multiple_truncated_spans() {
         .note("parameter names must be unique within a method");
 
     let mut buf = String::new();
-    emit_with_source(&mut buf, "test.idl", &source, &diag).unwrap();
+    DiagnosticEmitter::new()
+        .emit_with_source(&mut buf, "test.idl", &source, &diag)
+        .unwrap();
 
     insta::assert_snapshot!(buf);
 }
@@ -202,7 +206,9 @@ fn test_no_truncation_needed() {
         );
 
     let mut buf = String::new();
-    emit_with_source(&mut buf, "test.idl", source, &diag).unwrap();
+    DiagnosticEmitter::new()
+        .emit_with_source(&mut buf, "test.idl", source, &diag)
+        .unwrap();
 
     insta::assert_snapshot!(buf);
 }

@@ -57,7 +57,9 @@ interface MyInterface {
     );
 
     let mut buf = String::new();
-    ic_diagnostic::emit_with_source(&mut buf, "test.idl", source, &diag).unwrap();
+    ic_diagnostic::DiagnosticEmitter::new()
+        .emit_with_source(&mut buf, "test.idl", source, &diag)
+        .unwrap();
     insta::assert_snapshot!(buf);
 
     // Test with multiple labels on different lines
@@ -74,7 +76,9 @@ interface MyInterface {
         );
 
     let mut buf2 = String::new();
-    ic_diagnostic::emit_with_source(&mut buf2, "test.idl", source, &diag2).unwrap();
+    ic_diagnostic::DiagnosticEmitter::new()
+        .emit_with_source(&mut buf2, "test.idl", source, &diag2)
+        .unwrap();
     insta::assert_snapshot!("multiple_labels_different_lines", buf2);
 
     // Test showing current behavior - only first line is highlighted
@@ -85,6 +89,8 @@ interface MyInterface {
     );
 
     let mut buf3 = String::new();
-    ic_diagnostic::emit_with_source(&mut buf3, "test.idl", source, &diag3).unwrap();
+    ic_diagnostic::DiagnosticEmitter::new()
+        .emit_with_source(&mut buf3, "test.idl", source, &diag3)
+        .unwrap();
     insta::assert_snapshot!("large_multiline_block", buf3);
 }

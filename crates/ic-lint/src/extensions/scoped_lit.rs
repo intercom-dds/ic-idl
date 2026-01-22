@@ -27,7 +27,6 @@
 
 use std::collections::HashMap;
 
-use ic_cli::color::Colorize as _;
 use ic_diagnostic::Label;
 use ic_syntax::visit::{Visitor, walk_expr, walk_tree};
 use ic_syntax::{BitmaskDef, EnumDef, Expr, Item};
@@ -66,7 +65,7 @@ impl<'a> Visitor<'a> for ScopedLit<'a> {
                     Kind::Enum => ("enum", "enumerators"),
                 };
 
-                let enumerator = path.segments.last().map_or("", |s| s.name.as_str()).green();
+                let enumerator = path.segments.last().map_or("", |s| s.name.as_str());
                 let qualified = if path.segments.len() >= 2 {
                     path.segments
                         .iter()
@@ -82,7 +81,7 @@ impl<'a> Visitor<'a> for ScopedLit<'a> {
                         .collect::<Vec<_>>()
                 };
 
-                let qualified = qualified.join("::").green();
+                let qualified = qualified.join("::");
                 let diag = self
                     .ctx
                     .diag_span(

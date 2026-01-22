@@ -25,7 +25,6 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use ic_cli::color::Colorize as _;
 use ic_diagnostic::Label;
 use ic_syntax::visit::{Visitor, walk_tree};
 use ic_syntax::{Item, Literal, LiteralValue};
@@ -62,7 +61,7 @@ impl<'a> Visitor<'a> for LowercaseBool<'a> {
         if let LiteralValue::Bool(_lit) = num.value {
             let slice = self.ctx.slice(num.span);
             if slice.chars().any(char::is_lowercase) {
-                let fixed = slice.to_uppercase().green();
+                let fixed = slice.to_uppercase();
                 let diag = self
                     .ctx
                     .diag_span(

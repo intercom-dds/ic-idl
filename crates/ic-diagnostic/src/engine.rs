@@ -35,6 +35,42 @@ pub const TAB_WIDTH: usize = 4;
 
 pub const MAX_LINES_PER_SPAN: u32 = 10;
 
+const ELLIPSIS_LEN: u32 = 3;
+
+#[derive(Debug, Clone)]
+pub struct LabelRef {
+    pub label_index: usize,
+    pub start_line: u32,
+    pub start_col: u32,
+    pub end_line: u32,
+    pub end_col: u32,
+    pub start_visual_col: u32,
+    pub end_visual_col: u32,
+}
+
+#[derive(Debug, Clone, Default)]
+pub struct LineWindow {
+    pub start_col: u32,
+    pub end_col: u32,
+    pub truncate_left: bool,
+    pub truncate_right: bool,
+    pub common_indent: u32,
+}
+
+#[derive(Debug, Clone)]
+pub struct LineGroup {
+    pub start_line: u32,
+    pub end_line: u32,
+    pub labels: Vec<LabelRef>,
+    pub window: LineWindow,
+}
+
+#[derive(Debug)]
+pub struct FrameLayout {
+    pub line_groups: Vec<LineGroup>,
+    pub gutter_width: usize,
+}
+
 #[derive(Debug, Clone)]
 pub struct LineIndex {
     line_starts: Vec<u32>,
@@ -181,8 +217,6 @@ fn merge_or_add_group(
         window: LineWindow::default(),
     });
 }
-
-const ELLIPSIS_LEN: u32 = 3;
 
 pub fn compute_group_window(
     group: &LineGroup,
@@ -406,6 +440,7 @@ fn is_blank_line(source: &str, index: &LineIndex, line_num: u32) -> bool {
     let line_end = source[line_start..]
         .find('\n')
         .map_or(source.len(), |i| line_start + i);
+
     source[line_start..line_end].trim().is_empty()
 }
 
@@ -491,40 +526,6 @@ pub fn apply_window(line: &str, window: &LineWindow) -> String {
     }
 
     result
-}
-
-#[derive(Debug, Clone)]
-pub struct LabelRef {
-    pub label_index: usize,
-    pub start_line: u32,
-    pub start_col: u32,
-    pub end_line: u32,
-    pub end_col: u32,
-    pub start_visual_col: u32,
-    pub end_visual_col: u32,
-}
-
-#[derive(Debug, Clone, Default)]
-pub struct LineWindow {
-    pub start_col: u32,
-    pub end_col: u32,
-    pub truncate_left: bool,
-    pub truncate_right: bool,
-    pub common_indent: u32,
-}
-
-#[derive(Debug, Clone)]
-pub struct LineGroup {
-    pub start_line: u32,
-    pub end_line: u32,
-    pub labels: Vec<LabelRef>,
-    pub window: LineWindow,
-}
-
-#[derive(Debug)]
-pub struct FrameLayout {
-    pub line_groups: Vec<LineGroup>,
-    pub gutter_width: usize,
 }
 
 #[cfg(test)]

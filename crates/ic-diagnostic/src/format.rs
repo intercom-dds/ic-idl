@@ -120,14 +120,7 @@ pub fn with_file_cached(
             diag.get_context_lines(),
         );
 
-        let mut file_renderer = Renderer::new(
-            f,
-            index,
-            source,
-            layout.gutter_width,
-            Some(&name),
-            diag.title.color,
-        );
+        let mut file_renderer = Renderer::new(f, index, source, layout.gutter_width, Some(&name));
         file_renderer.render_frame(&layout, &file_labels)?;
     }
 

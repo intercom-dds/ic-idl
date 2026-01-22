@@ -35,7 +35,7 @@ use crate::engine::{
     FrameLayout, LabelRef, LineGroup, LineIndex, LineWindow, apply_window, compute_frame_layout,
     expand_tabs, visual_column,
 };
-use crate::{Color, Diag, Label};
+use crate::{Diag, Label};
 
 #[derive(Debug, Clone, Copy, Default)]
 struct WindowOffset {
@@ -52,12 +52,14 @@ impl WindowOffset {
         } else {
             0
         };
+
         let left_pad = if window.truncate_left { 3 } else { 0 };
         let max_content_width = if window.start_col > 0 && window.end_col >= window.start_col {
             Some((window.end_col - window.start_col + 1) as usize)
         } else {
             None
         };
+
         Self {
             col_offset,
             left_pad,
@@ -98,7 +100,7 @@ impl Charset {
     pub fn unicode() -> Self {
         Self {
             vertical: "│",
-            highlight: "‾", // ˆ, ⌃, ^, ~, ‾, ▔
+            highlight: "ˆ", // ˆ, ⌃, ^, ~, ‾, ▔
             highlight_arrow: "└─",
             note_symbol: "*",
             help_symbol: "?",
@@ -113,7 +115,6 @@ pub struct Renderer<'a, W: fmt::Write + ?Sized> {
     charset: Charset,
     gutter_width: usize,
     filename: Option<&'a str>,
-    title_color: Color,
 }
 
 impl<'a, W: fmt::Write + ?Sized> Renderer<'a, W> {
@@ -123,7 +124,6 @@ impl<'a, W: fmt::Write + ?Sized> Renderer<'a, W> {
         source: &'a str,
         gutter_width: usize,
         filename: Option<&'a str>,
-        title_color: Color,
     ) -> Self {
         Self {
             writer,
@@ -132,7 +132,6 @@ impl<'a, W: fmt::Write + ?Sized> Renderer<'a, W> {
             charset: Charset::unicode(),
             gutter_width,
             filename,
-            title_color,
         }
     }
 
@@ -171,10 +170,10 @@ impl<'a, W: fmt::Write + ?Sized> Renderer<'a, W> {
         )?;
         writeln!(self.writer)?;
 
-        let indent = " ".repeat(self.gutter_width + 3);
+        let indent = " ".repeat(self.gutter_width + 2);
         let mut prev_line: Option<u32> = None;
         for group in &layout.line_groups {
-            self.render_line_group(group, labels, &mut prev_line, &indent, primary_line)?;
+            self.render_line_group(group, labels, &mut prev_line, &indent)?;
         }
 
         Ok(())
@@ -186,7 +185,6 @@ impl<'a, W: fmt::Write + ?Sized> Renderer<'a, W> {
         labels: &[Label],
         prev_line: &mut Option<u32>,
         indent: &str,
-        primary_line: u32,
     ) -> fmt::Result {
         for line_num in group.start_line..=group.end_line {
             if let Some(prev) = *prev_line
@@ -195,20 +193,14 @@ impl<'a, W: fmt::Write + ?Sized> Renderer<'a, W> {
                 self.render_truncation_marker()?;
             }
 
-            let is_primary = line_num == primary_line;
-            self.render_source_line(line_num, &group.window, is_primary)?;
+            self.render_source_line(line_num, &group.window)?;
             self.render_labels_for_line(line_num, indent, &group.window, &group.labels, labels)?;
             *prev_line = Some(line_num);
         }
         Ok(())
     }
 
-    pub fn render_source_line(
-        &mut self,
-        line_num: u32,
-        window: &LineWindow,
-        is_primary: bool,
-    ) -> fmt::Result {
+    pub fn render_source_line(&mut self, line_num: u32, window: &LineWindow) -> fmt::Result {
         let line_start = self.index.line_start(line_num) as usize;
         let line_end = self.source[line_start..]
             .find('\n')
@@ -217,20 +209,14 @@ impl<'a, W: fmt::Write + ?Sized> Renderer<'a, W> {
         let line_text = &self.source[line_start..line_end];
         let expanded = expand_tabs(line_text.trim_end());
         let display_text = apply_window(&expanded, window);
-        let prefix = if is_primary {
-            ">".fg(self.title_color).to_string()
-        } else {
-            " ".to_string()
-        };
 
         write!(
             self.writer,
-            "{} {} {} ",
-            prefix,
+            " {} {} ",
             format!("{:>width$}", line_num, width = self.gutter_width)
                 .blue()
                 .bold(),
-            self.charset.vertical.blue().bold()
+            self.charset.vertical.blue()
         )?;
         writeln!(self.writer, "{display_text}")
     }
@@ -242,7 +228,7 @@ impl<'a, W: fmt::Write + ?Sized> Renderer<'a, W> {
             format!("{:>width$}", "···", width = self.gutter_width + 1)
                 .blue()
                 .bold(),
-            self.charset.vertical.blue().bold()
+            self.charset.vertical.blue()
         )
     }
 
@@ -294,18 +280,13 @@ impl<'a, W: fmt::Write + ?Sized> Renderer<'a, W> {
             return Ok(());
         }
 
-        write!(
-            self.writer,
-            "{indent}{} ",
-            self.charset.vertical.blue().bold()
-        )?;
+        write!(self.writer, "{indent}{} ", self.charset.vertical.blue())?;
 
         let mut win_offset = WindowOffset::from_window(window);
 
         let label_text_len = labels_starting_here
             .first()
-            .map(|lr| labels[lr.label_index].msg.len() + 1)
-            .unwrap_or(0);
+            .map_or(0, |lr| labels[lr.label_index].msg.len() + 1);
         if let Some(ref mut max_w) = win_offset.max_content_width {
             *max_w = max_w.saturating_sub(label_text_len).max(1);
         }
@@ -579,14 +560,7 @@ pub fn render_diagnostic(
         diag.get_context_lines(),
     );
 
-    let mut renderer = Renderer::new(
-        writer,
-        index,
-        source,
-        layout.gutter_width,
-        filename,
-        diag.title.color,
-    );
+    let mut renderer = Renderer::new(writer, index, source, layout.gutter_width, filename);
     renderer.render_diagnostic(diag, &layout)
 }
 

@@ -25,7 +25,6 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use ic_cli::color::Colorize as _;
 use ic_diagnostic::{Label, error_span};
 use ic_hir::keywords::IDL_KEYWORDS;
 use ic_syntax::Item;
@@ -69,8 +68,7 @@ impl<'a> Visitor<'a> for KwIdent<'a> {
                 Label::new(ident.span).message("this is an IDL keyword"),
             )
             .help(format!(
-                "the keyword can be escaped by changing to `{}`",
-                fixed.green(),
+                "the keyword can be escaped by changing to `{fixed}`",
             ))
             .note("keywords are matched case-insensitively against identifiers");
 

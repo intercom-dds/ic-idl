@@ -458,6 +458,7 @@ pub fn walk_prototype<'a, V>(visitor: &mut V, def: &'a Prototype)
 where
     V: Visitor<'a> + ?Sized,
 {
+    visitor.visit_type(&def.ret);
     visitor.visit_ident(&def.ident);
     for param in &def.params {
         visitor.visit_prototype_param(param);

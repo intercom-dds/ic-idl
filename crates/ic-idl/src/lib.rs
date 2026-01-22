@@ -45,7 +45,11 @@
 //!     Ok((hir, diagnostics)) => {
 //!         // Check for warnings
 //!         if !diagnostics.warnings.is_empty() {
-//!             let formatted = ic_idl::pretty::fmt_warnings(&diagnostics.warnings, compiler.source_map());
+//!             let formatted = ic_idl::pretty::fmt_warnings(
+//!                 &diagnostics.warnings,
+//!                 compiler.source_map(),
+//!                 ic_idl::ErrorFormat::Human,
+//!             );
 //!             eprintln!("{formatted}");
 //!         }
 //!
@@ -56,7 +60,8 @@
 //!         let formatted_errors = ic_idl::pretty::fmt_errors(
 //!             &diagnostics.errors,
 //!             compiler.source_map(),
-//!             &diagnostics.expansion_info
+//!             &diagnostics.expansion_info,
+//!             ic_idl::ErrorFormat::Human,
 //!         );
 //!         eprintln!("{formatted_errors}");
 //!     }
@@ -81,7 +86,7 @@ mod parse;
 pub mod pretty;
 pub mod util;
 
-pub use config::{Options as CompilerOptions, Unstable, Warnings};
+pub use config::{ErrorFormat, Options as CompilerOptions, Unstable, Warnings};
 use ic_cli::color::Colorize as _;
 pub use ic_emit::File;
 pub use util::Error as DiagnosticError;
@@ -155,11 +160,11 @@ impl CompileDiagnostics {
 
     /// Format all diagnostics for display.
     #[must_use]
-    pub fn format(&self, source_map: &SourceMap) -> String {
+    pub fn format(&self, source_map: &SourceMap, format: config::ErrorFormat) -> String {
         let mut result = String::new();
 
         if !self.warnings.is_empty() {
-            result.push_str(&pretty::fmt_warnings(&self.warnings, source_map));
+            result.push_str(&pretty::fmt_warnings(&self.warnings, source_map, format));
             if !self.errors.is_empty() {
                 result.push('\n');
             }
@@ -170,6 +175,7 @@ impl CompileDiagnostics {
                 &self.errors,
                 source_map,
                 &self.expansion_info,
+                format,
             ));
         }
 

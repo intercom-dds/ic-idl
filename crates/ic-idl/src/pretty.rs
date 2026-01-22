@@ -120,36 +120,52 @@ fn parse_error_to_diag(
     with_expansion(diag_fn(msg, Label::new(span).message(label)), span, exp)
 }
 
+use crate::config::ErrorFormat;
+
 #[must_use]
 #[allow(clippy::implicit_hasher)]
 pub fn fmt_errors(
     errors: &[Error],
     vfs: &SourceMap,
     exp: &HashMap<Span, ic_preproc::ExpansionInfo>,
+    format: ErrorFormat,
 ) -> String {
     let mut buf = String::new();
     let prefix = "error:".red().bold();
     let mut emitter = DiagnosticEmitter::auto();
 
     for err in errors {
-        if !buf.is_empty() {
+        if !buf.is_empty() && format == ErrorFormat::Human {
             _ = writeln!(&mut buf);
         }
 
         _ = match err {
             Error::Parse(e) => {
                 let diag = parse_error_to_diag(e, false, exp);
-                emitter.emit(&mut buf, vfs, &diag)
+                emit_diag(&mut emitter, &mut buf, vfs, &diag, format)
             }
             Error::Preproc(e) => {
                 let diag = preproc_to_diag(e, vfs, false, exp);
-                emitter.emit(&mut buf, vfs, &diag)
+                emit_diag(&mut emitter, &mut buf, vfs, &diag, format)
             }
-            Error::Lower(diag) => emitter.emit(&mut buf, vfs, diag),
+            Error::Lower(diag) => emit_diag(&mut emitter, &mut buf, vfs, diag, format),
             Error::Io(e) => writeln!(&mut buf, "{prefix} {e}"),
         };
     }
     buf
+}
+
+fn emit_diag(
+    emitter: &mut DiagnosticEmitter,
+    buf: &mut String,
+    vfs: &SourceMap,
+    diag: &Diag,
+    format: ErrorFormat,
+) -> std::fmt::Result {
+    match format {
+        ErrorFormat::Human => emitter.emit(buf, vfs, diag),
+        ErrorFormat::Short => emitter.emit_compact(buf, vfs, diag),
+    }
 }
 
 fn preproc_to_diag(
@@ -188,14 +204,14 @@ fn preproc_to_diag(
 }
 
 #[must_use]
-pub fn fmt_warnings(warnings: &[Diag], vfs: &SourceMap) -> String {
+pub fn fmt_warnings(warnings: &[Diag], vfs: &SourceMap, format: ErrorFormat) -> String {
     let mut buf = String::new();
     let mut emitter = DiagnosticEmitter::auto();
     for diag in warnings {
-        if !buf.is_empty() {
+        if !buf.is_empty() && format == ErrorFormat::Human {
             _ = writeln!(&mut buf);
         }
-        _ = emitter.emit(&mut buf, vfs, diag);
+        _ = emit_diag(&mut emitter, &mut buf, vfs, diag, format);
     }
     buf
 }

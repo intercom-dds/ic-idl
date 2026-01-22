@@ -35,6 +35,26 @@ use ic_cli::color::Colorize as _;
 use ic_cli::convert::{self, ConvertError};
 use ic_lint::{Category, Level, LintConfig};
 
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub enum ErrorFormat {
+    #[default]
+    Human,
+    Short,
+}
+
+impl convert::Convert for ErrorFormat {
+    fn from_result(input: &[String]) -> convert::Result<Self> {
+        match input.last().map(String::as_str) {
+            Some("human") | None => Ok(Self::Human),
+            Some("short") => Ok(Self::Short),
+            Some(other) => Err(ConvertError::InvalidValue(format!(
+                "invalid error format '{}', expected 'human' or 'short'",
+                other.yellow(),
+            ))),
+        }
+    }
+}
+
 #[derive(Command, Debug)]
 pub struct Warnings {
     /// Enable all warnings
@@ -189,6 +209,10 @@ pub struct Options {
     /// Ignore Doxygen-style comments
     #[option(long)]
     pub ignore_comments: bool,
+
+    /// Error output format: human or short
+    #[option(long, arg = "fmt")]
+    pub error_format: ErrorFormat,
 
     /// Enable a warning, see `-W help` for details
     #[option(short = 'W', arg = "lint")]

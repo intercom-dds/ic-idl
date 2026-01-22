@@ -32,7 +32,7 @@ use std::{backtrace, panic};
 use ic_cli::{Command, ParseError};
 use ic_emit::File;
 use ic_idl::util::{self, IgnoreBrokenPipe};
-use ic_idl::{CompileDiagnostics, CompileError, Compiler, CompilerOptions};
+use ic_idl::{CompileDiagnostics, CompileError, Compiler, CompilerOptions, ErrorFormat};
 use tracing::{Level, info, info_span};
 use tracing_subscriber::fmt;
 
@@ -159,6 +159,7 @@ fn try_compile(options: CompilerOptions) {
                             &ast.errors,
                             compiler.source_map(),
                             &ast.expansion_info,
+                            compiler.options().error_format,
                         );
                         eprintln!("{formatted}");
                         info!(errors = ast.errors.len(), "failed");
@@ -187,7 +188,7 @@ fn try_compile(options: CompilerOptions) {
             std::process::exit(1);
         }
         Err(CompileError::Diagnostics(diagnostics)) => {
-            emit_diagnostics(&compiler, &diagnostics);
+            emit_diagnostics(&compiler, &diagnostics, compiler.options().error_format);
             info!(
                 errors = diagnostics.errors.len(),
                 warnings = diagnostics.warnings.len(),
@@ -208,7 +209,7 @@ fn try_compile(options: CompilerOptions) {
             warnings,
             expansion_info: std::collections::HashMap::new(),
         };
-        emit_diagnostics(&compiler, &diag);
+        emit_diagnostics(&compiler, &diag, compiler.options().error_format);
     }
 
     // Dump HIR if requested
@@ -329,9 +330,10 @@ fn write_files(files: &[File]) -> std::io::Result<()> {
 }
 
 #[allow(clippy::same_functions_in_if_condition)]
-fn emit_diagnostics(compiler: &Compiler, diagnostics: &CompileDiagnostics) {
+fn emit_diagnostics(compiler: &Compiler, diagnostics: &CompileDiagnostics, format: ErrorFormat) {
     if !diagnostics.warnings.is_empty() {
-        let warnings = ic_idl::pretty::fmt_warnings(&diagnostics.warnings, compiler.source_map());
+        let warnings =
+            ic_idl::pretty::fmt_warnings(&diagnostics.warnings, compiler.source_map(), format);
         eprintln!("{warnings}");
     }
 
@@ -340,6 +342,7 @@ fn emit_diagnostics(compiler: &Compiler, diagnostics: &CompileDiagnostics) {
             &diagnostics.errors,
             compiler.source_map(),
             &diagnostics.expansion_info,
+            format,
         );
         eprintln!("{formatted}");
     }

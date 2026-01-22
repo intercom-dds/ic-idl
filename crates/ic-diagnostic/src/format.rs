@@ -41,18 +41,38 @@ pub struct Line {
     pub color: Color,
 }
 
-pub fn compact(f: &mut dyn fmt::Write, filename: &str, diag: &Diag) -> fmt::Result {
+pub fn compact(
+    f: &mut dyn fmt::Write,
+    filename: &str,
+    diag: &Diag,
+    index: &LineIndex,
+) -> fmt::Result {
     let title = if let Some(code) = &diag.code {
-        format!("{}[{}]:", diag.title.text, code)
+        format!("{}[{}]", diag.title.text, code)
     } else {
-        format!("{}:", diag.title.text)
+        diag.title.text.to_string()
     };
-    writeln!(
-        f,
-        "{} {filename}: {}",
-        title.fg(diag.title.color).bold(),
-        diag.msg.bold(),
-    )
+
+    if let Some(label) = diag.labels.first() {
+        let (line, col) = index.line_col(label.span.start.offset);
+        writeln!(
+            f,
+            "{}:{}:{}: {}: {}",
+            filename,
+            line,
+            col,
+            title.fg(diag.title.color).bold(),
+            diag.msg,
+        )
+    } else {
+        writeln!(
+            f,
+            "{}: {}: {}",
+            filename,
+            title.fg(diag.title.color).bold(),
+            diag.msg,
+        )
+    }
 }
 
 pub fn with_file_cached(

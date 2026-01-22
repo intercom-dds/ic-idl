@@ -230,17 +230,6 @@ pub fn warn_span<S: Into<String>>(msg: S, label: Label) -> Diag {
     Diag::warning(msg).label(label.color(Color::Purple))
 }
 
-/// Creates a diagnostic with the specified level that highlights the given span.
-/// Returns None if the level is Disabled.
-pub fn level_span<S: Into<String>>(level: Level, msg: S, label: Label) -> Option<Diag> {
-    let color = match level {
-        Level::Error => Color::Red,
-        Level::Warning => Color::Purple,
-        Level::Disabled => return None,
-    };
-    Diag::with_level(level, msg).map(|d| d.label(label.color(color)))
-}
-
 pub struct DiagnosticEmitter {
     line_indices: HashMap<FileId, LineIndex>,
     max_width: Option<usize>,
@@ -291,8 +280,28 @@ impl DiagnosticEmitter {
     /// # Errors
     ///
     /// May fail if writing to the given buffer fails.
-    pub fn emit_compact(&self, f: &mut dyn fmt::Write, filename: &str, diag: &Diag) -> fmt::Result {
-        format::compact(f, filename, diag)
+    pub fn emit_compact(
+        &mut self,
+        f: &mut dyn fmt::Write,
+        vfs: &SourceMap,
+        diag: &Diag,
+    ) -> fmt::Result {
+        if let Some(label) = diag.labels.first() {
+            let file_id = label.span.start.file_id;
+            let info = vfs.file_info(file_id);
+            let filename = info.path.to_string_lossy();
+            let source = &info.source;
+
+            let index = self
+                .line_indices
+                .entry(file_id)
+                .or_insert_with(|| LineIndex::new(source));
+
+            format::compact(f, &filename, diag, index)
+        } else {
+            let empty_index = LineIndex::new("");
+            format::compact(f, "unknown", diag, &empty_index)
+        }
     }
 }
 

@@ -98,7 +98,7 @@ impl Charset {
     pub fn unicode() -> Self {
         Self {
             vertical: "│",
-            highlight: "^",
+            highlight: "‾", // ˆ, ⌃, ^, ~, ‾, ▔
             highlight_arrow: "└─",
             note_symbol: "*",
             help_symbol: "?",

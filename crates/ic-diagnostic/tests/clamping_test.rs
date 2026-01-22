@@ -48,7 +48,8 @@ fn test_horizontal_clamping() {
         Diag::error("value too long").label(Label::new(span).message("here").color(Color::Red));
 
     let mut buf = String::new();
-    let mut emitter = DiagnosticEmitter::with_max_width(80);
+    let mut emitter = DiagnosticEmitter::new();
+    emitter.set_max_width(Some(80));
     emitter
         .emit_with_source(&mut buf, "test.idl", &source, &diag)
         .unwrap();

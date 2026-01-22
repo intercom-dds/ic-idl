@@ -31,7 +31,7 @@ use std::collections::HashMap;
 use std::fmt::Write;
 
 use ic_cli::color::Colorize as _;
-use ic_diagnostic::{Diag, Label, error_span, warn_span};
+use ic_diagnostic::{Diag, DiagnosticEmitter, Label, error_span, warn_span};
 use ic_lexer::token::Kind;
 use ic_parse::Reason;
 use ic_vfs::{SourceMap, Span};
@@ -129,7 +129,7 @@ pub fn fmt_errors(
 ) -> String {
     let mut buf = String::new();
     let prefix = "error:".red().bold();
-    let mut emitter = ic_diagnostic::DiagnosticEmitter::new();
+    let mut emitter = DiagnosticEmitter::auto();
 
     for err in errors {
         if !buf.is_empty() {
@@ -190,7 +190,7 @@ fn preproc_to_diag(
 #[must_use]
 pub fn fmt_warnings(warnings: &[Diag], vfs: &SourceMap) -> String {
     let mut buf = String::new();
-    let mut emitter = ic_diagnostic::DiagnosticEmitter::new();
+    let mut emitter = DiagnosticEmitter::auto();
     for diag in warnings {
         if !buf.is_empty() {
             _ = writeln!(&mut buf);

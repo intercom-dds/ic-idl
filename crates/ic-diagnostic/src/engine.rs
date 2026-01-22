@@ -182,6 +182,8 @@ fn merge_or_add_group(
     });
 }
 
+const ELLIPSIS_LEN: u32 = 3;
+
 pub fn compute_group_window(
     group: &LineGroup,
     source: &str,
@@ -204,6 +206,25 @@ pub fn compute_group_window(
         };
     }
 
+    let mut max_line_len = 0u32;
+    for line_num in group.start_line..=group.end_line {
+        let line_start = index.line_start(line_num) as usize;
+        let line_end = source[line_start..]
+            .find('\n')
+            .map_or(source.len(), |i| line_start + i);
+        let line_text = &source[line_start..line_end];
+        let visual_len = compute_visual_len(line_text).saturating_sub(common_indent);
+        max_line_len = max_line_len.max(visual_len);
+    }
+
+    let max_width = max_width as u32;
+    if max_line_len <= max_width {
+        return LineWindow {
+            common_indent,
+            ..Default::default()
+        };
+    }
+
     let min_col = group
         .labels
         .iter()
@@ -219,39 +240,42 @@ pub fn compute_group_window(
         .unwrap_or(1);
 
     let label_span = max_col - min_col + 1;
-    let max_width = max_width as u32;
+    let will_truncate_left = min_col > 1;
+    let left_ellipsis = if will_truncate_left { ELLIPSIS_LEN } else { 0 };
+    let right_ellipsis = ELLIPSIS_LEN;
+    let content_budget = max_width.saturating_sub(left_ellipsis + right_ellipsis);
 
-    if label_span >= max_width {
+    if label_span >= content_budget {
         return LineWindow {
             start_col: min_col,
-            end_col: min_col + max_width - 1,
-            truncate_left: min_col > 1,
+            end_col: min_col + content_budget - 1,
+            truncate_left: will_truncate_left,
             truncate_right: true,
             common_indent,
         };
     }
 
-    let padding = max_width - label_span;
+    let padding = content_budget - label_span;
     let left_pad = padding / 2;
     let start_col = min_col.saturating_sub(left_pad).max(1);
-    let end_col = start_col + max_width - 1;
 
-    let mut max_line_len = 0u32;
-    for line_num in group.start_line..=group.end_line {
-        let line_start = index.line_start(line_num) as usize;
-        let line_end = source[line_start..]
-            .find('\n')
-            .map_or(source.len(), |i| line_start + i);
-        let line_text = &source[line_start..line_end];
-        let visual_len = compute_visual_len(line_text).saturating_sub(common_indent);
-        max_line_len = max_line_len.max(visual_len);
-    }
+    let truncate_left = start_col > 1;
+    let actual_left_ellipsis = if truncate_left { ELLIPSIS_LEN } else { 0 };
+    let actual_content_budget = max_width.saturating_sub(actual_left_ellipsis + right_ellipsis);
+    let end_col = start_col + actual_content_budget - 1;
+    let truncate_right = end_col < max_line_len;
+
+    let final_end = if truncate_right {
+        end_col
+    } else {
+        end_col + right_ellipsis
+    };
 
     LineWindow {
         start_col,
-        end_col: end_col.min(max_line_len),
-        truncate_left: start_col > 1,
-        truncate_right: end_col < max_line_len,
+        end_col: final_end.min(max_line_len),
+        truncate_left,
+        truncate_right,
         common_indent,
     }
 }
@@ -318,13 +342,15 @@ pub fn compute_frame_layout(
         MAX_LINES_PER_SPAN,
     );
 
-    for group in &mut groups {
-        trim_blank_context(group, source, index);
-        group.window = compute_group_window(group, source, index, max_width);
-    }
-
     let max_line = groups.iter().map(|g| g.end_line).max().unwrap_or(1);
     let gutter_width = (max_line.checked_ilog10().unwrap_or(0) + 1) as usize;
+
+    let content_width = max_width.map(|w| w.saturating_sub(gutter_width + 4));
+
+    for group in &mut groups {
+        trim_blank_context(group, source, index);
+        group.window = compute_group_window(group, source, index, content_width);
+    }
 
     FrameLayout {
         line_groups: groups,

@@ -39,6 +39,7 @@ use std::fmt;
 
 use engine::LineIndex;
 use format::Line;
+use ic_cli::terminal;
 use ic_vfs::{FileId, SourceMap, Span};
 
 /// Different ways a diagnostic can be formatted.
@@ -255,10 +256,10 @@ impl DiagnosticEmitter {
     }
 
     #[must_use]
-    pub fn with_max_width(max_width: usize) -> Self {
+    pub fn auto() -> Self {
         Self {
             line_indices: HashMap::new(),
-            max_width: Some(max_width),
+            max_width: terminal::terminal_width().map(usize::from),
         }
     }
 

@@ -620,10 +620,10 @@ pub fn render_footer<W: fmt::Write + ?Sized>(writer: &mut W, diag: &Diag) -> fmt
     }
 
     if let Some(v) = &diag.help {
-        writeln!(writer, "  {} {v}", charset.help_symbol.cyan())?;
+        writeln!(writer, "  {} {}", charset.help_symbol.cyan(), v.cyan())?;
     }
     if let Some(v) = &diag.note {
-        writeln!(writer, "  {} {v}", charset.note_symbol.gray())?;
+        writeln!(writer, "  {} {}", charset.note_symbol.blue(), v.blue())?;
     }
     if let Some(v) = &diag.desc {
         writeln!(writer, "\n{v}")?;

@@ -43,7 +43,7 @@ mod unstable;
 macro_rules! error {
     ($($arg:tt)*) => {{
         use ic_cli::color::Colorize as _;
-        eprintln!("ic-idl: {} {}", "error:".red().bold(), format!($($arg)*));
+        eprintln!("ic-idl · {} {}", "error:".red().bold(), format!($($arg)*));
     }}
 }
 
@@ -369,7 +369,7 @@ fn emit_diagnostics(compiler: &Compiler, diagnostics: &CompileDiagnostics, forma
 
     if !diagnostics.warnings.is_empty() && !diagnostics.errors.is_empty() {
         error!(
-            "aborting due to {} previous error{}, {} warning{}",
+            "aborting due to {} error{}, {} warning{}",
             diagnostics.errors.len(),
             error_plural,
             diagnostics.warnings.len(),
@@ -377,7 +377,7 @@ fn emit_diagnostics(compiler: &Compiler, diagnostics: &CompileDiagnostics, forma
         );
     } else if !diagnostics.errors.is_empty() {
         error!(
-            "aborting due to {} previous error{}",
+            "aborting due to {} error{}",
             diagnostics.errors.len(),
             error_plural,
         );

@@ -27,6 +27,8 @@
 
 #![allow(clippy::cast_possible_truncation)]
 
+use ic_cli::color::Colorize as _;
+
 use crate::Label;
 
 pub const TAB_WIDTH: usize = 4;
@@ -479,13 +481,13 @@ pub fn apply_window(line: &str, window: &LineWindow) -> String {
     let mut result = String::new();
 
     if window.truncate_left {
-        result.push_str("...");
+        result.push_str(&"...".dim().to_string());
     }
 
     result.push_str(&visible);
 
     if window.truncate_right && actual_end < total_len {
-        result.push_str("...");
+        result.push_str(&"...".dim().to_string());
     }
 
     result

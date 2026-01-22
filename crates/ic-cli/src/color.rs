@@ -28,6 +28,8 @@
 use std::fmt::Display;
 use std::sync::{OnceLock, RwLock};
 
+use crate::terminal;
+
 /// Controls when colors should be used
 #[derive(Copy, Clone, Debug, Default, PartialEq, Eq)]
 pub enum ColorMode {
@@ -370,35 +372,6 @@ pub fn should_colorize<W: std::io::IsTerminal>(mode: ColorMode, stream: W) -> bo
     }
 }
 
-#[cfg(windows)]
-fn virtual_term() -> bool {
-    unsafe extern "C" {
-        fn GetStdHandle(handle: u32) -> isize;
-        fn GetConsoleMode(handle: isize, lp_mode: *mut u32) -> i32;
-        fn SetConsoleMode(handle: isize, dw_mode: u32) -> i32;
-    }
-
-    const ENABLE_VIRTUAL_TERMINAL_PROCESSING: u32 = 4;
-    const STD_ERROR_HANDLE: u32 = 0xFFFF_FFF4;
-    const STD_OUTPUT_HANDLE: u32 = 0xFFFF_FFF5;
-
-    // SAFETY: Windows console API functions handle invalid inputs gracefully by
-    // returning error values. The `dw_mode` pointer is valid for the duration
-    // of `GetConsoleMode` call.
-    let enable_virt = |handle| unsafe {
-        let handle = GetStdHandle(handle);
-        if handle == 0 || handle == -1 {
-            return false;
-        }
-
-        let mut dw_mode: u32 = 0;
-        GetConsoleMode(handle, std::ptr::addr_of_mut!(dw_mode));
-        dw_mode |= ENABLE_VIRTUAL_TERMINAL_PROCESSING;
-        SetConsoleMode(handle, dw_mode) != 0
-    };
-    enable_virt(STD_OUTPUT_HANDLE) && enable_virt(STD_ERROR_HANDLE)
-}
-
 #[allow(clippy::needless_pass_by_value)]
 fn is_terminal_impl<W: std::io::IsTerminal>(stream: W) -> bool {
     let is_dumb = if let Ok(v) = std::env::var("TERM") {
@@ -407,8 +380,7 @@ fn is_terminal_impl<W: std::io::IsTerminal>(stream: W) -> bool {
         false
     };
 
-    #[cfg(windows)]
-    if !virtual_term() {
+    if !terminal::enable_ansi_colors() {
         return false;
     }
 

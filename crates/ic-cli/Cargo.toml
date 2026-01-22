@@ -39,3 +39,9 @@ workspace = true
 [dependencies]
 ic-alloc = { path = "../ic-alloc" }
 ic-cli-derive = { path = "../ic-cli-derive" }
+
+[target.'cfg(unix)'.dependencies]
+libc = "0.2"
+
+[target.'cfg(windows)'.dependencies]
+winapi = { version = "0.3", features = ["processenv", "winbase", "wincon", "handleapi"] }

@@ -39,6 +39,7 @@ use ic_alloc::index::IndexMap;
 pub use ic_cli_derive::Command;
 pub mod color;
 pub mod convert;
+pub mod terminal;
 
 mod parse;
 pub use parse::{ParseError, ParseResult};

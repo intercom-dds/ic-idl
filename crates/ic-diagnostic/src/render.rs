@@ -29,7 +29,7 @@
 
 use std::fmt;
 
-use ic_cli::color::Colorize as _;
+use ic_cli::color::Colorize;
 
 use crate::engine::{
     FrameLayout, LabelRef, LineGroup, LineIndex, LineWindow, apply_window, compute_frame_layout,
@@ -156,7 +156,8 @@ impl<'a, W: fmt::Write + ?Sized> Renderer<'a, W> {
 
         writeln!(
             self.writer,
-            "  at {}:{}:{}",
+            "  {} {}:{}:{}",
+            "@".cyan(),
             self.filename.unwrap_or("unknown"),
             primary_line,
             visual_col,

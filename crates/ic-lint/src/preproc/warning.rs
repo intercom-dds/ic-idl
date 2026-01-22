@@ -58,7 +58,9 @@ impl<'a> Lint<'a> for PreprocWarning {
                     format!("#warning directive: {text}")
                 };
 
-                let diag = ctx.diag_span(Self::name(), Self::category(), msg, Label::new(*span));
+                let diag = ctx
+                    .diag_span(Self::name(), Self::category(), msg, Label::new(*span))
+                    .context_lines(0);
                 Self::report(ctx, diag);
             }
         }

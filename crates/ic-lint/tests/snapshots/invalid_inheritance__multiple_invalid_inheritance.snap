@@ -76,3 +76,14 @@ error: supports must be an interface type
  13 │ 
  14 │         bitset BadBits : Status { bitfield<1> BIT0; };
     └──
+
+warning[bitset]: bitsets are not supported
+    ┌ test.idl:14:16
+    │
+ 11 │         valuetype BadValue : Color { public long z; };
+ 12 │         valuetype BadValue2 supports Status { public long w; };
+ 13 │ 
+ 14 │         bitset BadBits : Status { bitfield<1> BIT0; };
+    ·                ^^^^^^^ defined here
+    └──
+ note: the bitset will be skipped during codegen

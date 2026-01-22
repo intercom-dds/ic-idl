@@ -44,3 +44,16 @@ warning[unknown-ann]: unknown annotation `UnknownField`
  12 │             bitfield<3, unsigned short> mode;
  13 │         };
     └──
+
+warning[bitset]: bitsets are not supported
+    ┌ test.idl:10:16
+    │
+  7 │         };
+  8 │ 
+  9 │         @UnknownBitset
+ 10 │         bitset Configuration {
+    ·                ^^^^^^^^^^^^^ defined here
+ 11 │             @UnknownField
+ 12 │             bitfield<3, unsigned short> mode;
+    └──
+ note: the bitset will be skipped during codegen

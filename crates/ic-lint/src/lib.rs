@@ -272,13 +272,11 @@ pub struct LintCtx<'a> {
 impl LintCtx<'_> {
     /// Report a diagnostic with the appropriate level based on lint configuration.
     pub fn report(&self, lint_name: &'static str, category: Category, mut diag: Diag) {
-        // Semantic and Syntax lints are always errors
         let level = match category {
             Category::Semantic | Category::Syntax => Level::Error,
             _ => self.config.get_level(lint_name, category),
         };
 
-        // Update the diagnostic with additional info
         diag = diag.code(lint_name);
 
         match level {
@@ -542,7 +540,6 @@ define_lints! {
         syntax::ascii::AsciiIdent,
         syntax::empty::EmptyTypes,
         syntax::sanity::Sanity,
-        unsupported::items::Unsupported,
     ],
     hir_lints: [
         annotation::deprecated_annotations::DeprecatedAnnotations,
@@ -579,6 +576,8 @@ define_lints! {
         semantic::void_ty::VoidTy,
         semantic::zero_bound::ZeroBound,
         unsupported::any_type::AnyType,
+        unsupported::bitset::Bitset,
+        unsupported::long_double::LongDouble,
         // unsupported::proto::Proto,
     ],
 }

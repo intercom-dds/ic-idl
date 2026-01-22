@@ -1,4 +1,4 @@
-// Copyright 2024 KONGSBERG
+// Copyright 2026 KONGSBERG
 //
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions are met:
@@ -25,7 +25,71 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-pub mod any_type;
-pub mod bitset;
-pub mod long_double;
-pub mod proto;
+use insta::assert_snapshot;
+
+mod common;
+use common::test_lint_hir;
+
+use crate::common::lint_hir;
+
+#[test]
+fn bitset_basic() {
+    assert_snapshot!(test_lint_hir(
+        r"
+bitset Flags {
+    bitfield<4> low;
+    bitfield<4> high;
+};
+"
+    ));
+}
+
+#[test]
+fn bitset_with_base() {
+    assert_snapshot!(test_lint_hir(
+        r"
+bitset Base {
+    bitfield<8> field;
+};
+
+bitset Extended : Base {
+    bitfield<8> extra;
+};
+"
+    ));
+}
+
+#[test]
+fn bitset_multiple() {
+    assert_snapshot!(test_lint_hir(
+        r"
+bitset FlagsA {
+    bitfield<1> a;
+};
+
+bitset FlagsB {
+    bitfield<1> b;
+};
+
+bitset FlagsC {
+    bitfield<1> c;
+};
+"
+    ));
+}
+
+#[test]
+fn no_bitset() {
+    let output = lint_hir(
+        r"
+bitmask Permissions {
+    READ,
+    WRITE,
+    EXECUTE
+};
+",
+    );
+
+    assert!(output.warnings.is_empty());
+    assert!(output.errors.is_empty());
+}

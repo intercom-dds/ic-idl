@@ -1,0 +1,11 @@
+---
+source: crates/ic-lint/tests/long_double.rs
+expression: "test_lint(r\"\ntypedef sequence<long double> LongDoubleList;\n\")"
+---
+warning[long-double]: long double is not supported
+   ┌ test.idl:2:18
+   │
+ 2 │ typedef sequence<long double> LongDoubleList;
+   ·                  ^^^^^^^^^^^ used here
+   └──
+ note: long double will be treated as a normal double during codegen

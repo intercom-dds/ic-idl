@@ -25,7 +25,57 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-pub mod any_type;
-pub mod bitset;
-pub mod long_double;
-pub mod proto;
+use ic_diagnostic::Label;
+use ic_hir::ResolvedGraph;
+use ic_hir::hir::DefKind;
+use ic_hir::visit::{Visitor, walk_def, walk_tree};
+
+use crate::{Category, Lint, LintCtx};
+
+/// Warns when `bitset`s are used.
+pub struct Bitset<'a> {
+    ctx: &'a LintCtx<'a>,
+    hir: &'a ResolvedGraph,
+}
+
+impl<'a> Lint<'a> for Bitset<'a> {
+    fn name() -> &'static str {
+        "bitset"
+    }
+
+    fn category() -> Category {
+        Category::Unsupported
+    }
+
+    fn description() -> &'static str {
+        "Checks for use of bitsets"
+    }
+
+    fn check_hir(ctx: &'a LintCtx<'a>, hir: &'a ResolvedGraph) {
+        let mut lint = Self { ctx, hir };
+        walk_tree(&mut lint, hir);
+    }
+}
+
+impl<'a> Visitor<'a> for Bitset<'a> {
+    fn context(&self) -> &'a ic_hir::Context {
+        &self.hir.context
+    }
+
+    fn visit_def(&mut self, def: &'a ic_hir::hir::Def) {
+        if let DefKind::Bitset(_) = &def.kind {
+            let diag = self
+                .ctx
+                .diag_span(
+                    Self::name(),
+                    Self::category(),
+                    "bitsets are not supported",
+                    Label::new(def.ident.span).message("defined here"),
+                )
+                .note("the bitset will be skipped during codegen");
+            Self::report(self.ctx, diag);
+        } else {
+            walk_def(self, def);
+        }
+    }
+}

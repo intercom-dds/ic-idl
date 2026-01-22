@@ -12,3 +12,15 @@ error[invalid-inheritance]: bitset `BadBits` cannot inherit from struct `BaseStr
  6 │             bitfield<1> BIT0;
  7 │             bitfield<1> BIT1;
    └──
+
+warning[bitset]: bitsets are not supported
+   ┌ test.idl:5:16
+   │
+ 3 │             long x;
+ 4 │         };
+ 5 │         bitset BadBits : BaseStruct {
+   ·                ^^^^^^^ defined here
+ 6 │             bitfield<1> BIT0;
+ 7 │             bitfield<1> BIT1;
+   └──
+ note: the bitset will be skipped during codegen

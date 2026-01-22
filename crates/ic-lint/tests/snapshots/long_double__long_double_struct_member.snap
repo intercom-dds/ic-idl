@@ -1,0 +1,14 @@
+---
+source: crates/ic-lint/tests/long_double.rs
+expression: "test_lint(r\"\nstruct Measurement {\n    long double value;\n    string unit;\n};\n\")"
+---
+warning[long-double]: long double is not supported
+   ┌ test.idl:3:5
+   │
+ 2 │ struct Measurement {
+ 3 │     long double value;
+   ·     ^^^^^^^^^^^ used here
+ 4 │     string unit;
+ 5 │ };
+   └──
+ note: long double will be treated as a normal double during codegen

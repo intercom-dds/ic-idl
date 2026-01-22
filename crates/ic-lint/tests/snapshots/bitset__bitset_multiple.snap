@@ -1,0 +1,39 @@
+---
+source: crates/ic-lint/tests/bitset.rs
+expression: "test_lint_hir(r\"\nbitset FlagsA {\n    bitfield<1> a;\n};\n\nbitset FlagsB {\n    bitfield<1> b;\n};\n\nbitset FlagsC {\n    bitfield<1> c;\n};\n\")"
+---
+warning[bitset]: bitsets are not supported
+   ┌ test.idl:2:8
+   │
+ 2 │ bitset FlagsA {
+   ·        ^^^^^^ defined here
+ 3 │     bitfield<1> a;
+ 4 │ };
+   └──
+ note: the bitset will be skipped during codegen
+
+warning[bitset]: bitsets are not supported
+   ┌ test.idl:6:8
+   │
+ 3 │     bitfield<1> a;
+ 4 │ };
+ 5 │ 
+ 6 │ bitset FlagsB {
+   ·        ^^^^^^ defined here
+ 7 │     bitfield<1> b;
+ 8 │ };
+   └──
+ note: the bitset will be skipped during codegen
+
+warning[bitset]: bitsets are not supported
+    ┌ test.idl:10:8
+    │
+  7 │     bitfield<1> b;
+  8 │ };
+  9 │ 
+ 10 │ bitset FlagsC {
+    ·        ^^^^^^ defined here
+ 11 │     bitfield<1> c;
+ 12 │ };
+    └──
+ note: the bitset will be skipped during codegen

@@ -11,13 +11,3 @@ error[keywords]: `uint64` is a keyword and may not be used as an identifier
  4 │     bitfield<10> bit1;
    └──
  help: the keyword can be escaped by changing to `_uint64`
-
-warning[items]: bitsets are not supported
-   ┌ test.idl:2:8
-   │
- 2 │ bitset uint64 {
-   ·        ^^^^^^ defined here
- 3 │     bitfield<5> bit0;
- 4 │     bitfield<10> bit1;
-   └──
- note: the bitset will be skipped during codegen

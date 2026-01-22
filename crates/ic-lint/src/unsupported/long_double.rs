@@ -1,4 +1,4 @@
-// Copyright 2024 KONGSBERG
+// Copyright 2026 KONGSBERG
 //
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions are met:
@@ -26,52 +26,21 @@
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use ic_diagnostic::Label;
-use ic_syntax::Item;
-use ic_syntax::visit::{Visitor, walk_tree};
+use ic_hir::ResolvedGraph;
+use ic_hir::hir::{self, PrimitiveTy, TyKind};
+use ic_hir::visit::{Visitor, walk_tree};
 
 use crate::{Category, Lint, LintCtx};
 
-/// Warns when unsupported language items are used.
-pub struct Unsupported<'a> {
+/// Warns when `long double` is used.
+pub struct LongDouble<'a> {
     ctx: &'a LintCtx<'a>,
+    hir: &'a ResolvedGraph,
 }
 
-impl<'a> Visitor<'a> for Unsupported<'a> {
-    fn visit_bitset(&mut self, bitset: &'a ic_syntax::BitsetDef) {
-        let diag = self
-            .ctx
-            .diag_span(
-                Self::name(),
-                Self::category(),
-                "bitsets are not supported",
-                Label::new(bitset.ident.span).message("defined here"),
-            )
-            .note("the bitset will be skipped during codegen");
-        Self::report(self.ctx, diag);
-    }
-
-    fn visit_path(&mut self, path: &'a ic_syntax::Path) {
-        if path.segments.len() == 1 {
-            let ty = &path.segments[0];
-            if ty.name == "long double" {
-                let diag = self
-                    .ctx
-                    .diag_span(
-                        Self::name(),
-                        Self::category(),
-                        "long double is not supported",
-                        Label::new(ty.span).message("used here"),
-                    )
-                    .note("long double will be treated as a normal double during codegen");
-                Self::report(self.ctx, diag);
-            }
-        }
-    }
-}
-
-impl<'a> Lint<'a> for Unsupported<'a> {
+impl<'a> Lint<'a> for LongDouble<'a> {
     fn name() -> &'static str {
-        "items"
+        "long-double"
     }
 
     fn category() -> Category {
@@ -79,11 +48,34 @@ impl<'a> Lint<'a> for Unsupported<'a> {
     }
 
     fn description() -> &'static str {
-        "Unsupported IDL features"
+        "Checks for use of `long double`"
     }
 
-    fn check(ctx: &'a LintCtx<'_>, ast: &[Item]) {
-        let mut lint = Self { ctx };
-        walk_tree(&mut lint, ast);
+    fn check_hir(ctx: &'a LintCtx<'a>, hir: &'a ResolvedGraph) {
+        let mut lint = Self { ctx, hir };
+        walk_tree(&mut lint, hir);
+    }
+}
+
+impl<'a> Visitor<'a> for LongDouble<'a> {
+    fn context(&self) -> &'a ic_hir::Context {
+        &self.hir.context
+    }
+
+    fn visit_ty(&mut self, ty: &'a hir::Ty) {
+        if let TyKind::Primitive(PrimitiveTy::Float128) = ty.kind {
+            let diag = self
+                .ctx
+                .diag_span(
+                    Self::name(),
+                    Self::category(),
+                    "long double is not supported",
+                    Label::new(ty.span).message("used here"),
+                )
+                .note("long double will be treated as a normal double during codegen");
+            Self::report(self.ctx, diag);
+        }
+
+        ic_hir::visit::walk_ty(self, ty);
     }
 }

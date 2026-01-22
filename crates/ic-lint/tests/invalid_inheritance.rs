@@ -209,11 +209,6 @@ fn valid_inheritance() {
         "Expected no errors, but got: {:?}",
         report.errors
     );
-    assert!(
-        report.warnings.is_empty(),
-        "Expected no warnings, but got: {:?}",
-        report.warnings
-    );
 }
 
 #[test]

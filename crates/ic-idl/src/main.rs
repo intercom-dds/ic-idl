@@ -50,7 +50,7 @@ macro_rules! error {
 macro_rules! warn {
     ($($arg:tt)*) => {{
         use ic_cli::color::Colorize as _;
-        eprintln!("{} {}", "warning:".purple().bold(), format!($($arg)*));
+        eprintln!("{} {}", "warning:".yellow().bold(), format!($($arg)*));
     }}
 }
 
@@ -334,7 +334,11 @@ fn emit_diagnostics(compiler: &Compiler, diagnostics: &CompileDiagnostics, forma
     if !diagnostics.warnings.is_empty() {
         let warnings =
             ic_idl::pretty::fmt_warnings(&diagnostics.warnings, compiler.source_map(), format);
-        eprintln!("{warnings}");
+        eprint!("{warnings}");
+
+        if !diagnostics.errors.is_empty() && format == ErrorFormat::Detailed {
+            eprintln!();
+        }
     }
 
     if !diagnostics.errors.is_empty() {
@@ -344,7 +348,12 @@ fn emit_diagnostics(compiler: &Compiler, diagnostics: &CompileDiagnostics, forma
             &diagnostics.expansion_info,
             format,
         );
-        eprintln!("{formatted}");
+        eprint!("{formatted}");
+        if format == ErrorFormat::Detailed {
+            eprintln!();
+        }
+    } else if !diagnostics.warnings.is_empty() && format == ErrorFormat::Detailed {
+        eprintln!();
     }
 
     let error_plural = if diagnostics.errors.len() > 1 {

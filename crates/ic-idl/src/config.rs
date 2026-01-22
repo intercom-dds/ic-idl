@@ -38,17 +38,17 @@ use ic_lint::{Category, Level, LintConfig};
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 pub enum ErrorFormat {
     #[default]
-    Human,
+    Detailed,
     Short,
 }
 
 impl convert::Convert for ErrorFormat {
     fn from_result(input: &[String]) -> convert::Result<Self> {
         match input.last().map(String::as_str) {
-            Some("human") | None => Ok(Self::Human),
+            Some("detailed") | None => Ok(Self::Detailed),
             Some("short") => Ok(Self::Short),
             Some(other) => Err(ConvertError::InvalidValue(format!(
-                "invalid error format '{}', expected 'human' or 'short'",
+                "invalid error format '{}', expected 'detailed' or 'short'",
                 other.yellow(),
             ))),
         }
@@ -210,7 +210,7 @@ pub struct Options {
     #[option(long)]
     pub ignore_comments: bool,
 
-    /// Error output format: human or short
+    /// Error output format: detailed or short
     #[option(long, arg = "fmt")]
     pub error_format: ErrorFormat,
 

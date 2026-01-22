@@ -135,7 +135,7 @@ pub fn fmt_errors(
     let mut emitter = DiagnosticEmitter::auto();
 
     for err in errors {
-        if !buf.is_empty() && format == ErrorFormat::Human {
+        if !buf.is_empty() && format == ErrorFormat::Detailed {
             _ = writeln!(&mut buf);
         }
 
@@ -163,7 +163,7 @@ fn emit_diag(
     format: ErrorFormat,
 ) -> std::fmt::Result {
     match format {
-        ErrorFormat::Human => emitter.emit(buf, vfs, diag),
+        ErrorFormat::Detailed => emitter.emit(buf, vfs, diag),
         ErrorFormat::Short => emitter.emit_compact(buf, vfs, diag),
     }
 }
@@ -208,7 +208,7 @@ pub fn fmt_warnings(warnings: &[Diag], vfs: &SourceMap, format: ErrorFormat) -> 
     let mut buf = String::new();
     let mut emitter = DiagnosticEmitter::auto();
     for diag in warnings {
-        if !buf.is_empty() && format == ErrorFormat::Human {
+        if !buf.is_empty() && format == ErrorFormat::Detailed {
             _ = writeln!(&mut buf);
         }
         _ = emit_diag(&mut emitter, &mut buf, vfs, diag, format);

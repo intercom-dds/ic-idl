@@ -120,7 +120,7 @@ use std::cell::RefCell;
 use std::collections::HashMap;
 
 pub use ic_diagnostic::Level;
-use ic_diagnostic::{Diag, Label};
+use ic_diagnostic::{Color, Diag, Label};
 use ic_syntax::{AnnotationAppl, Item, Span};
 use ic_vfs::SourceMap;
 use tracing::{debug, debug_span, trace};
@@ -306,8 +306,8 @@ impl LintCtx<'_> {
         };
 
         let color = match level {
-            Level::Error => ic_diagnostic::Color::Red,
-            Level::Warning | Level::Disabled => ic_diagnostic::Color::Purple,
+            Level::Error => Color::Red,
+            Level::Warning | Level::Disabled => Color::Yellow,
         };
 
         let diag = match level {

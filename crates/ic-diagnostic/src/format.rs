@@ -39,6 +39,7 @@ use crate::{Color, Diag};
 pub struct Line {
     pub text: &'static str,
     pub color: Color,
+    pub symbol: &'static str,
 }
 
 pub fn compact(
@@ -113,7 +114,14 @@ pub fn with_file_cached(
 
         let layout = compute_frame_layout(index, source, &file_labels, max_width);
 
-        let mut file_renderer = Renderer::new(f, index, source, layout.gutter_width, Some(&name));
+        let mut file_renderer = Renderer::new(
+            f,
+            index,
+            source,
+            layout.gutter_width,
+            Some(&name),
+            diag.title.color,
+        );
         file_renderer.render_frame(&layout, &file_labels)?;
     }
 

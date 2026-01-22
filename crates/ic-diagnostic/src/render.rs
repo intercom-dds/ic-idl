@@ -35,7 +35,7 @@ use crate::engine::{
     FrameLayout, LabelRef, LineGroup, LineIndex, LineWindow, apply_window, expand_tabs,
     visual_column,
 };
-use crate::{Diag, Label};
+use crate::{Color, Diag, Label};
 
 #[derive(Debug, Clone, Copy, Default)]
 struct WindowOffset {
@@ -69,35 +69,32 @@ struct ConnectorContext<'a> {
 
 #[derive(Debug)]
 pub struct Charset {
-    pub up_right: &'static str,
-    pub down_right: &'static str,
     pub vertical: &'static str,
-    pub vertical_dx: &'static str,
     pub highlight: &'static str,
     pub highlight_arrow: &'static str,
+    pub note_symbol: &'static str,
+    pub help_symbol: &'static str,
 }
 
 impl Charset {
     #[allow(dead_code)]
     pub fn ascii() -> Self {
         Self {
-            up_right: "==>",
-            down_right: "---",
             vertical: "|",
-            vertical_dx: "+",
-            highlight: "^",
-            highlight_arrow: "`~~",
+            highlight: "~",
+            highlight_arrow: "\\-",
+            note_symbol: "i",
+            help_symbol: "?",
         }
     }
 
     pub fn unicode() -> Self {
         Self {
-            up_right: "┌",
-            down_right: "└──",
             vertical: "│",
-            vertical_dx: "·",
             highlight: "^",
             highlight_arrow: "└─",
+            note_symbol: "*",
+            help_symbol: "?",
         }
     }
 }
@@ -109,6 +106,7 @@ pub struct Renderer<'a, W: fmt::Write + ?Sized> {
     charset: Charset,
     gutter_width: usize,
     filename: Option<&'a str>,
+    title_color: Color,
 }
 
 impl<'a, W: fmt::Write + ?Sized> Renderer<'a, W> {
@@ -118,6 +116,7 @@ impl<'a, W: fmt::Write + ?Sized> Renderer<'a, W> {
         source: &'a str,
         gutter_width: usize,
         filename: Option<&'a str>,
+        title_color: Color,
     ) -> Self {
         Self {
             writer,
@@ -126,6 +125,7 @@ impl<'a, W: fmt::Write + ?Sized> Renderer<'a, W> {
             charset: Charset::unicode(),
             gutter_width,
             filename,
+            title_color,
         }
     }
 
@@ -140,22 +140,7 @@ impl<'a, W: fmt::Write + ?Sized> Renderer<'a, W> {
     }
 
     pub fn render_header(&mut self, diag: &Diag) -> fmt::Result {
-        if diag.msg.is_empty() {
-            return Ok(());
-        }
-
-        let title = if let Some(code) = &diag.code {
-            format!("{}[{}]:", diag.title.text, code)
-        } else {
-            format!("{}:", diag.title.text)
-        };
-
-        writeln!(
-            self.writer,
-            "{} {}",
-            title.fg(diag.title.color).bold(),
-            diag.msg.bold(),
-        )
+        render_header(self.writer, diag)
     }
 
     pub fn render_frame(&mut self, layout: &FrameLayout, labels: &[Label]) -> fmt::Result {
@@ -163,38 +148,28 @@ impl<'a, W: fmt::Write + ?Sized> Renderer<'a, W> {
             return Ok(());
         }
 
-        let indent = " ".repeat(self.gutter_width + 2);
-
         let first_label = &labels[0];
-        let (first_line, _) = self.index.line_col(first_label.span.start.offset);
+        let (primary_line, _) = self.index.line_col(first_label.span.start.offset);
         let visual_col = self
             .index
             .visual_col(self.source, first_label.span.start.offset);
 
         writeln!(
             self.writer,
-            "{indent}{} {}:{}:{}",
-            self.charset.up_right.blue().bold(),
+            "  at {}:{}:{}",
             self.filename.unwrap_or("unknown"),
-            first_line,
+            primary_line,
             visual_col,
         )?;
-        writeln!(
-            self.writer,
-            "{indent}{}",
-            self.charset.vertical.blue().bold()
-        )?;
+        writeln!(self.writer)?;
 
+        let indent = " ".repeat(self.gutter_width + 3);
         let mut prev_line: Option<u32> = None;
         for group in &layout.line_groups {
-            self.render_line_group(group, labels, &mut prev_line, &indent)?;
+            self.render_line_group(group, labels, &mut prev_line, &indent, primary_line)?;
         }
 
-        writeln!(
-            self.writer,
-            "{indent}{}",
-            self.charset.down_right.blue().bold()
-        )
+        Ok(())
     }
 
     pub fn render_line_group(
@@ -203,6 +178,7 @@ impl<'a, W: fmt::Write + ?Sized> Renderer<'a, W> {
         labels: &[Label],
         prev_line: &mut Option<u32>,
         indent: &str,
+        primary_line: u32,
     ) -> fmt::Result {
         for line_num in group.start_line..=group.end_line {
             if let Some(prev) = *prev_line
@@ -211,7 +187,8 @@ impl<'a, W: fmt::Write + ?Sized> Renderer<'a, W> {
                 self.render_truncation_marker()?;
             }
 
-            self.render_source_line(line_num, &group.window, &group.labels, labels)?;
+            let is_primary = line_num == primary_line;
+            self.render_source_line(line_num, &group.window, is_primary)?;
             self.render_labels_for_line(line_num, indent, &group.window, &group.labels, labels)?;
 
             *prev_line = Some(line_num);
@@ -223,8 +200,7 @@ impl<'a, W: fmt::Write + ?Sized> Renderer<'a, W> {
         &mut self,
         line_num: u32,
         window: &LineWindow,
-        _label_refs: &[LabelRef],
-        _labels: &[Label],
+        is_primary: bool,
     ) -> fmt::Result {
         let line_start = self.index.line_start(line_num) as usize;
         let line_end = self.source[line_start..]
@@ -235,44 +211,37 @@ impl<'a, W: fmt::Write + ?Sized> Renderer<'a, W> {
 
         let display_text = apply_window(&expanded, window);
 
+        let prefix = if is_primary {
+            format!(">").fg(self.title_color).to_string()
+        } else {
+            " ".to_string()
+        };
+
         write!(
             self.writer,
-            " {} {}",
+            "{} {} {} ",
+            prefix,
             format!("{:>width$}", line_num, width = self.gutter_width)
                 .blue()
                 .bold(),
             self.charset.vertical.blue().bold()
         )?;
-        writeln!(self.writer, " {display_text}")
+        writeln!(self.writer, "{display_text}")
     }
 
     pub fn render_truncation_marker(&mut self) -> fmt::Result {
         writeln!(
             self.writer,
-            " {} {}",
-            format!("{:>width$}", "···", width = self.gutter_width).gray(),
+            "  {} {}",
+            format!("{:>width$}", "···", width = self.gutter_width + 1)
+                .blue()
+                .bold(),
             self.charset.vertical.blue().bold()
         )
     }
 
     pub fn render_footer(&mut self, diag: &Diag) -> fmt::Result {
-        if diag.msg.is_empty() {
-            return Ok(());
-        }
-
-        if let Some(v) = &diag.warn {
-            writeln!(self.writer, " {} {v}", "warn:".purple().bold())?;
-        }
-        if let Some(v) = &diag.help {
-            writeln!(self.writer, " {} {v}", "help:".cyan().bold())?;
-        }
-        if let Some(v) = &diag.note {
-            writeln!(self.writer, " {} {v}", "note:".gray().bold())?;
-        }
-        if let Some(v) = &diag.desc {
-            writeln!(self.writer, "\n{v}")?;
-        }
-        Ok(())
+        render_footer(self.writer, diag)
     }
 
     fn render_labels_for_line(
@@ -322,7 +291,7 @@ impl<'a, W: fmt::Write + ?Sized> Renderer<'a, W> {
         write!(
             self.writer,
             "{indent}{} ",
-            self.charset.vertical_dx.blue().bold()
+            self.charset.vertical.blue().bold()
         )?;
 
         let win_offset = WindowOffset::from_window(window);
@@ -475,7 +444,7 @@ impl<'a, W: fmt::Write + ?Sized> Renderer<'a, W> {
 
             for (i, &label_ref) in sorted_labels.iter().skip(1).enumerate() {
                 let label = &labels[label_ref.label_index];
-                write!(self.writer, "{indent}{} ", self.charset.vertical_dx.blue())?;
+                write!(self.writer, "{indent}{} ", self.charset.vertical.blue())?;
 
                 let label_col = visual_column(source_line, (label_ref.start_col - 1) as usize);
                 let ctx = ConnectorContext {
@@ -563,19 +532,26 @@ pub fn render_diagnostic(
     use crate::engine::compute_frame_layout;
 
     let layout = compute_frame_layout(index, source, &diag.labels, max_width);
-    let mut renderer = Renderer::new(writer, index, source, layout.gutter_width, filename);
+    let mut renderer = Renderer::new(
+        writer,
+        index,
+        source,
+        layout.gutter_width,
+        filename,
+        diag.title.color,
+    );
     renderer.render_diagnostic(diag, &layout)
 }
 
-pub fn render_header(writer: &mut dyn fmt::Write, diag: &Diag) -> fmt::Result {
+pub fn render_header<W: fmt::Write + ?Sized>(writer: &mut W, diag: &Diag) -> fmt::Result {
     if diag.msg.is_empty() {
         return Ok(());
     }
 
     let title = if let Some(code) = &diag.code {
-        format!("{}[{}]:", diag.title.text, code)
+        format!("{} {}:", diag.title.symbol, code)
     } else {
-        format!("{}:", diag.title.text)
+        format!("{}:", diag.title.symbol)
     };
 
     writeln!(
@@ -586,19 +562,21 @@ pub fn render_header(writer: &mut dyn fmt::Write, diag: &Diag) -> fmt::Result {
     )
 }
 
-pub fn render_footer(writer: &mut dyn fmt::Write, diag: &Diag) -> fmt::Result {
+pub fn render_footer<W: fmt::Write + ?Sized>(writer: &mut W, diag: &Diag) -> fmt::Result {
     if diag.msg.is_empty() {
         return Ok(());
     }
 
-    if let Some(v) = &diag.warn {
-        writeln!(writer, " {} {v}", "warn:".purple().bold())?;
+    let charset = Charset::unicode();
+    if diag.help.is_some() || diag.note.is_some() || diag.desc.is_some() {
+        writeln!(writer)?;
     }
+
     if let Some(v) = &diag.help {
-        writeln!(writer, " {} {v}", "help:".cyan().bold())?;
+        writeln!(writer, "  {} {v}", charset.help_symbol.cyan())?;
     }
     if let Some(v) = &diag.note {
-        writeln!(writer, " {} {v}", "note:".gray().bold())?;
+        writeln!(writer, "  {} {v}", charset.note_symbol.gray())?;
     }
     if let Some(v) = &diag.desc {
         writeln!(writer, "\n{v}")?;

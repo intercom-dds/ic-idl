@@ -77,7 +77,6 @@ pub struct Diag {
     title: Line,
     code: Option<String>,
     help: Option<String>,
-    warn: Option<String>,
     note: Option<String>,
     desc: Option<String>,
     labels: Vec<Label>,
@@ -88,6 +87,7 @@ impl Diag {
         let title = Line {
             text: "error",
             color: Color::Red,
+            symbol: "⨯",
         };
         Self::with_title(title, message.into())
     }
@@ -95,7 +95,8 @@ impl Diag {
     pub fn warning<S: Into<String>>(message: S) -> Self {
         let title = Line {
             text: "warning",
-            color: Color::Purple,
+            color: Color::Yellow,
+            symbol: "!",
         };
         Self::with_title(title, message.into())
     }
@@ -121,11 +122,6 @@ impl Diag {
     /// the end of the output with [`with_note`].
     pub fn message<S: Into<String>>(mut self, msg: S) -> Self {
         self.msg = msg.into();
-        self
-    }
-
-    pub fn warn<S: Into<String>>(mut self, msg: S) -> Self {
-        self.warn = Some(msg.into());
         self
     }
 
@@ -170,7 +166,6 @@ impl Diag {
             msg,
             code: None,
             help: None,
-            warn: None,
             note: None,
             desc: None,
             labels: vec![],
@@ -227,7 +222,7 @@ pub fn error_span<S: Into<String>>(msg: S, label: Label) -> Diag {
 
 /// Creates a warning diagnostic that highlights the given span.
 pub fn warn_span<S: Into<String>>(msg: S, label: Label) -> Diag {
-    Diag::warning(msg).label(label.color(Color::Purple))
+    Diag::warning(msg).label(label.color(Color::Yellow))
 }
 
 pub struct DiagnosticEmitter {

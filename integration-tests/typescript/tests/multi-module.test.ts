@@ -26,18 +26,18 @@
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 import { describe, expect, test } from "bun:test";
-import type { StructA1, StructA2, StructA3 } from "../generated/moduleA";
+import type { StructA1, StructA2, StructA3 } from "../generated/module_a";
 import {
   CONST_A1,
   CONST_A2,
   CONST_A3,
   EnumA,
   EnumA2,
-} from "../generated/moduleA";
-import type { StructB1, StructB2 } from "../generated/moduleB";
-import { CONST_B1, CONST_B2 } from "../generated/moduleB";
-import { C1, C2, C3 } from "../generated/constantsOnly";
-import { Color, Size } from "../generated/enumsOnly";
+} from "../generated/module_a";
+import type { StructB1, StructB2 } from "../generated/module_b";
+import { CONST_B1, CONST_B2 } from "../generated/module_b";
+import { C1, C2, C3 } from "../generated/constants_only";
+import { Color, Size } from "../generated/enums_only";
 
 describe("multi module", () => {
   describe("module_a", () => {
@@ -51,9 +51,9 @@ describe("multi module", () => {
 
     test("second opening - StructA2 and CONST_A2", () => {
       const a1: StructA1 = { value: 5 };
-      const a2: StructA2 = { data: 3.14, refToA1: a1 };
+      const a2: StructA2 = { data: 3.14, ref_to_a1: a1 };
       expect(a2.data).toBe(3.14);
-      expect(a2.refToA1.value).toBe(5);
+      expect(a2.ref_to_a1.value).toBe(5);
       expect(CONST_A2).toBe(101);
       expect(EnumA2.P).toBe(0);
       expect(EnumA2.Q).toBe(1);
@@ -62,7 +62,7 @@ describe("multi module", () => {
 
     test("third opening - StructA3 and CONST_A3", () => {
       const a1: StructA1 = { value: 1 };
-      const a2: StructA2 = { data: 2.0, refToA1: a1 };
+      const a2: StructA2 = { data: 2.0, ref_to_a1: a1 };
       const a3: StructA3 = { flag: true, a1, a2 };
       expect(a3.flag).toBe(true);
       expect(a3.a1.value).toBe(1);
@@ -86,8 +86,8 @@ describe("multi module", () => {
   describe("reopened module types can reference earlier", () => {
     test("StructA2 references StructA1", () => {
       const a1: StructA1 = { value: 10 };
-      const a2: StructA2 = { data: 3.14, refToA1: a1 };
-      expect(a2.refToA1.value).toBe(10);
+      const a2: StructA2 = { data: 3.14, ref_to_a1: a1 };
+      expect(a2.ref_to_a1.value).toBe(10);
     });
   });
 
@@ -112,12 +112,12 @@ describe("multi module", () => {
 
   describe("enums only module", () => {
     test("enums are exported", () => {
-      expect(Color.Red).toBe(0);
-      expect(Color.Green).toBe(1);
-      expect(Color.Blue).toBe(2);
-      expect(Size.Small).toBe(0);
-      expect(Size.Medium).toBe(1);
-      expect(Size.Large).toBe(2);
+      expect(Color.RED).toBe(0);
+      expect(Color.GREEN).toBe(1);
+      expect(Color.BLUE).toBe(2);
+      expect(Size.SMALL).toBe(0);
+      expect(Size.MEDIUM).toBe(1);
+      expect(Size.LARGE).toBe(2);
     });
   });
 });

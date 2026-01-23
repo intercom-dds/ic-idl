@@ -33,7 +33,7 @@ import type {
   MapSelfRef,
   ComplexSelfRef,
   NestedSelfRef,
-} from "../generated/circularTypes";
+} from "../generated/circular_types";
 
 describe("circular types", () => {
   describe("TreeNode", () => {
@@ -113,24 +113,24 @@ describe("circular types", () => {
 
   describe("MapSelfRef", () => {
     test("with child", () => {
-      const leaf: MapSelfRef = { id: "leaf", childrenByName: {} };
+      const leaf: MapSelfRef = { id: "leaf", children_by_name: {} };
       const parent: MapSelfRef = {
         id: "parent",
-        childrenByName: { child: leaf },
+        children_by_name: { child: leaf },
       };
       expect(parent.id).toBe("parent");
-      expect(parent.childrenByName.child.id).toBe("leaf");
+      expect(parent.children_by_name.child.id).toBe("leaf");
     });
 
     test("multiple children", () => {
-      const a: MapSelfRef = { id: "a", childrenByName: {} };
-      const b: MapSelfRef = { id: "b", childrenByName: {} };
+      const a: MapSelfRef = { id: "a", children_by_name: {} };
+      const b: MapSelfRef = { id: "b", children_by_name: {} };
       const root: MapSelfRef = {
         id: "root",
-        childrenByName: { a, b },
+        children_by_name: { a, b },
       };
-      expect(root.childrenByName.a.id).toBe("a");
-      expect(root.childrenByName.b.id).toBe("b");
+      expect(root.children_by_name.a.id).toBe("a");
+      expect(root.children_by_name.b.id).toBe("b");
     });
   });
 

@@ -41,13 +41,13 @@ import {
   WSTRING_UNICODE,
   WSTRING_EMOJI,
   WSTRING_EMPTY,
-} from "../generated/charWstringTypes";
+} from "../generated/char_wstring_types";
 import type {
   CharFields,
   WstringFields,
   CharSequences,
   MixedCharTypes,
-} from "../generated/charWstringTypes";
+} from "../generated/char_wstring_types";
 import {
   FRENCH,
   GERMAN,
@@ -71,8 +71,8 @@ import {
   MATH,
   CURRENCY,
   ARROWS,
-} from "../generated/unicodeTypes";
-import type { UnicodeData } from "../generated/unicodeTypes";
+} from "../generated/unicode_types";
+import type { UnicodeData } from "../generated/unicode_types";
 
 describe("char and wstring types", () => {
   describe("char constants", () => {
@@ -141,37 +141,37 @@ describe("char and wstring types", () => {
 
   describe("char structs", () => {
     test("CharFields", () => {
-      const cf: CharFields = { singleChar: "X", wideChar: "Ω" };
-      expect(cf.singleChar).toBe("X");
-      expect(cf.wideChar).toBe("Ω");
+      const cf: CharFields = { single_char: "X", wide_char: "Ω" };
+      expect(cf.single_char).toBe("X");
+      expect(cf.wide_char).toBe("Ω");
     });
 
     test("WstringFields", () => {
-      const ws: WstringFields = { wideText: "日本語", narrowText: "ASCII" };
-      expect(ws.wideText).toBe("日本語");
-      expect(ws.narrowText).toBe("ASCII");
+      const ws: WstringFields = { wide_text: "日本語", narrow_text: "ASCII" };
+      expect(ws.wide_text).toBe("日本語");
+      expect(ws.narrow_text).toBe("ASCII");
     });
 
     test("CharSequences", () => {
       const cs: CharSequences = {
-        charSeq: ["a", "b", "c"],
-        wcharSeq: ["α", "β", "γ"],
+        char_seq: ["a", "b", "c"],
+        wchar_seq: ["α", "β", "γ"],
       };
-      expect(cs.charSeq).toEqual(["a", "b", "c"]);
-      expect(cs.wcharSeq).toEqual(["α", "β", "γ"]);
+      expect(cs.char_seq).toEqual(["a", "b", "c"]);
+      expect(cs.wchar_seq).toEqual(["α", "β", "γ"]);
     });
 
     test("MixedCharTypes", () => {
       const m: MixedCharTypes = {
         letter: "A",
-        wideLetter: "Ω",
+        wide_letter: "Ω",
         text: "hello",
-        wideText: "世界",
+        wide_text: "世界",
       };
       expect(m.letter).toBe("A");
-      expect(m.wideLetter).toBe("Ω");
+      expect(m.wide_letter).toBe("Ω");
       expect(m.text).toBe("hello");
-      expect(m.wideText).toBe("世界");
+      expect(m.wide_text).toBe("世界");
     });
   });
 });

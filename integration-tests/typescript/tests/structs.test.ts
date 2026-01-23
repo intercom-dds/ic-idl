@@ -36,7 +36,7 @@ import type {
   WithArray,
   WithMap,
   Empty,
-} from "../generated/structTypes";
+} from "../generated/struct_types";
 
 describe("structs", () => {
   describe("Point", () => {
@@ -96,65 +96,65 @@ describe("structs", () => {
     test("can contain other structs", () => {
       const tl: Point = { x: 0, y: 0 };
       const br: Point = { x: 100, y: 100 };
-      const rect: Rectangle = { topLeft: tl, bottomRight: br };
-      expect(rect.topLeft.x).toBe(0);
-      expect(rect.bottomRight.y).toBe(100);
+      const rect: Rectangle = { top_left: tl, bottom_right: br };
+      expect(rect.top_left.x).toBe(0);
+      expect(rect.bottom_right.y).toBe(100);
     });
   });
 
   describe("AllPrimitives", () => {
     test("can hold all primitive types", () => {
       const p: AllPrimitives = {
-        boolVal: true,
-        byteVal: 255,
-        shortVal: -100,
-        ushortVal: 1000,
-        longVal: -50000,
-        ulongVal: 100000,
-        longlongVal: -9999999999,
-        ulonglongVal: 9999999999,
-        floatVal: 3.14,
-        doubleVal: 2.71828,
-        stringVal: "hello",
+        bool_val: true,
+        byte_val: 255,
+        short_val: -100,
+        ushort_val: 1000,
+        long_val: -50000,
+        ulong_val: 100000,
+        longlong_val: -9999999999,
+        ulonglong_val: 9999999999,
+        float_val: 3.14,
+        double_val: 2.71828,
+        string_val: "hello",
       };
-      expect(p.boolVal).toBe(true);
-      expect(p.byteVal).toBe(255);
-      expect(p.shortVal).toBe(-100);
-      expect(p.ushortVal).toBe(1000);
-      expect(p.longVal).toBe(-50000);
-      expect(p.ulongVal).toBe(100000);
-      expect(p.longlongVal).toBe(-9999999999);
-      expect(p.ulonglongVal).toBe(9999999999);
-      expect(p.floatVal).toBeCloseTo(3.14);
-      expect(p.doubleVal).toBeCloseTo(2.71828);
-      expect(p.stringVal).toBe("hello");
+      expect(p.bool_val).toBe(true);
+      expect(p.byte_val).toBe(255);
+      expect(p.short_val).toBe(-100);
+      expect(p.ushort_val).toBe(1000);
+      expect(p.long_val).toBe(-50000);
+      expect(p.ulong_val).toBe(100000);
+      expect(p.longlong_val).toBe(-9999999999);
+      expect(p.ulonglong_val).toBe(9999999999);
+      expect(p.float_val).toBeCloseTo(3.14);
+      expect(p.double_val).toBeCloseTo(2.71828);
+      expect(p.string_val).toBe("hello");
     });
 
     test("primitive types are correct JavaScript types", () => {
       const p: AllPrimitives = {
-        boolVal: true,
-        byteVal: 255,
-        shortVal: -100,
-        ushortVal: 1000,
-        longVal: -50000,
-        ulongVal: 100000,
-        longlongVal: -9999999999,
-        ulonglongVal: 9999999999,
-        floatVal: 3.14,
-        doubleVal: 2.71828,
-        stringVal: "hello",
+        bool_val: true,
+        byte_val: 255,
+        short_val: -100,
+        ushort_val: 1000,
+        long_val: -50000,
+        ulong_val: 100000,
+        longlong_val: -9999999999,
+        ulonglong_val: 9999999999,
+        float_val: 3.14,
+        double_val: 2.71828,
+        string_val: "hello",
       };
-      expect(typeof p.boolVal).toBe("boolean");
-      expect(typeof p.byteVal).toBe("number");
-      expect(typeof p.shortVal).toBe("number");
-      expect(typeof p.ushortVal).toBe("number");
-      expect(typeof p.longVal).toBe("number");
-      expect(typeof p.ulongVal).toBe("number");
-      expect(typeof p.longlongVal).toBe("number");
-      expect(typeof p.ulonglongVal).toBe("number");
-      expect(typeof p.floatVal).toBe("number");
-      expect(typeof p.doubleVal).toBe("number");
-      expect(typeof p.stringVal).toBe("string");
+      expect(typeof p.bool_val).toBe("boolean");
+      expect(typeof p.byte_val).toBe("number");
+      expect(typeof p.short_val).toBe("number");
+      expect(typeof p.ushort_val).toBe("number");
+      expect(typeof p.long_val).toBe("number");
+      expect(typeof p.ulong_val).toBe("number");
+      expect(typeof p.longlong_val).toBe("number");
+      expect(typeof p.ulonglong_val).toBe("number");
+      expect(typeof p.float_val).toBe("number");
+      expect(typeof p.double_val).toBe("number");
+      expect(typeof p.string_val).toBe("string");
     });
   });
 
@@ -168,17 +168,17 @@ describe("structs", () => {
 
   describe("WithArray", () => {
     test("can hold fixed arrays", () => {
-      const s: WithArray = { fixedNumbers: [1, 2, 3, 4, 5] };
-      expect(s.fixedNumbers.length).toBe(5);
-      expect(s.fixedNumbers[0]).toBe(1);
+      const s: WithArray = { fixed_numbers: [1, 2, 3, 4, 5] };
+      expect(s.fixed_numbers.length).toBe(5);
+      expect(s.fixed_numbers[0]).toBe(1);
     });
   });
 
   describe("WithMap", () => {
     test("can hold maps (Records)", () => {
-      const s: WithMap = { stringToInt: { one: 1, two: 2 } };
-      expect(s.stringToInt.one).toBe(1);
-      expect(s.stringToInt.two).toBe(2);
+      const s: WithMap = { string_to_int: { one: 1, two: 2 } };
+      expect(s.string_to_int.one).toBe(1);
+      expect(s.string_to_int.two).toBe(2);
     });
   });
 

@@ -31,32 +31,32 @@ import type {
   TypedValue,
   BoolSwitch,
   MultiCase,
-} from "../generated/unionTypes";
-import { ValueKind } from "../generated/unionTypes";
+} from "../generated/union_types";
+import { ValueKind } from "../generated/union_types";
 
 describe("unions", () => {
   describe("IntOrString", () => {
     test("integer variant", () => {
-      const val: IntOrString = { $discriminator: 1, intVal: 42 };
+      const val: IntOrString = { $discriminator: 1, int_val: 42 };
       expect(val.$discriminator).toBe(1);
       if (val.$discriminator === 1) {
-        expect(val.intVal).toBe(42);
+        expect(val.int_val).toBe(42);
       }
     });
 
     test("string variant", () => {
-      const val: IntOrString = { $discriminator: 2, strVal: "hello" };
+      const val: IntOrString = { $discriminator: 2, str_val: "hello" };
       expect(val.$discriminator).toBe(2);
       if (val.$discriminator === 2) {
-        expect(val.strVal).toBe("hello");
+        expect(val.str_val).toBe("hello");
       }
     });
 
     test("default variant", () => {
-      const val: IntOrString = { $discriminator: 99, defaultVal: true };
+      const val: IntOrString = { $discriminator: 99, default_val: true };
       expect(val.$discriminator).toBe(99);
       if (val.$discriminator !== 1 && val.$discriminator !== 2) {
-        expect(val.defaultVal).toBe(true);
+        expect(val.default_val).toBe(true);
       }
     });
   });
@@ -64,73 +64,73 @@ describe("unions", () => {
   describe("TypedValue with enum discriminator", () => {
     test("IntKind variant", () => {
       const val: TypedValue = {
-        $discriminator: ValueKind.IntKind,
-        intValue: 123,
+        $discriminator: ValueKind.INT_KIND,
+        int_value: 123,
       };
-      expect(val.$discriminator).toBe(ValueKind.IntKind);
-      if (val.$discriminator === ValueKind.IntKind) {
-        expect(val.intValue).toBe(123);
+      expect(val.$discriminator).toBe(ValueKind.INT_KIND);
+      if (val.$discriminator === ValueKind.INT_KIND) {
+        expect(val.int_value).toBe(123);
       }
     });
 
     test("FloatKind variant", () => {
       const val: TypedValue = {
-        $discriminator: ValueKind.FloatKind,
-        floatValue: 3.14,
+        $discriminator: ValueKind.FLOAT_KIND,
+        float_value: 3.14,
       };
-      expect(val.$discriminator).toBe(ValueKind.FloatKind);
-      if (val.$discriminator === ValueKind.FloatKind) {
-        expect(val.floatValue).toBeCloseTo(3.14);
+      expect(val.$discriminator).toBe(ValueKind.FLOAT_KIND);
+      if (val.$discriminator === ValueKind.FLOAT_KIND) {
+        expect(val.float_value).toBeCloseTo(3.14);
       }
     });
 
     test("StringKind variant", () => {
       const val: TypedValue = {
-        $discriminator: ValueKind.StringKind,
-        stringValue: "test",
+        $discriminator: ValueKind.STRING_KIND,
+        string_value: "test",
       };
-      expect(val.$discriminator).toBe(ValueKind.StringKind);
-      if (val.$discriminator === ValueKind.StringKind) {
-        expect(val.stringValue).toBe("test");
+      expect(val.$discriminator).toBe(ValueKind.STRING_KIND);
+      if (val.$discriminator === ValueKind.STRING_KIND) {
+        expect(val.string_value).toBe("test");
       }
     });
   });
 
   describe("BoolSwitch", () => {
     test("true variant", () => {
-      const val: BoolSwitch = { $discriminator: true, trueVal: 100 };
+      const val: BoolSwitch = { $discriminator: true, true_val: 100 };
       expect(val.$discriminator).toBe(true);
       if (val.$discriminator === true) {
-        expect(val.trueVal).toBe(100);
+        expect(val.true_val).toBe(100);
       }
     });
 
     test("false variant", () => {
-      const val: BoolSwitch = { $discriminator: false, falseVal: "off" };
+      const val: BoolSwitch = { $discriminator: false, false_val: "off" };
       expect(val.$discriminator).toBe(false);
       if (val.$discriminator === false) {
-        expect(val.falseVal).toBe("off");
+        expect(val.false_val).toBe("off");
       }
     });
   });
 
   describe("MultiCase", () => {
     test("case 1, 2, 3 share same variant", () => {
-      const val1: MultiCase = { $discriminator: 1, smallVal: 10 };
-      const val2: MultiCase = { $discriminator: 2, smallVal: 20 };
-      const val3: MultiCase = { $discriminator: 3, smallVal: 30 };
+      const val1: MultiCase = { $discriminator: 1, small_val: 10 };
+      const val2: MultiCase = { $discriminator: 2, small_val: 20 };
+      const val3: MultiCase = { $discriminator: 3, small_val: 30 };
 
-      expect(val1.smallVal).toBe(10);
-      expect(val2.smallVal).toBe(20);
-      expect(val3.smallVal).toBe(30);
+      expect(val1.small_val).toBe(10);
+      expect(val2.small_val).toBe(20);
+      expect(val3.small_val).toBe(30);
     });
 
     test("case 10, 20 share same variant", () => {
-      const val10: MultiCase = { $discriminator: 10, textVal: "ten" };
-      const val20: MultiCase = { $discriminator: 20, textVal: "twenty" };
+      const val10: MultiCase = { $discriminator: 10, text_val: "ten" };
+      const val20: MultiCase = { $discriminator: 20, text_val: "twenty" };
 
-      expect(val10.textVal).toBe("ten");
-      expect(val20.textVal).toBe("twenty");
+      expect(val10.text_val).toBe("ten");
+      expect(val20.text_val).toBe("twenty");
     });
 
     test("default case", () => {

@@ -33,44 +33,44 @@ import {
   NegativeEnum,
   MixedEnum,
   ENUM_CONST,
-} from "../generated/enumTypes";
+} from "../generated/enum_types";
 
 describe("enums", () => {
   test("Color enum has correct members", () => {
-    expect(Color.Red).toBe(0);
-    expect(Color.Green).toBe(1);
-    expect(Color.Blue).toBe(2);
+    expect(Color.RED).toBe(0);
+    expect(Color.GREEN).toBe(1);
+    expect(Color.BLUE).toBe(2);
   });
 
   test("Status enum has explicit values", () => {
-    expect(Status.Ok).toBe(0);
-    expect(Status.Warning).toBe(100);
-    expect(Status.Error).toBe(200);
+    expect(Status.OK).toBe(0);
+    expect(Status.WARNING).toBe(100);
+    expect(Status.ERROR).toBe(200);
   });
 
   test("GappedEnum has non-sequential values", () => {
-    expect(GappedEnum.First).toBe(0);
-    expect(GappedEnum.Second).toBe(5);
-    expect(GappedEnum.Third).toBe(10);
-    expect(GappedEnum.Fourth).toBe(100);
+    expect(GappedEnum.FIRST).toBe(0);
+    expect(GappedEnum.SECOND).toBe(5);
+    expect(GappedEnum.THIRD).toBe(10);
+    expect(GappedEnum.FOURTH).toBe(100);
   });
 
   test("NegativeEnum supports negative values", () => {
-    expect(NegativeEnum.NegTwo).toBe(-2);
-    expect(NegativeEnum.NegOne).toBe(-1);
-    expect(NegativeEnum.Zero).toBe(0);
-    expect(NegativeEnum.PosOne).toBe(1);
+    expect(NegativeEnum.NEG_TWO).toBe(-2);
+    expect(NegativeEnum.NEG_ONE).toBe(-1);
+    expect(NegativeEnum.ZERO).toBe(0);
+    expect(NegativeEnum.POS_ONE).toBe(1);
   });
 
   test("MixedEnum has mixed auto and explicit values", () => {
-    expect(MixedEnum.AutoFirst).toBe(0);
-    expect(MixedEnum.ExplicitTen).toBe(10);
-    expect(MixedEnum.AutoEleven).toBe(11);
-    expect(MixedEnum.ExplicitHundred).toBe(100);
-    expect(MixedEnum.AutoHundredOne).toBe(101);
+    expect(MixedEnum.AUTO_FIRST).toBe(0);
+    expect(MixedEnum.EXPLICIT_TEN).toBe(10);
+    expect(MixedEnum.AUTO_ELEVEN).toBe(11);
+    expect(MixedEnum.EXPLICIT_HUNDRED).toBe(100);
+    expect(MixedEnum.AUTO_HUNDRED_ONE).toBe(101);
   });
 
   test("ENUM_CONST references enum value", () => {
-    expect(ENUM_CONST).toBe(Status.Warning);
+    expect(ENUM_CONST).toBe(Status.WARNING);
   });
 });

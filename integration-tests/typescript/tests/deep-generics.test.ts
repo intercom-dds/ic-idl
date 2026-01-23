@@ -43,7 +43,7 @@ import type {
   ArrayOfSeq,
   SeqOfArray,
   MapOfArray,
-} from "../generated/deepGenericTypes";
+} from "../generated/deep_generic_types";
 
 describe("deep generics", () => {
   describe("nested sequences", () => {
@@ -86,47 +86,47 @@ describe("deep generics", () => {
   describe("map/sequence combinations", () => {
     test("MapOfSeq", () => {
       const obj: MapOfSeq = {
-        indexedLists: {
+        indexed_lists: {
           first: [1, 2, 3],
           second: [4, 5, 6],
         },
       };
-      expect(obj.indexedLists.first).toEqual([1, 2, 3]);
+      expect(obj.indexed_lists.first).toEqual([1, 2, 3]);
     });
 
     test("SeqOfMap", () => {
       const obj: SeqOfMap = {
-        listOfDicts: [
+        list_of_dicts: [
           { a: 1, b: 2 },
           { c: 3, d: 4 },
         ],
       };
-      expect(obj.listOfDicts[0].a).toBe(1);
+      expect(obj.list_of_dicts[0].a).toBe(1);
     });
 
     test("MapOfMap", () => {
       const obj: MapOfMap = {
-        nestedDict: {
+        nested_dict: {
           outer: { inner: 42 },
         },
       };
-      expect(obj.nestedDict.outer.inner).toBe(42);
+      expect(obj.nested_dict.outer.inner).toBe(42);
     });
 
     test("MapSeqMap - complex structure", () => {
       const obj: MapSeqMap = {
-        complexStructure: {
+        complex_structure: {
           key: [{ a: 1 }, { b: 2 }],
         },
       };
-      expect(obj.complexStructure.key[0].a).toBe(1);
+      expect(obj.complex_structure.key[0].a).toBe(1);
     });
 
     test("SeqMapSeq - inverse structure", () => {
       const obj: SeqMapSeq = {
-        inverseStructure: [{ nums: [1, 2, 3] }],
+        inverse_structure: [{ nums: [1, 2, 3] }],
       };
-      expect(obj.inverseStructure[0].nums).toEqual([1, 2, 3]);
+      expect(obj.inverse_structure[0].nums).toEqual([1, 2, 3]);
     });
   });
 
@@ -144,18 +144,18 @@ describe("deep generics", () => {
 
     test("MapOfPoints", () => {
       const obj: MapOfPoints = {
-        namedPoints: {
+        named_points: {
           origin: { x: 0, y: 0 },
           target: { x: 10, y: 20 },
         },
       };
-      expect(obj.namedPoints.origin.x).toBe(0);
-      expect(obj.namedPoints.target.y).toBe(20);
+      expect(obj.named_points.origin.x).toBe(0);
+      expect(obj.named_points.target.y).toBe(20);
     });
 
     test("SeqOfSeqOfPoints - point matrix", () => {
       const obj: SeqOfSeqOfPoints = {
-        pointMatrix: [
+        point_matrix: [
           [
             { x: 0, y: 0 },
             { x: 1, y: 0 },
@@ -166,20 +166,20 @@ describe("deep generics", () => {
           ],
         ],
       };
-      expect(obj.pointMatrix[1][1].x).toBe(1);
-      expect(obj.pointMatrix[1][1].y).toBe(1);
+      expect(obj.point_matrix[1][1].x).toBe(1);
+      expect(obj.point_matrix[1][1].y).toBe(1);
     });
 
     test("MapOfSeqOfPoints", () => {
       const obj: MapOfSeqOfPoints = {
-        pointLists: {
+        point_lists: {
           line: [
             { x: 0, y: 0 },
             { x: 10, y: 10 },
           ],
         },
       };
-      expect(obj.pointLists.line.length).toBe(2);
+      expect(obj.point_lists.line.length).toBe(2);
     });
   });
 
@@ -212,22 +212,22 @@ describe("deep generics", () => {
 
     test("SeqOfArray", () => {
       const obj: SeqOfArray = {
-        fixedTriples: [
+        fixed_triples: [
           [1, 2, 3],
           [4, 5, 6],
         ],
       };
-      expect(obj.fixedTriples[0]).toEqual([1, 2, 3]);
+      expect(obj.fixed_triples[0]).toEqual([1, 2, 3]);
     });
 
     test("MapOfArray", () => {
       const obj: MapOfArray = {
-        namedTriples: {
+        named_triples: {
           first: [1, 2, 3],
           second: [4, 5, 6],
         },
       };
-      expect(obj.namedTriples.first).toEqual([1, 2, 3]);
+      expect(obj.named_triples.first).toEqual([1, 2, 3]);
     });
   });
 });

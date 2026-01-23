@@ -29,59 +29,28 @@ mod codegen;
 
 use ic_cli::Command;
 use ic_emit::File;
-use ic_emit::case::Case;
 use ic_hir_xform::{Convention, Target, rename};
 
 #[rustfmt::skip]
 const KEYWORDS: &[&str] = &[
     // Hard reserved words
-    "break", "case", "catch", "class", "const", "continue", "debugger", "default",
-    "delete", "do", "else", "enum", "export", "extends", "false", "finally",
-    "for", "function", "if", "import", "in", "instanceof", "new", "null",
-    "return", "super", "switch", "this", "throw", "true", "try", "typeof",
-    "var", "void", "while", "with",
+    "break", "case", "catch", "class", "const", "continue", "debugger", "default", "delete", "do",
+    "else", "enum", "export", "extends", "false", "finally", "for", "function", "if", "import",
+    "in", "instanceof", "new", "null", "return", "super", "switch", "this", "throw", "true", "try",
+    "typeof", "var", "void", "while", "with",
 
     // Strict mode reserved words
-    "arguments", "eval", "implements", "interface", "let", "package",
-    "private", "protected", "public", "static", "yield",
+    "arguments", "eval", "implements", "interface", "let", "package", "private", "protected",
+    "public", "static", "yield",
 
     // Contextual keywords
-    "any", "as", "async", "await", "boolean", "constructor", "declare", "get",
-    "infer", "is", "keyof", "module", "namespace", "never", "number", "readonly",
-    "require", "set", "string", "symbol", "type", "unique", "unknown",
+    "any", "as", "async", "await", "boolean", "constructor", "declare", "get", "infer", "is",
+    "keyof", "module", "namespace", "never", "number", "readonly", "require", "set", "string",
+    "symbol", "type", "unique", "unknown",
 ];
-
-const TYPESCRIPT_CONVENTION: Convention = Convention {
-    struct_type: Some(Case::Pascal),
-    union_type: Some(Case::Pascal),
-    enum_type: Some(Case::Pascal),
-    interface: Some(Case::Pascal),
-    valuetype: Some(Case::Pascal),
-    alias: Some(Case::Pascal),
-    bitmask: Some(Case::Pascal),
-    bitset: Some(Case::Pascal),
-    exception: Some(Case::Pascal),
-    annotation: Some(Case::Pascal),
-    member: Some(Case::Camel),
-    variant: Some(Case::Camel),
-    enumerator: Some(Case::Pascal),
-    bit_flag: Some(Case::Pascal),
-    bitset_field: Some(Case::Camel),
-    constant: Some(Case::UpperSnake),
-    module: Some(Case::Camel),
-    operation: Some(Case::Camel),
-    attribute: Some(Case::Camel),
-    parameter: Some(Case::Camel),
-    name_preprocessor: Some(rename::strip_common_suffixes),
-    strip_enum_prefix: true,
-};
 
 #[derive(Command, Clone, Debug, Default)]
 pub struct TypeScriptOptions {
-    /// Do not rename types to TypeScript conventions
-    #[option(long)]
-    pub no_rename: bool,
-
     /// Use bigint for 64-bit integers
     #[option(long)]
     pub use_bigint: bool,
@@ -93,11 +62,7 @@ pub fn codegen_typescript(hir: &ic_hir::ResolvedGraph, options: TypeScriptOption
     let hir = ic_hir_xform::squash_modules::transform(hir.clone());
 
     let target = Target {
-        convention: if options.no_rename {
-            Convention::default()
-        } else {
-            TYPESCRIPT_CONVENTION
-        },
+        convention: Convention::default(),
         keyword_escape: Some(|ctx| {
             if KEYWORDS.contains(&ctx.name) {
                 Some(format!("{}_", ctx.name))

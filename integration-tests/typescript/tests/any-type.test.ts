@@ -35,7 +35,7 @@ import type {
   OptionalAny,
   AnyAlias,
   UsingAnyAlias,
-} from "../generated/anyTypes";
+} from "../generated/any_types";
 
 describe("any type", () => {
   test("any accepts undefined", () => {

@@ -70,7 +70,7 @@ import {
   PAREN_C,
   MOD_A,
   MOD_B,
-} from "../generated/constantTypes";
+} from "../generated/constant_types";
 import {
   OCTET_MAX,
   OCTET_MIN,
@@ -88,12 +88,12 @@ import {
   ULONGLONG_MIN,
   HEX_DEADBEEF,
   HEX_FFFFFFFF,
-  HEX_64_BIT,
+  HEX_64BIT,
   OCTAL_777,
   LONG_MAX_MINUS_ONE,
   LONGLONG_MAX_MINUS_ONE,
-} from "../generated/largeIntegerTypes";
-import type { LargeIntFields } from "../generated/largeIntegerTypes";
+} from "../generated/large_integer_types";
+import type { LargeIntFields } from "../generated/large_integer_types";
 
 describe("constants", () => {
   describe("primitive constants", () => {
@@ -190,13 +190,13 @@ describe("constants", () => {
 
   describe("enum constants", () => {
     test("enum values", () => {
-      expect(Priority.Low).toBe(0);
-      expect(Priority.Medium).toBe(50);
-      expect(Priority.High).toBe(100);
+      expect(Priority.LOW).toBe(0);
+      expect(Priority.MEDIUM).toBe(50);
+      expect(Priority.HIGH).toBe(100);
     });
 
     test("constant from enum", () => {
-      expect(PRIORITY_VALUE).toBe(Priority.High);
+      expect(PRIORITY_VALUE).toBe(Priority.HIGH);
       expect(PRIORITY_CHAIN).toBe(PRIORITY_VALUE);
     });
   });
@@ -247,7 +247,7 @@ describe("large integer constants", () => {
     });
 
     test("64-bit hex (as string)", () => {
-      expect(HEX_64_BIT).toBe("1311768467463790320");
+      expect(HEX_64BIT).toBe("1311768467463790320");
     });
   });
 
@@ -261,11 +261,11 @@ describe("large integer constants", () => {
   describe("large int struct", () => {
     test("can hold large integers", () => {
       const s: LargeIntFields = {
-        bigSigned: "9223372036854775807",
-        bigUnsigned: "18446744073709551615",
+        big_signed: "9223372036854775807",
+        big_unsigned: "18446744073709551615",
       };
-      expect(s.bigSigned).toBe("9223372036854775807");
-      expect(s.bigUnsigned).toBe("18446744073709551615");
+      expect(s.big_signed).toBe("9223372036854775807");
+      expect(s.big_unsigned).toBe("18446744073709551615");
     });
   });
 

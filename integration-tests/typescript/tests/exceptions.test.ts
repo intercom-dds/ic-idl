@@ -31,7 +31,7 @@ import {
   EmptyError,
   DetailedError,
   ValidationError,
-} from "../generated/exceptionTypes";
+} from "../generated/exception_types";
 
 describe("exceptions", () => {
   test("exception inherits from Error", () => {
@@ -41,7 +41,7 @@ describe("exceptions", () => {
 
   test("exception instantiation", () => {
     const e = new SimpleError(404, "Not found");
-    expect(e.errorCode).toBe(404);
+    expect(e.error_code).toBe(404);
     expect(e.message).toBe("Not found");
   });
 
@@ -55,7 +55,7 @@ describe("exceptions", () => {
       }
     }
     expect(caught).not.toBeNull();
-    expect(caught?.errorCode).toBe(500);
+    expect(caught?.error_code).toBe(500);
     expect(caught?.message).toBe("Internal error");
   });
 
@@ -92,8 +92,8 @@ describe("exceptions", () => {
 
   test("validation error", () => {
     const e = new ValidationError("email", "Invalid email format", 10);
-    expect(e.fieldName).toBe("email");
-    expect(e.errorMessage).toBe("Invalid email format");
+    expect(e.field_name).toBe("email");
+    expect(e.error_message).toBe("Invalid email format");
     expect(e.position).toBe(10);
   });
 });

@@ -39,7 +39,7 @@ import type {
   NameList,
   NameMap,
   MixedBounds,
-} from "../generated/boundedTypes";
+} from "../generated/bounded_types";
 
 describe("bounded types", () => {
   describe("bounded string typedefs", () => {
@@ -98,13 +98,13 @@ describe("bounded types", () => {
           [1, 2],
           [3, 4],
         ],
-        indexedLists: { a: [1, 2, 3], b: [4, 5, 6] },
+        indexed_lists: { a: [1, 2, 3], b: [4, 5, 6] },
       };
       expect(s.matrix).toEqual([
         [1, 2],
         [3, 4],
       ]);
-      expect(s.indexedLists.a).toEqual([1, 2, 3]);
+      expect(s.indexed_lists.a).toEqual([1, 2, 3]);
     });
   });
 
@@ -131,15 +131,15 @@ describe("bounded types", () => {
   describe("mixed bounds struct", () => {
     test("MixedBounds can be created", () => {
       const s: MixedBounds = {
-        boundedString: "bounded",
-        unboundedString: "unbounded".repeat(100),
-        boundedSeq: [1, 2, 3],
-        unboundedSeq: Array.from({ length: 1000 }, (_, i) => i),
+        bounded_string: "bounded",
+        unbounded_string: "unbounded".repeat(100),
+        bounded_seq: [1, 2, 3],
+        unbounded_seq: Array.from({ length: 1000 }, (_, i) => i),
       };
-      expect(s.boundedString).toBe("bounded");
-      expect(s.unboundedString.length).toBe(900);
-      expect(s.boundedSeq).toEqual([1, 2, 3]);
-      expect(s.unboundedSeq.length).toBe(1000);
+      expect(s.bounded_string).toBe("bounded");
+      expect(s.unbounded_string.length).toBe(900);
+      expect(s.bounded_seq).toEqual([1, 2, 3]);
+      expect(s.unbounded_seq.length).toBe(1000);
     });
   });
 

@@ -36,17 +36,17 @@ import type {
   WithOutParams,
   WithRaises,
   CombinedFeatures,
-} from "../generated/interfaceTypes";
-import { OperationFailed, InvalidInput } from "../generated/interfaceTypes";
+} from "../generated/interface_types";
+import { OperationFailed, InvalidInput } from "../generated/interface_types";
 
 describe("interfaces", () => {
   test("Reader interface can be implemented", () => {
     const reader: Reader = {
       read: () => "data",
-      hasMore: () => true,
+      has_more: () => true,
     };
     expect(reader.read()).toBe("data");
-    expect(reader.hasMore()).toBe(true);
+    expect(reader.has_more()).toBe(true);
   });
 
   test("Writer interface can be implemented", () => {
@@ -64,13 +64,13 @@ describe("interfaces", () => {
   test("ReadWriter extends Reader and Writer", () => {
     const rw: ReadWriter = {
       read: () => "data",
-      hasMore: () => false,
+      has_more: () => false,
       write: () => {},
       flush: () => {},
       reset: () => {},
     };
     expect(rw.read()).toBe("data");
-    expect(rw.hasMore()).toBe(false);
+    expect(rw.has_more()).toBe(false);
   });
 
   test("Calculator interface methods", () => {
@@ -101,16 +101,16 @@ describe("interfaces", () => {
 
   test("WithOutParams returns output parameters", () => {
     const impl: WithOutParams = {
-      getValues: () => ({ x: 10, y: 20 }),
+      get_values: () => ({ x: 10, y: 20 }),
       swap: (a, b) => ({ a: b, b: a }),
       process: (input) => ({ $return: input * 2, result: "done" }),
-      mixedParams: (_name, counter) => ({
+      mixed_params: (_name, counter) => ({
         counter: counter + 1,
         success: true,
       }),
     };
 
-    const values = impl.getValues();
+    const values = impl.get_values();
     expect(values.x).toBe(10);
     expect(values.y).toBe(20);
 
@@ -122,16 +122,16 @@ describe("interfaces", () => {
     expect(processed.$return).toBe(10);
     expect(processed.result).toBe("done");
 
-    const mixed = impl.mixedParams("test", 5);
+    const mixed = impl.mixed_params("test", 5);
     expect(mixed.counter).toBe(6);
     expect(mixed.success).toBe(true);
   });
 
   test("WithRaises interface exists", () => {
     const impl: WithRaises = {
-      safeOperation: () => {},
-      riskyOperation: () => {},
-      complexOperation: () => {},
+      safe_operation: () => {},
+      risky_operation: () => {},
+      complex_operation: () => {},
       compute: (value) => value * 2,
     };
     expect(impl.compute(5)).toBe(10);
@@ -139,10 +139,10 @@ describe("interfaces", () => {
 
   test("CombinedFeatures interface exists", () => {
     const impl: CombinedFeatures = {
-      doWork: () => 42,
+      do_work: () => 42,
       update: (value) => value + 1,
     };
-    expect(impl.doWork("task")).toBe(42);
+    expect(impl.do_work("task")).toBe(42);
     expect(impl.update(10)).toBe(11);
   });
 });
@@ -153,7 +153,7 @@ describe("exceptions", () => {
     expect(err).toBeInstanceOf(Error);
     expect(err).toBeInstanceOf(OperationFailed);
     expect(err.name).toBe("OperationFailed");
-    expect(err.errorCode).toBe(500);
+    expect(err.error_code).toBe(500);
     expect(err.reason).toBe("server error");
   });
 
@@ -168,7 +168,7 @@ describe("exceptions", () => {
     expect(err).toBeInstanceOf(Error);
     expect(err).toBeInstanceOf(InvalidInput);
     expect(err.name).toBe("InvalidInput");
-    expect(err.parameterName).toBe("userId");
+    expect(err.parameter_name).toBe("userId");
   });
 
   test("InvalidInput can be thrown and caught", () => {
@@ -186,7 +186,7 @@ describe("exceptions", () => {
       throwOp();
     } catch (e) {
       if (e instanceof OperationFailed) {
-        expect(e.errorCode).toBe(500);
+        expect(e.error_code).toBe(500);
       } else {
         throw new Error("wrong exception type");
       }

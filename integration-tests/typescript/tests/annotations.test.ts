@@ -37,7 +37,7 @@ import type {
   TopicMessage,
   MutableStruct,
   FinalStruct,
-} from "../generated/annotationTypes";
+} from "../generated/annotation_types";
 
 describe("annotations", () => {
   test("KeyedStruct can be instantiated", () => {
@@ -62,30 +62,30 @@ describe("annotations", () => {
 
   test("OptionalStruct supports optional fields", () => {
     const minimal: OptionalStruct = {
-      requiredField: 100,
+      required_field: 100,
     };
-    expect(minimal.requiredField).toBe(100);
-    expect(minimal.optionalInt).toBeUndefined();
+    expect(minimal.required_field).toBe(100);
+    expect(minimal.optional_int).toBeUndefined();
 
     const full: OptionalStruct = {
-      requiredField: 100,
-      optionalInt: 42,
-      optionalString: "hello",
-      optionalSeq: [1, 2, 3],
+      required_field: 100,
+      optional_int: 42,
+      optional_string: "hello",
+      optional_seq: [1, 2, 3],
     };
-    expect(full.optionalInt).toBe(42);
-    expect(full.optionalString).toBe("hello");
-    expect(full.optionalSeq).toEqual([1, 2, 3]);
+    expect(full.optional_int).toBe(42);
+    expect(full.optional_string).toBe("hello");
+    expect(full.optional_seq).toEqual([1, 2, 3]);
   });
 
   test("NestedStruct can be used in other structs", () => {
     const nested: NestedStruct = { x: 10, y: 20 };
     const shared: SharedRefs = {
-      sharedString: "test",
-      sharedStruct: nested,
+      shared_string: "test",
+      shared_struct: nested,
     };
-    expect(shared.sharedStruct.x).toBe(10);
-    expect(shared.sharedStruct.y).toBe(20);
+    expect(shared.shared_struct.x).toBe(10);
+    expect(shared.shared_struct.y).toBe(20);
   });
 
   test("CombinedAnnotations has key and optional fields", () => {
@@ -93,22 +93,22 @@ describe("annotations", () => {
       id: 1,
     };
     expect(obj.id).toBe(1);
-    expect(obj.maybeSharedName).toBeUndefined();
+    expect(obj.maybe_shared_name).toBeUndefined();
 
     const withOptional: CombinedAnnotations = {
       id: 2,
-      maybeSharedName: "shared",
+      maybe_shared_name: "shared",
     };
-    expect(withOptional.maybeSharedName).toBe("shared");
+    expect(withOptional.maybe_shared_name).toBe("shared");
   });
 
   test("TopicMessage has all required fields", () => {
     const msg: TopicMessage = {
-      messageId: 12345,
+      message_id: 12345,
       payload: "data",
       timestamp: Date.now(),
     };
-    expect(msg.messageId).toBe(12345);
+    expect(msg.message_id).toBe(12345);
     expect(msg.payload).toBe("data");
   });
 
@@ -122,17 +122,17 @@ describe("annotations", () => {
 
   test("FinalStruct is a normal struct", () => {
     const obj: FinalStruct = {
-      fixedField: 999,
+      fixed_field: 999,
     };
-    expect(obj.fixedField).toBe(999);
+    expect(obj.fixed_field).toBe(999);
   });
 
   test("AnnotatedInterface can be implemented", () => {
     const impl: AnnotatedInterface = {
-      fireAndForget: (_message: string) => {},
-      getValue: () => 42,
-      setValue: (_value: number) => {},
+      fire_and_forget: (_message: string) => {},
+      get_value: () => 42,
+      set_value: (_value: number) => {},
     };
-    expect(impl.getValue()).toBe(42);
+    expect(impl.get_value()).toBe(42);
   });
 });

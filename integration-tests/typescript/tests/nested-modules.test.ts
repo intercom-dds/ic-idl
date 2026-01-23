@@ -29,8 +29,8 @@ import { describe, expect, test } from "bun:test";
 import type {
   TopLevelStruct,
   TopUsingNested,
-} from "../generated/nestedModuleTypes";
-import { TopLevelEnum, level1, sibling } from "../generated/nestedModuleTypes";
+} from "../generated/nested_module_types";
+import { TopLevelEnum, level1, sibling } from "../generated/nested_module_types";
 
 describe("nested modules", () => {
   describe("top level types", () => {
@@ -40,17 +40,17 @@ describe("nested modules", () => {
     });
 
     test("TopLevelEnum exists", () => {
-      expect(TopLevelEnum.First).toBe(0);
-      expect(TopLevelEnum.Second).toBe(1);
+      expect(TopLevelEnum.FIRST).toBe(0);
+      expect(TopLevelEnum.SECOND).toBe(1);
     });
   });
 
   describe("level1 module", () => {
     test("Level1Struct exists", () => {
       const parent: TopLevelStruct = { value: 1 };
-      const s: level1.Level1Struct = { data: 10, parentRef: parent };
+      const s: level1.Level1Struct = { data: 10, parent_ref: parent };
       expect(s.data).toBe(10);
-      expect(s.parentRef.value).toBe(1);
+      expect(s.parent_ref.value).toBe(1);
     });
 
     test("Level1Enum exists", () => {
@@ -63,37 +63,37 @@ describe("nested modules", () => {
   describe("level2 module", () => {
     test("Level2Struct exists", () => {
       const top: TopLevelStruct = { value: 1 };
-      const l1: level1.Level1Struct = { data: 2, parentRef: top };
+      const l1: level1.Level1Struct = { data: 2, parent_ref: top };
       const l2: level1.level2.Level2Struct = {
         name: "test",
-        level1Ref: l1,
-        topRef: top,
+        level1_ref: l1,
+        top_ref: top,
       };
       expect(l2.name).toBe("test");
-      expect(l2.level1Ref.data).toBe(2);
-      expect(l2.topRef.value).toBe(1);
+      expect(l2.level1_ref.data).toBe(2);
+      expect(l2.top_ref.value).toBe(1);
     });
   });
 
   describe("level3 module", () => {
     test("Level3Struct exists", () => {
       const top: TopLevelStruct = { value: 1 };
-      const l1: level1.Level1Struct = { data: 2, parentRef: top };
+      const l1: level1.Level1Struct = { data: 2, parent_ref: top };
       const l2: level1.level2.Level2Struct = {
         name: "l2",
-        level1Ref: l1,
-        topRef: top,
+        level1_ref: l1,
+        top_ref: top,
       };
       const l3: level1.level2.level3.Level3Struct = {
         id: 100,
-        level2Ref: l2,
-        level1Ref: l1,
-        topRef: top,
+        level2_ref: l2,
+        level1_ref: l1,
+        top_ref: top,
       };
       expect(l3.id).toBe(100);
-      expect(l3.level2Ref.name).toBe("l2");
-      expect(l3.level1Ref.data).toBe(2);
-      expect(l3.topRef.value).toBe(1);
+      expect(l3.level2_ref.name).toBe("l2");
+      expect(l3.level1_ref.data).toBe(2);
+      expect(l3.top_ref.value).toBe(1);
     });
 
     test("DEEP_CONST exists", () => {
@@ -109,43 +109,43 @@ describe("nested modules", () => {
 
     test("CrossRef can reference types from sibling modules", () => {
       const top: TopLevelStruct = { value: 1 };
-      const l1: level1.Level1Struct = { data: 2, parentRef: top };
+      const l1: level1.Level1Struct = { data: 2, parent_ref: top };
       const l2: level1.level2.Level2Struct = {
         name: "l2",
-        level1Ref: l1,
-        topRef: top,
+        level1_ref: l1,
+        top_ref: top,
       };
       const l3: level1.level2.level3.Level3Struct = {
         id: 3,
-        level2Ref: l2,
-        level1Ref: l1,
-        topRef: top,
+        level2_ref: l2,
+        level1_ref: l1,
+        top_ref: top,
       };
       const cross: sibling.CrossRef = {
-        fromLevel1: l1,
-        fromLevel2: l2,
-        fromLevel3: l3,
+        from_level1: l1,
+        from_level2: l2,
+        from_level3: l3,
       };
-      expect(cross.fromLevel1.data).toBe(2);
-      expect(cross.fromLevel2.name).toBe("l2");
-      expect(cross.fromLevel3.id).toBe(3);
+      expect(cross.from_level1.data).toBe(2);
+      expect(cross.from_level2.name).toBe("l2");
+      expect(cross.from_level3.id).toBe(3);
     });
   });
 
   describe("TopUsingNested", () => {
     test("can reference deeply nested types", () => {
       const top: TopLevelStruct = { value: 1 };
-      const l1: level1.Level1Struct = { data: 2, parentRef: top };
+      const l1: level1.Level1Struct = { data: 2, parent_ref: top };
       const l2: level1.level2.Level2Struct = {
         name: "l2",
-        level1Ref: l1,
-        topRef: top,
+        level1_ref: l1,
+        top_ref: top,
       };
       const l3: level1.level2.level3.Level3Struct = {
         id: 3,
-        level2Ref: l2,
-        level1Ref: l1,
-        topRef: top,
+        level2_ref: l2,
+        level1_ref: l1,
+        top_ref: top,
       };
       const sib: sibling.SiblingStruct = { id: 4 };
       const using: TopUsingNested = { l1, l2, l3, sib };

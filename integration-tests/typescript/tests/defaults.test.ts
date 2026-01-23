@@ -33,8 +33,8 @@ import {
   DEFAULT_INNER,
   NESTED_INNER,
   Priority,
-} from "../generated/defaultTypes";
-import type { Inner, OptionalFields } from "../generated/defaultTypes";
+} from "../generated/default_types";
+import type { Inner, OptionalFields } from "../generated/default_types";
 
 describe("defaults", () => {
   describe("constants", () => {
@@ -58,29 +58,29 @@ describe("defaults", () => {
   describe("optional fields", () => {
     test("optional fields can be omitted", () => {
       const opt: OptionalFields = {};
-      expect(opt.maybeInt).toBeUndefined();
-      expect(opt.maybeString).toBeUndefined();
-      expect(opt.maybeStruct).toBeUndefined();
+      expect(opt.maybe_int).toBeUndefined();
+      expect(opt.maybe_string).toBeUndefined();
+      expect(opt.maybe_struct).toBeUndefined();
     });
 
     test("optional fields can be set", () => {
       const inner: Inner = { x: 5, y: "test" };
       const opt: OptionalFields = {
-        maybeInt: 42,
-        maybeString: "hello",
-        maybeStruct: inner,
+        maybe_int: 42,
+        maybe_string: "hello",
+        maybe_struct: inner,
       };
-      expect(opt.maybeInt).toBe(42);
-      expect(opt.maybeString).toBe("hello");
-      expect(opt.maybeStruct?.x).toBe(5);
+      expect(opt.maybe_int).toBe(42);
+      expect(opt.maybe_string).toBe("hello");
+      expect(opt.maybe_struct?.x).toBe(5);
     });
   });
 
   describe("enums", () => {
     test("Priority enum exists with default_literal", () => {
-      expect(Priority.Low).toBe(0);
-      expect(Priority.Medium).toBe(1);
-      expect(Priority.High).toBe(2);
+      expect(Priority.LOW).toBe(0);
+      expect(Priority.MEDIUM).toBe(1);
+      expect(Priority.HIGH).toBe(2);
     });
   });
 });

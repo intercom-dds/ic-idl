@@ -37,7 +37,7 @@ import type {
   NamedValue,
   FullValue,
   ValueWithPrivate,
-} from "../generated/valuetypeTypes";
+} from "../generated/valuetype_types";
 
 describe("valuetypes", () => {
   describe("SimpleValue", () => {
@@ -111,9 +111,9 @@ describe("valuetypes", () => {
 
   describe("ValueWithPrivate", () => {
     test("private state members are accessible as regular fields", () => {
-      const v: ValueWithPrivate = { label: "test", internalId: 123 };
+      const v: ValueWithPrivate = { label: "test", internal_id: 123 };
       expect(v.label).toBe("test");
-      expect(v.internalId).toBe(123);
+      expect(v.internal_id).toBe(123);
     });
   });
 });

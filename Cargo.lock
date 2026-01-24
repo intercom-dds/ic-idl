@@ -274,14 +274,14 @@ dependencies = [
 
 [[package]]
 name = "ic-alloc"
-version = "0.4.6"
+version = "0.4.7"
 dependencies = [
  "intercom-cts",
 ]
 
 [[package]]
 name = "ic-cli"
-version = "0.4.6"
+version = "0.4.7"
 dependencies = [
  "ic-alloc",
  "ic-cli-derive",
@@ -289,7 +289,7 @@ dependencies = [
 
 [[package]]
 name = "ic-cli-derive"
-version = "0.4.6"
+version = "0.4.7"
 dependencies = [
  "ic-emit",
  "proc-macro2",
@@ -299,7 +299,7 @@ dependencies = [
 
 [[package]]
 name = "ic-codegen-cpp"
-version = "0.4.6"
+version = "0.4.7"
 dependencies = [
  "ic-cli",
  "ic-emit",
@@ -310,7 +310,7 @@ dependencies = [
 
 [[package]]
 name = "ic-codegen-csharp"
-version = "0.4.6"
+version = "0.4.7"
 dependencies = [
  "ic-cli",
  "ic-emit",
@@ -321,7 +321,7 @@ dependencies = [
 
 [[package]]
 name = "ic-codegen-idl"
-version = "0.4.6"
+version = "0.4.7"
 dependencies = [
  "ic-cli",
  "ic-emit",
@@ -332,7 +332,7 @@ dependencies = [
 
 [[package]]
 name = "ic-codegen-java"
-version = "0.4.6"
+version = "0.4.7"
 dependencies = [
  "ic-cli",
  "ic-emit",
@@ -343,7 +343,7 @@ dependencies = [
 
 [[package]]
 name = "ic-codegen-json"
-version = "0.4.6"
+version = "0.4.7"
 dependencies = [
  "ic-emit",
  "ic-hir",
@@ -353,7 +353,7 @@ dependencies = [
 
 [[package]]
 name = "ic-codegen-json-schema"
-version = "0.4.6"
+version = "0.4.7"
 dependencies = [
  "ic-cli",
  "ic-emit",
@@ -364,7 +364,7 @@ dependencies = [
 
 [[package]]
 name = "ic-codegen-protobuf"
-version = "0.4.6"
+version = "0.4.7"
 dependencies = [
  "ic-alloc",
  "ic-emit",
@@ -375,7 +375,7 @@ dependencies = [
 
 [[package]]
 name = "ic-codegen-python"
-version = "0.4.6"
+version = "0.4.7"
 dependencies = [
  "ic-cli",
  "ic-emit",
@@ -386,7 +386,7 @@ dependencies = [
 
 [[package]]
 name = "ic-codegen-rust"
-version = "0.4.6"
+version = "0.4.7"
 dependencies = [
  "ic-cli",
  "ic-emit",
@@ -397,7 +397,7 @@ dependencies = [
 
 [[package]]
 name = "ic-codegen-typeobj"
-version = "0.4.6"
+version = "0.4.7"
 dependencies = [
  "ic-cli",
  "ic-emit",
@@ -410,7 +410,7 @@ dependencies = [
 
 [[package]]
 name = "ic-codegen-typescript"
-version = "0.4.6"
+version = "0.4.7"
 dependencies = [
  "ic-cli",
  "ic-emit",
@@ -421,7 +421,7 @@ dependencies = [
 
 [[package]]
 name = "ic-codegen-xml"
-version = "0.4.6"
+version = "0.4.7"
 dependencies = [
  "ic-emit",
  "ic-hir",
@@ -430,7 +430,7 @@ dependencies = [
 
 [[package]]
 name = "ic-diagnostic"
-version = "0.4.6"
+version = "0.4.7"
 dependencies = [
  "ic-cli",
  "ic-vfs",
@@ -439,18 +439,18 @@ dependencies = [
 
 [[package]]
 name = "ic-emit"
-version = "0.4.6"
+version = "0.4.7"
 
 [[package]]
 name = "ic-expr"
-version = "0.4.6"
+version = "0.4.7"
 dependencies = [
  "ic-syntax",
 ]
 
 [[package]]
 name = "ic-fuzz"
-version = "0.4.6"
+version = "0.4.7"
 dependencies = [
  "ic-cli",
  "ic-emit",
@@ -467,7 +467,7 @@ dependencies = [
 
 [[package]]
 name = "ic-hir"
-version = "0.4.6"
+version = "0.4.7"
 dependencies = [
  "ic-alloc",
  "ic-cli",
@@ -484,7 +484,7 @@ dependencies = [
 
 [[package]]
 name = "ic-hir-lower"
-version = "0.4.6"
+version = "0.4.7"
 dependencies = [
  "ic-alloc",
  "ic-diagnostic",
@@ -500,7 +500,7 @@ dependencies = [
 
 [[package]]
 name = "ic-hir-tree"
-version = "0.4.6"
+version = "0.4.7"
 dependencies = [
  "ic-cli",
  "ic-hir",
@@ -509,7 +509,7 @@ dependencies = [
 
 [[package]]
 name = "ic-hir-xform"
-version = "0.4.6"
+version = "0.4.7"
 dependencies = [
  "ic-diagnostic",
  "ic-emit",
@@ -523,7 +523,7 @@ dependencies = [
 
 [[package]]
 name = "ic-idl"
-version = "0.4.6"
+version = "0.4.7"
 dependencies = [
  "ic-cli",
  "ic-codegen-cpp",
@@ -557,7 +557,7 @@ dependencies = [
 
 [[package]]
 name = "ic-lexer"
-version = "0.4.6"
+version = "0.4.7"
 dependencies = [
  "criterion",
  "ic-expr",
@@ -566,7 +566,7 @@ dependencies = [
 
 [[package]]
 name = "ic-lint"
-version = "0.4.6"
+version = "0.4.7"
 dependencies = [
  "ic-alloc",
  "ic-cli",
@@ -584,7 +584,7 @@ dependencies = [
 
 [[package]]
 name = "ic-macros"
-version = "0.4.6"
+version = "0.4.7"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -593,14 +593,14 @@ dependencies = [
 
 [[package]]
 name = "ic-omgidl"
-version = "0.4.6"
+version = "0.4.7"
 dependencies = [
  "intercom-cts",
 ]
 
 [[package]]
 name = "ic-parse"
-version = "0.4.6"
+version = "0.4.7"
 dependencies = [
  "criterion",
  "ic-diagnostic",
@@ -612,7 +612,7 @@ dependencies = [
 
 [[package]]
 name = "ic-preproc"
-version = "0.4.6"
+version = "0.4.7"
 dependencies = [
  "criterion",
  "ic-alloc",
@@ -625,7 +625,7 @@ dependencies = [
 
 [[package]]
 name = "ic-syntax"
-version = "0.4.6"
+version = "0.4.7"
 dependencies = [
  "ic-alloc",
  "ic-vfs",
@@ -634,7 +634,7 @@ dependencies = [
 
 [[package]]
 name = "ic-typeobj"
-version = "0.4.6"
+version = "0.4.7"
 dependencies = [
  "ic-alloc",
  "ic-hir",
@@ -647,7 +647,7 @@ dependencies = [
 
 [[package]]
 name = "ic-vfs"
-version = "0.4.6"
+version = "0.4.7"
 dependencies = [
  "ic-alloc",
  "intercom-cts",
@@ -1355,7 +1355,7 @@ checksum = "f17a85883d4e6d00e8a97c586de764dabcc06133f7f1d55dce5cdc070ad7fe59"
 
 [[package]]
 name = "xtask"
-version = "0.4.6"
+version = "0.4.7"
 dependencies = [
  "ic-cli",
 ]

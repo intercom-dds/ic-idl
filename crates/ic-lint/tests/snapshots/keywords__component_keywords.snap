@@ -12,6 +12,7 @@ error[keywords]: `component` is a keyword and may not be used as an identifier
  5 │     void port();            // 'port' is a keyword
    └──
  help: the keyword can be escaped by changing to `_component`
+ note: keywords are matched case-insensitively against identifiers
 
 error[keywords]: `connector` is a keyword and may not be used as an identifier
    ┌ test.idl:4:10
@@ -24,6 +25,7 @@ error[keywords]: `connector` is a keyword and may not be used as an identifier
  6 │     void porttype();        // 'porttype' is a keyword
    └──
  help: the keyword can be escaped by changing to `_connector`
+ note: keywords are matched case-insensitively against identifiers
 
 error[keywords]: `port` is a keyword and may not be used as an identifier
    ┌ test.idl:5:10
@@ -36,6 +38,7 @@ error[keywords]: `port` is a keyword and may not be used as an identifier
  7 │     void mirrorport();      // 'mirrorport' is a keyword
    └──
  help: the keyword can be escaped by changing to `_port`
+ note: keywords are matched case-insensitively against identifiers
 
 error[keywords]: `porttype` is a keyword and may not be used as an identifier
    ┌ test.idl:6:10
@@ -48,6 +51,7 @@ error[keywords]: `porttype` is a keyword and may not be used as an identifier
  8 │     void provides();        // 'provides' is a keyword
    └──
  help: the keyword can be escaped by changing to `_porttype`
+ note: keywords are matched case-insensitively against identifiers
 
 error[keywords]: `mirrorport` is a keyword and may not be used as an identifier
    ┌ test.idl:7:10
@@ -60,6 +64,7 @@ error[keywords]: `mirrorport` is a keyword and may not be used as an identifier
  9 │     void uses();            // 'uses' is a keyword
    └──
  help: the keyword can be escaped by changing to `_mirrorport`
+ note: keywords are matched case-insensitively against identifiers
 
 error[keywords]: `provides` is a keyword and may not be used as an identifier
     ┌ test.idl:8:10
@@ -72,6 +77,7 @@ error[keywords]: `provides` is a keyword and may not be used as an identifier
  10 │     void publishes();       // 'publishes' is a keyword
     └──
  help: the keyword can be escaped by changing to `_provides`
+ note: keywords are matched case-insensitively against identifiers
 
 error[keywords]: `uses` is a keyword and may not be used as an identifier
     ┌ test.idl:9:10
@@ -84,6 +90,7 @@ error[keywords]: `uses` is a keyword and may not be used as an identifier
  11 │     void emits();           // 'emits' is a keyword
     └──
  help: the keyword can be escaped by changing to `_uses`
+ note: keywords are matched case-insensitively against identifiers
 
 error[keywords]: `publishes` is a keyword and may not be used as an identifier
     ┌ test.idl:10:10
@@ -96,6 +103,7 @@ error[keywords]: `publishes` is a keyword and may not be used as an identifier
  12 │     void consumes();        // 'consumes' is a keyword
     └──
  help: the keyword can be escaped by changing to `_publishes`
+ note: keywords are matched case-insensitively against identifiers
 
 error[keywords]: `emits` is a keyword and may not be used as an identifier
     ┌ test.idl:11:10
@@ -108,6 +116,7 @@ error[keywords]: `emits` is a keyword and may not be used as an identifier
  13 │ };
     └──
  help: the keyword can be escaped by changing to `_emits`
+ note: keywords are matched case-insensitively against identifiers
 
 error[keywords]: `consumes` is a keyword and may not be used as an identifier
     ┌ test.idl:12:10
@@ -119,3 +128,4 @@ error[keywords]: `consumes` is a keyword and may not be used as an identifier
  13 │ };
     └──
  help: the keyword can be escaped by changing to `_consumes`
+ note: keywords are matched case-insensitively against identifiers

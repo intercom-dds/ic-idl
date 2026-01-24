@@ -12,6 +12,7 @@ error[keywords]: `boolean` is a keyword and may not be used as an identifier
  5 │     long int32;             // 'int32' is a keyword
    └──
  help: the keyword can be escaped by changing to `_boolean`
+ note: keywords are matched case-insensitively against identifiers
 
 error[keywords]: `char` is a keyword and may not be used as an identifier
    ┌ test.idl:4:10
@@ -24,6 +25,7 @@ error[keywords]: `char` is a keyword and may not be used as an identifier
  6 │     long uint16;            // 'uint16' is a keyword
    └──
  help: the keyword can be escaped by changing to `_char`
+ note: keywords are matched case-insensitively against identifiers
 
 error[keywords]: `int32` is a keyword and may not be used as an identifier
    ┌ test.idl:5:10
@@ -36,6 +38,7 @@ error[keywords]: `int32` is a keyword and may not be used as an identifier
  7 │     long octet;             // 'octet' is a keyword
    └──
  help: the keyword can be escaped by changing to `_int32`
+ note: keywords are matched case-insensitively against identifiers
 
 error[keywords]: `uint16` is a keyword and may not be used as an identifier
    ┌ test.idl:6:10
@@ -48,6 +51,7 @@ error[keywords]: `uint16` is a keyword and may not be used as an identifier
  8 │     long abstract;          // 'abstract' is a keyword
    └──
  help: the keyword can be escaped by changing to `_uint16`
+ note: keywords are matched case-insensitively against identifiers
 
 error[keywords]: `octet` is a keyword and may not be used as an identifier
    ┌ test.idl:7:10
@@ -60,6 +64,7 @@ error[keywords]: `octet` is a keyword and may not be used as an identifier
  9 │     long uint64;            // 'uint64' is a keyword
    └──
  help: the keyword can be escaped by changing to `_octet`
+ note: keywords are matched case-insensitively against identifiers
 
 error[keywords]: `abstract` is a keyword and may not be used as an identifier
     ┌ test.idl:8:10
@@ -72,6 +77,7 @@ error[keywords]: `abstract` is a keyword and may not be used as an identifier
  10 │     long truncatable;       // 'truncatable' is a keyword
     └──
  help: the keyword can be escaped by changing to `_abstract`
+ note: keywords are matched case-insensitively against identifiers
 
 error[keywords]: `uint64` is a keyword and may not be used as an identifier
     ┌ test.idl:9:10
@@ -84,6 +90,7 @@ error[keywords]: `uint64` is a keyword and may not be used as an identifier
  11 │     long multiple;          // 'multiple' is a keyword
     └──
  help: the keyword can be escaped by changing to `_uint64`
+ note: keywords are matched case-insensitively against identifiers
 
 error[keywords]: `truncatable` is a keyword and may not be used as an identifier
     ┌ test.idl:10:10
@@ -96,6 +103,7 @@ error[keywords]: `truncatable` is a keyword and may not be used as an identifier
  12 │ };
     └──
  help: the keyword can be escaped by changing to `_truncatable`
+ note: keywords are matched case-insensitively against identifiers
 
 error[keywords]: `multiple` is a keyword and may not be used as an identifier
     ┌ test.idl:11:10
@@ -107,3 +115,4 @@ error[keywords]: `multiple` is a keyword and may not be used as an identifier
  12 │ };
     └──
  help: the keyword can be escaped by changing to `_multiple`
+ note: keywords are matched case-insensitively against identifiers

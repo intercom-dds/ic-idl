@@ -1,6 +1,5 @@
 ---
 source: crates/ic-lint/tests/keywords.rs
-assertion_line: 377
 expression: test_lint(source)
 ---
 error[keywords]: `abstract` is a keyword and may not be used as an identifier
@@ -12,3 +11,4 @@ error[keywords]: `abstract` is a keyword and may not be used as an identifier
  4 │         long x;
    └──
  help: the keyword can be escaped by changing to `_ABSTRACT`
+ note: keywords are matched case-insensitively against identifiers

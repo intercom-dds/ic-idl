@@ -11,6 +11,7 @@ error[keywords]: `int16` is a keyword and may not be used as an identifier
  4 │ };
    └──
  help: the keyword can be escaped by changing to `_int16`
+ note: keywords are matched case-insensitively against identifiers
 
 error[keywords]: `int32` is a keyword and may not be used as an identifier
    ┌ test.idl:3:44
@@ -21,3 +22,4 @@ error[keywords]: `int32` is a keyword and may not be used as an identifier
  4 │ };
    └──
  help: the keyword can be escaped by changing to `_int32`
+ note: keywords are matched case-insensitively against identifiers

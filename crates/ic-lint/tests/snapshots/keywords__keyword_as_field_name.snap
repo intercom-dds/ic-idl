@@ -12,6 +12,7 @@ error[keywords]: `octet` is a keyword and may not be used as an identifier
  5 │     uint64 uint64;
    └──
  help: the keyword can be escaped by changing to `_octet`
+ note: keywords are matched case-insensitively against identifiers
 
 error[keywords]: `int32` is a keyword and may not be used as an identifier
    ┌ test.idl:4:11
@@ -24,6 +25,7 @@ error[keywords]: `int32` is a keyword and may not be used as an identifier
  6 │ };
    └──
  help: the keyword can be escaped by changing to `_int32`
+ note: keywords are matched case-insensitively against identifiers
 
 error[keywords]: `uint64` is a keyword and may not be used as an identifier
    ┌ test.idl:5:12
@@ -35,3 +37,4 @@ error[keywords]: `uint64` is a keyword and may not be used as an identifier
  6 │ };
    └──
  help: the keyword can be escaped by changing to `_uint64`
+ note: keywords are matched case-insensitively against identifiers

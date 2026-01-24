@@ -12,6 +12,7 @@ error[keywords]: `int32` is a keyword and may not be used as an identifier
  5 │     boolean octet;          // 'octet' is a keyword
    └──
  help: the keyword can be escaped by changing to `_int32`
+ note: keywords are matched case-insensitively against identifiers
 
 error[keywords]: `uint8` is a keyword and may not be used as an identifier
    ┌ test.idl:4:13
@@ -24,6 +25,7 @@ error[keywords]: `uint8` is a keyword and may not be used as an identifier
  6 │     boolean wchar;          // 'wchar' is a keyword
    └──
  help: the keyword can be escaped by changing to `_uint8`
+ note: keywords are matched case-insensitively against identifiers
 
 error[keywords]: `octet` is a keyword and may not be used as an identifier
    ┌ test.idl:5:13
@@ -36,6 +38,7 @@ error[keywords]: `octet` is a keyword and may not be used as an identifier
  7 │ };
    └──
  help: the keyword can be escaped by changing to `_octet`
+ note: keywords are matched case-insensitively against identifiers
 
 error[keywords]: `wchar` is a keyword and may not be used as an identifier
    ┌ test.idl:6:13
@@ -47,3 +50,4 @@ error[keywords]: `wchar` is a keyword and may not be used as an identifier
  7 │ };
    └──
  help: the keyword can be escaped by changing to `_wchar`
+ note: keywords are matched case-insensitively against identifiers

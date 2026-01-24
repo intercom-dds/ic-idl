@@ -71,7 +71,8 @@ impl<'a> Visitor<'a> for KwIdent<'a> {
             .help(format!(
                 "the keyword can be escaped by changing to `{}`",
                 fixed.green(),
-            ));
+            ))
+            .note("keywords are matched case-insensitively against identifiers");
 
             Self::report(self.ctx, diag);
         }

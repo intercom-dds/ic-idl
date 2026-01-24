@@ -11,3 +11,4 @@ error[keywords]: `uint64` is a keyword and may not be used as an identifier
  4 │     bitfield<10> bit1;
    └──
  help: the keyword can be escaped by changing to `_uint64`
+ note: keywords are matched case-insensitively against identifiers

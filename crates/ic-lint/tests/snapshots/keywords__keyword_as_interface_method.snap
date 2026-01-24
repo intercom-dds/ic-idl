@@ -12,6 +12,7 @@ error[keywords]: `context` is a keyword and may not be used as an identifier
  5 │ };
    └──
  help: the keyword can be escaped by changing to `_context`
+ note: keywords are matched case-insensitively against identifiers
 
 error[keywords]: `abstract` is a keyword and may not be used as an identifier
    ┌ test.idl:4:10
@@ -23,3 +24,4 @@ error[keywords]: `abstract` is a keyword and may not be used as an identifier
  5 │ };
    └──
  help: the keyword can be escaped by changing to `_abstract`
+ note: keywords are matched case-insensitively against identifiers

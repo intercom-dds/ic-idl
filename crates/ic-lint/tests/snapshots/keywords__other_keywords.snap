@@ -12,6 +12,7 @@ error[keywords]: `home` is a keyword and may not be used as an identifier
  5 │     boolean int16;          // 'int16' is a keyword (replacing 'local')
    └──
  help: the keyword can be escaped by changing to `_home`
+ note: keywords are matched case-insensitively against identifiers
 
 error[keywords]: `import` is a keyword and may not be used as an identifier
    ┌ test.idl:4:12
@@ -24,6 +25,7 @@ error[keywords]: `import` is a keyword and may not be used as an identifier
  6 │     float multiple;         // 'multiple' is a keyword
    └──
  help: the keyword can be escaped by changing to `_import`
+ note: keywords are matched case-insensitively against identifiers
 
 error[keywords]: `int16` is a keyword and may not be used as an identifier
    ┌ test.idl:5:13
@@ -36,6 +38,7 @@ error[keywords]: `int16` is a keyword and may not be used as an identifier
  7 │     double int32;           // 'int32' is a keyword (replacing 'private')
    └──
  help: the keyword can be escaped by changing to `_int16`
+ note: keywords are matched case-insensitively against identifiers
 
 error[keywords]: `multiple` is a keyword and may not be used as an identifier
    ┌ test.idl:6:11
@@ -48,6 +51,7 @@ error[keywords]: `multiple` is a keyword and may not be used as an identifier
  8 │     octet uint8;            // 'uint8' is a keyword (replacing 'public')
    └──
  help: the keyword can be escaped by changing to `_multiple`
+ note: keywords are matched case-insensitively against identifiers
 
 error[keywords]: `int32` is a keyword and may not be used as an identifier
    ┌ test.idl:7:12
@@ -60,6 +64,7 @@ error[keywords]: `int32` is a keyword and may not be used as an identifier
  9 │     short int64;            // 'int64' is a keyword
    └──
  help: the keyword can be escaped by changing to `_int32`
+ note: keywords are matched case-insensitively against identifiers
 
 error[keywords]: `uint8` is a keyword and may not be used as an identifier
     ┌ test.idl:8:11
@@ -72,6 +77,7 @@ error[keywords]: `uint8` is a keyword and may not be used as an identifier
  10 │     long truncatable;       // 'truncatable' is a keyword
     └──
  help: the keyword can be escaped by changing to `_uint8`
+ note: keywords are matched case-insensitively against identifiers
 
 error[keywords]: `int64` is a keyword and may not be used as an identifier
     ┌ test.idl:9:11
@@ -84,6 +90,7 @@ error[keywords]: `int64` is a keyword and may not be used as an identifier
  11 │     wchar typeid;           // 'typeid' is a keyword
     └──
  help: the keyword can be escaped by changing to `_int64`
+ note: keywords are matched case-insensitively against identifiers
 
 error[keywords]: `truncatable` is a keyword and may not be used as an identifier
     ┌ test.idl:10:10
@@ -96,6 +103,7 @@ error[keywords]: `truncatable` is a keyword and may not be used as an identifier
  12 │     wstring typename;       // 'typename' is a keyword
     └──
  help: the keyword can be escaped by changing to `_truncatable`
+ note: keywords are matched case-insensitively against identifiers
 
 error[keywords]: `typeid` is a keyword and may not be used as an identifier
     ┌ test.idl:11:11
@@ -108,6 +116,7 @@ error[keywords]: `typeid` is a keyword and may not be used as an identifier
  13 │     long typeprefix;        // 'typeprefix' is a keyword
     └──
  help: the keyword can be escaped by changing to `_typeid`
+ note: keywords are matched case-insensitively against identifiers
 
 error[keywords]: `typename` is a keyword and may not be used as an identifier
     ┌ test.idl:12:13
@@ -120,6 +129,7 @@ error[keywords]: `typename` is a keyword and may not be used as an identifier
  14 │     long eventtype;         // 'eventtype' is a keyword
     └──
  help: the keyword can be escaped by changing to `_typename`
+ note: keywords are matched case-insensitively against identifiers
 
 error[keywords]: `typeprefix` is a keyword and may not be used as an identifier
     ┌ test.idl:13:10
@@ -132,6 +142,7 @@ error[keywords]: `typeprefix` is a keyword and may not be used as an identifier
  15 │     long finder;            // 'finder' is a keyword
     └──
  help: the keyword can be escaped by changing to `_typeprefix`
+ note: keywords are matched case-insensitively against identifiers
 
 error[keywords]: `eventtype` is a keyword and may not be used as an identifier
     ┌ test.idl:14:10
@@ -144,6 +155,7 @@ error[keywords]: `eventtype` is a keyword and may not be used as an identifier
  16 │     string manages;         // 'manages' is a keyword
     └──
  help: the keyword can be escaped by changing to `_eventtype`
+ note: keywords are matched case-insensitively against identifiers
 
 error[keywords]: `finder` is a keyword and may not be used as an identifier
     ┌ test.idl:15:10
@@ -156,6 +168,7 @@ error[keywords]: `finder` is a keyword and may not be used as an identifier
  17 │     boolean primarykey;     // 'primarykey' is a keyword
     └──
  help: the keyword can be escaped by changing to `_finder`
+ note: keywords are matched case-insensitively against identifiers
 
 error[keywords]: `manages` is a keyword and may not be used as an identifier
     ┌ test.idl:16:12
@@ -168,6 +181,7 @@ error[keywords]: `manages` is a keyword and may not be used as an identifier
  18 │     long abstract;          // 'abstract' is a keyword
     └──
  help: the keyword can be escaped by changing to `_manages`
+ note: keywords are matched case-insensitively against identifiers
 
 error[keywords]: `primarykey` is a keyword and may not be used as an identifier
     ┌ test.idl:17:13
@@ -180,6 +194,7 @@ error[keywords]: `primarykey` is a keyword and may not be used as an identifier
  19 │     long custom;            // 'custom' is a keyword
     └──
  help: the keyword can be escaped by changing to `_primarykey`
+ note: keywords are matched case-insensitively against identifiers
 
 error[keywords]: `abstract` is a keyword and may not be used as an identifier
     ┌ test.idl:18:10
@@ -192,6 +207,7 @@ error[keywords]: `abstract` is a keyword and may not be used as an identifier
  20 │ };
     └──
  help: the keyword can be escaped by changing to `_abstract`
+ note: keywords are matched case-insensitively against identifiers
 
 error[keywords]: `custom` is a keyword and may not be used as an identifier
     ┌ test.idl:19:10
@@ -203,3 +219,4 @@ error[keywords]: `custom` is a keyword and may not be used as an identifier
  20 │ };
     └──
  help: the keyword can be escaped by changing to `_custom`
+ note: keywords are matched case-insensitively against identifiers

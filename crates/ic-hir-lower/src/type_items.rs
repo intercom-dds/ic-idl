@@ -377,17 +377,6 @@ impl<'ctx> TypeItemProcessor<'ctx> {
 
         self.ctx.context.scopes.set_scope_def_id(scope, def_id);
 
-        let (members, prototypes, attributes, definitions) =
-            self.process_valuetype_elements(v, scope);
-
-        let valuetype_def = self.ctx.context.definitions.get_mut(def_id);
-        if let DefKind::Valuetype(ref mut value_ty) = valuetype_def.kind {
-            value_ty.prototypes = prototypes;
-            value_ty.attributes = attributes;
-            value_ty.members = members;
-            value_ty.definitions = definitions;
-        }
-
         if self
             .ctx
             .registry
@@ -406,6 +395,17 @@ impl<'ctx> TypeItemProcessor<'ctx> {
                 v.ident.name.clone(),
                 def_id,
             );
+        }
+
+        let (members, prototypes, attributes, definitions) =
+            self.process_valuetype_elements(v, scope);
+
+        let valuetype_def = self.ctx.context.definitions.get_mut(def_id);
+        if let DefKind::Valuetype(ref mut value_ty) = valuetype_def.kind {
+            value_ty.prototypes = prototypes;
+            value_ty.attributes = attributes;
+            value_ty.members = members;
+            value_ty.definitions = definitions;
         }
 
         def_id

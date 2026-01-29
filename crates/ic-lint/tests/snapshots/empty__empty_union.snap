@@ -2,12 +2,12 @@
 source: crates/ic-lint/tests/empty.rs
 expression: test_lint(source)
 ---
-error[empty]: empty unions are not allowed
-   ┌ test.idl:2:7
-   │
+⨯ empty: empty unions are not allowed
+  @ test.idl:2:7
+
  2 │ union EmptyUnion switch (long) {
-   ·       ^^^^^^^^^^ defined here
+   │       ˆˆˆˆˆˆˆˆˆˆ defined here
  3 │     // No cases
  4 │ };
-   └──
- note: all unions must have at least one variant
+
+  * all unions must have at least one variant

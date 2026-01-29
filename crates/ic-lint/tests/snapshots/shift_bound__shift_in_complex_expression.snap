@@ -2,11 +2,11 @@
 source: crates/ic-lint/tests/shift_bound.rs
 expression: test_lint(source)
 ---
-warning[shift-bound]: bitshift expressions in template bounds are not portable
-   ┌ test.idl:2:35
-   │
- 2 │         typedef sequence<long, (1 << 8) + 1> BoundedSeq;
-   ·                                   ^^ this shift operator
-   └──
- help: consider using a constant instead
- note: other IDL compilers may not support bitshift expressions in template bounds
+! shift-bound: bitshift expressions in template bounds are not portable
+  @ test.idl:2:35
+
+ 2 │ typedef sequence<long, (1 << 8) + 1> BoundedSeq;
+   │                           ˆˆ this shift operator
+
+  ? consider using a constant instead
+  * other IDL compilers may not support bitshift expressions in template bounds

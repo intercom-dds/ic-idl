@@ -2,13 +2,13 @@
 source: crates/ic-lint/tests/keywords.rs
 expression: test_lint(source)
 ---
-error[keywords]: `abstract` is a keyword and may not be used as an identifier
-   ┌ test.idl:2:9
-   │
+⨯ keywords: `abstract` is a keyword and may not be used as an identifier
+  @ test.idl:2:9
+
  2 │ bitmask abstract {
-   ·         ^^^^^^^^ this is an IDL keyword
+   │         ˆˆˆˆˆˆˆˆ this is an IDL keyword
  3 │     FLAG1,
  4 │     FLAG2
-   └──
- help: the keyword can be escaped by changing to `_abstract`
- note: keywords are matched case-insensitively against identifiers
+
+  ? the keyword can be escaped by changing to `_abstract`
+  * keywords are matched case-insensitively against identifiers

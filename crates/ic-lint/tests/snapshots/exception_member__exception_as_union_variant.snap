@@ -2,17 +2,15 @@
 source: crates/ic-lint/tests/exception_member.rs
 expression: test_lint_hir(source)
 ---
-error[exception-member]: exceptions can only be used in `raises` expressions
-     ┌ test.idl:8:13
-     │
-   2 │ exception DatabaseError {
-     ·           ^^^^^^^^^^^^^ defined as an exception here
-   3 │     long code;
-   4 │ };
- ··· │
-   6 │ union Result switch (long) {
-   7 │     case 1: long value;
-   8 │     case 2: DatabaseError error;
-     ·             ^^^^^^^^^^^^^ invalid exception use
-   9 │ };
-     └──
+⨯ exception-member: exceptions can only be used in `raises` expressions
+  @ test.idl:8:13
+
+  6 │ union Result switch (long) {
+  7 │     case 1: long value;
+  8 │     case 2: DatabaseError error;
+    │             ˆˆˆˆˆˆˆˆˆˆˆˆˆ invalid exception use
+  9 │ };
+  2 │ exception DatabaseError {
+    │           ˆˆˆˆˆˆˆˆˆˆˆˆˆ defined as an exception here
+  3 │     long code;
+  4 │ };

@@ -2,12 +2,11 @@
 source: crates/ic-lint/tests/recursive_type.rs
 expression: output
 ---
-error: no type named 'RecursiveError' in this scope
-   ┌ test.idl:4:13
-   │
- 2 │         exception RecursiveError {
- 3 │             string message;
- 4 │             RecursiveError cause;  // Error: direct recursion without indirection
-   ·             ^^^^^^^^^^^^^^ unknown type
- 5 │         };
-   └──
+⨯: no type named 'RecursiveError' in this scope
+  @ test.idl:4:13
+
+ 2 │ exception RecursiveError {
+ 3 │     string message;
+ 4 │     RecursiveError cause;  // Error: direct recursion without indirection
+   │     ˆˆˆˆˆˆˆˆˆˆˆˆˆˆ unknown type
+ 5 │ };

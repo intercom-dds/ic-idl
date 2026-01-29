@@ -1,11 +1,11 @@
 ---
 source: crates/ic-lint/tests/long_double.rs
-expression: "test_lint(r\"\ntypedef long double ExtendedPrecision;\n\")"
+expression: "test_lint_hir(r\"\ntypedef long double ExtendedPrecision;\n\")"
 ---
-warning[long-double]: long double is not supported
-   ┌ test.idl:2:9
-   │
+! long-double: long double is not supported
+  @ test.idl:2:9
+
  2 │ typedef long double ExtendedPrecision;
-   ·         ^^^^^^^^^^^ used here
-   └──
- note: long double will be treated as a normal double during codegen
+   │         ˆˆˆˆˆˆˆˆˆˆˆ used here
+
+  * long double will be treated as a normal double during codegen

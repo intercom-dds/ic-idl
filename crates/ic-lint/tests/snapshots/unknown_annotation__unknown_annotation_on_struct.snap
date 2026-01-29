@@ -2,22 +2,20 @@
 source: crates/ic-lint/tests/unknown_annotation.rs
 expression: output
 ---
-warning[unknown-ann]: unknown annotation `UnknownAnnotation`
-   ┌ test.idl:2:10
-   │
- 2 │         @UnknownAnnotation
-   ·          ^^^^^^^^^^^^^^^^^ annotation not found
- 3 │         struct TestStruct {
- 4 │             @AnotherUnknown
-   └──
+! unknown-ann: unknown annotation `UnknownAnnotation`
+  @ test.idl:2:10
 
-warning[unknown-ann]: unknown annotation `AnotherUnknown`
-   ┌ test.idl:4:14
-   │
- 2 │         @UnknownAnnotation
- 3 │         struct TestStruct {
- 4 │             @AnotherUnknown
-   ·              ^^^^^^^^^^^^^^ annotation not found
- 5 │             long value;
- 6 │         };
-   └──
+ 2 │ @UnknownAnnotation
+   │  ˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆ annotation not found
+ 3 │ struct TestStruct {
+ 4 │     @AnotherUnknown
+
+! unknown-ann: unknown annotation `AnotherUnknown`
+  @ test.idl:4:14
+
+ 2 │ @UnknownAnnotation
+ 3 │ struct TestStruct {
+ 4 │     @AnotherUnknown
+   │      ˆˆˆˆˆˆˆˆˆˆˆˆˆˆ annotation not found
+ 5 │     long value;
+ 6 │ };

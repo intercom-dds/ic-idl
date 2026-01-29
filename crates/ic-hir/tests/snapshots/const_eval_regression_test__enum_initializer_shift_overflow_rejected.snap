@@ -1,14 +1,12 @@
 ---
 source: crates/ic-hir/tests/const_eval_regression_test.rs
-assertion_line: 200
 expression: diagnostics
 ---
-error: value out of range for target type
-   ┌ test.idl:4:17
-   │
- 2 │         enum MyEnum {
- 3 │             A = 1073741824,
- 4 │             B = A << 1
-   ·                 ^^^^^^ out of range
- 5 │         };
-   └──
+⨯: value out of range for target type
+  @ test.idl:4:17
+
+ 2 │ enum MyEnum {
+ 3 │     A = 1073741824,
+ 4 │     B = A << 1
+   │         ˆˆˆˆˆˆ out of range
+ 5 │ };

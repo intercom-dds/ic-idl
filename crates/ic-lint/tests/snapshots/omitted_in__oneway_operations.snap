@@ -2,35 +2,35 @@
 source: crates/ic-lint/tests/omitted_in.rs
 expression: test_lint(source)
 ---
-warning[omitted-in]: parameters must be declared with `in`, `out`, or `inout`
-   ┌ test.idl:3:32
-   │
- 2 │         interface Async {
- 3 │             oneway void notify(string event);
-   ·                                ^^^^^^ expected parameter specifier before this type
- 4 │             oneway void log(long level, string message);
- 5 │         };
-   └──
- help: prefix the parameter with `in`
+! omitted-in: parameters must be declared with `in`, `out`, or `inout`
+  @ test.idl:3:32
 
-warning[omitted-in]: parameters must be declared with `in`, `out`, or `inout`
-   ┌ test.idl:4:29
-   │
- 2 │         interface Async {
- 3 │             oneway void notify(string event);
- 4 │             oneway void log(long level, string message);
-   ·                             ^^^^ expected parameter specifier before this type
- 5 │         };
-   └──
- help: prefix the parameter with `in`
+ 2 │ interface Async {
+ 3 │     oneway void notify(string event);
+   │                        ˆˆˆˆˆˆ expected parameter specifier before this type
+ 4 │     oneway void log(long level, string message);
+ 5 │ };
 
-warning[omitted-in]: parameters must be declared with `in`, `out`, or `inout`
-   ┌ test.idl:4:41
-   │
- 2 │         interface Async {
- 3 │             oneway void notify(string event);
- 4 │             oneway void log(long level, string message);
-   ·                                         ^^^^^^ expected parameter specifier before this type
- 5 │         };
-   └──
- help: prefix the parameter with `in`
+  ? prefix the parameter with `in`
+
+! omitted-in: parameters must be declared with `in`, `out`, or `inout`
+  @ test.idl:4:29
+
+ 2 │ interface Async {
+ 3 │     oneway void notify(string event);
+ 4 │     oneway void log(long level, string message);
+   │                     ˆˆˆˆ expected parameter specifier before this type
+ 5 │ };
+
+  ? prefix the parameter with `in`
+
+! omitted-in: parameters must be declared with `in`, `out`, or `inout`
+  @ test.idl:4:41
+
+ 2 │ interface Async {
+ 3 │     oneway void notify(string event);
+ 4 │     oneway void log(long level, string message);
+   │                                 ˆˆˆˆˆˆ expected parameter specifier before this type
+ 5 │ };
+
+  ? prefix the parameter with `in`

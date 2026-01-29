@@ -2,37 +2,37 @@
 source: crates/ic-lint/tests/recursive_type.rs
 expression: output
 ---
-error[recursive-type]: type `Tree` contains itself without indirection
-   ┌ test.idl:4:18
-   │
- 2 │         struct Tree {
- 3 │             long value;
- 4 │             Tree left;   // Error
-   ·                  ^^^^ recursive member here
- 5 │             Tree right;  // Error
- 6 │             @shared Tree parent;  // OK
-   └──
- note: recursive types must use indirection through sequences, maps, or @external annotations
+⨯ recursive-type: type `Tree` contains itself without indirection
+  @ test.idl:4:18
 
-error[recursive-type]: type `Tree` contains itself without indirection
-   ┌ test.idl:5:18
-   │
- 3 │             long value;
- 4 │             Tree left;   // Error
- 5 │             Tree right;  // Error
-   ·                  ^^^^^ recursive member here
- 6 │             @shared Tree parent;  // OK
- 7 │         };
-   └──
- note: recursive types must use indirection through sequences, maps, or @external annotations
+ 2 │ struct Tree {
+ 3 │     long value;
+ 4 │     Tree left;   // Error
+   │          ˆˆˆˆ recursive member here
+ 5 │     Tree right;  // Error
+ 6 │     @shared Tree parent;  // OK
 
-warning[deprecated-ann]: use of deprecated annotation `@shared`
-   ┌ test.idl:6:14
-   │
- 4 │             Tree left;   // Error
- 5 │             Tree right;  // Error
- 6 │             @shared Tree parent;  // OK
-   ·              ^^^^^^ deprecated annotation used here
- 7 │         };
-   └──
- help: use `@external` instead
+  * recursive types must use indirection through sequences, maps, or @external annotations
+
+⨯ recursive-type: type `Tree` contains itself without indirection
+  @ test.idl:5:18
+
+ 3 │     long value;
+ 4 │     Tree left;   // Error
+ 5 │     Tree right;  // Error
+   │          ˆˆˆˆˆ recursive member here
+ 6 │     @shared Tree parent;  // OK
+ 7 │ };
+
+  * recursive types must use indirection through sequences, maps, or @external annotations
+
+! deprecated-ann: use of deprecated annotation `@shared`
+  @ test.idl:6:14
+
+ 4 │     Tree left;   // Error
+ 5 │     Tree right;  // Error
+ 6 │     @shared Tree parent;  // OK
+   │      ˆˆˆˆˆˆ deprecated annotation used here
+ 7 │ };
+
+  ? use `@external` instead

@@ -2,24 +2,20 @@
 source: crates/ic-lint/tests/duplicate_case_labels.rs
 expression: test_lint_hir(source)
 ---
-error[duplicate-case]: union 'FirstUnion' has duplicate case label '1'
-   ┌ test.idl:5:10
-   │
+⨯ duplicate-case: union 'FirstUnion' has duplicate case label '1'
+  @ test.idl:5:10
+
  3 │     case 1: long a;
  4 │     case 2: string b;
  5 │     case 1: boolean c;  // Duplicate in first
-   ·          ^ duplicate case label
+   │          ˆ duplicate case label
  6 │ };
- 7 │ 
- 8 │ union SecondUnion switch (long) {
-   └──
 
-error[duplicate-case]: union 'SecondUnion' has duplicate case label '1'
-    ┌ test.idl:11:10
-    │
+⨯ duplicate-case: union 'SecondUnion' has duplicate case label '1'
+  @ test.idl:11:10
+
   9 │     case 1: float d;     // Same value as first union, but different union
  10 │     case 3: double e;
  11 │     case 1: char f;      // Duplicate in second
-    ·          ^ duplicate case label
+    │          ˆ duplicate case label
  12 │ };
-    └──

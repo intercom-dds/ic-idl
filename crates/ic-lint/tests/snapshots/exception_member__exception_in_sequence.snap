@@ -2,16 +2,14 @@
 source: crates/ic-lint/tests/exception_member.rs
 expression: test_lint_hir(source)
 ---
-error[exception-member]: exceptions can only be used in `raises` expressions
-   ┌ test.idl:7:14
-   │
- 2 │ exception IOError {
-   ·           ^^^^^^^ defined as an exception here
- 3 │     string path;
- 4 │ };
- 5 │ 
+⨯ exception-member: exceptions can only be used in `raises` expressions
+  @ test.idl:7:14
+
  6 │ struct ErrorReport {
  7 │     sequence<IOError> errors;
-   ·              ^^^^^^^ invalid exception use
+   │              ˆˆˆˆˆˆˆ invalid exception use
  8 │ };
-   └──
+ 2 │ exception IOError {
+   │           ˆˆˆˆˆˆˆ defined as an exception here
+ 3 │     string path;
+ 4 │ };

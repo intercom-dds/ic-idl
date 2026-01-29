@@ -1,11 +1,11 @@
 ---
 source: crates/ic-lint/tests/long_double.rs
-expression: "test_lint(r\"\ntypedef long double LongDoubleArray[10];\n\")"
+expression: "test_lint_hir(r\"\ntypedef long double LongDoubleArray[10];\n\")"
 ---
-warning[long-double]: long double is not supported
-   ┌ test.idl:2:9
-   │
+! long-double: long double is not supported
+  @ test.idl:2:9
+
  2 │ typedef long double LongDoubleArray[10];
-   ·         ^^^^^^^^^^^ used here
-   └──
- note: long double will be treated as a normal double during codegen
+   │         ˆˆˆˆˆˆˆˆˆˆˆ used here
+
+  * long double will be treated as a normal double during codegen

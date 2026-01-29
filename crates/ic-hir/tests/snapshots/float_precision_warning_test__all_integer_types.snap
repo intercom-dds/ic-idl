@@ -2,77 +2,69 @@
 source: crates/ic-hir/tests/float_precision_warning_test.rs
 expression: diagnostics
 ---
-warning: implicit conversion from 'double' to 'int8' changes value from 1.5 to 1
-   ┌ test.idl:2:30
-   │
- 2 │         const int8 I8_LOSS = 1.5;
-   ·                              ^^^ precision loss here
- 3 │         const uint8 U8_LOSS = 2.3;
- 4 │         const int16 I16_LOSS = 3.7;
-   └──
-warning: implicit conversion from 'double' to 'uint8' changes value from 2.3 to 2
-   ┌ test.idl:3:31
-   │
- 2 │         const int8 I8_LOSS = 1.5;
- 3 │         const uint8 U8_LOSS = 2.3;
-   ·                               ^^^ precision loss here
- 4 │         const int16 I16_LOSS = 3.7;
- 5 │         const uint16 U16_LOSS = 4.9;
-   └──
-warning: implicit conversion from 'double' to 'int16' changes value from 3.7 to 3
-   ┌ test.idl:4:32
-   │
- 2 │         const int8 I8_LOSS = 1.5;
- 3 │         const uint8 U8_LOSS = 2.3;
- 4 │         const int16 I16_LOSS = 3.7;
-   ·                                ^^^ precision loss here
- 5 │         const uint16 U16_LOSS = 4.9;
- 6 │         const int32 I32_LOSS = 5.1;
-   └──
-warning: implicit conversion from 'double' to 'uint16' changes value from 4.9 to 4
-   ┌ test.idl:5:33
-   │
- 3 │         const uint8 U8_LOSS = 2.3;
- 4 │         const int16 I16_LOSS = 3.7;
- 5 │         const uint16 U16_LOSS = 4.9;
-   ·                                 ^^^ precision loss here
- 6 │         const int32 I32_LOSS = 5.1;
- 7 │         const uint32 U32_LOSS = 6.6;
-   └──
-warning: implicit conversion from 'double' to 'int32' changes value from 5.1 to 5
-   ┌ test.idl:6:32
-   │
- 4 │         const int16 I16_LOSS = 3.7;
- 5 │         const uint16 U16_LOSS = 4.9;
- 6 │         const int32 I32_LOSS = 5.1;
-   ·                                ^^^ precision loss here
- 7 │         const uint32 U32_LOSS = 6.6;
- 8 │         const int64 I64_LOSS = 7.8;
-   └──
-warning: implicit conversion from 'double' to 'uint32' changes value from 6.6 to 6
-   ┌ test.idl:7:33
-   │
- 5 │         const uint16 U16_LOSS = 4.9;
- 6 │         const int32 I32_LOSS = 5.1;
- 7 │         const uint32 U32_LOSS = 6.6;
-   ·                                 ^^^ precision loss here
- 8 │         const int64 I64_LOSS = 7.8;
- 9 │         const uint64 U64_LOSS = 8.2;
-   └──
-warning: implicit conversion from 'double' to 'int64' changes value from 7.8 to 7
-   ┌ test.idl:8:32
-   │
- 6 │         const int32 I32_LOSS = 5.1;
- 7 │         const uint32 U32_LOSS = 6.6;
- 8 │         const int64 I64_LOSS = 7.8;
-   ·                                ^^^ precision loss here
- 9 │         const uint64 U64_LOSS = 8.2;
-   └──
-warning: implicit conversion from 'double' to 'uint64' changes value from 8.2 to 8
-   ┌ test.idl:9:33
-   │
- 7 │         const uint32 U32_LOSS = 6.6;
- 8 │         const int64 I64_LOSS = 7.8;
- 9 │         const uint64 U64_LOSS = 8.2;
-   ·                                 ^^^ precision loss here
-   └──
+!: implicit conversion from 'double' to 'int8' changes value from 1.5 to 1
+  @ test.idl:2:30
+
+ 2 │ const int8 I8_LOSS = 1.5;
+   │                      ˆˆˆ precision loss here
+ 3 │ const uint8 U8_LOSS = 2.3;
+ 4 │ const int16 I16_LOSS = 3.7;
+!: implicit conversion from 'double' to 'uint8' changes value from 2.3 to 2
+  @ test.idl:3:31
+
+ 2 │ const int8 I8_LOSS = 1.5;
+ 3 │ const uint8 U8_LOSS = 2.3;
+   │                       ˆˆˆ precision loss here
+ 4 │ const int16 I16_LOSS = 3.7;
+ 5 │ const uint16 U16_LOSS = 4.9;
+!: implicit conversion from 'double' to 'int16' changes value from 3.7 to 3
+  @ test.idl:4:32
+
+ 2 │ const int8 I8_LOSS = 1.5;
+ 3 │ const uint8 U8_LOSS = 2.3;
+ 4 │ const int16 I16_LOSS = 3.7;
+   │                        ˆˆˆ precision loss here
+ 5 │ const uint16 U16_LOSS = 4.9;
+ 6 │ const int32 I32_LOSS = 5.1;
+!: implicit conversion from 'double' to 'uint16' changes value from 4.9 to 4
+  @ test.idl:5:33
+
+ 3 │ const uint8 U8_LOSS = 2.3;
+ 4 │ const int16 I16_LOSS = 3.7;
+ 5 │ const uint16 U16_LOSS = 4.9;
+   │                         ˆˆˆ precision loss here
+ 6 │ const int32 I32_LOSS = 5.1;
+ 7 │ const uint32 U32_LOSS = 6.6;
+!: implicit conversion from 'double' to 'int32' changes value from 5.1 to 5
+  @ test.idl:6:32
+
+ 4 │ const int16 I16_LOSS = 3.7;
+ 5 │ const uint16 U16_LOSS = 4.9;
+ 6 │ const int32 I32_LOSS = 5.1;
+   │                        ˆˆˆ precision loss here
+ 7 │ const uint32 U32_LOSS = 6.6;
+ 8 │ const int64 I64_LOSS = 7.8;
+!: implicit conversion from 'double' to 'uint32' changes value from 6.6 to 6
+  @ test.idl:7:33
+
+ 5 │ const uint16 U16_LOSS = 4.9;
+ 6 │ const int32 I32_LOSS = 5.1;
+ 7 │ const uint32 U32_LOSS = 6.6;
+   │                         ˆˆˆ precision loss here
+ 8 │ const int64 I64_LOSS = 7.8;
+ 9 │ const uint64 U64_LOSS = 8.2;
+!: implicit conversion from 'double' to 'int64' changes value from 7.8 to 7
+  @ test.idl:8:32
+
+  6 │ const int32 I32_LOSS = 5.1;
+  7 │ const uint32 U32_LOSS = 6.6;
+  8 │ const int64 I64_LOSS = 7.8;
+    │                        ˆˆˆ precision loss here
+  9 │ const uint64 U64_LOSS = 8.2;
+!: implicit conversion from 'double' to 'uint64' changes value from 8.2 to 8
+  @ test.idl:9:33
+
+  7 │ const uint32 U32_LOSS = 6.6;
+  8 │ const int64 I64_LOSS = 7.8;
+  9 │ const uint64 U64_LOSS = 8.2;
+    │                         ˆˆˆ precision loss here

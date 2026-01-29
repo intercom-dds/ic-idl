@@ -1,12 +1,11 @@
 ---
 source: crates/ic-lint/tests/preproc_extraneous.rs
-expression: "test_lint_preproc(r#\"\n#ifndef FOO extra\n#endif\nstruct Foo {};\n\"#,)"
+expression: "test_lint_preproc(r\"\n#ifndef FOO extra\n#endif\nstruct Foo {};\n\",)"
 ---
-warning[extra-tokens]: extra tokens after #ifndef directive
-   ┌ test.idl:2:13
-   │
+! extra-tokens: extra tokens after #ifndef directive
+  @ test.idl:2:13
+
  2 │ #ifndef FOO extra
-   ·             ^^^^^ extraneous tokens
+   │             ˆˆˆˆˆ extraneous tokens
  3 │ #endif
  4 │ struct Foo {};
-   └──

@@ -2,12 +2,11 @@
 source: crates/ic-lint/tests/duplicate_case_labels.rs
 expression: test_lint_hir(source)
 ---
-error[duplicate-case]: union 'MyUnion' has duplicate case label '1'
-   ┌ test.idl:6:10
-   │
+⨯ duplicate-case: union 'MyUnion' has duplicate case label '1'
+  @ test.idl:6:10
+
  4 │     case 2: string b;
  5 │     default: boolean c;
  6 │     case 1: octet d;  // Duplicate, even with default present
-   ·          ^ duplicate case label
+   │          ˆ duplicate case label
  7 │ };
-   └──

@@ -2,32 +2,32 @@
 source: crates/ic-lint/tests/char_arithmetic.rs
 expression: output
 ---
-warning[char-arithmetic]: char literal used in arithmetic expression
-   ┌ test.idl:2:25
-   │
- 2 │         const long a = ('A' + 1) * 2;
-   ·                         ^^^ char literal
- 3 │         const long b = 3 - ('B' & 0xFF);
- 4 │         const long c = ~('C' | 0x20);
-   └──
- help: consider converting to an integer value
+! char-arithmetic: char literal used in arithmetic expression
+  @ test.idl:2:25
 
-warning[char-arithmetic]: char literal used in arithmetic expression
-   ┌ test.idl:3:29
-   │
- 2 │         const long a = ('A' + 1) * 2;
- 3 │         const long b = 3 - ('B' & 0xFF);
-   ·                             ^^^ char literal
- 4 │         const long c = ~('C' | 0x20);
-   └──
- help: consider converting to an integer value
+ 2 │ const long a = ('A' + 1) * 2;
+   │                 ˆˆˆ char literal
+ 3 │ const long b = 3 - ('B' & 0xFF);
+ 4 │ const long c = ~('C' | 0x20);
 
-warning[char-arithmetic]: char literal used in arithmetic expression
-   ┌ test.idl:4:26
-   │
- 2 │         const long a = ('A' + 1) * 2;
- 3 │         const long b = 3 - ('B' & 0xFF);
- 4 │         const long c = ~('C' | 0x20);
-   ·                          ^^^ char literal
-   └──
- help: consider converting to an integer value
+  ? consider converting to an integer value
+
+! char-arithmetic: char literal used in arithmetic expression
+  @ test.idl:3:29
+
+ 2 │ const long a = ('A' + 1) * 2;
+ 3 │ const long b = 3 - ('B' & 0xFF);
+   │                     ˆˆˆ char literal
+ 4 │ const long c = ~('C' | 0x20);
+
+  ? consider converting to an integer value
+
+! char-arithmetic: char literal used in arithmetic expression
+  @ test.idl:4:26
+
+ 2 │ const long a = ('A' + 1) * 2;
+ 3 │ const long b = 3 - ('B' & 0xFF);
+ 4 │ const long c = ~('C' | 0x20);
+   │                  ˆˆˆ char literal
+
+  ? consider converting to an integer value

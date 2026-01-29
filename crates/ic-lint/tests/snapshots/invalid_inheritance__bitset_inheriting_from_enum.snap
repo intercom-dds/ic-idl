@@ -2,23 +2,22 @@
 source: crates/ic-lint/tests/invalid_inheritance.rs
 expression: "common::test_lint_hir(idl)"
 ---
-error[invalid-inheritance]: bitset `BadBits` cannot inherit from enum `Color`
-   ┌ test.idl:3:16
-   │
- 2 │         enum Color { RED, GREEN, BLUE };
- 3 │         bitset BadBits : Color {
-   ·                ^^^^^^^ bitsets can only inherit from other bitsets
- 4 │             bitfield<1> BIT0;
- 5 │             bitfield<1> BIT1;
-   └──
+⨯ invalid-inheritance: bitset `BadBits` cannot inherit from enum `Color`
+  @ test.idl:3:16
 
-warning[bitset]: bitsets are not supported
-   ┌ test.idl:3:16
-   │
- 2 │         enum Color { RED, GREEN, BLUE };
- 3 │         bitset BadBits : Color {
-   ·                ^^^^^^^ defined here
- 4 │             bitfield<1> BIT0;
- 5 │             bitfield<1> BIT1;
-   └──
- note: the bitset will be skipped during codegen
+ 2 │ enum Color { RED, GREEN, BLUE };
+ 3 │ bitset BadBits : Color {
+   │        ˆˆˆˆˆˆˆ bitsets can only inherit from other bitsets
+ 4 │     bitfield<1> BIT0;
+ 5 │     bitfield<1> BIT1;
+
+! bitset: bitsets are not supported
+  @ test.idl:3:16
+
+ 2 │ enum Color { RED, GREEN, BLUE };
+ 3 │ bitset BadBits : Color {
+   │        ˆˆˆˆˆˆˆ defined here
+ 4 │     bitfield<1> BIT0;
+ 5 │     bitfield<1> BIT1;
+
+  * the bitset will be skipped during codegen

@@ -2,23 +2,21 @@
 source: crates/ic-lint/tests/invalid_array_size.rs
 expression: test_lint_hir(source)
 ---
-warning[invalid-array-size]: array size 20000 bytes exceeds reasonable limit of 16384 bytes (5000 elements × 4 bytes each)
-   ┌ test.idl:3:15
-   │
+! invalid-array-size: array size 20000 bytes exceeds reasonable limit of 16384 bytes (5000 elements × 4 bytes each)
+  @ test.idl:3:15
+
  2 │ struct MultipleArrays {
  3 │     long arr1[5000];      // 20000 bytes
-   ·               ^^^^ very large array
+   │               ˆˆˆˆ very large array
  4 │     double arr2[3000];    // 24000 bytes
  5 │     boolean arr3[10000];  // 10000 bytes - OK
-   └──
 
-warning[invalid-array-size]: array size 24000 bytes exceeds reasonable limit of 16384 bytes (3000 elements × 8 bytes each)
-   ┌ test.idl:4:17
-   │
+! invalid-array-size: array size 24000 bytes exceeds reasonable limit of 16384 bytes (3000 elements × 8 bytes each)
+  @ test.idl:4:17
+
  2 │ struct MultipleArrays {
  3 │     long arr1[5000];      // 20000 bytes
  4 │     double arr2[3000];    // 24000 bytes
-   ·                 ^^^^ very large array
+   │                 ˆˆˆˆ very large array
  5 │     boolean arr3[10000];  // 10000 bytes - OK
  6 │ };
-   └──

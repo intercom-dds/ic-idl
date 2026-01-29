@@ -2,20 +2,20 @@
 source: crates/ic-lint/tests/lowercase_bool.rs
 expression: test_lint(source)
 ---
-warning[lowercase-bool]: lowercase boolean literals are non-standard
-   ┌ test.idl:2:40
-   │
- 2 │         const boolean LOWERCASE_TRUE = true;
-   ·                                        ^^^^ lowercase boolean literal
- 3 │         const boolean LOWERCASE_FALSE = false;
-   └──
- help: use `TRUE` instead
+! lowercase-bool: lowercase boolean literals are non-standard
+  @ test.idl:2:40
 
-warning[lowercase-bool]: lowercase boolean literals are non-standard
-   ┌ test.idl:3:41
-   │
- 2 │         const boolean LOWERCASE_TRUE = true;
- 3 │         const boolean LOWERCASE_FALSE = false;
-   ·                                         ^^^^^ lowercase boolean literal
-   └──
- help: use `FALSE` instead
+ 2 │ const boolean LOWERCASE_TRUE = true;
+   │                                ˆˆˆˆ lowercase boolean literal
+ 3 │ const boolean LOWERCASE_FALSE = false;
+
+  ? use `TRUE` instead
+
+! lowercase-bool: lowercase boolean literals are non-standard
+  @ test.idl:3:41
+
+ 2 │ const boolean LOWERCASE_TRUE = true;
+ 3 │ const boolean LOWERCASE_FALSE = false;
+   │                                 ˆˆˆˆˆ lowercase boolean literal
+
+  ? use `FALSE` instead

@@ -2,11 +2,10 @@
 source: crates/ic-hir/tests/inherit_incomplete_type.rs
 expression: diagnostics
 ---
-error: no type named 'Base' in this scope
-   ┌ test.idl:2:26
-   │
- 2 │         struct Derived : Base {
-   ·                          ^^^^ unknown type
- 3 │             long derived_field;
- 4 │         };
-   └──
+⨯: no type named 'Base' in this scope
+  @ test.idl:2:26
+
+ 2 │ struct Derived : Base {
+   │                  ˆˆˆˆ unknown type
+ 3 │     long derived_field;
+ 4 │ };

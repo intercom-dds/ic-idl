@@ -1,19 +1,17 @@
 ---
 source: crates/ic-lint/tests/duplicate_bounds.rs
-assertion_line: 153
 expression: test_lint_hir(source)
 ---
-error[duplicate-bounds]: @max is already defined on typedef `Level1`
-   ┌ test.idl:7:6
-   │
- 2 │ @max(100) typedef int32 Level1;
-   ·  ^^^ @max already defined on `Level1`
- 3 │ typedef Level1 Level2;
- 4 │ typedef Level2 Level3;
- 5 │ 
+⨯ duplicate-bounds: @max is already defined on typedef `Level1`
+  @ test.idl:7:6
+
  6 │ struct Foo {
  7 │     @max(50) Level3 value;
-   ·      ^^^ @max on member
+   │      ˆˆˆ @max on member
  8 │ };
-   └──
- help: remove @max from either the member or the typedef
+ 2 │ @max(100) typedef int32 Level1;
+   │  ˆˆˆ @max already defined on `Level1`
+ 3 │ typedef Level1 Level2;
+ 4 │ typedef Level2 Level3;
+
+  ? remove @max from either the member or the typedef

@@ -2,11 +2,10 @@
 source: crates/ic-lint/tests/zero_bound.rs
 expression: test_lint_hir(source)
 ---
-error[zero-bound]: string bound must be greater than zero
-   ┌ test.idl:3:12
-   │
+⨯ zero-bound: string bound must be greater than zero
+  @ test.idl:3:12
+
  2 │ struct Foo {
  3 │     string<0> field;
-   ·            ^ invalid string bound
+   │            ˆ invalid string bound
  4 │ };
-   └──

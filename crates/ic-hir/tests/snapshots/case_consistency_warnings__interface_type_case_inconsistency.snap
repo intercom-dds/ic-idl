@@ -2,38 +2,34 @@
 source: crates/ic-hir/tests/case_consistency_warnings.rs
 expression: compile_idl_with_warnings(idl)
 ---
-error: inconsistent capitalization: `myinterface` should be `MyInterface`
-    ┌ test.idl:9:13
-    │
-  6 │         };
-  7 │ 
-  8 │         struct Test {
-  9 │             myinterface::nestedtype field1;
-    ·             ^^^^^^^^^^^ module name used here
- 10 │             MyInterface::NESTEDTYPE field2;
- 11 │             MyInterface::NestedType field3; // Correct
-    └──
- note: the canonical module name is `MyInterface`
-error: inconsistent capitalization: `nestedtype` should be `NestedType`
-    ┌ test.idl:9:26
-    │
-  6 │         };
-  7 │ 
-  8 │         struct Test {
-  9 │             myinterface::nestedtype field1;
-    ·                          ^^^^^^^^^^ used here
- 10 │             MyInterface::NESTEDTYPE field2;
- 11 │             MyInterface::NestedType field3; // Correct
-    └──
- note: the canonical name is `NestedType`
-error: inconsistent capitalization: `NESTEDTYPE` should be `NestedType`
-    ┌ test.idl:10:26
-    │
-  8 │         struct Test {
-  9 │             myinterface::nestedtype field1;
- 10 │             MyInterface::NESTEDTYPE field2;
-    ·                          ^^^^^^^^^^ used here
- 11 │             MyInterface::NestedType field3; // Correct
- 12 │         };
-    └──
- note: the canonical name is `NestedType`
+⨯: inconsistent capitalization: `myinterface` should be `MyInterface`
+  @ test.idl:9:13
+
+  8 │ struct Test {
+  9 │     myinterface::nestedtype field1;
+    │     ˆˆˆˆˆˆˆˆˆˆˆ module name used here
+ 10 │     MyInterface::NESTEDTYPE field2;
+ 11 │     MyInterface::NestedType field3; // Correct
+
+  * the canonical module name is `MyInterface`
+⨯: inconsistent capitalization: `nestedtype` should be `NestedType`
+  @ test.idl:9:26
+
+  8 │ struct Test {
+  9 │     myinterface::nestedtype field1;
+    │                  ˆˆˆˆˆˆˆˆˆˆ used here
+ 10 │     MyInterface::NESTEDTYPE field2;
+ 11 │     MyInterface::NestedType field3; // Correct
+
+  * the canonical name is `NestedType`
+⨯: inconsistent capitalization: `NESTEDTYPE` should be `NestedType`
+  @ test.idl:10:26
+
+  8 │ struct Test {
+  9 │     myinterface::nestedtype field1;
+ 10 │     MyInterface::NESTEDTYPE field2;
+    │                  ˆˆˆˆˆˆˆˆˆˆ used here
+ 11 │     MyInterface::NestedType field3; // Correct
+ 12 │ };
+
+  * the canonical name is `NestedType`

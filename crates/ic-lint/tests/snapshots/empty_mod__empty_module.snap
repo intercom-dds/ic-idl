@@ -2,12 +2,12 @@
 source: crates/ic-lint/tests/empty_mod.rs
 expression: test_lint(source)
 ---
-warning[empty-mod]: empty module declarations are not standard
-   ┌ test.idl:2:9
-   │
- 2 │         module EmptyModule {
-   ·         ^^^^^^^^^^^^^^^^^^^^ 
- 3 │         };
-   · ^^^^^^^^^^
-   └──
- help: either remove the declaration or add an item to it
+! empty-mod: empty module declarations are not standard
+  @ test.idl:2:9
+
+ 2 │ module EmptyModule {
+   │ ˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆ 
+ 3 │ };
+   │ ˆˆ
+
+  ? either remove the declaration or add an item to it

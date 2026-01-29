@@ -2,9 +2,8 @@
 source: crates/ic-diagnostic/tests/tab_test.rs
 expression: buf
 ---
-error: test error
-   ┌ test.rs:1:9
-   │
- 1 │     int x = 42;
-   ·         ^ here
-   └──
+⨯: test error
+  @ test.rs:1:9
+
+ 1 │ int x = 42;
+   │     ˆ here

@@ -2,11 +2,10 @@
 source: crates/ic-lint/tests/unknown_annotation.rs
 expression: output
 ---
-warning[unknown-ann]: unknown annotation `NonExistent`
-   ┌ test.idl:2:10
-   │
- 2 │         @NonExistent
-   ·          ^^^^^^^^^^^ annotation not found
- 3 │         interface TestInterface {
- 4 │             void doSomething();
-   └──
+! unknown-ann: unknown annotation `NonExistent`
+  @ test.idl:2:10
+
+ 2 │ @NonExistent
+   │  ˆˆˆˆˆˆˆˆˆˆˆ annotation not found
+ 3 │ interface TestInterface {
+ 4 │     void doSomething();

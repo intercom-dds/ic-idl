@@ -2,33 +2,33 @@
 source: crates/ic-lint/tests/lowercase_bool.rs
 expression: test_lint(source)
 ---
-warning[complex-lit]: complex literals are non-standard
-   ┌ test.idl:7:39
-   │
- 5 │             boolean strict;
- 6 │         };
- 7 │         const Config DEFAULT_CONFIG = {true, false, TRUE};
-   ·                      ^^^^^^^^^^^^^^   ^^^^^^^^^^^^^^^^^^^ complex constants are non-standard
-   ·                      └─ const defined here
-   └──
- note: only literals of trivial types are allowed in standard IDL
+! complex-lit: complex literals are non-standard
+  @ test.idl:7:39
 
-warning[lowercase-bool]: lowercase boolean literals are non-standard
-   ┌ test.idl:7:40
-   │
- 5 │             boolean strict;
- 6 │         };
- 7 │         const Config DEFAULT_CONFIG = {true, false, TRUE};
-   ·                                        ^^^^ lowercase boolean literal
-   └──
- help: use `TRUE` instead
+ 5 │     boolean strict;
+ 6 │ };
+ 7 │ const Config DEFAULT_CONFIG = {true, false, TRUE};
+   │              ˆˆˆˆˆˆˆˆˆˆˆˆˆˆ   ˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆ complex constants are non-standard
+   │              └─ const defined here
 
-warning[lowercase-bool]: lowercase boolean literals are non-standard
-   ┌ test.idl:7:46
-   │
- 5 │             boolean strict;
- 6 │         };
- 7 │         const Config DEFAULT_CONFIG = {true, false, TRUE};
-   ·                                              ^^^^^ lowercase boolean literal
-   └──
- help: use `FALSE` instead
+  * only literals of trivial types are allowed in standard IDL
+
+! lowercase-bool: lowercase boolean literals are non-standard
+  @ test.idl:7:40
+
+ 5 │     boolean strict;
+ 6 │ };
+ 7 │ const Config DEFAULT_CONFIG = {true, false, TRUE};
+   │                                ˆˆˆˆ lowercase boolean literal
+
+  ? use `TRUE` instead
+
+! lowercase-bool: lowercase boolean literals are non-standard
+  @ test.idl:7:46
+
+ 5 │     boolean strict;
+ 6 │ };
+ 7 │ const Config DEFAULT_CONFIG = {true, false, TRUE};
+   │                                      ˆˆˆˆˆ lowercase boolean literal
+
+  ? use `FALSE` instead

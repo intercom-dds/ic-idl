@@ -1,17 +1,16 @@
 ---
 source: crates/ic-lint/tests/duplicate_bounds.rs
-assertion_line: 66
 expression: test_lint_hir(source)
 ---
-error[duplicate-bounds]: @range is already defined on typedef `MyInt`
-   ┌ test.idl:5:6
-   │
+⨯ duplicate-bounds: @range is already defined on typedef `MyInt`
+  @ test.idl:5:6
+
  2 │ @range(min = 0, max = 100) typedef int32 MyInt;
-   ·  ^^^^^ @range already defined on `MyInt`
+   │  ˆˆˆˆˆ @range already defined on `MyInt`
  3 │ 
  4 │ struct Foo {
  5 │     @range(min = 10, max = 50) MyInt value;
-   ·      ^^^^^ @range on member
+   │      ˆˆˆˆˆ @range on member
  6 │ };
-   └──
- help: remove @range from either the member or the typedef
+
+  ? remove @range from either the member or the typedef

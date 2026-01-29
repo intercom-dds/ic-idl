@@ -2,23 +2,21 @@
 source: crates/ic-lint/tests/union_case_label_range.rs
 expression: output
 ---
-error[union-label-range]: case label value -2147483649 exceeds 32-bit range in union 'NegativeUnion'
-   ┌ test.idl:7:18
-   │
- 5 │             case -1: short minusOne;
- 6 │             case -2147483648: long minInt32;    // -2^31, valid
- 7 │             case -2147483649: long tooNegative; // -(2^31 + 1), exceeds range
-   ·                  ^^^^^^^^^^^ value must fit in 32 bits
- 8 │             case BIG_NEGATIVE: long constNeg;   // Should also error
- 9 │         };
-   └──
+⨯ union-label-range: case label value -2147483649 exceeds 32-bit range in union 'NegativeUnion'
+  @ test.idl:7:18
 
-error[union-label-range]: case label 'BIG_NEGATIVE' exceeds 32-bit range in union 'NegativeUnion'
-   ┌ test.idl:8:18
-   │
- 6 │             case -2147483648: long minInt32;    // -2^31, valid
- 7 │             case -2147483649: long tooNegative; // -(2^31 + 1), exceeds range
- 8 │             case BIG_NEGATIVE: long constNeg;   // Should also error
-   ·                  ^^^^^^^^^^^^ value must fit in 32 bits
- 9 │         };
-   └──
+ 5 │     case -1: short minusOne;
+ 6 │     case -2147483648: long minInt32;    // -2^31, valid
+ 7 │     case -2147483649: long tooNegative; // -(2^31 + 1), exceeds range
+   │          ˆˆˆˆˆˆˆˆˆˆˆ value must fit in 32 bits
+ 8 │     case BIG_NEGATIVE: long constNeg;   // Should also error
+ 9 │ };
+
+⨯ union-label-range: case label 'BIG_NEGATIVE' exceeds 32-bit range in union 'NegativeUnion'
+  @ test.idl:8:18
+
+  6 │     case -2147483648: long minInt32;    // -2^31, valid
+  7 │     case -2147483649: long tooNegative; // -(2^31 + 1), exceeds range
+  8 │     case BIG_NEGATIVE: long constNeg;   // Should also error
+    │          ˆˆˆˆˆˆˆˆˆˆˆˆ value must fit in 32 bits
+  9 │ };

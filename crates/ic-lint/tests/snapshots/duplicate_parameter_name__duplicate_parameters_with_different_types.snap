@@ -2,13 +2,13 @@
 source: crates/ic-lint/tests/duplicate_parameter_name.rs
 expression: test_lint_hir(input)
 ---
-error[duplicate-name]: duplicate parameter `value` in parameter 'method'
-   ┌ test.idl:3:50
-   │
- 2 │         interface TestInterface {
- 3 │             void method(in long value, in string value);
-   ·                                 ^^^^^            ^^^^^ duplicate parameter
-   ·                                 └─ first defined here
- 4 │         };
-   └──
- note: names are case-insensitive
+⨯ duplicate-name: duplicate parameter `value` in parameter 'method'
+  @ test.idl:3:50
+
+ 2 │ interface TestInterface {
+ 3 │     void method(in long value, in string value);
+   │                         ˆˆˆˆˆ            ˆˆˆˆˆ duplicate parameter
+   │                         └─ first defined here
+ 4 │ };
+
+  * names are case-insensitive

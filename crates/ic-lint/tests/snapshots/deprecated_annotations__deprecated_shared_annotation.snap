@@ -2,27 +2,23 @@
 source: crates/ic-lint/tests/deprecated_annotations.rs
 expression: output
 ---
-warning[deprecated-ann]: use of deprecated annotation `@shared`
-   ┌ test.idl:3:14
-   │
- 2 │         struct SharedStruct {
- 3 │             @shared int32 value;
-   ·              ^^^^^^ deprecated annotation used here
- 4 │         };
- 5 │ 
- 6 │         struct ExternalStruct {
-   └──
- help: use `@external` instead
+! deprecated-ann: use of deprecated annotation `@shared`
+  @ test.idl:3:14
 
-warning[deprecated-ann]: use of deprecated annotation `@shared`
-    ┌ test.idl:12:18
-    │
- 10 │         module test_module {
- 11 │             struct NestedShared {
- 12 │                 @shared int32 value;
-    ·                  ^^^^^^ deprecated annotation used here
- 13 │             };
- 14 │ 
- 15 │             struct NestedExternal {
-    └──
- help: use `@external` instead
+ 2 │ struct SharedStruct {
+ 3 │     @shared int32 value;
+   │      ˆˆˆˆˆˆ deprecated annotation used here
+ 4 │ };
+
+  ? use `@external` instead
+
+! deprecated-ann: use of deprecated annotation `@shared`
+  @ test.idl:12:18
+
+ 10 │ module test_module {
+ 11 │     struct NestedShared {
+ 12 │         @shared int32 value;
+    │          ˆˆˆˆˆˆ deprecated annotation used here
+ 13 │     };
+
+  ? use `@external` instead

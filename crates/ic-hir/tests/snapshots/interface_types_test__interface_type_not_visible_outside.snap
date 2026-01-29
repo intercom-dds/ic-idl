@@ -2,12 +2,11 @@
 source: crates/ic-hir/tests/interface_types_test.rs
 expression: diagnostics
 ---
-error: no type named 'InternalData' in this scope
-    ┌ test.idl:10:13
-    │
-  8 │         // This should fail - InternalData is not visible outside Service
-  9 │         struct Container {
- 10 │             InternalData data;
-    ·             ^^^^^^^^^^^^ unknown type
- 11 │         };
-    └──
+⨯: no type named 'InternalData' in this scope
+  @ test.idl:10:13
+
+  8 │ // This should fail - InternalData is not visible outside Service
+  9 │ struct Container {
+ 10 │     InternalData data;
+    │     ˆˆˆˆˆˆˆˆˆˆˆˆ unknown type
+ 11 │ };

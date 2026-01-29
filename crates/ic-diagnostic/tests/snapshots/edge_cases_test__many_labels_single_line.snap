@@ -2,12 +2,11 @@
 source: crates/ic-diagnostic/tests/edge_cases_test.rs
 expression: buf
 ---
-error: too many parameters
-   ┌ test.idl:1:11
-   │
+⨯: too many parameters
+  @ test.idl:1:11
+
  1 │ calculate(a, b, c, d, e, f, g);
-   ·           ^  ^  ^  ^ fourth
-   ·           │  │  └─ third
-   ·           │  └─ second
-   ·           └─ first
-   └──
+   │           ˆ  ˆ  ˆ  ˆ fourth
+   │           │  │  └─ third
+   │           │  └─ second
+   │           └─ first

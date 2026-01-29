@@ -2,27 +2,20 @@
 source: crates/ic-lint/tests/void_ty.rs
 expression: test_lint_hir(source)
 ---
-error[void-ty]: `void` is only allowed as a return type in prototypes
-    ┌ test.idl:7:27
-    │
-  4 │     void validVoidReturn();
-  5 │ 
-  6 │     // Invalid uses of void
-  7 │     void invalidMethod(in void param);
-    ·                           ^^^^ invalid use of `void`
-  8 │ 
-  9 │     // Valid non-void method
- 10 │     long calculate(in long x, in long y);
-    └──
+⨯ void-ty: `void` is only allowed as a return type in prototypes
+  @ test.idl:7:27
 
-error[void-ty]: `void` is only allowed as a return type in prototypes
-    ┌ test.idl:14:5
-    │
- 11 │ };
- 12 │ 
+ 6 │ // Invalid uses of void
+ 7 │ void invalidMethod(in void param);
+   │                       ˆˆˆˆ invalid use of `void`
+ 8 │ 
+ 9 │ // Valid non-void method
+
+⨯ void-ty: `void` is only allowed as a return type in prototypes
+  @ test.idl:14:5
+
  13 │ struct MixedStruct {
  14 │     void invalidField;
-    ·     ^^^^ invalid use of `void`
+    │     ˆˆˆˆ invalid use of `void`
  15 │     long validField;
  16 │ };
-    └──

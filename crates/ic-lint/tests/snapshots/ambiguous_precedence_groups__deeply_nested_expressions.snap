@@ -2,62 +2,58 @@
 source: crates/ic-lint/tests/ambiguous_precedence_groups.rs
 expression: test_lint(idl)
 ---
-warning[ambiguous-precedence]: operator `|` has lower precedence than `^`
-   ┌ test.idl:3:22
-   │
+! ambiguous-precedence: operator `|` has lower precedence than `^`
+  @ test.idl:3:22
+
  2 │ const long test1 = 1 | (2 & (3 ^ (4 + 5)));
  3 │ const long test2 = 1 | 2 & 3 ^ 4 + 5;
-   ·                      ^ ^^^^^^^^^^^^^ than this expression
-   ·                      └─ this operator has lower precedence
+   │                      ˆ ˆˆˆˆˆˆˆˆˆˆˆˆˆ than this expression
+   │                      └─ this operator has lower precedence
  4 │ const long test3 = ((((1 | 2) & 3) ^ 4) + 5);
  5 │ const long test4 = 1 | ((2 & 3) ^ (4 + 5));
-   └──
- help: add parentheses to clarify the intended order of operations
 
-warning[ambiguous-precedence]: operator `^` has lower precedence than `&`
-   ┌ test.idl:3:30
-   │
+  ? add parentheses to clarify the intended order of operations
+
+! ambiguous-precedence: operator `^` has lower precedence than `&`
+  @ test.idl:3:30
+
  2 │ const long test1 = 1 | (2 & (3 ^ (4 + 5)));
  3 │ const long test2 = 1 | 2 & 3 ^ 4 + 5;
-   ·                        ^^^^^ ^ this operator has lower precedence
-   ·                        └─ than this expression
+   │                        ˆˆˆˆˆ ˆ this operator has lower precedence
+   │                        └─ than this expression
  4 │ const long test3 = ((((1 | 2) & 3) ^ 4) + 5);
  5 │ const long test4 = 1 | ((2 & 3) ^ (4 + 5));
-   └──
- help: add parentheses to clarify the intended order of operations
 
-warning[ambiguous-precedence]: operator `^` has lower precedence than `+`
-   ┌ test.idl:3:30
-   │
+  ? add parentheses to clarify the intended order of operations
+
+! ambiguous-precedence: operator `^` has lower precedence than `+`
+  @ test.idl:3:30
+
  2 │ const long test1 = 1 | (2 & (3 ^ (4 + 5)));
  3 │ const long test2 = 1 | 2 & 3 ^ 4 + 5;
-   ·                              ^ ^^^^^ than this expression
-   ·                              └─ this operator has lower precedence
+   │                              ˆ ˆˆˆˆˆ than this expression
+   │                              └─ this operator has lower precedence
  4 │ const long test3 = ((((1 | 2) & 3) ^ 4) + 5);
  5 │ const long test4 = 1 | ((2 & 3) ^ (4 + 5));
-   └──
- help: add parentheses to clarify the intended order of operations
 
-warning[ambiguous-precedence]: operator `|` has lower precedence than `^`
-   ┌ test.idl:8:22
-   │
- 5 │ const long test4 = 1 | ((2 & 3) ^ (4 + 5));
- 6 │ 
+  ? add parentheses to clarify the intended order of operations
+
+! ambiguous-precedence: operator `|` has lower precedence than `^`
+  @ test.idl:8:22
+
  7 │ const long test5 = (1 | 2) & ((3 ^ 4) + 5);
  8 │ const long test6 = 1 | (2 & 3) ^ 4 + 5;
-   ·                      ^ ^^^^^^^^^^^^^^^ than this expression
-   ·                      └─ this operator has lower precedence
-   └──
- help: add parentheses to clarify the intended order of operations
+   │                      ˆ ˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆ than this expression
+   │                      └─ this operator has lower precedence
 
-warning[ambiguous-precedence]: operator `^` has lower precedence than `+`
-   ┌ test.idl:8:32
-   │
- 5 │ const long test4 = 1 | ((2 & 3) ^ (4 + 5));
- 6 │ 
+  ? add parentheses to clarify the intended order of operations
+
+! ambiguous-precedence: operator `^` has lower precedence than `+`
+  @ test.idl:8:32
+
  7 │ const long test5 = (1 | 2) & ((3 ^ 4) + 5);
  8 │ const long test6 = 1 | (2 & 3) ^ 4 + 5;
-   ·                                ^ ^^^^^ than this expression
-   ·                                └─ this operator has lower precedence
-   └──
- help: add parentheses to clarify the intended order of operations
+   │                                ˆ ˆˆˆˆˆ than this expression
+   │                                └─ this operator has lower precedence
+
+  ? add parentheses to clarify the intended order of operations

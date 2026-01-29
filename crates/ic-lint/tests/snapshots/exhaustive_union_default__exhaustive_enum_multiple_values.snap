@@ -2,21 +2,23 @@
 source: crates/ic-lint/tests/exhaustive_union_default.rs
 expression: test_lint_hir(source)
 ---
-error[exhaustive-union-default]: default case is not allowed when all enum values are covered in union `ColorData`
-     ┌ test.idl:8:1
-     │
-   5 │     BLUE
-   6 │ };
-   7 │ 
-   8 │ union ColorData switch(Color) {
-     · ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ exhausted all possible values
-   9 │ case RED:
-  10 │     long red_value;
- ··· │
-  15 │ default:
-  16 │     long other_value;  // Error: all enum values covered
-  17 │ };
-     · ^^
-     └──
- help: all 3 enumerators of 'Color' are already handled by explicit cases
- note: default cases are only allowed when some discriminator values are not explicitly handled
+⨯ exhaustive-union-default: default case is not allowed when all enum values are covered in union `ColorData`
+  @ test.idl:8:1
+
+  6 │ };
+  7 │ 
+  8 │ union ColorData switch(Color) {
+    │ ˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆ exhausted all possible values
+  9 │ case RED:
+ 10 │     long red_value;
+ 11 │ case GREEN:
+ 12 │     long green_value;
+ 13 │ case BLUE:
+ 14 │     long blue_value;
+ 15 │ default:
+ 16 │     long other_value;  // Error: all enum values covered
+ 17 │ };
+    │ ˆˆ
+
+  ? all 3 enumerators of 'Color' are already handled by explicit cases
+  * default cases are only allowed when some discriminator values are not explicitly handled

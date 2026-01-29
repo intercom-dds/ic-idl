@@ -2,10 +2,10 @@
 source: crates/ic-lint/tests/any_type.rs
 expression: test_lint_hir(source)
 ---
-warning[any-type]: the 'any' type is not fully supported
-   ┌ test.idl:2:17
-   │
- 2 │         typedef any AnyArray[10];
-   ·                 ^^^ 'any' type used here
-   └──
- help: consider using a concrete type
+! any-type: the 'any' type is not fully supported
+  @ test.idl:2:17
+
+ 2 │ typedef any AnyArray[10];
+   │         ˆˆˆ 'any' type used here
+
+  ? consider using a concrete type

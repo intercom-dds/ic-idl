@@ -2,9 +2,8 @@
 source: crates/ic-diagnostic/tests/tab_test.rs
 expression: buf
 ---
-error: trailing tab
-   ┌ test.rs:1:12
-   │
+⨯: trailing tab
+  @ test.rs:1:12
+
  1 │ int x = 42;
-   ·  tab here
-   └──
+   │  tab here

@@ -2,15 +2,14 @@
 source: crates/ic-lint/tests/multiple_default_cases.rs
 expression: test_lint_hir(source)
 ---
-error[multiple-default-cases]: union `MyUnion` has 2 default cases, but only one is allowed
-   ┌ test.idl:3:21
-   │
+⨯ multiple-default-cases: union `MyUnion` has 2 default cases, but only one is allowed
+  @ test.idl:3:21
+
  2 │ union MyUnion switch(long) {
  3 │     default: string s;  // Default at beginning
-   ·                     ^ first default case here
+   │                     ˆ first default case here
  4 │     case 1: long x;
  5 │     case 2: float f;
  6 │     default: double d;  // Error: second default
-   ·                     ^ additional default case here
+   │                     ˆ additional default case here
  7 │ };
-   └──

@@ -2,62 +2,58 @@
 source: crates/ic-lint/tests/scoped_lit.rs
 expression: test_lint(source)
 ---
-warning[assign-expr]: assignment operator on bitmask flags is non-standard
-   ┌ test.idl:3:20
-   │
- 2 │         bitmask Permissions {
- 3 │             READ = 0x01,
-   ·                    ^^^^ non-standard assignment
- 4 │             WRITE = 0x02,
- 5 │             EXECUTE = 0x04
-   └──
- help: use the `@position` annotation instead
+! assign-expr: assignment operator on bitmask flags is non-standard
+  @ test.idl:3:20
 
-warning[assign-expr]: assignment operator on bitmask flags is non-standard
-   ┌ test.idl:4:21
-   │
- 2 │         bitmask Permissions {
- 3 │             READ = 0x01,
- 4 │             WRITE = 0x02,
-   ·                     ^^^^ non-standard assignment
- 5 │             EXECUTE = 0x04
- 6 │         };
-   └──
- help: use the `@position` annotation instead
+ 2 │ bitmask Permissions {
+ 3 │     READ = 0x01,
+   │            ˆˆˆˆ non-standard assignment
+ 4 │     WRITE = 0x02,
+ 5 │     EXECUTE = 0x04
 
-warning[assign-expr]: assignment operator on bitmask flags is non-standard
-   ┌ test.idl:5:23
-   │
- 3 │             READ = 0x01,
- 4 │             WRITE = 0x02,
- 5 │             EXECUTE = 0x04
-   ·                       ^^^^ non-standard assignment
- 6 │         };
+  ? use the `@position` annotation instead
+
+! assign-expr: assignment operator on bitmask flags is non-standard
+  @ test.idl:4:21
+
+ 2 │ bitmask Permissions {
+ 3 │     READ = 0x01,
+ 4 │     WRITE = 0x02,
+   │             ˆˆˆˆ non-standard assignment
+ 5 │     EXECUTE = 0x04
+ 6 │ };
+
+  ? use the `@position` annotation instead
+
+! assign-expr: assignment operator on bitmask flags is non-standard
+  @ test.idl:5:23
+
+ 3 │     READ = 0x01,
+ 4 │     WRITE = 0x02,
+ 5 │     EXECUTE = 0x04
+   │               ˆˆˆˆ non-standard assignment
+ 6 │ };
+
+  ? use the `@position` annotation instead
+
+! scoped-lit: scoped bitmasks are non-standard
+  @ test.idl:8:43
+
+ 6 │ };
  7 │ 
- 8 │         const Permissions DEFAULT_PERMS = Permissions::READ | Permissions::WRITE;
-   └──
- help: use the `@position` annotation instead
+ 8 │ const Permissions DEFAULT_PERMS = Permissions::READ | Permissions::WRITE;
+   │                                   ˆˆˆˆˆˆˆˆˆˆˆ used here
 
-warning[scoped-lit]: scoped bitmasks are non-standard
-   ┌ test.idl:8:43
-   │
- 5 │             EXECUTE = 0x04
- 6 │         };
- 7 │ 
- 8 │         const Permissions DEFAULT_PERMS = Permissions::READ | Permissions::WRITE;
-   ·                                           ^^^^^^^^^^^ used here
-   └──
- help: use `READ` instead of `Permissions::READ`
- note: bitmask flags are registered in the parent scope
+  ? use `READ` instead of `Permissions::READ`
+  * bitmask flags are registered in the parent scope
 
-warning[scoped-lit]: scoped bitmasks are non-standard
-   ┌ test.idl:8:63
-   │
- 5 │             EXECUTE = 0x04
- 6 │         };
+! scoped-lit: scoped bitmasks are non-standard
+  @ test.idl:8:63
+
+ 6 │ };
  7 │ 
- 8 │         const Permissions DEFAULT_PERMS = Permissions::READ | Permissions::WRITE;
-   ·                                                               ^^^^^^^^^^^ used here
-   └──
- help: use `WRITE` instead of `Permissions::WRITE`
- note: bitmask flags are registered in the parent scope
+ 8 │ const Permissions DEFAULT_PERMS = Permissions::READ | Permissions::WRITE;
+   │                                                       ˆˆˆˆˆˆˆˆˆˆˆ used here
+
+  ? use `WRITE` instead of `Permissions::WRITE`
+  * bitmask flags are registered in the parent scope

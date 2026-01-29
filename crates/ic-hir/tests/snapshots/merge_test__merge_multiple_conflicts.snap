@@ -2,58 +2,50 @@
 source: crates/ic-hir/tests/merge_test.rs
 expression: output
 ---
-error: conflicting definitions for `Point`
-   ┌ shapes.idl:2:8
-   │
- 2 │ struct Point { long x; };
-   ·        ^^^^^ first defined here
- 3 │ enum Color { RED, GREEN };
-   └──
-   ┌ graphics.idl:2:8
-   │
- 2 │ struct Point { long x; long y; };
-   ·        ^^^^^ redefined here
- 3 │ enum Color { RED, GREEN, BLUE };
-   └──
+⨯: conflicting definitions for `Point`
+  @ shapes.idl:2:8
 
-error: conflicting definitions for `Color`
-   ┌ shapes.idl:3:6
-   │
  2 │ struct Point { long x; };
+   │        ˆˆˆˆˆ first defined here
  3 │ enum Color { RED, GREEN };
-   ·      ^^^^^ first defined here
-   └──
-   ┌ graphics.idl:3:6
-   │
- 2 │ struct Point { long x; long y; };
- 3 │ enum Color { RED, GREEN, BLUE };
-   ·      ^^^^^ redefined here
-   └──
+  @ graphics.idl:2:8
 
-error: conflicting definitions for `RED`
-   ┌ shapes.idl:3:14
-   │
- 2 │ struct Point { long x; };
- 3 │ enum Color { RED, GREEN };
-   ·              ^^^ first defined here
-   └──
-   ┌ graphics.idl:3:14
-   │
  2 │ struct Point { long x; long y; };
+   │        ˆˆˆˆˆ redefined here
  3 │ enum Color { RED, GREEN, BLUE };
-   ·              ^^^ redefined here
-   └──
 
-error: conflicting definitions for `GREEN`
-   ┌ shapes.idl:3:19
-   │
+⨯: conflicting definitions for `Color`
+  @ shapes.idl:3:6
+
  2 │ struct Point { long x; };
  3 │ enum Color { RED, GREEN };
-   ·                   ^^^^^ first defined here
-   └──
-   ┌ graphics.idl:3:19
-   │
+   │      ˆˆˆˆˆ first defined here
+  @ graphics.idl:3:6
+
  2 │ struct Point { long x; long y; };
  3 │ enum Color { RED, GREEN, BLUE };
-   ·                   ^^^^^ redefined here
-   └──
+   │      ˆˆˆˆˆ redefined here
+
+⨯: conflicting definitions for `RED`
+  @ shapes.idl:3:14
+
+ 2 │ struct Point { long x; };
+ 3 │ enum Color { RED, GREEN };
+   │              ˆˆˆ first defined here
+  @ graphics.idl:3:14
+
+ 2 │ struct Point { long x; long y; };
+ 3 │ enum Color { RED, GREEN, BLUE };
+   │              ˆˆˆ redefined here
+
+⨯: conflicting definitions for `GREEN`
+  @ shapes.idl:3:19
+
+ 2 │ struct Point { long x; };
+ 3 │ enum Color { RED, GREEN };
+   │                   ˆˆˆˆˆ first defined here
+  @ graphics.idl:3:19
+
+ 2 │ struct Point { long x; long y; };
+ 3 │ enum Color { RED, GREEN, BLUE };
+   │                   ˆˆˆˆˆ redefined here

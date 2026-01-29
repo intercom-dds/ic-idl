@@ -2,58 +2,51 @@
 source: crates/ic-lint/tests/unknown_annotation.rs
 expression: output
 ---
-warning[unknown-ann]: unknown annotation `UnknownBitmask`
-   ┌ test.idl:2:10
-   │
- 2 │         @UnknownBitmask
-   ·          ^^^^^^^^^^^^^^ annotation not found
- 3 │         bitmask Flags {
- 4 │             @UnknownFlag
-   └──
+! unknown-ann: unknown annotation `UnknownBitmask`
+  @ test.idl:2:10
 
-warning[unknown-ann]: unknown annotation `UnknownFlag`
-   ┌ test.idl:4:14
-   │
- 2 │         @UnknownBitmask
- 3 │         bitmask Flags {
- 4 │             @UnknownFlag
-   ·              ^^^^^^^^^^^ annotation not found
- 5 │             FLAG_A,
- 6 │             FLAG_B
-   └──
+ 2 │ @UnknownBitmask
+   │  ˆˆˆˆˆˆˆˆˆˆˆˆˆˆ annotation not found
+ 3 │ bitmask Flags {
+ 4 │     @UnknownFlag
 
-warning[unknown-ann]: unknown annotation `UnknownBitset`
-    ┌ test.idl:9:10
-    │
-  6 │             FLAG_B
-  7 │         };
+! unknown-ann: unknown annotation `UnknownFlag`
+  @ test.idl:4:14
+
+ 2 │ @UnknownBitmask
+ 3 │ bitmask Flags {
+ 4 │     @UnknownFlag
+   │      ˆˆˆˆˆˆˆˆˆˆˆ annotation not found
+ 5 │     FLAG_A,
+ 6 │     FLAG_B
+
+! unknown-ann: unknown annotation `UnknownBitset`
+  @ test.idl:9:10
+
+  7 │ };
   8 │ 
-  9 │         @UnknownBitset
-    ·          ^^^^^^^^^^^^^ annotation not found
- 10 │         bitset Configuration {
- 11 │             @UnknownField
-    └──
+  9 │ @UnknownBitset
+    │  ˆˆˆˆˆˆˆˆˆˆˆˆˆ annotation not found
+ 10 │ bitset Configuration {
+ 11 │     @UnknownField
 
-warning[unknown-ann]: unknown annotation `UnknownField`
-    ┌ test.idl:11:14
-    │
-  9 │         @UnknownBitset
- 10 │         bitset Configuration {
- 11 │             @UnknownField
-    ·              ^^^^^^^^^^^^ annotation not found
- 12 │             bitfield<3, unsigned short> mode;
- 13 │         };
-    └──
+! unknown-ann: unknown annotation `UnknownField`
+  @ test.idl:11:14
 
-warning[bitset]: bitsets are not supported
-    ┌ test.idl:10:16
-    │
-  7 │         };
-  8 │ 
-  9 │         @UnknownBitset
- 10 │         bitset Configuration {
-    ·                ^^^^^^^^^^^^^ defined here
- 11 │             @UnknownField
- 12 │             bitfield<3, unsigned short> mode;
-    └──
- note: the bitset will be skipped during codegen
+  9 │ @UnknownBitset
+ 10 │ bitset Configuration {
+ 11 │     @UnknownField
+    │      ˆˆˆˆˆˆˆˆˆˆˆˆ annotation not found
+ 12 │     bitfield<3, unsigned short> mode;
+ 13 │ };
+
+! bitset: bitsets are not supported
+  @ test.idl:10:16
+
+  9 │ @UnknownBitset
+ 10 │ bitset Configuration {
+    │        ˆˆˆˆˆˆˆˆˆˆˆˆˆ defined here
+ 11 │     @UnknownField
+ 12 │     bitfield<3, unsigned short> mode;
+
+  * the bitset will be skipped during codegen

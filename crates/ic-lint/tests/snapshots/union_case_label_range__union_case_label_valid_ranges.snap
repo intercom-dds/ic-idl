@@ -2,13 +2,12 @@
 source: crates/ic-lint/tests/union_case_label_range.rs
 expression: output
 ---
-error: integer value out of range for 'int32'
-   ┌ test.idl:6:18
-   │
- 4 │             case 2147483647: long maxInt32;     // 2^31 - 1
- 5 │             case -2147483648: long minInt32;    // -2^31
- 6 │             case 4294967295: long maxUint32;    // 2^32 - 1
-   ·                  ^^^^^^^^^^ out of range
- 7 │             default: boolean other;
- 8 │         };
-   └──
+⨯: integer value out of range for 'int32'
+  @ test.idl:6:18
+
+ 4 │     case 2147483647: long maxInt32;     // 2^31 - 1
+ 5 │     case -2147483648: long minInt32;    // -2^31
+ 6 │     case 4294967295: long maxUint32;    // 2^32 - 1
+   │          ˆˆˆˆˆˆˆˆˆˆ out of range
+ 7 │     default: boolean other;
+ 8 │ };

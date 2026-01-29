@@ -2,13 +2,12 @@
 source: crates/ic-diagnostic/tests/edge_cases_test.rs
 expression: buf
 ---
-error: span across empty lines
-   ┌ test.idl:1:17
-   │
+⨯: span across empty lines
+  @ test.idl:1:17
+
  1 │ interface Test {
-   ·  includes empty lines
+   │  includes empty lines
  2 │ 
  3 │     void method();
  4 │ 
  5 │ }
-   └──

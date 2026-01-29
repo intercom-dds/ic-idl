@@ -2,130 +2,130 @@
 source: crates/ic-lint/tests/keywords.rs
 expression: test_lint(source)
 ---
-error[keywords]: `component` is a keyword and may not be used as an identifier
-   ┌ test.idl:3:10
-   │
+⨯ keywords: `component` is a keyword and may not be used as an identifier
+  @ test.idl:3:10
+
  2 │ interface ComponentTest {
  3 │     void component();       // 'component' is a keyword
-   ·          ^^^^^^^^^ this is an IDL keyword
+   │          ˆˆˆˆˆˆˆˆˆ this is an IDL keyword
  4 │     void connector();       // 'connector' is a keyword
  5 │     void port();            // 'port' is a keyword
-   └──
- help: the keyword can be escaped by changing to `_component`
- note: keywords are matched case-insensitively against identifiers
 
-error[keywords]: `connector` is a keyword and may not be used as an identifier
-   ┌ test.idl:4:10
-   │
+  ? the keyword can be escaped by changing to `_component`
+  * keywords are matched case-insensitively against identifiers
+
+⨯ keywords: `connector` is a keyword and may not be used as an identifier
+  @ test.idl:4:10
+
  2 │ interface ComponentTest {
  3 │     void component();       // 'component' is a keyword
  4 │     void connector();       // 'connector' is a keyword
-   ·          ^^^^^^^^^ this is an IDL keyword
+   │          ˆˆˆˆˆˆˆˆˆ this is an IDL keyword
  5 │     void port();            // 'port' is a keyword
  6 │     void porttype();        // 'porttype' is a keyword
-   └──
- help: the keyword can be escaped by changing to `_connector`
- note: keywords are matched case-insensitively against identifiers
 
-error[keywords]: `port` is a keyword and may not be used as an identifier
-   ┌ test.idl:5:10
-   │
- 3 │     void component();       // 'component' is a keyword
- 4 │     void connector();       // 'connector' is a keyword
- 5 │     void port();            // 'port' is a keyword
-   ·          ^^^^ this is an IDL keyword
- 6 │     void porttype();        // 'porttype' is a keyword
- 7 │     void mirrorport();      // 'mirrorport' is a keyword
-   └──
- help: the keyword can be escaped by changing to `_port`
- note: keywords are matched case-insensitively against identifiers
+  ? the keyword can be escaped by changing to `_connector`
+  * keywords are matched case-insensitively against identifiers
 
-error[keywords]: `porttype` is a keyword and may not be used as an identifier
-   ┌ test.idl:6:10
-   │
- 4 │     void connector();       // 'connector' is a keyword
- 5 │     void port();            // 'port' is a keyword
- 6 │     void porttype();        // 'porttype' is a keyword
-   ·          ^^^^^^^^ this is an IDL keyword
- 7 │     void mirrorport();      // 'mirrorport' is a keyword
- 8 │     void provides();        // 'provides' is a keyword
-   └──
- help: the keyword can be escaped by changing to `_porttype`
- note: keywords are matched case-insensitively against identifiers
+⨯ keywords: `port` is a keyword and may not be used as an identifier
+  @ test.idl:5:10
 
-error[keywords]: `mirrorport` is a keyword and may not be used as an identifier
-   ┌ test.idl:7:10
-   │
- 5 │     void port();            // 'port' is a keyword
- 6 │     void porttype();        // 'porttype' is a keyword
- 7 │     void mirrorport();      // 'mirrorport' is a keyword
-   ·          ^^^^^^^^^^ this is an IDL keyword
- 8 │     void provides();        // 'provides' is a keyword
- 9 │     void uses();            // 'uses' is a keyword
-   └──
- help: the keyword can be escaped by changing to `_mirrorport`
- note: keywords are matched case-insensitively against identifiers
+ 3 │ void component();       // 'component' is a keyword
+ 4 │ void connector();       // 'connector' is a keyword
+ 5 │ void port();            // 'port' is a keyword
+   │      ˆˆˆˆ this is an IDL keyword
+ 6 │ void porttype();        // 'porttype' is a keyword
+ 7 │ void mirrorport();      // 'mirrorport' is a keyword
 
-error[keywords]: `provides` is a keyword and may not be used as an identifier
-    ┌ test.idl:8:10
-    │
-  6 │     void porttype();        // 'porttype' is a keyword
-  7 │     void mirrorport();      // 'mirrorport' is a keyword
-  8 │     void provides();        // 'provides' is a keyword
-    ·          ^^^^^^^^ this is an IDL keyword
+  ? the keyword can be escaped by changing to `_port`
+  * keywords are matched case-insensitively against identifiers
+
+⨯ keywords: `porttype` is a keyword and may not be used as an identifier
+  @ test.idl:6:10
+
+ 4 │ void connector();       // 'connector' is a keyword
+ 5 │ void port();            // 'port' is a keyword
+ 6 │ void porttype();        // 'porttype' is a keyword
+   │      ˆˆˆˆˆˆˆˆ this is an IDL keyword
+ 7 │ void mirrorport();      // 'mirrorport' is a keyword
+ 8 │ void provides();        // 'provides' is a keyword
+
+  ? the keyword can be escaped by changing to `_porttype`
+  * keywords are matched case-insensitively against identifiers
+
+⨯ keywords: `mirrorport` is a keyword and may not be used as an identifier
+  @ test.idl:7:10
+
+ 5 │ void port();            // 'port' is a keyword
+ 6 │ void porttype();        // 'porttype' is a keyword
+ 7 │ void mirrorport();      // 'mirrorport' is a keyword
+   │      ˆˆˆˆˆˆˆˆˆˆ this is an IDL keyword
+ 8 │ void provides();        // 'provides' is a keyword
+ 9 │ void uses();            // 'uses' is a keyword
+
+  ? the keyword can be escaped by changing to `_mirrorport`
+  * keywords are matched case-insensitively against identifiers
+
+⨯ keywords: `provides` is a keyword and may not be used as an identifier
+  @ test.idl:8:10
+
+  6 │ void porttype();        // 'porttype' is a keyword
+  7 │ void mirrorport();      // 'mirrorport' is a keyword
+  8 │ void provides();        // 'provides' is a keyword
+    │      ˆˆˆˆˆˆˆˆ this is an IDL keyword
+  9 │ void uses();            // 'uses' is a keyword
+ 10 │ void publishes();       // 'publishes' is a keyword
+
+  ? the keyword can be escaped by changing to `_provides`
+  * keywords are matched case-insensitively against identifiers
+
+⨯ keywords: `uses` is a keyword and may not be used as an identifier
+  @ test.idl:9:10
+
+  7 │ void mirrorport();      // 'mirrorport' is a keyword
+  8 │ void provides();        // 'provides' is a keyword
+  9 │ void uses();            // 'uses' is a keyword
+    │      ˆˆˆˆ this is an IDL keyword
+ 10 │ void publishes();       // 'publishes' is a keyword
+ 11 │ void emits();           // 'emits' is a keyword
+
+  ? the keyword can be escaped by changing to `_uses`
+  * keywords are matched case-insensitively against identifiers
+
+⨯ keywords: `publishes` is a keyword and may not be used as an identifier
+  @ test.idl:10:10
+
+  8 │ void provides();        // 'provides' is a keyword
+  9 │ void uses();            // 'uses' is a keyword
+ 10 │ void publishes();       // 'publishes' is a keyword
+    │      ˆˆˆˆˆˆˆˆˆ this is an IDL keyword
+ 11 │ void emits();           // 'emits' is a keyword
+ 12 │ void consumes();        // 'consumes' is a keyword
+
+  ? the keyword can be escaped by changing to `_publishes`
+  * keywords are matched case-insensitively against identifiers
+
+⨯ keywords: `emits` is a keyword and may not be used as an identifier
+  @ test.idl:11:10
+
   9 │     void uses();            // 'uses' is a keyword
- 10 │     void publishes();       // 'publishes' is a keyword
-    └──
- help: the keyword can be escaped by changing to `_provides`
- note: keywords are matched case-insensitively against identifiers
-
-error[keywords]: `uses` is a keyword and may not be used as an identifier
-    ┌ test.idl:9:10
-    │
-  7 │     void mirrorport();      // 'mirrorport' is a keyword
-  8 │     void provides();        // 'provides' is a keyword
-  9 │     void uses();            // 'uses' is a keyword
-    ·          ^^^^ this is an IDL keyword
  10 │     void publishes();       // 'publishes' is a keyword
  11 │     void emits();           // 'emits' is a keyword
-    └──
- help: the keyword can be escaped by changing to `_uses`
- note: keywords are matched case-insensitively against identifiers
-
-error[keywords]: `publishes` is a keyword and may not be used as an identifier
-    ┌ test.idl:10:10
-    │
-  8 │     void provides();        // 'provides' is a keyword
-  9 │     void uses();            // 'uses' is a keyword
- 10 │     void publishes();       // 'publishes' is a keyword
-    ·          ^^^^^^^^^ this is an IDL keyword
- 11 │     void emits();           // 'emits' is a keyword
- 12 │     void consumes();        // 'consumes' is a keyword
-    └──
- help: the keyword can be escaped by changing to `_publishes`
- note: keywords are matched case-insensitively against identifiers
-
-error[keywords]: `emits` is a keyword and may not be used as an identifier
-    ┌ test.idl:11:10
-    │
-  9 │     void uses();            // 'uses' is a keyword
- 10 │     void publishes();       // 'publishes' is a keyword
- 11 │     void emits();           // 'emits' is a keyword
-    ·          ^^^^^ this is an IDL keyword
+    │          ˆˆˆˆˆ this is an IDL keyword
  12 │     void consumes();        // 'consumes' is a keyword
  13 │ };
-    └──
- help: the keyword can be escaped by changing to `_emits`
- note: keywords are matched case-insensitively against identifiers
 
-error[keywords]: `consumes` is a keyword and may not be used as an identifier
-    ┌ test.idl:12:10
-    │
+  ? the keyword can be escaped by changing to `_emits`
+  * keywords are matched case-insensitively against identifiers
+
+⨯ keywords: `consumes` is a keyword and may not be used as an identifier
+  @ test.idl:12:10
+
  10 │     void publishes();       // 'publishes' is a keyword
  11 │     void emits();           // 'emits' is a keyword
  12 │     void consumes();        // 'consumes' is a keyword
-    ·          ^^^^^^^^ this is an IDL keyword
+    │          ˆˆˆˆˆˆˆˆ this is an IDL keyword
  13 │ };
-    └──
- help: the keyword can be escaped by changing to `_consumes`
- note: keywords are matched case-insensitively against identifiers
+
+  ? the keyword can be escaped by changing to `_consumes`
+  * keywords are matched case-insensitively against identifiers

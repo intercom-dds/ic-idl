@@ -2,21 +2,20 @@
 source: crates/ic-lint/tests/duplicate_methods.rs
 expression: test_lint_hir(source)
 ---
-error[duplicate-name]: interface `C` inherits conflicting definitions of method `method`
-    ┌ test.idl:10:11
-    │
-  2 │ interface A {
-  3 │     void method();
-    ·          ^^^^^^ defined in `A`
-  4 │ };
-  5 │ 
+⨯ duplicate-name: interface `C` inherits conflicting definitions of method `method`
+  @ test.idl:10:11
+
   6 │ interface B {
   7 │     long method();  // Different return type
-    ·          ^^^^^^ defined in `B`
+    │          ˆˆˆˆˆˆ defined in `B`
   8 │ };
   9 │ 
  10 │ interface C : A, B {  // Error: inherits conflicting methods
-    ·           ^ interface with conflicting inherited methods
+    │           ˆ interface with conflicting inherited methods
  11 │ };
-    └──
- note: method names are case-insensitive
+  2 │ interface A {
+  3 │     void method();
+    │          ˆˆˆˆˆˆ defined in `A`
+  4 │ };
+
+  * method names are case-insensitive

@@ -2,11 +2,10 @@
 source: crates/ic-hir/tests/const_type_mismatch_test.rs
 expression: output
 ---
-error: constant 'MY_STR' of type string cannot be assigned to int32
-   ┌ test.idl:3:27
-   │
- 2 │         const string MY_STR = "foo";
-   ·                      ^^^^^^ 'MY_STR' declared as string here
- 3 │         const int32 FOO = MY_STR;
-   ·                           ^^^^^^ incompatible types
-   └──
+⨯: constant 'MY_STR' of type string cannot be assigned to int32
+  @ test.idl:3:27
+
+ 2 │ const string MY_STR = "foo";
+   │              ˆˆˆˆˆˆ 'MY_STR' declared as string here
+ 3 │ const int32 FOO = MY_STR;
+   │                   ˆˆˆˆˆˆ incompatible types

@@ -2,22 +2,22 @@
 source: crates/ic-lint/tests/long_double.rs
 expression: "test_lint_hir(r\"\ninterface Calculator {\n    long double compute(in long double input);\n};\n\")"
 ---
-warning[long-double]: long double is not supported
-   ┌ test.idl:3:5
-   │
- 2 │ interface Calculator {
- 3 │     long double compute(in long double input);
-   ·     ^^^^^^^^^^^ used here
- 4 │ };
-   └──
- note: long double will be treated as a normal double during codegen
+! long-double: long double is not supported
+  @ test.idl:3:5
 
-warning[long-double]: long double is not supported
-   ┌ test.idl:3:28
-   │
  2 │ interface Calculator {
  3 │     long double compute(in long double input);
-   ·                            ^^^^^^^^^^^ used here
+   │     ˆˆˆˆˆˆˆˆˆˆˆ used here
  4 │ };
-   └──
- note: long double will be treated as a normal double during codegen
+
+  * long double will be treated as a normal double during codegen
+
+! long-double: long double is not supported
+  @ test.idl:3:28
+
+ 2 │ interface Calculator {
+ 3 │     long double compute(in long double input);
+   │                            ˆˆˆˆˆˆˆˆˆˆˆ used here
+ 4 │ };
+
+  * long double will be treated as a normal double during codegen

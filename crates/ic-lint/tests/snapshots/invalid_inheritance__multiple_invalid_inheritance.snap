@@ -2,88 +2,66 @@
 source: crates/ic-lint/tests/invalid_inheritance.rs
 expression: "common::test_lint_hir(idl)"
 ---
-error[invalid-inheritance]: struct `BadStruct1` cannot inherit from enum `Color`
-   ┌ test.idl:6:16
-   │
- 3 │         union Status switch(long) { case 1: string s; };
- 4 │ 
- 5 │         // Multiple inheritance violations in one file
- 6 │         struct BadStruct1 : Color { long x; };
-   ·                ^^^^^^^^^^ structs can only inherit from other structs
- 7 │         struct BadStruct2 : Status { long y; };
+⨯ invalid-inheritance: struct `BadStruct1` cannot inherit from enum `Color`
+  @ test.idl:6:16
+
+ 5 │ // Multiple inheritance violations in one file
+ 6 │ struct BadStruct1 : Color { long x; };
+   │        ˆˆˆˆˆˆˆˆˆˆ structs can only inherit from other structs
+ 7 │ struct BadStruct2 : Status { long y; };
+
+⨯ invalid-inheritance: struct `BadStruct2` cannot inherit from union `Status`
+  @ test.idl:7:16
+
+ 5 │ // Multiple inheritance violations in one file
+ 6 │ struct BadStruct1 : Color { long x; };
+ 7 │ struct BadStruct2 : Status { long y; };
+   │        ˆˆˆˆˆˆˆˆˆˆ structs can only inherit from other structs
  8 │ 
- 9 │         interface BadInterface : Color { void method(); };
-   └──
+ 9 │ interface BadInterface : Color { void method(); };
 
-error[invalid-inheritance]: struct `BadStruct2` cannot inherit from union `Status`
-    ┌ test.idl:7:16
-    │
-  5 │         // Multiple inheritance violations in one file
-  6 │         struct BadStruct1 : Color { long x; };
-  7 │         struct BadStruct2 : Status { long y; };
-    ·                ^^^^^^^^^^ structs can only inherit from other structs
+⨯ invalid-inheritance: interface `BadInterface` cannot inherit from enum `Color`
+  @ test.idl:9:19
+
+  7 │ struct BadStruct2 : Status { long y; };
   8 │ 
-  9 │         interface BadInterface : Color { void method(); };
+  9 │ interface BadInterface : Color { void method(); };
+    │           ˆˆˆˆˆˆˆˆˆˆˆˆ interfaces can only inherit from other interfaces
  10 │ 
- 11 │         valuetype BadValue : Color { public long z; };
-    └──
+ 11 │ valuetype BadValue : Color { public long z; };
 
-error[invalid-inheritance]: interface `BadInterface` cannot inherit from enum `Color`
-    ┌ test.idl:9:19
-    │
-  6 │         struct BadStruct1 : Color { long x; };
-  7 │         struct BadStruct2 : Status { long y; };
-  8 │ 
-  9 │         interface BadInterface : Color { void method(); };
-    ·                   ^^^^^^^^^^^^ interfaces can only inherit from other interfaces
+⨯ invalid-inheritance: valuetype `BadValue` cannot inherit from enum `Color`
+  @ test.idl:11:19
+
+  9 │ interface BadInterface : Color { void method(); };
  10 │ 
- 11 │         valuetype BadValue : Color { public long z; };
- 12 │         valuetype BadValue2 supports Status { public long w; };
-    └──
+ 11 │ valuetype BadValue : Color { public long z; };
+    │           ˆˆˆˆˆˆˆˆ valuetypes can only inherit from other valuetypes
+ 12 │ valuetype BadValue2 supports Status { public long w; };
 
-error[invalid-inheritance]: valuetype `BadValue` cannot inherit from enum `Color`
-    ┌ test.idl:11:19
-    │
-  7 │         struct BadStruct2 : Status { long y; };
-  8 │ 
-  9 │         interface BadInterface : Color { void method(); };
- 10 │ 
- 11 │         valuetype BadValue : Color { public long z; };
-    ·                   ^^^^^^^^ valuetypes can only inherit from other valuetypes
- 12 │         valuetype BadValue2 supports Status { public long w; };
- 13 │ 
- 14 │         bitset BadBits : Status { bitfield<1> BIT0; };
-    └──
+⨯ invalid-inheritance: bitset `BadBits` cannot inherit from union `Status`
+  @ test.idl:14:16
 
-error[invalid-inheritance]: bitset `BadBits` cannot inherit from union `Status`
-    ┌ test.idl:14:16
-    │
- 11 │         valuetype BadValue : Color { public long z; };
- 12 │         valuetype BadValue2 supports Status { public long w; };
+ 12 │ valuetype BadValue2 supports Status { public long w; };
  13 │ 
- 14 │         bitset BadBits : Status { bitfield<1> BIT0; };
-    ·                ^^^^^^^ bitsets can only inherit from other bitsets
-    └──
+ 14 │ bitset BadBits : Status { bitfield<1> BIT0; };
+    │        ˆˆˆˆˆˆˆ bitsets can only inherit from other bitsets
 
-error: supports must be an interface type
-    ┌ test.idl:12:38
-    │
-  9 │         interface BadInterface : Color { void method(); };
- 10 │ 
- 11 │         valuetype BadValue : Color { public long z; };
- 12 │         valuetype BadValue2 supports Status { public long w; };
-    ·                                      ^^^^^^ expected interface type
- 13 │ 
- 14 │         bitset BadBits : Status { bitfield<1> BIT0; };
-    └──
+⨯: supports must be an interface type
+  @ test.idl:12:38
 
-warning[bitset]: bitsets are not supported
-    ┌ test.idl:14:16
-    │
- 11 │         valuetype BadValue : Color { public long z; };
- 12 │         valuetype BadValue2 supports Status { public long w; };
+ 11 │ valuetype BadValue : Color { public long z; };
+ 12 │ valuetype BadValue2 supports Status { public long w; };
+    │                              ˆˆˆˆˆˆ expected interface type
  13 │ 
- 14 │         bitset BadBits : Status { bitfield<1> BIT0; };
-    ·                ^^^^^^^ defined here
-    └──
- note: the bitset will be skipped during codegen
+ 14 │ bitset BadBits : Status { bitfield<1> BIT0; };
+
+! bitset: bitsets are not supported
+  @ test.idl:14:16
+
+ 12 │ valuetype BadValue2 supports Status { public long w; };
+ 13 │ 
+ 14 │ bitset BadBits : Status { bitfield<1> BIT0; };
+    │        ˆˆˆˆˆˆˆ defined here
+
+  * the bitset will be skipped during codegen

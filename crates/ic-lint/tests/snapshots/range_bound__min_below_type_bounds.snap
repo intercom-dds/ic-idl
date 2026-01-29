@@ -2,14 +2,14 @@
 source: crates/ic-lint/tests/range_bound.rs
 expression: test_lint_hir(source)
 ---
-warning[range-bound]: @min value -1 is less than type minimum 0
-   ┌ test.idl:4:10
-   │
+! range-bound: @min value -1 is less than type minimum 0
+  @ test.idl:4:10
+
  2 │ module MyModule {
  3 │     struct BadMin {
  4 │         @min(-1) char value;  // char min is 0 (ASCII)
-   ·          ^^^ value out of bounds
+   │          ˆˆˆ value out of bounds
  5 │     };
  6 │ };
-   └──
- help: valid range is 0..127
+
+  ? valid range is 0..127

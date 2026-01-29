@@ -2,11 +2,10 @@
 source: crates/ic-diagnostic/tests/debug_overlap_test.rs
 expression: buf
 ---
-error: nested structures
-   ┌ test.idl:1:14
-   │
+⨯: nested structures
+  @ test.idl:1:14
+
  1 │ void process(struct Data { int x; int y; } data);
-   ·              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ struct (should be blue)
-   ·                            │      └─ int y (should be green)
-   ·                            └─ int x (should be yellow)
-   └──
+   │              ˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆ struct (should be blue)
+   │                            │      └─ int y (should be green)
+   │                            └─ int x (should be yellow)

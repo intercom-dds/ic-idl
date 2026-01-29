@@ -1,18 +1,16 @@
 ---
 source: crates/ic-diagnostic/tests/line_padding_test.rs
-assertion_line: 53
 expression: buf
 ---
-error: test error message
-     ┌ test.idl:1:1
-     │
-   1 │ line 1
-     · ^^^^^^ on line 1
-   2 │ line 2
-   3 │ line 3
- ··· │
-   8 │ line 8
-   9 │ line 9
-  10 │ line 10
-     · ^^^^^^^ on line 10
-     └──
+⨯: test error message
+  @ test.idl:1:1
+
+  1 │ line 1
+    │ ˆˆˆˆˆˆ on line 1
+  2 │ line 2
+  3 │ line 3
+  ··· │
+  8 │ line 8
+  9 │ line 9
+ 10 │ line 10
+    │ ˆˆˆˆˆˆˆ on line 10

@@ -2,15 +2,14 @@
 source: crates/ic-lint/tests/duplicate_bitmask_flags.rs
 expression: test_lint_hir(source)
 ---
-error: duplicate definition of `FLAG_1`
-   ┌ test.idl:3:5
-   │
+⨯: duplicate definition of `FLAG_1`
+  @ test.idl:3:5
+
  2 │ bitmask OctalFlags {
  3 │     FLAG_1 = 01,
-   ·     ^^^^^^ originally defined here
+   │     ˆˆˆˆˆˆ originally defined here
  4 │     FLAG_2 = 02,
  5 │     FLAG_1 = 04,  // Duplicate name
-   ·     ^^^^^^ redefined here
+   │     ˆˆˆˆˆˆ redefined here
  6 │     FLAG_3 = 010
  7 │ };
-   └──

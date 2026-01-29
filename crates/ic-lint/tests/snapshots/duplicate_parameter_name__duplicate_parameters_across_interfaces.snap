@@ -2,28 +2,24 @@
 source: crates/ic-lint/tests/duplicate_parameter_name.rs
 expression: test_lint_hir(input)
 ---
-error[duplicate-name]: duplicate parameter `x` in parameter 'method'
-   ┌ test.idl:3:44
-   │
- 2 │         interface InterfaceA {
- 3 │             void method(in long x, in long x);
-   ·                                 ^          ^ duplicate parameter
-   ·                                 └─ first defined here
- 4 │         };
- 5 │ 
- 6 │         interface InterfaceB {
-   └──
- note: names are case-insensitive
+⨯ duplicate-name: duplicate parameter `x` in parameter 'method'
+  @ test.idl:3:44
 
-error[duplicate-name]: duplicate parameter `x` in parameter 'method'
-   ┌ test.idl:7:44
-   │
- 4 │         };
- 5 │ 
- 6 │         interface InterfaceB {
- 7 │             void method(in long x, in long x);
-   ·                                 ^          ^ duplicate parameter
-   ·                                 └─ first defined here
- 8 │         };
-   └──
- note: names are case-insensitive
+ 2 │ interface InterfaceA {
+ 3 │     void method(in long x, in long x);
+   │                         ˆ          ˆ duplicate parameter
+   │                         └─ first defined here
+ 4 │ };
+
+  * names are case-insensitive
+
+⨯ duplicate-name: duplicate parameter `x` in parameter 'method'
+  @ test.idl:7:44
+
+ 6 │ interface InterfaceB {
+ 7 │     void method(in long x, in long x);
+   │                         ˆ          ˆ duplicate parameter
+   │                         └─ first defined here
+ 8 │ };
+
+  * names are case-insensitive

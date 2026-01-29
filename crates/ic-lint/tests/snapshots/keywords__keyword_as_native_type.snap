@@ -2,22 +2,22 @@
 source: crates/ic-lint/tests/keywords.rs
 expression: test_lint(source)
 ---
-error[keywords]: `Object` is a keyword and may not be used as an identifier
-   ┌ test.idl:2:8
-   │
- 2 │ native Object;              // 'Object' is a keyword
-   ·        ^^^^^^ this is an IDL keyword
- 3 │ native ValueBase;           // 'ValueBase' is a keyword
-   └──
- help: the keyword can be escaped by changing to `_Object`
- note: keywords are matched case-insensitively against identifiers
+⨯ keywords: `Object` is a keyword and may not be used as an identifier
+  @ test.idl:2:8
 
-error[keywords]: `ValueBase` is a keyword and may not be used as an identifier
-   ┌ test.idl:3:8
-   │
+ 2 │ native Object;              // 'Object' is a keyword
+   │        ˆˆˆˆˆˆ this is an IDL keyword
+ 3 │ native ValueBase;           // 'ValueBase' is a keyword
+
+  ? the keyword can be escaped by changing to `_Object`
+  * keywords are matched case-insensitively against identifiers
+
+⨯ keywords: `ValueBase` is a keyword and may not be used as an identifier
+  @ test.idl:3:8
+
  2 │ native Object;              // 'Object' is a keyword
  3 │ native ValueBase;           // 'ValueBase' is a keyword
-   ·        ^^^^^^^^^ this is an IDL keyword
-   └──
- help: the keyword can be escaped by changing to `_ValueBase`
- note: keywords are matched case-insensitively against identifiers
+   │        ˆˆˆˆˆˆˆˆˆ this is an IDL keyword
+
+  ? the keyword can be escaped by changing to `_ValueBase`
+  * keywords are matched case-insensitively against identifiers

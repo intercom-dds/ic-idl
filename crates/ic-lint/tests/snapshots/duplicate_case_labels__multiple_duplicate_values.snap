@@ -2,34 +2,31 @@
 source: crates/ic-lint/tests/duplicate_case_labels.rs
 expression: test_lint_hir(source)
 ---
-error[duplicate-case]: union 'MyUnion' has duplicate case label '1'
-   ┌ test.idl:5:10
-   │
- 3 │     case 1: long a;
- 4 │     case 2: string b;
- 5 │     case 1: boolean c;  // First duplicate
-   ·          ^ duplicate case label
- 6 │     case 3: float d;
- 7 │     case 2: double e;   // Second duplicate
-   └──
+⨯ duplicate-case: union 'MyUnion' has duplicate case label '1'
+  @ test.idl:5:10
 
-error[duplicate-case]: union 'MyUnion' has duplicate case label '2'
-   ┌ test.idl:7:10
-   │
+ 3 │ case 1: long a;
+ 4 │ case 2: string b;
+ 5 │ case 1: boolean c;  // First duplicate
+   │      ˆ duplicate case label
+ 6 │ case 3: float d;
+ 7 │ case 2: double e;   // Second duplicate
+
+⨯ duplicate-case: union 'MyUnion' has duplicate case label '2'
+  @ test.idl:7:10
+
  5 │     case 1: boolean c;  // First duplicate
  6 │     case 3: float d;
  7 │     case 2: double e;   // Second duplicate
-   ·          ^ duplicate case label
+   │          ˆ duplicate case label
  8 │     case 1: char f;     // Third duplicate of case 1
  9 │ };
-   └──
 
-error[duplicate-case]: union 'MyUnion' has duplicate case label '1'
-   ┌ test.idl:8:10
-   │
- 6 │     case 3: float d;
- 7 │     case 2: double e;   // Second duplicate
- 8 │     case 1: char f;     // Third duplicate of case 1
-   ·          ^ duplicate case label
- 9 │ };
-   └──
+⨯ duplicate-case: union 'MyUnion' has duplicate case label '1'
+  @ test.idl:8:10
+
+  6 │     case 3: float d;
+  7 │     case 2: double e;   // Second duplicate
+  8 │     case 1: char f;     // Third duplicate of case 1
+    │          ˆ duplicate case label
+  9 │ };

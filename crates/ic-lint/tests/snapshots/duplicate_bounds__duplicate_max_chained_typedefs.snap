@@ -1,17 +1,15 @@
 ---
 source: crates/ic-lint/tests/duplicate_bounds.rs
-assertion_line: 139
 expression: test_lint_hir(source)
 ---
-error[duplicate-bounds]: @max is already defined on typedef `BaseInt`
-   ┌ test.idl:3:2
-   │
+⨯ duplicate-bounds: @max is already defined on typedef `BaseInt`
+  @ test.idl:3:2
+
  2 │ @max(100) typedef int32 BaseInt;
-   ·  ^^^ @max already defined on `BaseInt`
+   │  ˆˆˆ @max already defined on `BaseInt`
  3 │ @max(50) typedef BaseInt MyInt;
-   ·  ^^^ @max on typedef
+   │  ˆˆˆ @max on typedef
  4 │ 
  5 │ struct Foo {
- 6 │     MyInt value;
-   └──
- help: remove @max from one of the typedefs
+
+  ? remove @max from one of the typedefs

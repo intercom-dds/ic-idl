@@ -2,25 +2,24 @@
 source: crates/ic-lint/tests/invalid_inheritance.rs
 expression: "common::test_lint_hir(idl)"
 ---
-error[invalid-inheritance]: bitset `BadBits` cannot inherit from struct `BaseStruct`
-   ┌ test.idl:5:16
-   │
- 3 │             long x;
- 4 │         };
- 5 │         bitset BadBits : BaseStruct {
-   ·                ^^^^^^^ bitsets can only inherit from other bitsets
- 6 │             bitfield<1> BIT0;
- 7 │             bitfield<1> BIT1;
-   └──
+⨯ invalid-inheritance: bitset `BadBits` cannot inherit from struct `BaseStruct`
+  @ test.idl:5:16
 
-warning[bitset]: bitsets are not supported
-   ┌ test.idl:5:16
-   │
- 3 │             long x;
- 4 │         };
- 5 │         bitset BadBits : BaseStruct {
-   ·                ^^^^^^^ defined here
- 6 │             bitfield<1> BIT0;
- 7 │             bitfield<1> BIT1;
-   └──
- note: the bitset will be skipped during codegen
+ 3 │     long x;
+ 4 │ };
+ 5 │ bitset BadBits : BaseStruct {
+   │        ˆˆˆˆˆˆˆ bitsets can only inherit from other bitsets
+ 6 │     bitfield<1> BIT0;
+ 7 │     bitfield<1> BIT1;
+
+! bitset: bitsets are not supported
+  @ test.idl:5:16
+
+ 3 │     long x;
+ 4 │ };
+ 5 │ bitset BadBits : BaseStruct {
+   │        ˆˆˆˆˆˆˆ defined here
+ 6 │     bitfield<1> BIT0;
+ 7 │     bitfield<1> BIT1;
+
+  * the bitset will be skipped during codegen

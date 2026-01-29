@@ -2,70 +2,64 @@
 source: crates/ic-hir/tests/case_insensitive.rs
 expression: diagnostics
 ---
-error: inconsistent capitalization: `dds` should be `DDS`
-    ┌ test.idl:11:13
-    │
-  8 │         };
-  9 │ 
- 10 │         struct Container {
- 11 │             dds::xtypes::typeidentifier t1;  // All lowercase
-    ·             ^^^ module name used here
- 12 │             DDS::Xtypes::TypeIdentifier t2;  // Mixed case
- 13 │             DDS::XTYPES::TYPEIDENTIFIER t3;  // All uppercase
-    └──
- note: the canonical module name is `DDS`
-error: inconsistent capitalization: `xtypes` should be `XTypes`
-    ┌ test.idl:11:18
-    │
-  8 │         };
-  9 │ 
- 10 │         struct Container {
- 11 │             dds::xtypes::typeidentifier t1;  // All lowercase
-    ·                  ^^^^^^ module name used here
- 12 │             DDS::Xtypes::TypeIdentifier t2;  // Mixed case
- 13 │             DDS::XTYPES::TYPEIDENTIFIER t3;  // All uppercase
-    └──
- note: the canonical module name is `XTypes`
-error: inconsistent capitalization: `typeidentifier` should be `TypeIdentifier`
-    ┌ test.idl:11:26
-    │
-  8 │         };
-  9 │ 
- 10 │         struct Container {
- 11 │             dds::xtypes::typeidentifier t1;  // All lowercase
-    ·                          ^^^^^^^^^^^^^^ used here
- 12 │             DDS::Xtypes::TypeIdentifier t2;  // Mixed case
- 13 │             DDS::XTYPES::TYPEIDENTIFIER t3;  // All uppercase
-    └──
- note: the canonical name is `TypeIdentifier`
-error: inconsistent capitalization: `Xtypes` should be `XTypes`
-    ┌ test.idl:12:18
-    │
- 10 │         struct Container {
- 11 │             dds::xtypes::typeidentifier t1;  // All lowercase
- 12 │             DDS::Xtypes::TypeIdentifier t2;  // Mixed case
-    ·                  ^^^^^^ module name used here
- 13 │             DDS::XTYPES::TYPEIDENTIFIER t3;  // All uppercase
- 14 │         };
-    └──
- note: the canonical module name is `XTypes`
-error: inconsistent capitalization: `XTYPES` should be `XTypes`
-    ┌ test.idl:13:18
-    │
- 11 │             dds::xtypes::typeidentifier t1;  // All lowercase
- 12 │             DDS::Xtypes::TypeIdentifier t2;  // Mixed case
- 13 │             DDS::XTYPES::TYPEIDENTIFIER t3;  // All uppercase
-    ·                  ^^^^^^ module name used here
- 14 │         };
-    └──
- note: the canonical module name is `XTypes`
-error: inconsistent capitalization: `TYPEIDENTIFIER` should be `TypeIdentifier`
-    ┌ test.idl:13:26
-    │
- 11 │             dds::xtypes::typeidentifier t1;  // All lowercase
- 12 │             DDS::Xtypes::TypeIdentifier t2;  // Mixed case
- 13 │             DDS::XTYPES::TYPEIDENTIFIER t3;  // All uppercase
-    ·                          ^^^^^^^^^^^^^^ used here
- 14 │         };
-    └──
- note: the canonical name is `TypeIdentifier`
+⨯: inconsistent capitalization: `dds` should be `DDS`
+  @ test.idl:11:13
+
+ 10 │ struct Container {
+ 11 │     dds::xtypes::typeidentifier t1;  // All lowercase
+    │     ˆˆˆ module name used here
+ 12 │     DDS::Xtypes::TypeIdentifier t2;  // Mixed case
+ 13 │     DDS::XTYPES::TYPEIDENTIFIER t3;  // All uppercase
+
+  * the canonical module name is `DDS`
+⨯: inconsistent capitalization: `xtypes` should be `XTypes`
+  @ test.idl:11:18
+
+ 10 │ struct Container {
+ 11 │     dds::xtypes::typeidentifier t1;  // All lowercase
+    │          ˆˆˆˆˆˆ module name used here
+ 12 │     DDS::Xtypes::TypeIdentifier t2;  // Mixed case
+ 13 │     DDS::XTYPES::TYPEIDENTIFIER t3;  // All uppercase
+
+  * the canonical module name is `XTypes`
+⨯: inconsistent capitalization: `typeidentifier` should be `TypeIdentifier`
+  @ test.idl:11:26
+
+ 10 │ struct Container {
+ 11 │     dds::xtypes::typeidentifier t1;  // All lowercase
+    │                  ˆˆˆˆˆˆˆˆˆˆˆˆˆˆ used here
+ 12 │     DDS::Xtypes::TypeIdentifier t2;  // Mixed case
+ 13 │     DDS::XTYPES::TYPEIDENTIFIER t3;  // All uppercase
+
+  * the canonical name is `TypeIdentifier`
+⨯: inconsistent capitalization: `Xtypes` should be `XTypes`
+  @ test.idl:12:18
+
+ 10 │ struct Container {
+ 11 │     dds::xtypes::typeidentifier t1;  // All lowercase
+ 12 │     DDS::Xtypes::TypeIdentifier t2;  // Mixed case
+    │          ˆˆˆˆˆˆ module name used here
+ 13 │     DDS::XTYPES::TYPEIDENTIFIER t3;  // All uppercase
+ 14 │ };
+
+  * the canonical module name is `XTypes`
+⨯: inconsistent capitalization: `XTYPES` should be `XTypes`
+  @ test.idl:13:18
+
+ 11 │     dds::xtypes::typeidentifier t1;  // All lowercase
+ 12 │     DDS::Xtypes::TypeIdentifier t2;  // Mixed case
+ 13 │     DDS::XTYPES::TYPEIDENTIFIER t3;  // All uppercase
+    │          ˆˆˆˆˆˆ module name used here
+ 14 │ };
+
+  * the canonical module name is `XTypes`
+⨯: inconsistent capitalization: `TYPEIDENTIFIER` should be `TypeIdentifier`
+  @ test.idl:13:26
+
+ 11 │     dds::xtypes::typeidentifier t1;  // All lowercase
+ 12 │     DDS::Xtypes::TypeIdentifier t2;  // Mixed case
+ 13 │     DDS::XTYPES::TYPEIDENTIFIER t3;  // All uppercase
+    │                  ˆˆˆˆˆˆˆˆˆˆˆˆˆˆ used here
+ 14 │ };
+
+  * the canonical name is `TypeIdentifier`

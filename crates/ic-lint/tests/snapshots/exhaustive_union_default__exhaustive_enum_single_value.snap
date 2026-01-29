@@ -2,20 +2,19 @@
 source: crates/ic-lint/tests/exhaustive_union_default.rs
 expression: test_lint_hir(source)
 ---
-error[exhaustive-union-default]: default case is not allowed when all enum values are covered in union `MyUnion`
-    ┌ test.idl:6:1
-    │
-  3 │     ZERO
+⨯ exhaustive-union-default: default case is not allowed when all enum values are covered in union `MyUnion`
+  @ test.idl:6:1
+
   4 │ };
   5 │ 
   6 │ union MyUnion switch(MyEnum) {
-    · ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ exhausted all possible values
+    │ ˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆ exhausted all possible values
   7 │ case ZERO:
   8 │     string value;
   9 │ default:
  10 │     int32 foo;
  11 │ };
-    · ^^
-    └──
- help: all 1 enumerators of 'MyEnum' are already handled by explicit cases
- note: default cases are only allowed when some discriminator values are not explicitly handled
+    │ ˆˆ
+
+  ? all 1 enumerators of 'MyEnum' are already handled by explicit cases
+  * default cases are only allowed when some discriminator values are not explicitly handled

@@ -2,12 +2,12 @@
 source: crates/ic-lint/tests/empty.rs
 expression: test_lint(source)
 ---
-error[empty]: empty bitmasks are not allowed
-   ┌ test.idl:2:9
-   │
+⨯ empty: empty bitmasks are not allowed
+  @ test.idl:2:9
+
  2 │ bitmask EmptyBitmask {
-   ·         ^^^^^^^^^^^^ defined here
+   │         ˆˆˆˆˆˆˆˆˆˆˆˆ defined here
  3 │     // No flags
  4 │ };
-   └──
- note: all bitmasks must have at least one flag
+
+  * all bitmasks must have at least one flag

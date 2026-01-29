@@ -2,49 +2,47 @@
 source: crates/ic-lint/tests/omitted_in.rs
 expression: test_lint(source)
 ---
-warning[omitted-in]: parameters must be declared with `in`, `out`, or `inout`
-    ┌ test.idl:8:24
-    │
-  5 │         };
-  6 │ 
-  7 │         interface DataService {
-  8 │             void store(Data item);
-    ·                        ^^^^ expected parameter specifier before this type
-  9 │             Data retrieve(long id);
- 10 │             void update(long id, Data item);
-    └──
- help: prefix the parameter with `in`
+! omitted-in: parameters must be declared with `in`, `out`, or `inout`
+  @ test.idl:8:24
 
-warning[omitted-in]: parameters must be declared with `in`, `out`, or `inout`
-    ┌ test.idl:9:27
-    │
-  7 │         interface DataService {
-  8 │             void store(Data item);
-  9 │             Data retrieve(long id);
-    ·                           ^^^^ expected parameter specifier before this type
- 10 │             void update(long id, Data item);
- 11 │         };
-    └──
- help: prefix the parameter with `in`
+  7 │ interface DataService {
+  8 │     void store(Data item);
+    │                ˆˆˆˆ expected parameter specifier before this type
+  9 │     Data retrieve(long id);
+ 10 │     void update(long id, Data item);
 
-warning[omitted-in]: parameters must be declared with `in`, `out`, or `inout`
-    ┌ test.idl:10:25
-    │
-  8 │             void store(Data item);
-  9 │             Data retrieve(long id);
- 10 │             void update(long id, Data item);
-    ·                         ^^^^ expected parameter specifier before this type
- 11 │         };
-    └──
- help: prefix the parameter with `in`
+  ? prefix the parameter with `in`
 
-warning[omitted-in]: parameters must be declared with `in`, `out`, or `inout`
-    ┌ test.idl:10:34
-    │
-  8 │             void store(Data item);
-  9 │             Data retrieve(long id);
- 10 │             void update(long id, Data item);
-    ·                                  ^^^^ expected parameter specifier before this type
- 11 │         };
-    └──
- help: prefix the parameter with `in`
+! omitted-in: parameters must be declared with `in`, `out`, or `inout`
+  @ test.idl:9:27
+
+  7 │ interface DataService {
+  8 │     void store(Data item);
+  9 │     Data retrieve(long id);
+    │                   ˆˆˆˆ expected parameter specifier before this type
+ 10 │     void update(long id, Data item);
+ 11 │ };
+
+  ? prefix the parameter with `in`
+
+! omitted-in: parameters must be declared with `in`, `out`, or `inout`
+  @ test.idl:10:25
+
+  8 │     void store(Data item);
+  9 │     Data retrieve(long id);
+ 10 │     void update(long id, Data item);
+    │                 ˆˆˆˆ expected parameter specifier before this type
+ 11 │ };
+
+  ? prefix the parameter with `in`
+
+! omitted-in: parameters must be declared with `in`, `out`, or `inout`
+  @ test.idl:10:34
+
+  8 │     void store(Data item);
+  9 │     Data retrieve(long id);
+ 10 │     void update(long id, Data item);
+    │                          ˆˆˆˆ expected parameter specifier before this type
+ 11 │ };
+
+  ? prefix the parameter with `in`

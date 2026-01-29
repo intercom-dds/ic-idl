@@ -2,23 +2,21 @@
 source: crates/ic-hir/tests/path_error_spans_test.rs
 expression: output
 ---
-error: no type named 'Baz' in module 'foo'
-    ┌ test.idl:8:20
-    │
-  6 │         struct Test {
-  7 │             ::foo::Bar valid;     // Should work
-  8 │             ::foo::Baz invalid;   // Should highlight Baz
-    ·                    ^^^ unknown type
-  9 │             ::missing::Bar other; // Should highlight missing
- 10 │         };
-    └──
+⨯: no type named 'Baz' in module 'foo'
+  @ test.idl:8:20
 
-error: no type named 'missing' in this scope
-    ┌ test.idl:9:15
-    │
-  7 │             ::foo::Bar valid;     // Should work
-  8 │             ::foo::Baz invalid;   // Should highlight Baz
-  9 │             ::missing::Bar other; // Should highlight missing
-    ·               ^^^^^^^ unknown type
- 10 │         };
-    └──
+  6 │ struct Test {
+  7 │     ::foo::Bar valid;     // Should work
+  8 │     ::foo::Baz invalid;   // Should highlight Baz
+    │            ˆˆˆ unknown type
+  9 │     ::missing::Bar other; // Should highlight missing
+ 10 │ };
+
+⨯: no type named 'missing' in this scope
+  @ test.idl:9:15
+
+  7 │     ::foo::Bar valid;     // Should work
+  8 │     ::foo::Baz invalid;   // Should highlight Baz
+  9 │     ::missing::Bar other; // Should highlight missing
+    │       ˆˆˆˆˆˆˆ unknown type
+ 10 │ };

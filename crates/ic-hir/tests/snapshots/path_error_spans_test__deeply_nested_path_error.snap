@@ -2,23 +2,21 @@
 source: crates/ic-hir/tests/path_error_spans_test.rs
 expression: output
 ---
-error: no type named 'd' in module 'c'
-    ┌ test.idl:12:22
-    │
- 10 │         struct Test {
- 11 │             a::b::c::Valid valid;           // Should work
- 12 │             a::b::c::d::Invalid deep;       // Should highlight d
-    ·                      ^ unknown type
- 13 │             a::b::missing::c::Valid other;  // Should highlight missing
- 14 │         };
-    └──
+⨯: no type named 'd' in module 'c'
+  @ test.idl:12:22
 
-error: no type named 'missing' in module 'b'
-    ┌ test.idl:13:19
-    │
- 11 │             a::b::c::Valid valid;           // Should work
- 12 │             a::b::c::d::Invalid deep;       // Should highlight d
- 13 │             a::b::missing::c::Valid other;  // Should highlight missing
-    ·                   ^^^^^^^ unknown type
- 14 │         };
-    └──
+ 10 │ struct Test {
+ 11 │     a::b::c::Valid valid;           // Should work
+ 12 │     a::b::c::d::Invalid deep;       // Should highlight d
+    │              ˆ unknown type
+ 13 │     a::b::missing::c::Valid other;  // Should highlight missing
+ 14 │ };
+
+⨯: no type named 'missing' in module 'b'
+  @ test.idl:13:19
+
+ 11 │     a::b::c::Valid valid;           // Should work
+ 12 │     a::b::c::d::Invalid deep;       // Should highlight d
+ 13 │     a::b::missing::c::Valid other;  // Should highlight missing
+    │           ˆˆˆˆˆˆˆ unknown type
+ 14 │ };

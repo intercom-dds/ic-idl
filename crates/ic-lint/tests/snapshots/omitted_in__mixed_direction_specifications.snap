@@ -2,13 +2,13 @@
 source: crates/ic-lint/tests/omitted_in.rs
 expression: test_lint(source)
 ---
-warning[omitted-in]: parameters must be declared with `in`, `out`, or `inout`
-   ┌ test.idl:6:25
-   │
- 4 │             void read(out octet data);
- 5 │             void modify(inout string text);
- 6 │             void broken(long size);  // Missing direction
-   ·                         ^^^^ expected parameter specifier before this type
- 7 │         };
-   └──
- help: prefix the parameter with `in`
+! omitted-in: parameters must be declared with `in`, `out`, or `inout`
+  @ test.idl:6:25
+
+ 4 │     void read(out octet data);
+ 5 │     void modify(inout string text);
+ 6 │     void broken(long size);  // Missing direction
+   │                 ˆˆˆˆ expected parameter specifier before this type
+ 7 │ };
+
+  ? prefix the parameter with `in`

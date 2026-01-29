@@ -1,11 +1,9 @@
 ---
 source: crates/ic-hir/tests/test_int_to_string_type_mismatch.rs
-assertion_line: 67
 expression: diagnostics
 ---
-error: boolean value cannot be assigned to type string
-   ┌ test.idl:2:32
-   │
- 2 │         const string myValue = TRUE;
-   ·                                ^^^^ incompatible types
-   └──
+⨯: boolean value cannot be assigned to type string
+  @ test.idl:2:32
+
+ 2 │ const string myValue = TRUE;
+   │                        ˆˆˆˆ incompatible types

@@ -2,11 +2,10 @@
 source: crates/ic-lint/tests/zero_bound.rs
 expression: test_lint_hir(source)
 ---
-error[zero-bound]: array size must be greater than zero
-   ┌ test.idl:3:16
-   │
+⨯ zero-bound: array size must be greater than zero
+  @ test.idl:3:16
+
  2 │ struct Foo {
  3 │     long field[0];
-   ·                ^ invalid array size
+   │                ˆ invalid array size
  4 │ };
-   └──

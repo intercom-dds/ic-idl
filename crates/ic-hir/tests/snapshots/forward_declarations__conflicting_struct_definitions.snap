@@ -2,15 +2,14 @@
 source: crates/ic-hir/tests/forward_declarations.rs
 expression: diagnostics
 ---
-error: duplicate definition of `A`
-   ┌ test.idl:2:16
-   │
- 2 │         struct A {
-   ·                ^ originally defined here
- 3 │             long field1;
- 4 │         };
- 5 │         struct A {
-   ·                ^ redefined here
- 6 │             long field2;
- 7 │         };
-   └──
+⨯: duplicate definition of `A`
+  @ test.idl:2:16
+
+ 2 │ struct A {
+   │        ˆ originally defined here
+ 3 │     long field1;
+ 4 │ };
+ 5 │ struct A {
+   │        ˆ redefined here
+ 6 │     long field2;
+ 7 │ };

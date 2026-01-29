@@ -2,13 +2,12 @@
 source: crates/ic-lint/tests/range_bound.rs
 expression: test_lint_hir(source)
 ---
-error: missing required annotation parameter `max`
-   ┌ test.idl:4:10
-   │
+⨯: missing required annotation parameter `max`
+  @ test.idl:4:10
+
  2 │ module MyModule {
  3 │     struct RangeOnlyMin {
  4 │         @range(min=0) unsigned long count;
-   ·          ^^^^^ annotation parameter missing
+   │          ˆˆˆˆˆ annotation parameter missing
  5 │     };
  6 │ };
-   └──

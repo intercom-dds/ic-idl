@@ -1,14 +1,14 @@
 ---
 source: crates/ic-lint/tests/long_double.rs
-expression: "test_lint(r\"\nunion Data switch (long) {\ncase 0:\n    double normal;\ncase 1:\n    long double extended;\n};\n\")"
+expression: "test_lint_hir(r\"\nunion Data switch (long) {\ncase 0:\n    double normal;\ncase 1:\n    long double extended;\n};\n\")"
 ---
-warning[long-double]: long double is not supported
-   ┌ test.idl:6:5
-   │
+! long-double: long double is not supported
+  @ test.idl:6:5
+
  4 │     double normal;
  5 │ case 1:
  6 │     long double extended;
-   ·     ^^^^^^^^^^^ used here
+   │     ˆˆˆˆˆˆˆˆˆˆˆ used here
  7 │ };
-   └──
- note: long double will be treated as a normal double during codegen
+
+  * long double will be treated as a normal double during codegen

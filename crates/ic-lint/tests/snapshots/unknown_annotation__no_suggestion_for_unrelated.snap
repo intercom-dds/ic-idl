@@ -2,12 +2,11 @@
 source: crates/ic-lint/tests/unknown_annotation.rs
 expression: output
 ---
-warning[unknown-ann]: unknown annotation `completely_unrelated_name`
-   ┌ test.idl:3:14
-   │
- 2 │         struct TestStruct {
- 3 │             @completely_unrelated_name
-   ·              ^^^^^^^^^^^^^^^^^^^^^^^^^ annotation not found
- 4 │             long field;
- 5 │         };
-   └──
+! unknown-ann: unknown annotation `completely_unrelated_name`
+  @ test.idl:3:14
+
+ 2 │ struct TestStruct {
+ 3 │     @completely_unrelated_name
+   │      ˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆ annotation not found
+ 4 │     long field;
+ 5 │ };

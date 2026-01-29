@@ -2,15 +2,15 @@
 source: crates/ic-lint/tests/duplicate_struct_members.rs
 expression: test_lint_hir(source)
 ---
-error[duplicate-name]: duplicate member `message` in member 'MyError'
-   ┌ test.idl:5:12
-   │
+⨯ duplicate-name: duplicate member `message` in member 'MyError'
+  @ test.idl:5:12
+
  2 │ exception MyError {
  3 │     string message;
-   ·            ^^^^^^^ first defined here
+   │            ˆˆˆˆˆˆˆ first defined here
  4 │     long code;
  5 │     string message;  // Duplicate member in exception
-   ·            ^^^^^^^ duplicate member
+   │            ˆˆˆˆˆˆˆ duplicate member
  6 │ };
-   └──
- note: names are case-insensitive
+
+  * names are case-insensitive

@@ -1,15 +1,13 @@
 ---
 source: crates/ic-hir/tests/union_discriminators.rs
-assertion_line: 196
 expression: diagnostics
 ---
-error: invalid discriminator type for union `BadUnion`
-   ┌ test.idl:4:32
-   │
- 2 │         typedef string MyString;
+⨯: invalid discriminator type for union `BadUnion`
+  @ test.idl:4:32
+
+ 2 │ typedef string MyString;
  3 │ 
- 4 │         union BadUnion switch (MyString) {
-   ·                                ^^^^^^^^ discriminator must be an enum or integral type
- 5 │             default: long value;
- 6 │         };
-   └──
+ 4 │ union BadUnion switch (MyString) {
+   │                        ˆˆˆˆˆˆˆˆ discriminator must be an enum or integral type
+ 5 │     default: long value;
+ 6 │ };

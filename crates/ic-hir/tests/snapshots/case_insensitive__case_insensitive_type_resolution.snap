@@ -2,26 +2,24 @@
 source: crates/ic-hir/tests/case_insensitive.rs
 expression: diagnostics
 ---
-error: inconsistent capitalization: `MYSTRUCT` should be `MyStruct`
-   ┌ test.idl:7:13
-   │
- 4 │         };
- 5 │ 
- 6 │         struct OtherStruct {
- 7 │             MYSTRUCT s1;     // Uppercase
-   ·             ^^^^^^^^ used here
- 8 │             mystruct s2;     // Lowercase
- 9 │             MyStruct s3;     // Original case
-   └──
- note: the canonical name is `MyStruct`
-error: inconsistent capitalization: `mystruct` should be `MyStruct`
-    ┌ test.idl:8:13
-    │
-  6 │         struct OtherStruct {
-  7 │             MYSTRUCT s1;     // Uppercase
-  8 │             mystruct s2;     // Lowercase
-    ·             ^^^^^^^^ used here
-  9 │             MyStruct s3;     // Original case
- 10 │         };
-    └──
- note: the canonical name is `MyStruct`
+⨯: inconsistent capitalization: `MYSTRUCT` should be `MyStruct`
+  @ test.idl:7:13
+
+ 6 │ struct OtherStruct {
+ 7 │     MYSTRUCT s1;     // Uppercase
+   │     ˆˆˆˆˆˆˆˆ used here
+ 8 │     mystruct s2;     // Lowercase
+ 9 │     MyStruct s3;     // Original case
+
+  * the canonical name is `MyStruct`
+⨯: inconsistent capitalization: `mystruct` should be `MyStruct`
+  @ test.idl:8:13
+
+  6 │ struct OtherStruct {
+  7 │     MYSTRUCT s1;     // Uppercase
+  8 │     mystruct s2;     // Lowercase
+    │     ˆˆˆˆˆˆˆˆ used here
+  9 │     MyStruct s3;     // Original case
+ 10 │ };
+
+  * the canonical name is `MyStruct`

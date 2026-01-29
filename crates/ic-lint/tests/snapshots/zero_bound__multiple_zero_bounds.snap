@@ -2,44 +2,40 @@
 source: crates/ic-lint/tests/zero_bound.rs
 expression: test_lint_hir(source)
 ---
-error[zero-bound]: array size must be greater than zero
-   ┌ test.idl:3:17
-   │
+⨯ zero-bound: array size must be greater than zero
+  @ test.idl:3:17
+
  2 │ struct Foo {
  3 │     long field1[0];
-   ·                 ^ invalid array size
+   │                 ˆ invalid array size
  4 │     sequence<string, 0> field2;
  5 │     string<0> field3;
-   └──
 
-error[zero-bound]: sequence bound must be greater than zero
-   ┌ test.idl:4:22
-   │
+⨯ zero-bound: sequence bound must be greater than zero
+  @ test.idl:4:22
+
  2 │ struct Foo {
  3 │     long field1[0];
  4 │     sequence<string, 0> field2;
-   ·                      ^ invalid sequence bound
+   │                      ˆ invalid sequence bound
  5 │     string<0> field3;
  6 │     map<long, string, 0> field4;
-   └──
 
-error[zero-bound]: string bound must be greater than zero
-   ┌ test.idl:5:12
-   │
+⨯ zero-bound: string bound must be greater than zero
+  @ test.idl:5:12
+
  3 │     long field1[0];
  4 │     sequence<string, 0> field2;
  5 │     string<0> field3;
-   ·            ^ invalid string bound
+   │            ˆ invalid string bound
  6 │     map<long, string, 0> field4;
  7 │ };
-   └──
 
-error[zero-bound]: map bound must be greater than zero
-   ┌ test.idl:6:23
-   │
+⨯ zero-bound: map bound must be greater than zero
+  @ test.idl:6:23
+
  4 │     sequence<string, 0> field2;
  5 │     string<0> field3;
  6 │     map<long, string, 0> field4;
-   ·                       ^ invalid map bound
+   │                       ˆ invalid map bound
  7 │ };
-   └──

@@ -2,69 +2,65 @@
 source: crates/ic-lint/tests/ambiguous_precedence.rs
 expression: test_lint(idl)
 ---
-warning[ambiguous-precedence]: operator `|` has lower precedence than `&`
-   ┌ test.idl:3:22
-   │
+! ambiguous-precedence: operator `|` has lower precedence than `&`
+  @ test.idl:3:22
+
  2 │ // Different bitwise operators with confusing precedence
  3 │ const long test1 = 1 | 2 & 3;      // & binds tighter than |
-   ·                      ^ ^^^^^ than this expression
-   ·                      └─ this operator has lower precedence
+   │                      ˆ ˆˆˆˆˆ than this expression
+   │                      └─ this operator has lower precedence
  4 │ const long test2 = 1 | 2 ^ 3;      // ^ binds tighter than |
  5 │ const long test3 = 1 ^ 2 & 3;      // & binds tighter than ^
-   └──
- help: add parentheses to clarify the intended order of operations
 
-warning[ambiguous-precedence]: operator `|` has lower precedence than `^`
-   ┌ test.idl:4:22
-   │
+  ? add parentheses to clarify the intended order of operations
+
+! ambiguous-precedence: operator `|` has lower precedence than `^`
+  @ test.idl:4:22
+
  2 │ // Different bitwise operators with confusing precedence
  3 │ const long test1 = 1 | 2 & 3;      // & binds tighter than |
  4 │ const long test2 = 1 | 2 ^ 3;      // ^ binds tighter than |
-   ·                      ^ ^^^^^ than this expression
-   ·                      └─ this operator has lower precedence
+   │                      ˆ ˆˆˆˆˆ than this expression
+   │                      └─ this operator has lower precedence
  5 │ const long test3 = 1 ^ 2 & 3;      // & binds tighter than ^
  6 │ const long test4 = 1 | 2 ^ 3 & 4;  // Multiple levels
-   └──
- help: add parentheses to clarify the intended order of operations
 
-warning[ambiguous-precedence]: operator `^` has lower precedence than `&`
-   ┌ test.idl:5:22
-   │
+  ? add parentheses to clarify the intended order of operations
+
+! ambiguous-precedence: operator `^` has lower precedence than `&`
+  @ test.idl:5:22
+
  3 │ const long test1 = 1 | 2 & 3;      // & binds tighter than |
  4 │ const long test2 = 1 | 2 ^ 3;      // ^ binds tighter than |
  5 │ const long test3 = 1 ^ 2 & 3;      // & binds tighter than ^
-   ·                      ^ ^^^^^ than this expression
-   ·                      └─ this operator has lower precedence
+   │                      ˆ ˆˆˆˆˆ than this expression
+   │                      └─ this operator has lower precedence
  6 │ const long test4 = 1 | 2 ^ 3 & 4;  // Multiple levels
- 7 │ 
- 8 │ // With parentheses (still warns - could be improved in future)
-   └──
- help: add parentheses to clarify the intended order of operations
 
-warning[ambiguous-precedence]: operator `|` has lower precedence than `^`
-   ┌ test.idl:6:22
-   │
+  ? add parentheses to clarify the intended order of operations
+
+! ambiguous-precedence: operator `|` has lower precedence than `^`
+  @ test.idl:6:22
+
  4 │ const long test2 = 1 | 2 ^ 3;      // ^ binds tighter than |
  5 │ const long test3 = 1 ^ 2 & 3;      // & binds tighter than ^
  6 │ const long test4 = 1 | 2 ^ 3 & 4;  // Multiple levels
-   ·                      ^ ^^^^^^^^^ than this expression
-   ·                      └─ this operator has lower precedence
+   │                      ˆ ˆˆˆˆˆˆˆˆˆ than this expression
+   │                      └─ this operator has lower precedence
  7 │ 
  8 │ // With parentheses (still warns - could be improved in future)
- 9 │ const long test5 = 1 | (2 & 3);
-   └──
- help: add parentheses to clarify the intended order of operations
 
-warning[ambiguous-precedence]: operator `^` has lower precedence than `&`
-   ┌ test.idl:6:26
-   │
+  ? add parentheses to clarify the intended order of operations
+
+! ambiguous-precedence: operator `^` has lower precedence than `&`
+  @ test.idl:6:26
+
  4 │ const long test2 = 1 | 2 ^ 3;      // ^ binds tighter than |
  5 │ const long test3 = 1 ^ 2 & 3;      // & binds tighter than ^
  6 │ const long test4 = 1 | 2 ^ 3 & 4;  // Multiple levels
-   ·                          ^ ^^^^^ than this expression
-   ·                          └─ this operator has lower precedence
+   │                          ˆ ˆˆˆˆˆ than this expression
+   │                          └─ this operator has lower precedence
  7 │ 
  8 │ // With parentheses (still warns - could be improved in future)
- 9 │ const long test5 = 1 | (2 & 3);
-   └──
- help: add parentheses to clarify the intended order of operations
+
+  ? add parentheses to clarify the intended order of operations

@@ -2,48 +2,46 @@
 source: crates/ic-hir/tests/case_consistency_warnings.rs
 expression: compile_idl_with_warnings(idl)
 ---
-error: inconsistent capitalization: `bar` should be `Bar`
-    ┌ test.idl:9:18
-    │
-  6 │         };
-  7 │ 
-  8 │         struct Test {
-  9 │             foo::bar field1;   // Type name wrong
-    ·                  ^^^ used here
- 10 │             FOO::Bar field2;   // Module name wrong
- 11 │             FOO::bar field3;   // Both wrong
-    └──
- note: the canonical name is `Bar`
-error: inconsistent capitalization: `FOO` should be `foo`
-    ┌ test.idl:10:13
-    │
-  8 │         struct Test {
-  9 │             foo::bar field1;   // Type name wrong
- 10 │             FOO::Bar field2;   // Module name wrong
-    ·             ^^^ module name used here
- 11 │             FOO::bar field3;   // Both wrong
- 12 │             foo::Bar field4;   // Correct
-    └──
- note: the canonical module name is `foo`
-error: inconsistent capitalization: `FOO` should be `foo`
-    ┌ test.idl:11:13
-    │
-  9 │             foo::bar field1;   // Type name wrong
- 10 │             FOO::Bar field2;   // Module name wrong
- 11 │             FOO::bar field3;   // Both wrong
-    ·             ^^^ module name used here
- 12 │             foo::Bar field4;   // Correct
- 13 │         };
-    └──
- note: the canonical module name is `foo`
-error: inconsistent capitalization: `bar` should be `Bar`
-    ┌ test.idl:11:18
-    │
-  9 │             foo::bar field1;   // Type name wrong
- 10 │             FOO::Bar field2;   // Module name wrong
- 11 │             FOO::bar field3;   // Both wrong
-    ·                  ^^^ used here
- 12 │             foo::Bar field4;   // Correct
- 13 │         };
-    └──
- note: the canonical name is `Bar`
+⨯: inconsistent capitalization: `bar` should be `Bar`
+  @ test.idl:9:18
+
+  8 │ struct Test {
+  9 │     foo::bar field1;   // Type name wrong
+    │          ˆˆˆ used here
+ 10 │     FOO::Bar field2;   // Module name wrong
+ 11 │     FOO::bar field3;   // Both wrong
+
+  * the canonical name is `Bar`
+⨯: inconsistent capitalization: `FOO` should be `foo`
+  @ test.idl:10:13
+
+  8 │ struct Test {
+  9 │     foo::bar field1;   // Type name wrong
+ 10 │     FOO::Bar field2;   // Module name wrong
+    │     ˆˆˆ module name used here
+ 11 │     FOO::bar field3;   // Both wrong
+ 12 │     foo::Bar field4;   // Correct
+
+  * the canonical module name is `foo`
+⨯: inconsistent capitalization: `FOO` should be `foo`
+  @ test.idl:11:13
+
+  9 │     foo::bar field1;   // Type name wrong
+ 10 │     FOO::Bar field2;   // Module name wrong
+ 11 │     FOO::bar field3;   // Both wrong
+    │     ˆˆˆ module name used here
+ 12 │     foo::Bar field4;   // Correct
+ 13 │ };
+
+  * the canonical module name is `foo`
+⨯: inconsistent capitalization: `bar` should be `Bar`
+  @ test.idl:11:18
+
+  9 │     foo::bar field1;   // Type name wrong
+ 10 │     FOO::Bar field2;   // Module name wrong
+ 11 │     FOO::bar field3;   // Both wrong
+    │          ˆˆˆ used here
+ 12 │     foo::Bar field4;   // Correct
+ 13 │ };
+
+  * the canonical name is `Bar`

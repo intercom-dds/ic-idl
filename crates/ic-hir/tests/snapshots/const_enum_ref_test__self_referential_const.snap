@@ -1,12 +1,11 @@
 ---
 source: crates/ic-hir/tests/const_enum_ref_test.rs
-assertion_line: 183
 expression: output
 ---
-error: undefined constant or enum value `A`
-   ┌ test.idl:2:25
-   │
- 2 │         const int32 A = A + 1;
-   ·                         ^ evaluation error
-   └──
- note: check that the name is spelled correctly
+⨯: undefined constant or enum value `A`
+  @ test.idl:2:25
+
+ 2 │ const int32 A = A + 1;
+   │                 ˆ evaluation error
+
+  * check that the name is spelled correctly

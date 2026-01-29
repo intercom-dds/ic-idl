@@ -2,35 +2,34 @@
 source: crates/ic-lint/tests/union_key.rs
 expression: test_lint_hir(source)
 ---
-error[invalid-annotation-target]: @key can only be applied to struct fields
-    ┌ test.idl:11:6
-    │
+⨯ invalid-annotation-target: @key can only be applied to struct fields
+  @ test.idl:11:6
+
   9 │ union Outer switch(long) {
  10 │ case 1:
  11 │     @key Inner inner;
-    ·      ^^^ invalid annotation target
+    │      ˆˆˆ invalid annotation target
  12 │ };
-    └──
 
-error[union-key]: union discriminator for 'Inner' cannot be @optional
-   ┌ test.idl:2:21
-   │
+⨯ union-key: union discriminator for 'Inner' cannot be @optional
+  @ test.idl:2:21
+
  2 │ union Inner switch(@optional boolean) {
-   ·                     ^^^^^^^^ @optional not allowed on discriminator
+   │                     ˆˆˆˆˆˆˆˆ @optional not allowed on discriminator
  3 │ case TRUE:
  4 │     string value;
-   └──
- help: remove @optional from the discriminator
- note: union discriminators must always be present
 
-error[union-key]: union variant 'inner' cannot use @key
-    ┌ test.idl:11:6
-    │
+  ? remove @optional from the discriminator
+  * union discriminators must always be present
+
+⨯ union-key: union variant 'inner' cannot use @key
+  @ test.idl:11:6
+
   9 │ union Outer switch(long) {
  10 │ case 1:
  11 │     @key Inner inner;
-    ·      ^^^ @key not allowed on union variant
+    │      ˆˆˆ @key not allowed on union variant
  12 │ };
-    └──
- help: remove @key from the variant or move it to the discriminator
- note: only the union discriminator can be marked as @key
+
+  ? remove @key from the variant or move it to the discriminator
+  * only the union discriminator can be marked as @key

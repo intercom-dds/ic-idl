@@ -2,63 +2,58 @@
 source: crates/ic-lint/tests/scoped_lit.rs
 expression: test_lint(source)
 ---
-warning[assign-expr]: assignment operator on enumerators is non-standard
-   ┌ test.idl:3:19
-   │
- 2 │         enum Level {
- 3 │             LOW = 1,
-   ·                   ^ non-standard assignment
- 4 │             MEDIUM = 5,
- 5 │             HIGH = 10
-   └──
- help: use the `@value` annotation instead
+! assign-expr: assignment operator on enumerators is non-standard
+  @ test.idl:3:19
 
-warning[assign-expr]: assignment operator on enumerators is non-standard
-   ┌ test.idl:4:22
-   │
- 2 │         enum Level {
- 3 │             LOW = 1,
- 4 │             MEDIUM = 5,
-   ·                      ^ non-standard assignment
- 5 │             HIGH = 10
- 6 │         };
-   └──
- help: use the `@value` annotation instead
+ 2 │ enum Level {
+ 3 │     LOW = 1,
+   │           ˆ non-standard assignment
+ 4 │     MEDIUM = 5,
+ 5 │     HIGH = 10
 
-warning[assign-expr]: assignment operator on enumerators is non-standard
-   ┌ test.idl:5:20
-   │
- 3 │             LOW = 1,
- 4 │             MEDIUM = 5,
- 5 │             HIGH = 10
-   ·                    ^^ non-standard assignment
- 6 │         };
- 7 │ 
- 8 │         const Level DEFAULT_LEVEL = Level::MEDIUM;
-   └──
- help: use the `@value` annotation instead
+  ? use the `@value` annotation instead
 
-warning[scoped-lit]: scoped enums are non-standard
-   ┌ test.idl:8:37
-   │
- 5 │             HIGH = 10
- 6 │         };
- 7 │ 
- 8 │         const Level DEFAULT_LEVEL = Level::MEDIUM;
-   ·                                     ^^^^^ used here
- 9 │         const Level FALLBACK = Level::LOW;
-   └──
- help: use `MEDIUM` instead of `Level::MEDIUM`
- note: enumerators are registered in the parent scope
+! assign-expr: assignment operator on enumerators is non-standard
+  @ test.idl:4:22
 
-warning[scoped-lit]: scoped enums are non-standard
-   ┌ test.idl:9:32
-   │
- 6 │         };
- 7 │ 
- 8 │         const Level DEFAULT_LEVEL = Level::MEDIUM;
- 9 │         const Level FALLBACK = Level::LOW;
-   ·                                ^^^^^ used here
-   └──
- help: use `LOW` instead of `Level::LOW`
- note: enumerators are registered in the parent scope
+ 2 │ enum Level {
+ 3 │     LOW = 1,
+ 4 │     MEDIUM = 5,
+   │              ˆ non-standard assignment
+ 5 │     HIGH = 10
+ 6 │ };
+
+  ? use the `@value` annotation instead
+
+! assign-expr: assignment operator on enumerators is non-standard
+  @ test.idl:5:20
+
+ 3 │     LOW = 1,
+ 4 │     MEDIUM = 5,
+ 5 │     HIGH = 10
+   │            ˆˆ non-standard assignment
+ 6 │ };
+
+  ? use the `@value` annotation instead
+
+! scoped-lit: scoped enums are non-standard
+  @ test.idl:8:37
+
+  6 │ };
+  7 │ 
+  8 │ const Level DEFAULT_LEVEL = Level::MEDIUM;
+    │                             ˆˆˆˆˆ used here
+  9 │ const Level FALLBACK = Level::LOW;
+
+  ? use `MEDIUM` instead of `Level::MEDIUM`
+  * enumerators are registered in the parent scope
+
+! scoped-lit: scoped enums are non-standard
+  @ test.idl:9:32
+
+  8 │ const Level DEFAULT_LEVEL = Level::MEDIUM;
+  9 │ const Level FALLBACK = Level::LOW;
+    │                        ˆˆˆˆˆ used here
+
+  ? use `LOW` instead of `Level::LOW`
+  * enumerators are registered in the parent scope

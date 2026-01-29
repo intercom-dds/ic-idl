@@ -2,39 +2,31 @@
 source: crates/ic-lint/tests/oneway.rs
 expression: test_lint(source)
 ---
-error[oneway]: oneway operations must have a `void` return type
-   ┌ test.idl:7:12
-   │
- 4 │ };
- 5 │ 
- 6 │ interface Service {
- 7 │     oneway boolean doWork(in long input, out string output) raises (Error);  // Multiple issues
-   ·     ^^^^^^ ^^^^^^^ non-void return type
-   ·     └─ declared as oneway here
- 8 │ };
-   └──
- help: change the return type to `void`
+⨯ oneway: oneway operations must have a `void` return type
+  @ test.idl:7:12
 
-error[oneway]: oneway operations cannot have exception specifiers
-   ┌ test.idl:7:69
-   │
- 4 │ };
- 5 │ 
  6 │ interface Service {
  7 │     oneway boolean doWork(in long input, out string output) raises (Error);  // Multiple issues
-   ·     ^^^^^^                                                          ^^^^^ exception specifier
-   ·     └─ declared as oneway here
+   │     ˆˆˆˆˆˆ ˆˆˆˆˆˆˆ non-void return type
+   │     └─ declared as oneway here
  8 │ };
-   └──
 
-error[oneway]: oneway operations cannot have `out` parameters
-   ┌ test.idl:7:53
-   │
- 4 │ };
- 5 │ 
+  ? change the return type to `void`
+
+⨯ oneway: oneway operations cannot have exception specifiers
+  @ test.idl:7:69
+
  6 │ interface Service {
  7 │     oneway boolean doWork(in long input, out string output) raises (Error);  // Multiple issues
-   ·     ^^^^^^                                          ^^^^^^ `out` parameter
-   ·     └─ declared as oneway here
+   │     ˆˆˆˆˆˆ                                                          ˆˆˆˆˆ exception specifier
+   │     └─ declared as oneway here
  8 │ };
-   └──
+
+⨯ oneway: oneway operations cannot have `out` parameters
+  @ test.idl:7:53
+
+ 6 │ interface Service {
+ 7 │     oneway boolean doWork(in long input, out string output) raises (Error);  // Multiple issues
+   │     ˆˆˆˆˆˆ                                          ˆˆˆˆˆˆ `out` parameter
+   │     └─ declared as oneway here
+ 8 │ };

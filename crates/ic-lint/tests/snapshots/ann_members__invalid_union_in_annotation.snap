@@ -2,13 +2,12 @@
 source: crates/ic-lint/tests/ann_members.rs
 expression: test_lint(source)
 ---
-error[ann-members]: only consts, typedefs and enums can be defined in annotations
-   ┌ test.idl:4:15
-   │
+⨯ ann-members: only consts, typedefs and enums can be defined in annotations
+  @ test.idl:4:15
+
  2 │ module MyModule {
  3 │     @annotation BadAnn {
  4 │         union Value switch (long) {
-   ·               ^^^^^ `union`s are not allowed in annotations
+   │               ˆˆˆˆˆ `union`s are not allowed in annotations
  5 │             case 1: string s;
  6 │             case 2: long n;
-   └──

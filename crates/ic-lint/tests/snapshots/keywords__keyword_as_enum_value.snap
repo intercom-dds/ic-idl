@@ -2,39 +2,39 @@
 source: crates/ic-lint/tests/keywords.rs
 expression: test_lint(source)
 ---
-error[keywords]: `int32` is a keyword and may not be used as an identifier
-   ┌ test.idl:3:5
-   │
+⨯ keywords: `int32` is a keyword and may not be used as an identifier
+  @ test.idl:3:5
+
  2 │ enum Type {
  3 │     int32,      // 'int32' is a keyword
-   ·     ^^^^^ this is an IDL keyword
+   │     ˆˆˆˆˆ this is an IDL keyword
  4 │     uint64,     // 'uint64' is a keyword
  5 │     octet       // 'octet' is a keyword
-   └──
- help: the keyword can be escaped by changing to `_int32`
- note: keywords are matched case-insensitively against identifiers
 
-error[keywords]: `uint64` is a keyword and may not be used as an identifier
-   ┌ test.idl:4:5
-   │
+  ? the keyword can be escaped by changing to `_int32`
+  * keywords are matched case-insensitively against identifiers
+
+⨯ keywords: `uint64` is a keyword and may not be used as an identifier
+  @ test.idl:4:5
+
  2 │ enum Type {
  3 │     int32,      // 'int32' is a keyword
  4 │     uint64,     // 'uint64' is a keyword
-   ·     ^^^^^^ this is an IDL keyword
+   │     ˆˆˆˆˆˆ this is an IDL keyword
  5 │     octet       // 'octet' is a keyword
  6 │ };
-   └──
- help: the keyword can be escaped by changing to `_uint64`
- note: keywords are matched case-insensitively against identifiers
 
-error[keywords]: `octet` is a keyword and may not be used as an identifier
-   ┌ test.idl:5:5
-   │
+  ? the keyword can be escaped by changing to `_uint64`
+  * keywords are matched case-insensitively against identifiers
+
+⨯ keywords: `octet` is a keyword and may not be used as an identifier
+  @ test.idl:5:5
+
  3 │     int32,      // 'int32' is a keyword
  4 │     uint64,     // 'uint64' is a keyword
  5 │     octet       // 'octet' is a keyword
-   ·     ^^^^^ this is an IDL keyword
+   │     ˆˆˆˆˆ this is an IDL keyword
  6 │ };
-   └──
- help: the keyword can be escaped by changing to `_octet`
- note: keywords are matched case-insensitively against identifiers
+
+  ? the keyword can be escaped by changing to `_octet`
+  * keywords are matched case-insensitively against identifiers

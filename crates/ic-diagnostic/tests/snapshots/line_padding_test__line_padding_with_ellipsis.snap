@@ -2,20 +2,19 @@
 source: crates/ic-diagnostic/tests/line_padding_test.rs
 expression: buf
 ---
-error: large span with ellipsis
-     ┌ test.idl:10:1
-     │
+⨯: large span with ellipsis
+  @ test.idl:10:1
+
    8 │ line 8
    9 │ line 9
   10 │ line 10
-     · ^^^^^^^ huge span
+     │ ˆˆˆˆˆˆˆ huge span
   11 │ line 11
   12 │ line 12
- ··· │
+   ··· │
  188 │ line 188
  189 │ line 189
  190 │ line 190
-     · ^^^^^^^^
+     │ ˆˆˆˆˆˆˆˆ
  191 │ line 191
  192 │ line 192
-     └──

@@ -2,15 +2,14 @@
 source: crates/ic-lint/tests/duplicate_bitmask_flags.rs
 expression: test_lint_hir(source)
 ---
-error: duplicate definition of `ACTIVE`
-   ┌ test.idl:3:5
-   │
+⨯: duplicate definition of `ACTIVE`
+  @ test.idl:3:5
+
  2 │ bitmask Status {
  3 │     ACTIVE = 0,
-   ·     ^^^^^^ originally defined here
+   │     ˆˆˆˆˆˆ originally defined here
  4 │     PENDING = 1,
  5 │     ACTIVE = 2,  // Duplicate name, different value
-   ·     ^^^^^^ redefined here
+   │     ˆˆˆˆˆˆ redefined here
  6 │     COMPLETED = 3
  7 │ };
-   └──

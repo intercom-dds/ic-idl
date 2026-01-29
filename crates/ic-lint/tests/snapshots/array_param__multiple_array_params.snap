@@ -2,60 +2,60 @@
 source: crates/ic-lint/tests/array_param.rs
 expression: test_lint(source)
 ---
-warning[array-param]: using arrays as parameters in prototypes is not standard
-   ┌ test.idl:3:42
-   │
- 2 │         interface Calculator {
- 3 │             double dot_product(in double vec1[3], in double vec2[3]);
-   ·                                          ^^^^ this parameter is an array
- 4 │             void matrix_multiply(
- 5 │                 in double a[4][4],
-   └──
- note: standard IDL does not permit arrays as parameters
+! array-param: using arrays as parameters in prototypes is not standard
+  @ test.idl:3:42
 
-warning[array-param]: using arrays as parameters in prototypes is not standard
-   ┌ test.idl:3:61
-   │
- 2 │         interface Calculator {
- 3 │             double dot_product(in double vec1[3], in double vec2[3]);
-   ·                                                             ^^^^ this parameter is an array
- 4 │             void matrix_multiply(
- 5 │                 in double a[4][4],
-   └──
- note: standard IDL does not permit arrays as parameters
+ 2 │ interface Calculator {
+ 3 │     double dot_product(in double vec1[3], in double vec2[3]);
+   │                                  ˆˆˆˆ this parameter is an array
+ 4 │     void matrix_multiply(
+ 5 │         in double a[4][4],
 
-warning[array-param]: using arrays as parameters in prototypes is not standard
-   ┌ test.idl:5:27
-   │
- 3 │             double dot_product(in double vec1[3], in double vec2[3]);
- 4 │             void matrix_multiply(
- 5 │                 in double a[4][4],
-   ·                           ^ this parameter is an array
- 6 │                 in double b[4][4],
- 7 │                 out double result[4][4]
-   └──
- note: standard IDL does not permit arrays as parameters
+  * standard IDL does not permit arrays as parameters
 
-warning[array-param]: using arrays as parameters in prototypes is not standard
-   ┌ test.idl:6:27
-   │
- 4 │             void matrix_multiply(
- 5 │                 in double a[4][4],
- 6 │                 in double b[4][4],
-   ·                           ^ this parameter is an array
- 7 │                 out double result[4][4]
- 8 │             );
-   └──
- note: standard IDL does not permit arrays as parameters
+! array-param: using arrays as parameters in prototypes is not standard
+  @ test.idl:3:61
 
-warning[array-param]: using arrays as parameters in prototypes is not standard
-   ┌ test.idl:7:28
-   │
- 5 │                 in double a[4][4],
- 6 │                 in double b[4][4],
- 7 │                 out double result[4][4]
-   ·                            ^^^^^^ this parameter is an array
- 8 │             );
- 9 │         };
-   └──
- note: standard IDL does not permit arrays as parameters
+ 2 │ interface Calculator {
+ 3 │     double dot_product(in double vec1[3], in double vec2[3]);
+   │                                                     ˆˆˆˆ this parameter is an array
+ 4 │     void matrix_multiply(
+ 5 │         in double a[4][4],
+
+  * standard IDL does not permit arrays as parameters
+
+! array-param: using arrays as parameters in prototypes is not standard
+  @ test.idl:5:27
+
+ 3 │ double dot_product(in double vec1[3], in double vec2[3]);
+ 4 │ void matrix_multiply(
+ 5 │     in double a[4][4],
+   │               ˆ this parameter is an array
+ 6 │     in double b[4][4],
+ 7 │     out double result[4][4]
+
+  * standard IDL does not permit arrays as parameters
+
+! array-param: using arrays as parameters in prototypes is not standard
+  @ test.idl:6:27
+
+ 4 │ void matrix_multiply(
+ 5 │     in double a[4][4],
+ 6 │     in double b[4][4],
+   │               ˆ this parameter is an array
+ 7 │     out double result[4][4]
+ 8 │ );
+
+  * standard IDL does not permit arrays as parameters
+
+! array-param: using arrays as parameters in prototypes is not standard
+  @ test.idl:7:28
+
+ 5 │         in double a[4][4],
+ 6 │         in double b[4][4],
+ 7 │         out double result[4][4]
+   │                    ˆˆˆˆˆˆ this parameter is an array
+ 8 │     );
+ 9 │ };
+
+  * standard IDL does not permit arrays as parameters

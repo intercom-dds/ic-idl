@@ -2,16 +2,15 @@
 source: crates/ic-hir/tests/forward_declarations_test.rs
 expression: diagnostics
 ---
-error: duplicate definition of `Foo`
-   ┌ test.idl:2:16
-   │
- 2 │         struct Foo {
-   ·                ^^^ originally defined here
- 3 │             long x;
- 4 │         };
+⨯: duplicate definition of `Foo`
+  @ test.idl:2:16
+
+ 2 │ struct Foo {
+   │        ˆˆˆ originally defined here
+ 3 │     long x;
+ 4 │ };
  5 │ 
- 6 │         struct Foo {  // Duplicate!
-   ·                ^^^ redefined here
- 7 │             double y;
- 8 │         };
-   └──
+ 6 │ struct Foo {  // Duplicate!
+   │        ˆˆˆ redefined here
+ 7 │     double y;
+ 8 │ };

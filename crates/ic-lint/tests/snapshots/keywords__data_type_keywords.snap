@@ -2,117 +2,117 @@
 source: crates/ic-lint/tests/keywords.rs
 expression: test_lint(source)
 ---
-error[keywords]: `boolean` is a keyword and may not be used as an identifier
-   ┌ test.idl:3:10
-   │
+⨯ keywords: `boolean` is a keyword and may not be used as an identifier
+  @ test.idl:3:10
+
  2 │ struct DataTypes {
  3 │     long boolean;           // 'boolean' is a keyword
-   ·          ^^^^^^^ this is an IDL keyword
+   │          ˆˆˆˆˆˆˆ this is an IDL keyword
  4 │     long char;              // 'char' is a keyword
  5 │     long int32;             // 'int32' is a keyword
-   └──
- help: the keyword can be escaped by changing to `_boolean`
- note: keywords are matched case-insensitively against identifiers
 
-error[keywords]: `char` is a keyword and may not be used as an identifier
-   ┌ test.idl:4:10
-   │
+  ? the keyword can be escaped by changing to `_boolean`
+  * keywords are matched case-insensitively against identifiers
+
+⨯ keywords: `char` is a keyword and may not be used as an identifier
+  @ test.idl:4:10
+
  2 │ struct DataTypes {
  3 │     long boolean;           // 'boolean' is a keyword
  4 │     long char;              // 'char' is a keyword
-   ·          ^^^^ this is an IDL keyword
+   │          ˆˆˆˆ this is an IDL keyword
  5 │     long int32;             // 'int32' is a keyword
  6 │     long uint16;            // 'uint16' is a keyword
-   └──
- help: the keyword can be escaped by changing to `_char`
- note: keywords are matched case-insensitively against identifiers
 
-error[keywords]: `int32` is a keyword and may not be used as an identifier
-   ┌ test.idl:5:10
-   │
- 3 │     long boolean;           // 'boolean' is a keyword
- 4 │     long char;              // 'char' is a keyword
- 5 │     long int32;             // 'int32' is a keyword
-   ·          ^^^^^ this is an IDL keyword
- 6 │     long uint16;            // 'uint16' is a keyword
- 7 │     long octet;             // 'octet' is a keyword
-   └──
- help: the keyword can be escaped by changing to `_int32`
- note: keywords are matched case-insensitively against identifiers
+  ? the keyword can be escaped by changing to `_char`
+  * keywords are matched case-insensitively against identifiers
 
-error[keywords]: `uint16` is a keyword and may not be used as an identifier
-   ┌ test.idl:6:10
-   │
- 4 │     long char;              // 'char' is a keyword
- 5 │     long int32;             // 'int32' is a keyword
- 6 │     long uint16;            // 'uint16' is a keyword
-   ·          ^^^^^^ this is an IDL keyword
- 7 │     long octet;             // 'octet' is a keyword
- 8 │     long abstract;          // 'abstract' is a keyword
-   └──
- help: the keyword can be escaped by changing to `_uint16`
- note: keywords are matched case-insensitively against identifiers
+⨯ keywords: `int32` is a keyword and may not be used as an identifier
+  @ test.idl:5:10
 
-error[keywords]: `octet` is a keyword and may not be used as an identifier
-   ┌ test.idl:7:10
-   │
- 5 │     long int32;             // 'int32' is a keyword
- 6 │     long uint16;            // 'uint16' is a keyword
- 7 │     long octet;             // 'octet' is a keyword
-   ·          ^^^^^ this is an IDL keyword
- 8 │     long abstract;          // 'abstract' is a keyword
- 9 │     long uint64;            // 'uint64' is a keyword
-   └──
- help: the keyword can be escaped by changing to `_octet`
- note: keywords are matched case-insensitively against identifiers
+ 3 │ long boolean;           // 'boolean' is a keyword
+ 4 │ long char;              // 'char' is a keyword
+ 5 │ long int32;             // 'int32' is a keyword
+   │      ˆˆˆˆˆ this is an IDL keyword
+ 6 │ long uint16;            // 'uint16' is a keyword
+ 7 │ long octet;             // 'octet' is a keyword
 
-error[keywords]: `abstract` is a keyword and may not be used as an identifier
-    ┌ test.idl:8:10
-    │
-  6 │     long uint16;            // 'uint16' is a keyword
-  7 │     long octet;             // 'octet' is a keyword
+  ? the keyword can be escaped by changing to `_int32`
+  * keywords are matched case-insensitively against identifiers
+
+⨯ keywords: `uint16` is a keyword and may not be used as an identifier
+  @ test.idl:6:10
+
+ 4 │ long char;              // 'char' is a keyword
+ 5 │ long int32;             // 'int32' is a keyword
+ 6 │ long uint16;            // 'uint16' is a keyword
+   │      ˆˆˆˆˆˆ this is an IDL keyword
+ 7 │ long octet;             // 'octet' is a keyword
+ 8 │ long abstract;          // 'abstract' is a keyword
+
+  ? the keyword can be escaped by changing to `_uint16`
+  * keywords are matched case-insensitively against identifiers
+
+⨯ keywords: `octet` is a keyword and may not be used as an identifier
+  @ test.idl:7:10
+
+ 5 │ long int32;             // 'int32' is a keyword
+ 6 │ long uint16;            // 'uint16' is a keyword
+ 7 │ long octet;             // 'octet' is a keyword
+   │      ˆˆˆˆˆ this is an IDL keyword
+ 8 │ long abstract;          // 'abstract' is a keyword
+ 9 │ long uint64;            // 'uint64' is a keyword
+
+  ? the keyword can be escaped by changing to `_octet`
+  * keywords are matched case-insensitively against identifiers
+
+⨯ keywords: `abstract` is a keyword and may not be used as an identifier
+  @ test.idl:8:10
+
+  6 │ long uint16;            // 'uint16' is a keyword
+  7 │ long octet;             // 'octet' is a keyword
+  8 │ long abstract;          // 'abstract' is a keyword
+    │      ˆˆˆˆˆˆˆˆ this is an IDL keyword
+  9 │ long uint64;            // 'uint64' is a keyword
+ 10 │ long truncatable;       // 'truncatable' is a keyword
+
+  ? the keyword can be escaped by changing to `_abstract`
+  * keywords are matched case-insensitively against identifiers
+
+⨯ keywords: `uint64` is a keyword and may not be used as an identifier
+  @ test.idl:9:10
+
+  7 │ long octet;             // 'octet' is a keyword
+  8 │ long abstract;          // 'abstract' is a keyword
+  9 │ long uint64;            // 'uint64' is a keyword
+    │      ˆˆˆˆˆˆ this is an IDL keyword
+ 10 │ long truncatable;       // 'truncatable' is a keyword
+ 11 │ long multiple;          // 'multiple' is a keyword
+
+  ? the keyword can be escaped by changing to `_uint64`
+  * keywords are matched case-insensitively against identifiers
+
+⨯ keywords: `truncatable` is a keyword and may not be used as an identifier
+  @ test.idl:10:10
+
   8 │     long abstract;          // 'abstract' is a keyword
-    ·          ^^^^^^^^ this is an IDL keyword
   9 │     long uint64;            // 'uint64' is a keyword
  10 │     long truncatable;       // 'truncatable' is a keyword
-    └──
- help: the keyword can be escaped by changing to `_abstract`
- note: keywords are matched case-insensitively against identifiers
-
-error[keywords]: `uint64` is a keyword and may not be used as an identifier
-    ┌ test.idl:9:10
-    │
-  7 │     long octet;             // 'octet' is a keyword
-  8 │     long abstract;          // 'abstract' is a keyword
-  9 │     long uint64;            // 'uint64' is a keyword
-    ·          ^^^^^^ this is an IDL keyword
- 10 │     long truncatable;       // 'truncatable' is a keyword
- 11 │     long multiple;          // 'multiple' is a keyword
-    └──
- help: the keyword can be escaped by changing to `_uint64`
- note: keywords are matched case-insensitively against identifiers
-
-error[keywords]: `truncatable` is a keyword and may not be used as an identifier
-    ┌ test.idl:10:10
-    │
-  8 │     long abstract;          // 'abstract' is a keyword
-  9 │     long uint64;            // 'uint64' is a keyword
- 10 │     long truncatable;       // 'truncatable' is a keyword
-    ·          ^^^^^^^^^^^ this is an IDL keyword
+    │          ˆˆˆˆˆˆˆˆˆˆˆ this is an IDL keyword
  11 │     long multiple;          // 'multiple' is a keyword
  12 │ };
-    └──
- help: the keyword can be escaped by changing to `_truncatable`
- note: keywords are matched case-insensitively against identifiers
 
-error[keywords]: `multiple` is a keyword and may not be used as an identifier
-    ┌ test.idl:11:10
-    │
+  ? the keyword can be escaped by changing to `_truncatable`
+  * keywords are matched case-insensitively against identifiers
+
+⨯ keywords: `multiple` is a keyword and may not be used as an identifier
+  @ test.idl:11:10
+
   9 │     long uint64;            // 'uint64' is a keyword
  10 │     long truncatable;       // 'truncatable' is a keyword
  11 │     long multiple;          // 'multiple' is a keyword
-    ·          ^^^^^^^^ this is an IDL keyword
+    │          ˆˆˆˆˆˆˆˆ this is an IDL keyword
  12 │ };
-    └──
- help: the keyword can be escaped by changing to `_multiple`
- note: keywords are matched case-insensitively against identifiers
+
+  ? the keyword can be escaped by changing to `_multiple`
+  * keywords are matched case-insensitively against identifiers

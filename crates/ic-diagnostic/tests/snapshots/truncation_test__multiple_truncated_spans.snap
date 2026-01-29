@@ -2,19 +2,13 @@
 source: crates/ic-diagnostic/tests/truncation_test.rs
 expression: buf
 ---
-error: duplicate parameter names
-     ┌ test.idl:3:17
-     │
-   1 │ interface Test {
-   2 │     void method1(
-   3 │         in long a,
-     ·                 ^ first defined here
-     ·                 └─ duplicate parameter
-   4 │ 
-   5 │ 
- ··· │
-  23 │ 
-  24 │         in long a
-  25 │     );
-     └──
- note: parameter names must be unique within a method
+⨯: duplicate parameter names
+  @ test.idl:3:17
+
+ 1 │ interface Test {
+ 2 │     void method1(
+ 3 │         in long a,
+   │                 ˆ first defined here
+   │                 └─ duplicate parameter
+
+  * parameter names must be unique within a method

@@ -1,14 +1,12 @@
 ---
 source: crates/ic-hir/tests/overflow_detection.rs
-assertion_line: 57
 expression: test_overflow(source)
 ---
-error: bitmask bit position out of range
-   ┌ test.idl:5:5
-   │
+⨯: bitmask bit position out of range
+  @ test.idl:5:5
+
  3 │     A = 0,
  4 │     B = 63,
  5 │     C = 64
-   ·     ^^^^^^ bit position 64 exceeds maximum of 63 for 64-bit bitmask
+   │     ˆˆˆˆˆˆ bit position 64 exceeds maximum of 63 for 64-bit bitmask
  6 │ };
-   └──

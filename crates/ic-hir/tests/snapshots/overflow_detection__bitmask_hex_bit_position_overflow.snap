@@ -1,24 +1,21 @@
 ---
 source: crates/ic-hir/tests/overflow_detection.rs
-assertion_line: 105
 expression: test_overflow(source)
 ---
-error: bitmask bit position out of range
-   ┌ test.idl:5:5
-   │
+⨯: bitmask bit position out of range
+  @ test.idl:5:5
+
  3 │     LOW = 0x0001,
  4 │     MEDIUM = 0x0010,
  5 │     HIGH = 0x0100,
-   ·     ^^^^^^^^^^^^^ bit position 256 exceeds maximum of 63 for 64-bit bitmask
+   │     ˆˆˆˆˆˆˆˆˆˆˆˆˆ bit position 256 exceeds maximum of 63 for 64-bit bitmask
  6 │     CRITICAL = 0x1000
  7 │ };
-   └──
-error: bitmask bit position out of range
-   ┌ test.idl:6:5
-   │
+⨯: bitmask bit position out of range
+  @ test.idl:6:5
+
  4 │     MEDIUM = 0x0010,
  5 │     HIGH = 0x0100,
  6 │     CRITICAL = 0x1000
-   ·     ^^^^^^^^^^^^^^^^^ bit position 4096 exceeds maximum of 63 for 64-bit bitmask
+   │     ˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆ bit position 4096 exceeds maximum of 63 for 64-bit bitmask
  7 │ };
-   └──

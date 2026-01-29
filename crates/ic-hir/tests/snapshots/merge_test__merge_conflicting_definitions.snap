@@ -2,16 +2,14 @@
 source: crates/ic-hir/tests/merge_test.rs
 expression: output
 ---
-error: conflicting definitions for `Foo`
-   ┌ file1.idl:1:8
-   │
+⨯: conflicting definitions for `Foo`
+  @ file1.idl:1:8
+
  1 │ struct Foo {};
-   ·        ^^^ first defined here
-   └──
-   ┌ file2.idl:1:8
-   │
+   │        ˆˆˆ first defined here
+  @ file2.idl:1:8
+
  1 │ struct Foo {
-   ·        ^^^ redefined here
+   │        ˆˆˆ redefined here
  2 │     string value;
  3 │ };
-   └──

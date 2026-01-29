@@ -2,11 +2,10 @@
 source: crates/ic-lint/tests/invalid_array_size.rs
 expression: test_lint_hir(source)
 ---
-warning[invalid-array-size]: array size 20000 bytes exceeds reasonable limit of 16384 bytes (5000 elements × 4 bytes each)
-   ┌ test.idl:2:23
-   │
+! invalid-array-size: array size 20000 bytes exceeds reasonable limit of 16384 bytes (5000 elements × 4 bytes each)
+  @ test.idl:2:23
+
  2 │ typedef long BigArray[5000];  // 20000 bytes
-   ·                       ^^^^ very large array
+   │                       ˆˆˆˆ very large array
  3 │ struct UsesBigArray {
  4 │     BigArray data;
-   └──

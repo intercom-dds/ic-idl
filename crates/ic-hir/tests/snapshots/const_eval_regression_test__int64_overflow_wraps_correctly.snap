@@ -2,11 +2,11 @@
 source: crates/ic-hir/tests/const_eval_regression_test.rs
 expression: diagnostics
 ---
-warning: integer overflow in constant expression
-   ┌ test.idl:3:38
-   │
- 2 │         const int64 MAX = 9223372036854775807;
- 3 │         const int64 OVERFLOW = MAX + 1;
-   ·                                      ^ overflow
-   └──
- note: consider using a larger integer type
+!: integer overflow in constant expression
+  @ test.idl:3:38
+
+ 2 │ const int64 MAX = 9223372036854775807;
+ 3 │ const int64 OVERFLOW = MAX + 1;
+   │                              ˆ overflow
+
+  * consider using a larger integer type

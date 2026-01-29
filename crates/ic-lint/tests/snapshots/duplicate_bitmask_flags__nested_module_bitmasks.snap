@@ -2,16 +2,13 @@
 source: crates/ic-lint/tests/duplicate_bitmask_flags.rs
 expression: test_lint_hir(source)
 ---
-error: duplicate definition of `FLAG`
-   ┌ test.idl:4:9
-   │
+⨯: duplicate definition of `FLAG`
+  @ test.idl:4:9
+
  2 │ module Outer {
  3 │     bitmask OuterFlags {
  4 │         FLAG,
-   ·         ^^^^ originally defined here
+   │         ˆˆˆˆ originally defined here
  5 │         FLAG    // Duplicate
-   ·         ^^^^ redefined here
+   │         ˆˆˆˆ redefined here
  6 │     };
- 7 │ 
- 8 │     module Inner {
-   └──

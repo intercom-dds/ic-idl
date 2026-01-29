@@ -2,13 +2,13 @@
 source: crates/ic-lint/tests/null.rs
 expression: test_lint(source)
 ---
-warning[null-variant]: `null` variants are non-standard
-   ┌ test.idl:5:22
-   │
- 3 │             case 1: string name;
- 4 │             case 2: long count;
- 5 │             default: null;
-   ·                      ^^^^ `null` is not standard
- 6 │         };
-   └──
- note: all case labels must map to a value
+! null-variant: `null` variants are non-standard
+  @ test.idl:5:22
+
+ 3 │     case 1: string name;
+ 4 │     case 2: long count;
+ 5 │     default: null;
+   │              ˆˆˆˆ `null` is not standard
+ 6 │ };
+
+  * all case labels must map to a value

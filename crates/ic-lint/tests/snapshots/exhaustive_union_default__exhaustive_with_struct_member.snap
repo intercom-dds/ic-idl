@@ -2,21 +2,21 @@
 source: crates/ic-lint/tests/exhaustive_union_default.rs
 expression: test_lint_hir(source)
 ---
-error[exhaustive-union-default]: default case is not allowed when all enum values are covered in union `OuterUnion`
-     ┌ test.idl:8:1
-     │
-   5 │     long value;
-   6 │ };
-   7 │ 
-   8 │ union OuterUnion switch(Outer) {
-     · ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ exhausted all possible values
-   9 │ case X:
-  10 │     InnerData inner;
- ··· │
-  13 │ default:
-  14 │     float f;  // Error: all Outer values covered
-  15 │ };
-     · ^^
-     └──
- help: all 2 enumerators of 'Outer' are already handled by explicit cases
- note: default cases are only allowed when some discriminator values are not explicitly handled
+⨯ exhaustive-union-default: default case is not allowed when all enum values are covered in union `OuterUnion`
+  @ test.idl:8:1
+
+  6 │ };
+  7 │ 
+  8 │ union OuterUnion switch(Outer) {
+    │ ˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆ exhausted all possible values
+  9 │ case X:
+ 10 │     InnerData inner;
+ 11 │ case Y:
+ 12 │     string y;
+ 13 │ default:
+ 14 │     float f;  // Error: all Outer values covered
+ 15 │ };
+    │ ˆˆ
+
+  ? all 2 enumerators of 'Outer' are already handled by explicit cases
+  * default cases are only allowed when some discriminator values are not explicitly handled

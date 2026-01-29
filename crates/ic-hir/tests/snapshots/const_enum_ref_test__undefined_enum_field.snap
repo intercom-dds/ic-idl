@@ -2,13 +2,12 @@
 source: crates/ic-hir/tests/const_enum_ref_test.rs
 expression: output
 ---
-error: undefined constant or enum value `MyEnum::UNDEFINED`
-   ┌ test.idl:7:27
-   │
- 4 │             ONE
- 5 │         };
+⨯: undefined constant or enum value `MyEnum::UNDEFINED`
+  @ test.idl:7:27
+
+ 5 │ };
  6 │ 
- 7 │         const int32 BAD = MyEnum::UNDEFINED;
-   ·                           ^^^^^^^^^^^^^^^^^ evaluation error
-   └──
- note: check that the name is spelled correctly
+ 7 │ const int32 BAD = MyEnum::UNDEFINED;
+   │                   ˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆ evaluation error
+
+  * check that the name is spelled correctly

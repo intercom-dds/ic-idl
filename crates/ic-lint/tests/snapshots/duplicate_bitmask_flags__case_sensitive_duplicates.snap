@@ -2,40 +2,37 @@
 source: crates/ic-lint/tests/duplicate_bitmask_flags.rs
 expression: test_lint_hir(source)
 ---
-error: duplicate definition of `FLAG`
-   ┌ test.idl:3:5
-   │
+⨯: duplicate definition of `FLAG`
+  @ test.idl:3:5
+
  2 │ bitmask CaseSensitive {
  3 │     flag,
-   ·     ^^^^ originally defined here
+   │     ˆˆˆˆ originally defined here
  4 │     FLAG,     // Different case, not a duplicate
-   ·     ^^^^ redefined here
+   │     ˆˆˆˆ redefined here
  5 │     Flag,     // Another different case
  6 │     flag      // Duplicate of first one
-   └──
 
-error: duplicate definition of `Flag`
-   ┌ test.idl:3:5
-   │
+⨯: duplicate definition of `Flag`
+  @ test.idl:3:5
+
  2 │ bitmask CaseSensitive {
  3 │     flag,
-   ·     ^^^^ originally defined here
+   │     ˆˆˆˆ originally defined here
  4 │     FLAG,     // Different case, not a duplicate
  5 │     Flag,     // Another different case
-   ·     ^^^^ redefined here
+   │     ˆˆˆˆ redefined here
  6 │     flag      // Duplicate of first one
  7 │ };
-   └──
 
-error: duplicate definition of `flag`
-   ┌ test.idl:3:5
-   │
+⨯: duplicate definition of `flag`
+  @ test.idl:3:5
+
  2 │ bitmask CaseSensitive {
  3 │     flag,
-   ·     ^^^^ originally defined here
+   │     ˆˆˆˆ originally defined here
  4 │     FLAG,     // Different case, not a duplicate
  5 │     Flag,     // Another different case
  6 │     flag      // Duplicate of first one
-   ·     ^^^^ redefined here
+   │     ˆˆˆˆ redefined here
  7 │ };
-   └──

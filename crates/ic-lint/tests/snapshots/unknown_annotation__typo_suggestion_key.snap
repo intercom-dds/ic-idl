@@ -2,13 +2,13 @@
 source: crates/ic-lint/tests/unknown_annotation.rs
 expression: output
 ---
-warning[unknown-ann]: unknown annotation `ky`
-   ┌ test.idl:3:14
-   │
- 2 │         struct TestStruct {
- 3 │             @ky
-   ·              ^^ annotation not found
- 4 │             long field;
- 5 │         };
-   └──
- help: did you mean `@key`?
+! unknown-ann: unknown annotation `ky`
+  @ test.idl:3:14
+
+ 2 │ struct TestStruct {
+ 3 │     @ky
+   │      ˆˆ annotation not found
+ 4 │     long field;
+ 5 │ };
+
+  ? did you mean `@key`?

@@ -2,10 +2,9 @@
 source: crates/ic-diagnostic/tests/edge_cases_test.rs
 expression: buf
 ---
-error: adjacent spans
-   ┌ test.idl:1:9
-   │
+⨯: adjacent spans
+  @ test.idl:1:9
+
  1 │ int add(int a, int b) { return a + b; }
-   ·         ^^^^^  ^^^^^ second parameter
-   ·         └─ first parameter
-   └──
+   │         ˆˆˆˆˆ  ˆˆˆˆˆ second parameter
+   │         └─ first parameter

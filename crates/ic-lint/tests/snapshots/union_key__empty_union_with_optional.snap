@@ -2,13 +2,13 @@
 source: crates/ic-lint/tests/union_key.rs
 expression: test_lint_hir(source)
 ---
-error[union-key]: union discriminator for 'EmptyUnion' cannot be @optional
-   ┌ test.idl:2:26
-   │
+⨯ union-key: union discriminator for 'EmptyUnion' cannot be @optional
+  @ test.idl:2:26
+
  2 │ union EmptyUnion switch(@optional long) {
-   ·                          ^^^^^^^^ @optional not allowed on discriminator
+   │                          ˆˆˆˆˆˆˆˆ @optional not allowed on discriminator
  3 │ default:
  4 │     long value;
-   └──
- help: remove @optional from the discriminator
- note: union discriminators must always be present
+
+  ? remove @optional from the discriminator
+  * union discriminators must always be present

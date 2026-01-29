@@ -2,22 +2,22 @@
 source: crates/ic-lint/tests/complex_lit.rs
 expression: test_lint(source)
 ---
-warning[complex-lit]: complex literals are non-standard
-   ┌ test.idl:2:32
-   │
- 2 │         const long PRIMES[5] = { 2, 3, 5, 7, 11 };
-   ·                    ^^^^^^      ^^^^^^^^^^^^^^^^^^ complex constants are non-standard
-   ·                    └─ const defined here
- 3 │         const double MATRIX[2][2] = { {1.0, 0.0}, {0.0, 1.0} };
-   └──
- note: only literals of trivial types are allowed in standard IDL
+! complex-lit: complex literals are non-standard
+  @ test.idl:2:32
 
-warning[complex-lit]: complex literals are non-standard
-   ┌ test.idl:3:37
-   │
- 2 │         const long PRIMES[5] = { 2, 3, 5, 7, 11 };
- 3 │         const double MATRIX[2][2] = { {1.0, 0.0}, {0.0, 1.0} };
-   ·                      ^^^^^^         ^^^^^^^^^^^^^^^^^^^^^^^^^^ complex constants are non-standard
-   ·                      └─ const defined here
-   └──
- note: only literals of trivial types are allowed in standard IDL
+ 2 │ const long PRIMES[5] = { 2, 3, 5, 7, 11 };
+   │            ˆˆˆˆˆˆ      ˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆ complex constants are non-standard
+   │            └─ const defined here
+ 3 │ const double MATRIX[2][2] = { {1.0, 0.0}, {0.0, 1.0} };
+
+  * only literals of trivial types are allowed in standard IDL
+
+! complex-lit: complex literals are non-standard
+  @ test.idl:3:37
+
+ 2 │ const long PRIMES[5] = { 2, 3, 5, 7, 11 };
+ 3 │ const double MATRIX[2][2] = { {1.0, 0.0}, {0.0, 1.0} };
+   │              ˆˆˆˆˆˆ         ˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆ complex constants are non-standard
+   │              └─ const defined here
+
+  * only literals of trivial types are allowed in standard IDL

@@ -2,82 +2,69 @@
 source: crates/ic-lint/tests/ambiguous_precedence.rs
 expression: test_lint(idl)
 ---
-warning[complex-lit]: complex literals are non-standard
-    ┌ test.idl:8:31
-    │
-  5 │ };
-  6 │ 
+! complex-lit: complex literals are non-standard
+  @ test.idl:8:31
+
   7 │ // In arrays
   8 │ const long array[1 | 2 & 3] = { 0 };  // Should warn in array size
-    ·            ^^^^^              ^^^^^ complex constants are non-standard
-    ·            └─ const defined here
+    │            ˆˆˆˆˆ              ˆˆˆˆˆ complex constants are non-standard
+    │            └─ const defined here
   9 │ 
  10 │ // In enum values (if assignment expressions were supported)
- 11 │ enum Flags {
-    └──
- note: only literals of trivial types are allowed in standard IDL
 
-warning[ambiguous-precedence]: operator `|` has lower precedence than `&`
-    ┌ test.idl:8:20
-    │
-  5 │ };
-  6 │ 
+  * only literals of trivial types are allowed in standard IDL
+
+! ambiguous-precedence: operator `|` has lower precedence than `&`
+  @ test.idl:8:20
+
   7 │ // In arrays
   8 │ const long array[1 | 2 & 3] = { 0 };  // Should warn in array size
-    ·                    ^ ^^^^^ than this expression
-    ·                    └─ this operator has lower precedence
+    │                    ˆ ˆˆˆˆˆ than this expression
+    │                    └─ this operator has lower precedence
   9 │ 
  10 │ // In enum values (if assignment expressions were supported)
- 11 │ enum Flags {
-    └──
- help: add parentheses to clarify the intended order of operations
 
-warning[ambiguous-precedence]: operator `|` has lower precedence than `&`
-    ┌ test.idl:21:27
-    │
+  ? add parentheses to clarify the intended order of operations
+
+! ambiguous-precedence: operator `|` has lower precedence than `&`
+  @ test.idl:21:27
+
  19 │ // In module
  20 │ module Test {
  21 │     const long nested = 1 | 2 & 3;  // Should warn in nested context
-    ·                           ^ ^^^^^ than this expression
-    ·                           └─ this operator has lower precedence
+    │                           ˆ ˆˆˆˆˆ than this expression
+    │                           └─ this operator has lower precedence
  22 │ 
  23 │     struct Inner {
- 24 │         long value;
-    └──
- help: add parentheses to clarify the intended order of operations
 
-warning[ambiguous-precedence]: operator `|` has lower precedence than `^`
-    ┌ test.idl:37:24
-    │
- 34 │ };
- 35 │ 
+  ? add parentheses to clarify the intended order of operations
+
+! ambiguous-precedence: operator `|` has lower precedence than `^`
+  @ test.idl:37:24
+
  36 │ // Multiple issues on same line
  37 │ const long complex = 1 | 2 & 3 ^ 4 + 5;  // Multiple warnings
-    ·                        ^ ^^^^^^^^^^^^^ than this expression
-    ·                        └─ this operator has lower precedence
-    └──
- help: add parentheses to clarify the intended order of operations
+    │                        ˆ ˆˆˆˆˆˆˆˆˆˆˆˆˆ than this expression
+    │                        └─ this operator has lower precedence
 
-warning[ambiguous-precedence]: operator `^` has lower precedence than `&`
-    ┌ test.idl:37:32
-    │
- 34 │ };
- 35 │ 
+  ? add parentheses to clarify the intended order of operations
+
+! ambiguous-precedence: operator `^` has lower precedence than `&`
+  @ test.idl:37:32
+
  36 │ // Multiple issues on same line
  37 │ const long complex = 1 | 2 & 3 ^ 4 + 5;  // Multiple warnings
-    ·                          ^^^^^ ^ this operator has lower precedence
-    ·                          └─ than this expression
-    └──
- help: add parentheses to clarify the intended order of operations
+    │                          ˆˆˆˆˆ ˆ this operator has lower precedence
+    │                          └─ than this expression
 
-warning[ambiguous-precedence]: operator `^` has lower precedence than `+`
-    ┌ test.idl:37:32
-    │
- 34 │ };
- 35 │ 
+  ? add parentheses to clarify the intended order of operations
+
+! ambiguous-precedence: operator `^` has lower precedence than `+`
+  @ test.idl:37:32
+
  36 │ // Multiple issues on same line
  37 │ const long complex = 1 | 2 & 3 ^ 4 + 5;  // Multiple warnings
-    ·                                ^ ^^^^^ than this expression
-    ·                                └─ this operator has lower precedence
-    └──
- help: add parentheses to clarify the intended order of operations
+    │                                ˆ ˆˆˆˆˆ than this expression
+    │                                └─ this operator has lower precedence
+
+  ? add parentheses to clarify the intended order of operations

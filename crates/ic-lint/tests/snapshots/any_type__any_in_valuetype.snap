@@ -2,13 +2,13 @@
 source: crates/ic-lint/tests/any_type.rs
 expression: test_lint_hir(source)
 ---
-warning[any-type]: the 'any' type is not fully supported
-   ┌ test.idl:3:20
-   │
- 2 │         valuetype Holder {
- 3 │             public any data;
-   ·                    ^^^ 'any' type used here
- 4 │             private string name;
- 5 │         };
-   └──
- help: consider using a concrete type
+! any-type: the 'any' type is not fully supported
+  @ test.idl:3:20
+
+ 2 │ valuetype Holder {
+ 3 │     public any data;
+   │            ˆˆˆ 'any' type used here
+ 4 │     private string name;
+ 5 │ };
+
+  ? consider using a concrete type

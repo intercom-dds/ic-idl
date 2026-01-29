@@ -2,15 +2,15 @@
 source: crates/ic-lint/tests/ambiguous_precedence.rs
 expression: test_lint(idl)
 ---
-warning[ambiguous-precedence]: operator `&` has lower precedence than `+`
-    ┌ test.idl:14:25
-    │
+! ambiguous-precedence: operator `&` has lower precedence than `+`
+  @ test.idl:14:25
+
  12 │ const long MASK = 0xFF;
  13 │ const long FLAGS = 0x0F;
  14 │ const long test6 = MASK & FLAGS + 1;   // Should warn
-    ·                         ^ ^^^^^^^^^ than this expression
-    ·                         └─ this operator has lower precedence
+    │                         ˆ ˆˆˆˆˆˆˆˆˆ than this expression
+    │                         └─ this operator has lower precedence
  15 │ 
  16 │ // Empty file should not crash
-    └──
- help: add parentheses to clarify the intended order of operations
+
+  ? add parentheses to clarify the intended order of operations

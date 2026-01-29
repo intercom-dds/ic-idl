@@ -2,58 +2,50 @@
 source: crates/ic-lint/tests/invalid_array_size.rs
 expression: test_lint_hir(source)
 ---
-warning[invalid-array-size]: array size 17000 bytes exceeds reasonable limit of 16384 bytes (17000 elements × 1 bytes each)
-   ┌ test.idl:3:18
-   │
+! invalid-array-size: array size 17000 bytes exceeds reasonable limit of 16384 bytes (17000 elements × 1 bytes each)
+  @ test.idl:3:18
+
  2 │ struct TypeSizes {
  3 │     octet octets[17000];          // 17000 bytes - too big
-   ·                  ^^^^^ very large array
+   │                  ˆˆˆˆˆ very large array
  4 │     short shorts[8500];           // 17000 bytes - too big
  5 │     long longs[4200];             // 16800 bytes - too big
-   └──
 
-warning[invalid-array-size]: array size 17000 bytes exceeds reasonable limit of 16384 bytes (8500 elements × 2 bytes each)
-   ┌ test.idl:4:18
-   │
+! invalid-array-size: array size 17000 bytes exceeds reasonable limit of 16384 bytes (8500 elements × 2 bytes each)
+  @ test.idl:4:18
+
  2 │ struct TypeSizes {
  3 │     octet octets[17000];          // 17000 bytes - too big
  4 │     short shorts[8500];           // 17000 bytes - too big
-   ·                  ^^^^ very large array
+   │                  ˆˆˆˆ very large array
  5 │     long longs[4200];             // 16800 bytes - too big
  6 │     unsigned long long llongs[2100]; // 16800 bytes - too big
-   └──
 
-warning[invalid-array-size]: array size 16800 bytes exceeds reasonable limit of 16384 bytes (4200 elements × 4 bytes each)
-   ┌ test.idl:5:16
-   │
- 3 │     octet octets[17000];          // 17000 bytes - too big
- 4 │     short shorts[8500];           // 17000 bytes - too big
- 5 │     long longs[4200];             // 16800 bytes - too big
-   ·                ^^^^ very large array
- 6 │     unsigned long long llongs[2100]; // 16800 bytes - too big
- 7 │     double doubles[2100];         // 16800 bytes - too big
-   └──
+! invalid-array-size: array size 16800 bytes exceeds reasonable limit of 16384 bytes (4200 elements × 4 bytes each)
+  @ test.idl:5:16
 
-warning[invalid-array-size]: array size 16800 bytes exceeds reasonable limit of 16384 bytes (2100 elements × 8 bytes each)
-   ┌ test.idl:6:31
-   │
- 4 │     short shorts[8500];           // 17000 bytes - too big
- 5 │     long longs[4200];             // 16800 bytes - too big
- 6 │     unsigned long long llongs[2100]; // 16800 bytes - too big
-   ·                               ^^^^ very large array
- 7 │     double doubles[2100];         // 16800 bytes - too big
+ 3 │ octet octets[17000];          // 17000 bytes - too big
+ 4 │ short shorts[8500];           // 17000 bytes - too big
+ 5 │ long longs[4200];             // 16800 bytes - too big
+   │            ˆˆˆˆ very large array
+ 6 │ unsigned long long llongs[2100]; // 16800 bytes - too big
+ 7 │ double doubles[2100];         // 16800 bytes - too big
+
+! invalid-array-size: array size 16800 bytes exceeds reasonable limit of 16384 bytes (2100 elements × 8 bytes each)
+  @ test.idl:6:31
+
+ 4 │ short shorts[8500];           // 17000 bytes - too big
+ 5 │ long longs[4200];             // 16800 bytes - too big
+ 6 │ unsigned long long llongs[2100]; // 16800 bytes - too big
+   │                           ˆˆˆˆ very large array
+ 7 │ double doubles[2100];         // 16800 bytes - too big
+
+! invalid-array-size: array size 16800 bytes exceeds reasonable limit of 16384 bytes (2100 elements × 8 bytes each)
+  @ test.idl:7:20
+
+ 5 │ long longs[4200];             // 16800 bytes - too big
+ 6 │ unsigned long long llongs[2100]; // 16800 bytes - too big
+ 7 │ double doubles[2100];         // 16800 bytes - too big
+   │                ˆˆˆˆ very large array
  8 │ 
- 9 │     octet ok_octets[16000];       // 16000 bytes - OK
-   └──
-
-warning[invalid-array-size]: array size 16800 bytes exceeds reasonable limit of 16384 bytes (2100 elements × 8 bytes each)
-    ┌ test.idl:7:20
-    │
-  5 │     long longs[4200];             // 16800 bytes - too big
-  6 │     unsigned long long llongs[2100]; // 16800 bytes - too big
-  7 │     double doubles[2100];         // 16800 bytes - too big
-    ·                    ^^^^ very large array
-  8 │ 
-  9 │     octet ok_octets[16000];       // 16000 bytes - OK
- 10 │     short ok_shorts[8000];        // 16000 bytes - OK
-    └──
+ 9 │ octet ok_octets[16000];       // 16000 bytes - OK

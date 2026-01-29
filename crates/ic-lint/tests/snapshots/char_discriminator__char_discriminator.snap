@@ -2,12 +2,12 @@
 source: crates/ic-lint/tests/char_discriminator.rs
 expression: output
 ---
-warning[char-discriminator]: char types should not be used as union discriminators
-   ┌ test.idl:2:33
-   │
- 2 │         union CharUnion switch (char) {
-   ·                                 ^^^^ char type
- 3 │             case 'A':
- 4 │                 long number;
-   └──
- help: consider using an integer or enum value instead
+! char-discriminator: char types should not be used as union discriminators
+  @ test.idl:2:33
+
+ 2 │ union CharUnion switch (char) {
+   │                         ˆˆˆˆ char type
+ 3 │     case 'A':
+ 4 │         long number;
+
+  ? consider using an integer or enum value instead

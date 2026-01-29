@@ -2,12 +2,12 @@
 source: crates/ic-lint/tests/bitset.rs
 expression: "test_lint_hir(r\"\nbitset Flags {\n    bitfield<4> low;\n    bitfield<4> high;\n};\n\")"
 ---
-warning[bitset]: bitsets are not supported
-   ┌ test.idl:2:8
-   │
+! bitset: bitsets are not supported
+  @ test.idl:2:8
+
  2 │ bitset Flags {
-   ·        ^^^^^ defined here
+   │        ˆˆˆˆˆ defined here
  3 │     bitfield<4> low;
  4 │     bitfield<4> high;
-   └──
- note: the bitset will be skipped during codegen
+
+  * the bitset will be skipped during codegen

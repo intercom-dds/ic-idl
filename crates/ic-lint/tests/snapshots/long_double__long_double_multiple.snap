@@ -1,36 +1,36 @@
 ---
 source: crates/ic-lint/tests/long_double.rs
-expression: "test_lint(r\"\nstruct Precision {\n    long double a;\n    long double b;\n};\ntypedef long double LD;\n\")"
+expression: "test_lint_hir(r\"\nstruct Precision {\n    long double a;\n    long double b;\n};\ntypedef long double LD;\n\")"
 ---
-warning[long-double]: long double is not supported
-   ┌ test.idl:3:5
-   │
+! long-double: long double is not supported
+  @ test.idl:3:5
+
  2 │ struct Precision {
  3 │     long double a;
-   ·     ^^^^^^^^^^^ used here
+   │     ˆˆˆˆˆˆˆˆˆˆˆ used here
  4 │     long double b;
  5 │ };
-   └──
- note: long double will be treated as a normal double during codegen
 
-warning[long-double]: long double is not supported
-   ┌ test.idl:4:5
-   │
+  * long double will be treated as a normal double during codegen
+
+! long-double: long double is not supported
+  @ test.idl:4:5
+
  2 │ struct Precision {
  3 │     long double a;
  4 │     long double b;
-   ·     ^^^^^^^^^^^ used here
+   │     ˆˆˆˆˆˆˆˆˆˆˆ used here
  5 │ };
  6 │ typedef long double LD;
-   └──
- note: long double will be treated as a normal double during codegen
 
-warning[long-double]: long double is not supported
-   ┌ test.idl:6:9
-   │
+  * long double will be treated as a normal double during codegen
+
+! long-double: long double is not supported
+  @ test.idl:6:9
+
  4 │     long double b;
  5 │ };
  6 │ typedef long double LD;
-   ·         ^^^^^^^^^^^ used here
-   └──
- note: long double will be treated as a normal double during codegen
+   │         ˆˆˆˆˆˆˆˆˆˆˆ used here
+
+  * long double will be treated as a normal double during codegen

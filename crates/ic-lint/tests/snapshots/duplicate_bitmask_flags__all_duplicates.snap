@@ -2,40 +2,37 @@
 source: crates/ic-lint/tests/duplicate_bitmask_flags.rs
 expression: test_lint_hir(source)
 ---
-error: duplicate definition of `SAME`
-   ┌ test.idl:3:5
-   │
+⨯: duplicate definition of `SAME`
+  @ test.idl:3:5
+
  2 │ bitmask AllDuplicates {
  3 │     SAME,
-   ·     ^^^^ originally defined here
+   │     ˆˆˆˆ originally defined here
  4 │     SAME,
-   ·     ^^^^ redefined here
+   │     ˆˆˆˆ redefined here
  5 │     SAME,
  6 │     SAME
-   └──
 
-error: duplicate definition of `SAME`
-   ┌ test.idl:3:5
-   │
+⨯: duplicate definition of `SAME`
+  @ test.idl:3:5
+
  2 │ bitmask AllDuplicates {
  3 │     SAME,
-   ·     ^^^^ originally defined here
+   │     ˆˆˆˆ originally defined here
  4 │     SAME,
  5 │     SAME,
-   ·     ^^^^ redefined here
+   │     ˆˆˆˆ redefined here
  6 │     SAME
  7 │ };
-   └──
 
-error: duplicate definition of `SAME`
-   ┌ test.idl:3:5
-   │
+⨯: duplicate definition of `SAME`
+  @ test.idl:3:5
+
  2 │ bitmask AllDuplicates {
  3 │     SAME,
-   ·     ^^^^ originally defined here
+   │     ˆˆˆˆ originally defined here
  4 │     SAME,
  5 │     SAME,
  6 │     SAME
-   ·     ^^^^ redefined here
+   │     ˆˆˆˆ redefined here
  7 │ };
-   └──

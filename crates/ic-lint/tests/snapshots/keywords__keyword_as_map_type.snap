@@ -2,11 +2,11 @@
 source: crates/ic-lint/tests/keywords.rs
 expression: test_lint(source)
 ---
-error[keywords]: `uint16` is a keyword and may not be used as an identifier
-   ┌ test.idl:2:27
-   │
+⨯ keywords: `uint16` is a keyword and may not be used as an identifier
+  @ test.idl:2:27
+
  2 │ typedef map<string, long> uint16;  // 'uint16' is a keyword
-   ·                           ^^^^^^ this is an IDL keyword
-   └──
- help: the keyword can be escaped by changing to `_uint16`
- note: keywords are matched case-insensitively against identifiers
+   │                           ˆˆˆˆˆˆ this is an IDL keyword
+
+  ? the keyword can be escaped by changing to `_uint16`
+  * keywords are matched case-insensitively against identifiers

@@ -2,13 +2,12 @@
 source: crates/ic-lint/tests/unused_include.rs
 expression: test_lint_with_includes(source)
 ---
-warning[unused-include]: unused include `unused_types.idl`
-   ┌ test.idl:2:18
-   │
- 2 │         #include "unused_types.idl"
-   ·                  ^^^^^^^^^^^^^^^^^^ unused include
+! unused-include: unused include `unused_types.idl`
+  @ test.idl:2:18
+
+ 2 │ #include "unused_types.idl"
+   │          ˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆ unused include
  3 │ 
- 4 │         struct LocalStruct {
- 5 │             long value;
-   └──
- help: remove this include if it is not needed
+ 4 │ struct LocalStruct {
+
+  ? remove this include if it is not needed

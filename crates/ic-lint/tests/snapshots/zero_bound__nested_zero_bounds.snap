@@ -2,45 +2,38 @@
 source: crates/ic-lint/tests/zero_bound.rs
 expression: test_lint_hir(source)
 ---
-error[zero-bound]: array size must be greater than zero
-   ┌ test.idl:2:23
-   │
+⨯ zero-bound: array size must be greater than zero
+  @ test.idl:2:23
+
  2 │ typedef long BadArray[0];
-   ·                       ^ invalid array size
+   │                       ˆ invalid array size
  3 │ typedef sequence<long, 0> BadSequence;
  4 │ typedef string<0> BadString;
-   └──
 
-error[zero-bound]: sequence bound must be greater than zero
-   ┌ test.idl:3:24
-   │
+⨯ zero-bound: sequence bound must be greater than zero
+  @ test.idl:3:24
+
  2 │ typedef long BadArray[0];
  3 │ typedef sequence<long, 0> BadSequence;
-   ·                        ^ invalid sequence bound
+   │                        ˆ invalid sequence bound
  4 │ typedef string<0> BadString;
  5 │ typedef map<string, long, 0> BadMap;
-   └──
 
-error[zero-bound]: string bound must be greater than zero
-   ┌ test.idl:4:16
-   │
+⨯ zero-bound: string bound must be greater than zero
+  @ test.idl:4:16
+
  2 │ typedef long BadArray[0];
  3 │ typedef sequence<long, 0> BadSequence;
  4 │ typedef string<0> BadString;
-   ·                ^ invalid string bound
+   │                ˆ invalid string bound
  5 │ typedef map<string, long, 0> BadMap;
+
+⨯ zero-bound: map bound must be greater than zero
+  @ test.idl:5:27
+
+ 3 │ typedef sequence<long, 0> BadSequence;
+ 4 │ typedef string<0> BadString;
+ 5 │ typedef map<string, long, 0> BadMap;
+   │                           ˆ invalid map bound
  6 │ 
  7 │ struct Foo {
-   └──
-
-error[zero-bound]: map bound must be greater than zero
-   ┌ test.idl:5:27
-   │
- 3 │ typedef sequence<long, 0> BadSequence;
- 4 │ typedef string<0> BadString;
- 5 │ typedef map<string, long, 0> BadMap;
-   ·                           ^ invalid map bound
- 6 │ 
- 7 │ struct Foo {
- 8 │     BadArray field1;
-   └──

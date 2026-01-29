@@ -2,45 +2,42 @@
 source: crates/ic-lint/tests/duplicate_bitmask_flags.rs
 expression: test_lint_hir(source)
 ---
-error: duplicate definition of `ENABLE_A`
-   ┌ test.idl:3:5
-   │
- 2 │ bitmask Options {
- 3 │     ENABLE_A,
-   ·     ^^^^^^^^ originally defined here
- 4 │     ENABLE_B,
- 5 │     ENABLE_A,  // First duplicate
-   ·     ^^^^^^^^ redefined here
- 6 │     ENABLE_C,
- 7 │     ENABLE_B,  // Second duplicate
-   └──
+⨯: duplicate definition of `ENABLE_A`
+  @ test.idl:3:5
 
-error: duplicate definition of `ENABLE_B`
-   ┌ test.idl:4:5
-   │
+ 2 │ bitmask Options {
+ 3 │     ENABLE_A,
+   │     ˆˆˆˆˆˆˆˆ originally defined here
+ 4 │     ENABLE_B,
+ 5 │     ENABLE_A,  // First duplicate
+   │     ˆˆˆˆˆˆˆˆ redefined here
+ 6 │     ENABLE_C,
+ 7 │     ENABLE_B,  // Second duplicate
+
+⨯: duplicate definition of `ENABLE_B`
+  @ test.idl:4:5
+
  2 │ bitmask Options {
  3 │     ENABLE_A,
  4 │     ENABLE_B,
-   ·     ^^^^^^^^ originally defined here
+   │     ˆˆˆˆˆˆˆˆ originally defined here
  5 │     ENABLE_A,  // First duplicate
  6 │     ENABLE_C,
  7 │     ENABLE_B,  // Second duplicate
-   ·     ^^^^^^^^ redefined here
+   │     ˆˆˆˆˆˆˆˆ redefined here
  8 │     ENABLE_A   // Third occurrence
  9 │ };
-   └──
 
-error: duplicate definition of `ENABLE_A`
-   ┌ test.idl:3:5
-   │
- 2 │ bitmask Options {
- 3 │     ENABLE_A,
-   ·     ^^^^^^^^ originally defined here
- 4 │     ENABLE_B,
- 5 │     ENABLE_A,  // First duplicate
- 6 │     ENABLE_C,
- 7 │     ENABLE_B,  // Second duplicate
- 8 │     ENABLE_A   // Third occurrence
-   ·     ^^^^^^^^ redefined here
- 9 │ };
-   └──
+⨯: duplicate definition of `ENABLE_A`
+  @ test.idl:3:5
+
+  2 │ bitmask Options {
+  3 │     ENABLE_A,
+    │     ˆˆˆˆˆˆˆˆ originally defined here
+  4 │     ENABLE_B,
+  5 │     ENABLE_A,  // First duplicate
+  6 │     ENABLE_C,
+  7 │     ENABLE_B,  // Second duplicate
+  8 │     ENABLE_A   // Third occurrence
+    │     ˆˆˆˆˆˆˆˆ redefined here
+  9 │ };

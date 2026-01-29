@@ -1,20 +1,17 @@
 ---
 source: crates/ic-hir/tests/duplicate_bitset_test.rs
-assertion_line: 47
 expression: diagnostics
 ---
-error: duplicate definition of `Flags`
-    ┌ test.idl:2:16
-    │
-  2 │         bitset Flags {
-    ·                ^^^^^ originally defined here
-  3 │             bitfield<1> enable;
-  4 │             bitfield<1> ready;
-  5 │         };
-  6 │ 
-  7 │         // This should trigger a duplicate definition error
-  8 │         bitset Flags {
-    ·                ^^^^^ redefined here
-  9 │             bitfield<2> status;
- 10 │         };
-    └──
+⨯: duplicate definition of `Flags`
+  @ test.idl:2:16
+
+  2 │ bitset Flags {
+    │        ˆˆˆˆˆ originally defined here
+  3 │     bitfield<1> enable;
+  4 │     bitfield<1> ready;
+  ··· │
+  7 │ // This should trigger a duplicate definition error
+  8 │ bitset Flags {
+    │        ˆˆˆˆˆ redefined here
+  9 │     bitfield<2> status;
+ 10 │ };

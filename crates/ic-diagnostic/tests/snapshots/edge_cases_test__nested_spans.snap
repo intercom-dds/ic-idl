@@ -2,11 +2,10 @@
 source: crates/ic-diagnostic/tests/edge_cases_test.rs
 expression: buf
 ---
-error: nested structures
-   ┌ test.idl:1:14
-   │
+⨯: nested structures
+  @ test.idl:1:14
+
  1 │ void process(struct Data { int x; int y; } data);
-   ·              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ inline struct definition
-   ·                            │      └─ second field
-   ·                            └─ first field
-   └──
+   │              ˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆ inline struct definition
+   │                            │      └─ second field
+   │                            └─ first field

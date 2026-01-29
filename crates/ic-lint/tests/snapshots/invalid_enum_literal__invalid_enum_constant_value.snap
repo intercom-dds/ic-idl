@@ -2,12 +2,10 @@
 source: crates/ic-lint/tests/invalid_enum_literal.rs
 expression: test_lint_hir(source)
 ---
-error[invalid-enum-literal]: `3` is not a valid `Color` value
-   ┌ test.idl:8:13
-   │
- 5 │     BLUE = 2
+⨯ invalid-enum-literal: `3` is not a valid `Color` value
+  @ test.idl:8:13
+
  6 │ };
  7 │ 
  8 │ const Color MY_COLOR = 3;  // Invalid: 3 is not a valid Color value
-   ·             ^^^^^^^^ this constant evaluates to an invalid value
-   └──
+   │             ˆˆˆˆˆˆˆˆ this constant evaluates to an invalid value

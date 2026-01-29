@@ -1,19 +1,17 @@
 ---
 source: crates/ic-hir/tests/duplicate_bitset_test.rs
-assertion_line: 65
 expression: diagnostics
 ---
-error: duplicate definition of `CONFIG`
-   ┌ test.idl:2:16
-   │
- 2 │         bitset Config {
-   ·                ^^^^^^ originally defined here
- 3 │             bitfield<8> mode;
- 4 │         };
+⨯: duplicate definition of `CONFIG`
+  @ test.idl:2:16
+
+ 2 │ bitset Config {
+   │        ˆˆˆˆˆˆ originally defined here
+ 3 │     bitfield<8> mode;
+ 4 │ };
  5 │ 
- 6 │         // Different case should still be considered duplicate
- 7 │         bitset CONFIG {
-   ·                ^^^^^^ redefined here
- 8 │             bitfield<16> value;
- 9 │         };
-   └──
+ 6 │ // Different case should still be considered duplicate
+ 7 │ bitset CONFIG {
+   │        ˆˆˆˆˆˆ redefined here
+ 8 │     bitfield<16> value;
+ 9 │ };

@@ -2,14 +2,13 @@
 source: crates/ic-hir/tests/incomplete_type_inheritance.rs
 expression: output
 ---
-error: interface `SelfRef` cannot inherit from incomplete type `SelfRef`
-   ┌ test.idl:4:29
-   │
- 2 │         interface SelfRef;
-   ·                   ^^^^^^^ parent type is only forward declared
+⨯: interface `SelfRef` cannot inherit from incomplete type `SelfRef`
+  @ test.idl:4:29
+
+ 2 │ interface SelfRef;
+   │           ˆˆˆˆˆˆˆ parent type is only forward declared
  3 │ 
- 4 │         interface SelfRef : SelfRef {
-   ·                             ^^^^^^^ invalid inheritance
- 5 │             void method();
- 6 │         };
-   └──
+ 4 │ interface SelfRef : SelfRef {
+   │                     ˆˆˆˆˆˆˆ invalid inheritance
+ 5 │     void method();
+ 6 │ };

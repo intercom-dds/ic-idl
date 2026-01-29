@@ -2,87 +2,76 @@
 source: crates/ic-lint/tests/bitmask_ann.rs
 expression: test_lint(source)
 ---
-error[ann-members]: only consts, typedefs and enums can be defined in annotations
-   ┌ test.idl:3:20
-   │
- 2 │         @annotation ComplexAnnotation {
- 3 │             struct Config {
-   ·                    ^^^^^^ `struct`s are not allowed in annotations
- 4 │                 string name;
- 5 │             };
-   └──
+⨯ ann-members: only consts, typedefs and enums can be defined in annotations
+  @ test.idl:3:20
 
-warning[assign-expr]: assignment operator on bitmask flags is non-standard
-    ┌ test.idl:8:25
-    │
-  5 │             };
-  6 │ 
-  7 │             bitmask Options {
-  8 │                 OPT_A = 1,
-    ·                         ^ non-standard assignment
-  9 │                 OPT_B = 2
- 10 │             };
-    └──
- help: use the `@position` annotation instead
+ 2 │ @annotation ComplexAnnotation {
+ 3 │     struct Config {
+   │            ˆˆˆˆˆˆ `struct`s are not allowed in annotations
+ 4 │         string name;
+ 5 │     };
 
-warning[assign-expr]: assignment operator on bitmask flags is non-standard
-    ┌ test.idl:9:25
-    │
-  7 │             bitmask Options {
-  8 │                 OPT_A = 1,
-  9 │                 OPT_B = 2
-    ·                         ^ non-standard assignment
- 10 │             };
- 11 │ 
- 12 │             bitmask MoreOptions {
-    └──
- help: use the `@position` annotation instead
+! assign-expr: assignment operator on bitmask flags is non-standard
+  @ test.idl:8:25
 
-warning[assign-expr]: assignment operator on bitmask flags is non-standard
-    ┌ test.idl:13:26
-    │
- 10 │             };
- 11 │ 
- 12 │             bitmask MoreOptions {
- 13 │                 MORE_A = 0x10,
-    ·                          ^^^^ non-standard assignment
- 14 │                 MORE_B = 0x20
- 15 │             };
-    └──
- help: use the `@position` annotation instead
+  7 │ bitmask Options {
+  8 │     OPT_A = 1,
+    │             ˆ non-standard assignment
+  9 │     OPT_B = 2
+ 10 │ };
 
-warning[assign-expr]: assignment operator on bitmask flags is non-standard
-    ┌ test.idl:14:26
-    │
- 12 │             bitmask MoreOptions {
- 13 │                 MORE_A = 0x10,
- 14 │                 MORE_B = 0x20
-    ·                          ^^^^ non-standard assignment
- 15 │             };
- 16 │         };
-    └──
- help: use the `@position` annotation instead
+  ? use the `@position` annotation instead
 
-warning[bitmask-ann]: defining bitmasks in annotations is non-standard
-   ┌ test.idl:7:21
-   │
- 4 │                 string name;
- 5 │             };
+! assign-expr: assignment operator on bitmask flags is non-standard
+  @ test.idl:9:25
+
+  7 │ bitmask Options {
+  8 │     OPT_A = 1,
+  9 │     OPT_B = 2
+    │             ˆ non-standard assignment
+ 10 │ };
+
+  ? use the `@position` annotation instead
+
+! assign-expr: assignment operator on bitmask flags is non-standard
+  @ test.idl:13:26
+
+ 12 │ bitmask MoreOptions {
+ 13 │     MORE_A = 0x10,
+    │              ˆˆˆˆ non-standard assignment
+ 14 │     MORE_B = 0x20
+ 15 │ };
+
+  ? use the `@position` annotation instead
+
+! assign-expr: assignment operator on bitmask flags is non-standard
+  @ test.idl:14:26
+
+ 12 │     bitmask MoreOptions {
+ 13 │         MORE_A = 0x10,
+ 14 │         MORE_B = 0x20
+    │                  ˆˆˆˆ non-standard assignment
+ 15 │     };
+ 16 │ };
+
+  ? use the `@position` annotation instead
+
+! bitmask-ann: defining bitmasks in annotations is non-standard
+  @ test.idl:7:21
+
+ 5 │ };
  6 │ 
- 7 │             bitmask Options {
-   ·                     ^^^^^^^ defined here
- 8 │                 OPT_A = 1,
- 9 │                 OPT_B = 2
-   └──
+ 7 │ bitmask Options {
+   │         ˆˆˆˆˆˆˆ defined here
+ 8 │     OPT_A = 1,
+ 9 │     OPT_B = 2
 
-warning[bitmask-ann]: defining bitmasks in annotations is non-standard
-    ┌ test.idl:12:21
-    │
-  9 │                 OPT_B = 2
- 10 │             };
+! bitmask-ann: defining bitmasks in annotations is non-standard
+  @ test.idl:12:21
+
+ 10 │ };
  11 │ 
- 12 │             bitmask MoreOptions {
-    ·                     ^^^^^^^^^^^ defined here
- 13 │                 MORE_A = 0x10,
- 14 │                 MORE_B = 0x20
-    └──
+ 12 │ bitmask MoreOptions {
+    │         ˆˆˆˆˆˆˆˆˆˆˆ defined here
+ 13 │     MORE_A = 0x10,
+ 14 │     MORE_B = 0x20

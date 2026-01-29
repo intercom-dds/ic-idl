@@ -2,15 +2,14 @@
 source: crates/ic-lint/tests/duplicate_bitmask_flags.rs
 expression: test_lint_hir(source)
 ---
-error: duplicate definition of `READONLY`
-   ┌ test.idl:3:5
-   │
+⨯: duplicate definition of `READONLY`
+  @ test.idl:3:5
+
  2 │ bitmask FileFlags {
  3 │     READONLY,
-   ·     ^^^^^^^^ originally defined here
+   │     ˆˆˆˆˆˆˆˆ originally defined here
  4 │     HIDDEN,
  5 │     SYSTEM,
  6 │     READONLY  // Duplicate flag
-   ·     ^^^^^^^^ redefined here
+   │     ˆˆˆˆˆˆˆˆ redefined here
  7 │ };
-   └──

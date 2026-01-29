@@ -2,33 +2,30 @@
 source: crates/ic-lint/tests/unknown_annotation.rs
 expression: output
 ---
-warning[unknown-ann]: unknown annotation `UnknownUnion`
-   ┌ test.idl:2:10
-   │
- 2 │         @UnknownUnion
-   ·          ^^^^^^^^^^^^ annotation not found
- 3 │         union TestUnion switch (long) {
- 4 │             case 0:
-   └──
+! unknown-ann: unknown annotation `UnknownUnion`
+  @ test.idl:2:10
 
-warning[unknown-ann]: unknown annotation `UnknownVariant`
-   ┌ test.idl:5:18
-   │
- 3 │         union TestUnion switch (long) {
- 4 │             case 0:
- 5 │                 @UnknownVariant
-   ·                  ^^^^^^^^^^^^^^ annotation not found
- 6 │                 string text;
- 7 │             case 1:
-   └──
+ 2 │ @UnknownUnion
+   │  ˆˆˆˆˆˆˆˆˆˆˆˆ annotation not found
+ 3 │ union TestUnion switch (long) {
+ 4 │     case 0:
 
-warning[unknown-ann]: unknown annotation `AnotherUnknown`
-    ┌ test.idl:8:18
-    │
-  6 │                 string text;
-  7 │             case 1:
-  8 │                 @AnotherUnknown
-    ·                  ^^^^^^^^^^^^^^ annotation not found
-  9 │                 long number;
- 10 │             default:
-    └──
+! unknown-ann: unknown annotation `UnknownVariant`
+  @ test.idl:5:18
+
+ 3 │ union TestUnion switch (long) {
+ 4 │     case 0:
+ 5 │         @UnknownVariant
+   │          ˆˆˆˆˆˆˆˆˆˆˆˆˆˆ annotation not found
+ 6 │         string text;
+ 7 │     case 1:
+
+! unknown-ann: unknown annotation `AnotherUnknown`
+  @ test.idl:8:18
+
+  6 │     string text;
+  7 │ case 1:
+  8 │     @AnotherUnknown
+    │      ˆˆˆˆˆˆˆˆˆˆˆˆˆˆ annotation not found
+  9 │     long number;
+ 10 │ default:

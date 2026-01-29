@@ -2,29 +2,27 @@
 source: crates/ic-lint/tests/conflicting_annotations.rs
 expression: test_lint_hir(input)
 ---
-error[conflicting-annotations]: struct member `id` cannot be both @optional and @key
-   ┌ test.idl:3:33
-   │
- 2 │         struct A {
- 3 │             @key @optional long id;
-   ·              ^^^  ^^^^^^^^      ^^ conflicting annotations on struct member
-   ·              │    └─ @optional annotation here
-   ·              └─ @key annotation here
- 4 │         };
- 5 │ 
- 6 │         struct B {
-   └──
- help: remove either @optional or @key
+⨯ conflicting-annotations: struct member `id` cannot be both @optional and @key
+  @ test.idl:3:33
 
-error[conflicting-annotations]: struct member `y` cannot be both @optional and @key
-   ┌ test.idl:8:33
-   │
- 6 │         struct B {
- 7 │             @optional long x;
- 8 │             @key @optional long y;
-   ·              ^^^  ^^^^^^^^      ^ conflicting annotations on struct member
-   ·              │    └─ @optional annotation here
-   ·              └─ @key annotation here
- 9 │         };
-   └──
- help: remove either @optional or @key
+ 2 │ struct A {
+ 3 │     @key @optional long id;
+   │      ˆˆˆ  ˆˆˆˆˆˆˆˆ      ˆˆ conflicting annotations on struct member
+   │      │    └─ @optional annotation here
+   │      └─ @key annotation here
+ 4 │ };
+
+  ? remove either @optional or @key
+
+⨯ conflicting-annotations: struct member `y` cannot be both @optional and @key
+  @ test.idl:8:33
+
+  6 │ struct B {
+  7 │     @optional long x;
+  8 │     @key @optional long y;
+    │      ˆˆˆ  ˆˆˆˆˆˆˆˆ      ˆ conflicting annotations on struct member
+    │      │    └─ @optional annotation here
+    │      └─ @key annotation here
+  9 │ };
+
+  ? remove either @optional or @key

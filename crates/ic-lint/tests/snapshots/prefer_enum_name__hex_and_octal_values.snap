@@ -2,45 +2,38 @@
 source: crates/ic-lint/tests/prefer_enum_name.rs
 expression: test_lint_hir(source)
 ---
-warning[prefer-enum-name]: prefer using enum member name 'NONE' instead of numeric literal
-    ┌ test.idl:9:13
-    │
-  6 │     EXECUTE = 0x04
+! prefer-enum-name: prefer using enum member name 'NONE' instead of numeric literal
+  @ test.idl:9:13
+
   7 │ };
   8 │ 
   9 │ const Flags F1 = 0x00;  // Should warn: prefer NONE
-    ·             ^^ consider using 'NONE' instead of '0'
+    │             ˆˆ consider using 'NONE' instead of '0'
  10 │ const Flags F2 = 0x01;  // Should warn: prefer READ
  11 │ const Flags F3 = 1;     // Should warn: prefer READ (decimal form)
-    └──
 
-warning[prefer-enum-name]: prefer using enum member name 'READ' instead of numeric literal
-    ┌ test.idl:10:13
-    │
-  7 │ };
-  8 │ 
+! prefer-enum-name: prefer using enum member name 'READ' instead of numeric literal
+  @ test.idl:10:13
+
   9 │ const Flags F1 = 0x00;  // Should warn: prefer NONE
  10 │ const Flags F2 = 0x01;  // Should warn: prefer READ
-    ·             ^^ consider using 'READ' instead of '1'
+    │             ˆˆ consider using 'READ' instead of '1'
  11 │ const Flags F3 = 1;     // Should warn: prefer READ (decimal form)
  12 │ const Flags F4 = 0x04;  // Should warn: prefer EXECUTE
-    └──
 
-warning[prefer-enum-name]: prefer using enum member name 'READ' instead of numeric literal
-    ┌ test.idl:11:13
-    │
+! prefer-enum-name: prefer using enum member name 'READ' instead of numeric literal
+  @ test.idl:11:13
+
   9 │ const Flags F1 = 0x00;  // Should warn: prefer NONE
  10 │ const Flags F2 = 0x01;  // Should warn: prefer READ
  11 │ const Flags F3 = 1;     // Should warn: prefer READ (decimal form)
-    ·             ^^ consider using 'READ' instead of '1'
+    │             ˆˆ consider using 'READ' instead of '1'
  12 │ const Flags F4 = 0x04;  // Should warn: prefer EXECUTE
-    └──
 
-warning[prefer-enum-name]: prefer using enum member name 'EXECUTE' instead of numeric literal
-    ┌ test.idl:12:13
-    │
+! prefer-enum-name: prefer using enum member name 'EXECUTE' instead of numeric literal
+  @ test.idl:12:13
+
  10 │ const Flags F2 = 0x01;  // Should warn: prefer READ
  11 │ const Flags F3 = 1;     // Should warn: prefer READ (decimal form)
  12 │ const Flags F4 = 0x04;  // Should warn: prefer EXECUTE
-    ·             ^^ consider using 'EXECUTE' instead of '4'
-    └──
+    │             ˆˆ consider using 'EXECUTE' instead of '4'

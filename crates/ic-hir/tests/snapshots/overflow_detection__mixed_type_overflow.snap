@@ -2,11 +2,11 @@
 source: crates/ic-hir/tests/overflow_detection.rs
 expression: test_overflow(source)
 ---
-warning: integer overflow in constant expression
-   ┌ test.idl:3:30
-   │
+!: integer overflow in constant expression
+  @ test.idl:3:30
+
  2 │ const int64 BIG = 9223372036854775807;
  3 │ const int64 OVERFLOW = BIG + 1;
-   ·                              ^ overflow
-   └──
- note: consider using a larger integer type
+   │                              ˆ overflow
+
+  * consider using a larger integer type

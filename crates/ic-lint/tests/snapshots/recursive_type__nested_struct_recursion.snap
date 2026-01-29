@@ -2,14 +2,14 @@
 source: crates/ic-lint/tests/recursive_type.rs
 expression: output
 ---
-error[recursive-type]: type `Node` contains itself without indirection
-   ┌ test.idl:5:22
-   │
- 3 │             struct Node {
- 4 │                 long value;
- 5 │                 Node next;  // Error: direct recursion in nested struct
-   ·                      ^^^^ recursive member here
- 6 │             };
- 7 │         };
-   └──
- note: recursive types must use indirection through sequences, maps, or @external annotations
+⨯ recursive-type: type `Node` contains itself without indirection
+  @ test.idl:5:22
+
+ 3 │     struct Node {
+ 4 │         long value;
+ 5 │         Node next;  // Error: direct recursion in nested struct
+   │              ˆˆˆˆ recursive member here
+ 6 │     };
+ 7 │ };
+
+  * recursive types must use indirection through sequences, maps, or @external annotations

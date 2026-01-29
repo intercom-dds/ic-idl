@@ -2,13 +2,13 @@
 source: crates/ic-lint/tests/keywords.rs
 expression: test_lint(source)
 ---
-error[keywords]: `int32` is a keyword and may not be used as an identifier
-   ┌ test.idl:2:8
-   │
+⨯ keywords: `int32` is a keyword and may not be used as an identifier
+  @ test.idl:2:8
+
  2 │ struct INT32 {
-   ·        ^^^^^ this is an IDL keyword
+   │        ˆˆˆˆˆ this is an IDL keyword
  3 │     long value;
  4 │ };
-   └──
- help: the keyword can be escaped by changing to `_INT32`
- note: keywords are matched case-insensitively against identifiers
+
+  ? the keyword can be escaped by changing to `_INT32`
+  * keywords are matched case-insensitively against identifiers

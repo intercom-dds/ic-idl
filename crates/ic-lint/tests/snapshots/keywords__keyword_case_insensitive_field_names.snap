@@ -2,39 +2,39 @@
 source: crates/ic-lint/tests/keywords.rs
 expression: test_lint(source)
 ---
-error[keywords]: `octet` is a keyword and may not be used as an identifier
-   ┌ test.idl:3:10
-   │
+⨯ keywords: `octet` is a keyword and may not be used as an identifier
+  @ test.idl:3:10
+
  2 │ struct Data {
  3 │     long OCTET;
-   ·          ^^^^^ this is an IDL keyword
+   │          ˆˆˆˆˆ this is an IDL keyword
  4 │     long Octet;
  5 │     long oCTET;
-   └──
- help: the keyword can be escaped by changing to `_OCTET`
- note: keywords are matched case-insensitively against identifiers
 
-error[keywords]: `octet` is a keyword and may not be used as an identifier
-   ┌ test.idl:4:10
-   │
+  ? the keyword can be escaped by changing to `_OCTET`
+  * keywords are matched case-insensitively against identifiers
+
+⨯ keywords: `octet` is a keyword and may not be used as an identifier
+  @ test.idl:4:10
+
  2 │ struct Data {
  3 │     long OCTET;
  4 │     long Octet;
-   ·          ^^^^^ this is an IDL keyword
+   │          ˆˆˆˆˆ this is an IDL keyword
  5 │     long oCTET;
  6 │ };
-   └──
- help: the keyword can be escaped by changing to `_Octet`
- note: keywords are matched case-insensitively against identifiers
 
-error[keywords]: `octet` is a keyword and may not be used as an identifier
-   ┌ test.idl:5:10
-   │
+  ? the keyword can be escaped by changing to `_Octet`
+  * keywords are matched case-insensitively against identifiers
+
+⨯ keywords: `octet` is a keyword and may not be used as an identifier
+  @ test.idl:5:10
+
  3 │     long OCTET;
  4 │     long Octet;
  5 │     long oCTET;
-   ·          ^^^^^ this is an IDL keyword
+   │          ˆˆˆˆˆ this is an IDL keyword
  6 │ };
-   └──
- help: the keyword can be escaped by changing to `_oCTET`
- note: keywords are matched case-insensitively against identifiers
+
+  ? the keyword can be escaped by changing to `_oCTET`
+  * keywords are matched case-insensitively against identifiers

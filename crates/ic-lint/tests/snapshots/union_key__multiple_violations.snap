@@ -2,59 +2,57 @@
 source: crates/ic-lint/tests/union_key.rs
 expression: test_lint_hir(source)
 ---
-error[invalid-annotation-target]: @key can only be applied to struct fields
-   ┌ test.idl:4:6
-   │
+⨯ invalid-annotation-target: @key can only be applied to struct fields
+  @ test.idl:4:6
+
  2 │ union MultiViolations switch(@optional long) {
  3 │ case 1:
  4 │     @key string first;
-   ·      ^^^ invalid annotation target
+   │      ˆˆˆ invalid annotation target
  5 │ case 2:
  6 │     @key long second;
-   └──
 
-error[invalid-annotation-target]: @key can only be applied to struct fields
-   ┌ test.idl:6:6
-   │
+⨯ invalid-annotation-target: @key can only be applied to struct fields
+  @ test.idl:6:6
+
  4 │     @key string first;
  5 │ case 2:
  6 │     @key long second;
-   ·      ^^^ invalid annotation target
+   │      ˆˆˆ invalid annotation target
  7 │ };
-   └──
 
-error[union-key]: union discriminator for 'MultiViolations' cannot be @optional
-   ┌ test.idl:2:31
-   │
+⨯ union-key: union discriminator for 'MultiViolations' cannot be @optional
+  @ test.idl:2:31
+
  2 │ union MultiViolations switch(@optional long) {
-   ·                               ^^^^^^^^ @optional not allowed on discriminator
+   │                               ˆˆˆˆˆˆˆˆ @optional not allowed on discriminator
  3 │ case 1:
  4 │     @key string first;
-   └──
- help: remove @optional from the discriminator
- note: union discriminators must always be present
 
-error[union-key]: union variant 'first' cannot use @key
-   ┌ test.idl:4:6
-   │
+  ? remove @optional from the discriminator
+  * union discriminators must always be present
+
+⨯ union-key: union variant 'first' cannot use @key
+  @ test.idl:4:6
+
  2 │ union MultiViolations switch(@optional long) {
  3 │ case 1:
  4 │     @key string first;
-   ·      ^^^ @key not allowed on union variant
+   │      ˆˆˆ @key not allowed on union variant
  5 │ case 2:
  6 │     @key long second;
-   └──
- help: remove @key from the variant or move it to the discriminator
- note: only the union discriminator can be marked as @key
 
-error[union-key]: union variant 'second' cannot use @key
-   ┌ test.idl:6:6
-   │
+  ? remove @key from the variant or move it to the discriminator
+  * only the union discriminator can be marked as @key
+
+⨯ union-key: union variant 'second' cannot use @key
+  @ test.idl:6:6
+
  4 │     @key string first;
  5 │ case 2:
  6 │     @key long second;
-   ·      ^^^ @key not allowed on union variant
+   │      ˆˆˆ @key not allowed on union variant
  7 │ };
-   └──
- help: remove @key from the variant or move it to the discriminator
- note: only the union discriminator can be marked as @key
+
+  ? remove @key from the variant or move it to the discriminator
+  * only the union discriminator can be marked as @key

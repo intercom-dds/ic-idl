@@ -2,16 +2,15 @@
 source: crates/ic-diagnostic/tests/edge_cases_test.rs
 expression: buf
 ---
-error: overlapping spans
-   ┌ test.idl:2:1
-   │
+⨯: overlapping spans
+  @ test.idl:2:1
+
  1 │ struct Data {
  2 │     int field1;
-   · ^^^^^^^^^^^^^^^ second overlap
-   · └─ first overlap
+   │ ˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆ first overlap
+   │               └─ second overlap
  3 │     int field2;
-   · ^^^^^^^^^^
+   │ ˆˆˆˆˆˆˆˆˆˆ
  4 │     int field3;
-   · ^^^^^^^^
+   │ ˆˆˆˆˆˆˆˆ
  5 │ }
-   └──

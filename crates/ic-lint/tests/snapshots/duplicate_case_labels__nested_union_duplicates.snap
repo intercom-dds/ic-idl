@@ -2,25 +2,21 @@
 source: crates/ic-lint/tests/duplicate_case_labels.rs
 expression: test_lint_hir(source)
 ---
-error[duplicate-case]: union 'OuterUnion' has duplicate case label '1'
-   ┌ test.idl:5:14
-   │
- 3 │     union OuterUnion switch (long) {
- 4 │         case 1: long a;
- 5 │         case 1: string b;  // Duplicate in outer
-   ·              ^ duplicate case label
- 6 │     };
- 7 │ 
- 8 │     module Inner {
-   └──
+⨯ duplicate-case: union 'OuterUnion' has duplicate case label '1'
+  @ test.idl:5:14
 
-error[duplicate-case]: union 'InnerUnion' has duplicate case label '1'
-    ┌ test.idl:12:18
-    │
- 10 │             case 1: long c;    // Same value as outer, but different union
- 11 │             case 2: string d;
- 12 │             case 1: boolean e; // Duplicate in inner
-    ·                  ^ duplicate case label
- 13 │         };
- 14 │     };
-    └──
+ 3 │ union OuterUnion switch (long) {
+ 4 │     case 1: long a;
+ 5 │     case 1: string b;  // Duplicate in outer
+   │          ˆ duplicate case label
+ 6 │ };
+
+⨯ duplicate-case: union 'InnerUnion' has duplicate case label '1'
+  @ test.idl:12:18
+
+ 10 │         case 1: long c;    // Same value as outer, but different union
+ 11 │         case 2: string d;
+ 12 │         case 1: boolean e; // Duplicate in inner
+    │              ˆ duplicate case label
+ 13 │     };
+ 14 │ };

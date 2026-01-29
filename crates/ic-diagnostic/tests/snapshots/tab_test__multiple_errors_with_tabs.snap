@@ -2,11 +2,10 @@
 source: crates/ic-diagnostic/tests/tab_test.rs
 expression: buf
 ---
-error: multiple tabs
-   ┌ test.rs:1:5
-   │
- 1 │     int x   =   42;
-   ·     ^^^ ^       ^^ value
-   ·     │   └─ variable
-   ·     └─ type
-   └──
+⨯: multiple tabs
+  @ test.rs:1:5
+
+ 1 │ int x   =   42;
+   │ ˆˆˆ ˆ       ˆˆ value
+   │     └─ variable
+   │ └─ type

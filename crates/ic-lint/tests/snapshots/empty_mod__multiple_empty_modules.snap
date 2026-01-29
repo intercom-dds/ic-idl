@@ -2,44 +2,40 @@
 source: crates/ic-lint/tests/empty_mod.rs
 expression: test_lint(source)
 ---
-warning[empty-mod]: empty module declarations are not standard
-   ┌ test.idl:2:9
-   │
- 2 │         module Empty1 {
-   ·         ^^^^^^^^^^^^^^^ 
- 3 │         };
-   · ^^^^^^^^^^
- 4 │ 
- 5 │         module Empty2 {
- 6 │         };
-   └──
- help: either remove the declaration or add an item to it
+! empty-mod: empty module declarations are not standard
+  @ test.idl:2:9
 
-warning[empty-mod]: empty module declarations are not standard
-   ┌ test.idl:5:9
-   │
- 2 │         module Empty1 {
- 3 │         };
+ 2 │ module Empty1 {
+   │ ˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆ 
+ 3 │ };
+   │ ˆˆ
  4 │ 
- 5 │         module Empty2 {
-   ·         ^^^^^^^^^^^^^^^ 
- 6 │         };
-   · ^^^^^^^^^^
- 7 │ 
- 8 │         module Empty3 {
- 9 │         };
-   └──
- help: either remove the declaration or add an item to it
+ 5 │ module Empty2 {
 
-warning[empty-mod]: empty module declarations are not standard
-   ┌ test.idl:8:9
-   │
- 5 │         module Empty2 {
- 6 │         };
+  ? either remove the declaration or add an item to it
+
+! empty-mod: empty module declarations are not standard
+  @ test.idl:5:9
+
+ 3 │ };
+ 4 │ 
+ 5 │ module Empty2 {
+   │ ˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆ 
+ 6 │ };
+   │ ˆˆ
  7 │ 
- 8 │         module Empty3 {
-   ·         ^^^^^^^^^^^^^^^ 
- 9 │         };
-   · ^^^^^^^^^^
-   └──
- help: either remove the declaration or add an item to it
+ 8 │ module Empty3 {
+
+  ? either remove the declaration or add an item to it
+
+! empty-mod: empty module declarations are not standard
+  @ test.idl:8:9
+
+  6 │ };
+  7 │ 
+  8 │ module Empty3 {
+    │ ˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆ 
+  9 │ };
+    │ ˆˆ
+
+  ? either remove the declaration or add an item to it

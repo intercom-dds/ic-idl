@@ -2,48 +2,48 @@
 source: crates/ic-lint/tests/duplicate_union_variants.rs
 expression: test_lint_hir(source)
 ---
-error[duplicate-name]: duplicate variant `name` in variant 'Data'
-   ┌ test.idl:5:20
-   │
- 2 │ union Data switch (octet) {
- 3 │     case 0: string name;
-   ·                    ^^^^ first defined here
- 4 │     case 1: long value;
- 5 │     case 2: string name;    // First duplicate
-   ·                    ^^^^ duplicate variant
- 6 │     case 3: boolean flag;
- 7 │     case 4: long value;     // Second duplicate
-   └──
- note: names are case-insensitive
+⨯ duplicate-name: duplicate variant `name` in variant 'Data'
+  @ test.idl:5:20
 
-error[duplicate-name]: duplicate variant `value` in variant 'Data'
-   ┌ test.idl:7:18
-   │
+ 2 │ union Data switch (octet) {
+ 3 │     case 0: string name;
+   │                    ˆˆˆˆ first defined here
+ 4 │     case 1: long value;
+ 5 │     case 2: string name;    // First duplicate
+   │                    ˆˆˆˆ duplicate variant
+ 6 │     case 3: boolean flag;
+ 7 │     case 4: long value;     // Second duplicate
+
+  * names are case-insensitive
+
+⨯ duplicate-name: duplicate variant `value` in variant 'Data'
+  @ test.idl:7:18
+
  2 │ union Data switch (octet) {
  3 │     case 0: string name;
  4 │     case 1: long value;
-   ·                  ^^^^^ first defined here
+   │                  ˆˆˆˆˆ first defined here
  5 │     case 2: string name;    // First duplicate
  6 │     case 3: boolean flag;
  7 │     case 4: long value;     // Second duplicate
-   ·                  ^^^^^ duplicate variant
+   │                  ˆˆˆˆˆ duplicate variant
  8 │     case 5: string name;    // Third occurrence
  9 │ };
-   └──
- note: names are case-insensitive
 
-error[duplicate-name]: duplicate variant `name` in variant 'Data'
-   ┌ test.idl:8:20
-   │
- 2 │ union Data switch (octet) {
- 3 │     case 0: string name;
-   ·                    ^^^^ first defined here
- 4 │     case 1: long value;
- 5 │     case 2: string name;    // First duplicate
- 6 │     case 3: boolean flag;
- 7 │     case 4: long value;     // Second duplicate
- 8 │     case 5: string name;    // Third occurrence
-   ·                    ^^^^ duplicate variant
- 9 │ };
-   └──
- note: names are case-insensitive
+  * names are case-insensitive
+
+⨯ duplicate-name: duplicate variant `name` in variant 'Data'
+  @ test.idl:8:20
+
+  6 │     case 3: boolean flag;
+  7 │     case 4: long value;     // Second duplicate
+  8 │     case 5: string name;    // Third occurrence
+    │                    ˆˆˆˆ duplicate variant
+  9 │ };
+  2 │ union Data switch (octet) {
+  3 │     case 0: string name;
+    │                    ˆˆˆˆ first defined here
+  4 │     case 1: long value;
+  5 │     case 2: string name;    // First duplicate
+
+  * names are case-insensitive

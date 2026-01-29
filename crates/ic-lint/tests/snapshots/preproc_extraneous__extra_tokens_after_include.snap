@@ -2,10 +2,9 @@
 source: crates/ic-lint/tests/preproc_extraneous.rs
 expression: "test_lint_preproc(r#\"\n#include \"nonexistent.idl\" extra\nstruct Foo {};\n\"#,)"
 ---
-warning[extra-tokens]: extra tokens after #include directive
-   ┌ test.idl:2:28
-   │
+! extra-tokens: extra tokens after #include directive
+  @ test.idl:2:28
+
  2 │ #include "nonexistent.idl" extra
-   ·                            ^^^^^ extraneous tokens
+   │                            ˆˆˆˆˆ extraneous tokens
  3 │ struct Foo {};
-   └──

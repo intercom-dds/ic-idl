@@ -2,18 +2,17 @@
 source: crates/ic-lint/tests/complex_lit.rs
 expression: test_lint(source)
 ---
-warning[complex-lit]: complex literals are non-standard
-    ┌ test.idl:12:30
-    │
-  9 │             string name;
- 10 │         };
+! complex-lit: complex literals are non-standard
+  @ test.idl:12:30
+
+ 10 │ };
  11 │ 
- 12 │         const Outer NESTED = {
-    ·                     ^^^^^^   ^ complex constants are non-standard
-    ·                     └─ const defined here
- 13 │             { 1, 2 },
- 14 │             "test"
- 15 │         };
-    · ^^^^^^^^^
-    └──
- note: only literals of trivial types are allowed in standard IDL
+ 12 │ const Outer NESTED = {
+    │             ˆˆˆˆˆˆ   ˆ const defined here
+    │                      └─ complex constants are non-standard
+ 13 │     { 1, 2 },
+ 14 │     "test"
+ 15 │ };
+    │ ˆ
+
+  * only literals of trivial types are allowed in standard IDL

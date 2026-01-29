@@ -2,27 +2,24 @@
 source: crates/ic-lint/tests/scoped_lit.rs
 expression: test_lint(source)
 ---
-warning[scoped-lit]: scoped enums are non-standard
-   ┌ test.idl:8:37
-   │
- 5 │             BLUE
- 6 │         };
- 7 │ 
- 8 │         const Color DEFAULT_COLOR = Color::RED;
-   ·                                     ^^^^^ used here
- 9 │         const Color SECONDARY = Color::GREEN;
-   └──
- help: use `RED` instead of `Color::RED`
- note: enumerators are registered in the parent scope
+! scoped-lit: scoped enums are non-standard
+  @ test.idl:8:37
 
-warning[scoped-lit]: scoped enums are non-standard
-   ┌ test.idl:9:33
-   │
- 6 │         };
- 7 │ 
- 8 │         const Color DEFAULT_COLOR = Color::RED;
- 9 │         const Color SECONDARY = Color::GREEN;
-   ·                                 ^^^^^ used here
-   └──
- help: use `GREEN` instead of `Color::GREEN`
- note: enumerators are registered in the parent scope
+  6 │ };
+  7 │ 
+  8 │ const Color DEFAULT_COLOR = Color::RED;
+    │                             ˆˆˆˆˆ used here
+  9 │ const Color SECONDARY = Color::GREEN;
+
+  ? use `RED` instead of `Color::RED`
+  * enumerators are registered in the parent scope
+
+! scoped-lit: scoped enums are non-standard
+  @ test.idl:9:33
+
+  8 │ const Color DEFAULT_COLOR = Color::RED;
+  9 │ const Color SECONDARY = Color::GREEN;
+    │                         ˆˆˆˆˆ used here
+
+  ? use `GREEN` instead of `Color::GREEN`
+  * enumerators are registered in the parent scope

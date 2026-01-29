@@ -2,14 +2,13 @@
 source: crates/ic-lint/tests/invalid_enum_value.rs
 expression: test_lint_hir(source)
 ---
-error[duplicate-enum-values]: duplicate value 0 in enum `Mixed`
-   ┌ test.idl:3:5
-   │
+⨯ duplicate-enum-values: duplicate value 0 in enum `Mixed`
+  @ test.idl:3:5
+
  2 │ enum Mixed {
  3 │     A,          // 0
-   ·     ^ first use of value 0
+   │     ˆ first use of value 0
  4 │     B = 0,      // Explicit 0, duplicate with A
-   ·     ^ value already used
+   │     ˆ value already used
  5 │     C,          // 1
  6 │     D = 2,      // 2
-   └──

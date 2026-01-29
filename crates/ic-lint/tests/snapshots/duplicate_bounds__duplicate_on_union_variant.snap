@@ -1,28 +1,26 @@
 ---
 source: crates/ic-lint/tests/duplicate_bounds.rs
-assertion_line: 214
 expression: test_lint_hir(source)
 ---
-error[duplicate-bounds]: @max is already defined on typedef `MyInt`
-   ┌ test.idl:6:10
-   │
+⨯ duplicate-bounds: @max is already defined on typedef `MyInt`
+  @ test.idl:6:10
+
  2 │ @max(100) typedef int32 MyInt;
-   ·  ^^^ @max already defined on `MyInt`
+   │  ˆˆˆ @max already defined on `MyInt`
  3 │ 
  4 │ union Foo switch (long) {
  5 │     case 0:
  6 │         @max(50) MyInt value;
-   ·          ^^^ @max on variant
+   │          ˆˆˆ @max on variant
  7 │ };
-   └──
- help: remove @max from either the variant or the typedef
 
-error[invalid-annotation-target]: @max can only be applied to numeric types or fields
-   ┌ test.idl:6:10
-   │
+  ? remove @max from either the variant or the typedef
+
+⨯ invalid-annotation-target: @max can only be applied to numeric types or fields
+  @ test.idl:6:10
+
  4 │ union Foo switch (long) {
  5 │     case 0:
  6 │         @max(50) MyInt value;
-   ·          ^^^ invalid annotation target
+   │          ˆˆˆ invalid annotation target
  7 │ };
-   └──

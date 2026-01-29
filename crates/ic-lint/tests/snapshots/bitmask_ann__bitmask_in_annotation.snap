@@ -2,48 +2,47 @@
 source: crates/ic-lint/tests/bitmask_ann.rs
 expression: test_lint(source)
 ---
-warning[assign-expr]: assignment operator on bitmask flags is non-standard
-   ┌ test.idl:4:26
-   │
- 2 │         @annotation MyAnnotation {
- 3 │             bitmask Flags {
- 4 │                 FLAG_A = 0x01,
-   ·                          ^^^^ non-standard assignment
- 5 │                 FLAG_B = 0x02,
- 6 │                 FLAG_C = 0x04
-   └──
- help: use the `@position` annotation instead
+! assign-expr: assignment operator on bitmask flags is non-standard
+  @ test.idl:4:26
 
-warning[assign-expr]: assignment operator on bitmask flags is non-standard
-   ┌ test.idl:5:26
-   │
- 3 │             bitmask Flags {
- 4 │                 FLAG_A = 0x01,
- 5 │                 FLAG_B = 0x02,
-   ·                          ^^^^ non-standard assignment
- 6 │                 FLAG_C = 0x04
- 7 │             };
-   └──
- help: use the `@position` annotation instead
+ 2 │ @annotation MyAnnotation {
+ 3 │     bitmask Flags {
+ 4 │         FLAG_A = 0x01,
+   │                  ˆˆˆˆ non-standard assignment
+ 5 │         FLAG_B = 0x02,
+ 6 │         FLAG_C = 0x04
 
-warning[assign-expr]: assignment operator on bitmask flags is non-standard
-   ┌ test.idl:6:26
-   │
- 4 │                 FLAG_A = 0x01,
- 5 │                 FLAG_B = 0x02,
- 6 │                 FLAG_C = 0x04
-   ·                          ^^^^ non-standard assignment
- 7 │             };
- 8 │             unsigned long default_flags;
-   └──
- help: use the `@position` annotation instead
+  ? use the `@position` annotation instead
 
-warning[bitmask-ann]: defining bitmasks in annotations is non-standard
-   ┌ test.idl:3:21
-   │
- 2 │         @annotation MyAnnotation {
- 3 │             bitmask Flags {
-   ·                     ^^^^^ defined here
- 4 │                 FLAG_A = 0x01,
- 5 │                 FLAG_B = 0x02,
-   └──
+! assign-expr: assignment operator on bitmask flags is non-standard
+  @ test.idl:5:26
+
+ 3 │ bitmask Flags {
+ 4 │     FLAG_A = 0x01,
+ 5 │     FLAG_B = 0x02,
+   │              ˆˆˆˆ non-standard assignment
+ 6 │     FLAG_C = 0x04
+ 7 │ };
+
+  ? use the `@position` annotation instead
+
+! assign-expr: assignment operator on bitmask flags is non-standard
+  @ test.idl:6:26
+
+ 4 │     FLAG_A = 0x01,
+ 5 │     FLAG_B = 0x02,
+ 6 │     FLAG_C = 0x04
+   │              ˆˆˆˆ non-standard assignment
+ 7 │ };
+ 8 │ unsigned long default_flags;
+
+  ? use the `@position` annotation instead
+
+! bitmask-ann: defining bitmasks in annotations is non-standard
+  @ test.idl:3:21
+
+ 2 │ @annotation MyAnnotation {
+ 3 │     bitmask Flags {
+   │             ˆˆˆˆˆ defined here
+ 4 │         FLAG_A = 0x01,
+ 5 │         FLAG_B = 0x02,

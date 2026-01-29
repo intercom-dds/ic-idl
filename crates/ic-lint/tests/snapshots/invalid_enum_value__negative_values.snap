@@ -2,15 +2,14 @@
 source: crates/ic-lint/tests/invalid_enum_value.rs
 expression: test_lint_hir(source)
 ---
-error[duplicate-enum-values]: duplicate value -10 in enum `Temperature`
-   ┌ test.idl:4:5
-   │
+⨯ duplicate-enum-values: duplicate value -10 in enum `Temperature`
+  @ test.idl:4:5
+
  2 │ enum Temperature {
  3 │     FREEZING = -273,
  4 │     COLD = -10,
-   ·     ^^^^ first use of value -10
+   │     ˆˆˆˆ first use of value -10
  5 │     NORMAL = -10,
-   ·     ^^^^^^ value already used
+   │     ˆˆˆˆˆˆ value already used
  6 │     HOT = 40
  7 │ };
-   └──

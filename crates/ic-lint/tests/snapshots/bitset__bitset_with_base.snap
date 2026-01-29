@@ -2,25 +2,24 @@
 source: crates/ic-lint/tests/bitset.rs
 expression: "test_lint_hir(r\"\nbitset Base {\n    bitfield<8> field;\n};\n\nbitset Extended : Base {\n    bitfield<8> extra;\n};\n\")"
 ---
-warning[bitset]: bitsets are not supported
-   ┌ test.idl:2:8
-   │
+! bitset: bitsets are not supported
+  @ test.idl:2:8
+
  2 │ bitset Base {
-   ·        ^^^^ defined here
+   │        ˆˆˆˆ defined here
  3 │     bitfield<8> field;
  4 │ };
-   └──
- note: the bitset will be skipped during codegen
 
-warning[bitset]: bitsets are not supported
-   ┌ test.idl:6:8
-   │
- 3 │     bitfield<8> field;
+  * the bitset will be skipped during codegen
+
+! bitset: bitsets are not supported
+  @ test.idl:6:8
+
  4 │ };
  5 │ 
  6 │ bitset Extended : Base {
-   ·        ^^^^^^^^ defined here
+   │        ˆˆˆˆˆˆˆˆ defined here
  7 │     bitfield<8> extra;
  8 │ };
-   └──
- note: the bitset will be skipped during codegen
+
+  * the bitset will be skipped during codegen

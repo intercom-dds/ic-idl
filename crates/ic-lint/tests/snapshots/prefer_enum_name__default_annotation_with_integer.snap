@@ -1,16 +1,12 @@
 ---
 source: crates/ic-lint/tests/prefer_enum_name.rs
-assertion_line: 237
 expression: test_lint_hir(source)
 ---
-warning[prefer-enum-name]: prefer using enum member name 'GREEN' instead of numeric literal
-    ┌ test.idl:9:14
-    │
-  6 │ };
-  7 │ 
+! prefer-enum-name: prefer using enum member name 'GREEN' instead of numeric literal
+  @ test.idl:9:14
+
   8 │ struct Test {
   9 │     @default(1)
-    ·              ^ consider using 'GREEN' instead of '1'
+    │              ˆ consider using 'GREEN' instead of '1'
  10 │     Color my_color;
  11 │ };
-    └──

@@ -2,50 +2,38 @@
 source: crates/ic-lint/tests/invalid_enum_literal.rs
 expression: test_lint_hir(source)
 ---
-error[invalid-enum-literal]: `2` is not a valid `Status` value
-    ┌ test.idl:9:18
-    │
+⨯ invalid-enum-literal: `2` is not a valid `Status` value
+  @ test.idl:9:18
+
+  8 │     const Status S1 = 0;  // Valid: OK
+  9 │     const Status S2 = 2;  // Invalid: 2 is not defined
+    │                  ˆˆ this constant evaluates to an invalid value
+ 10 │ };
+
+⨯ invalid-enum-literal: `2` is not a valid `Status` value
+  @ test.idl:19:18
+
+ 18 │     const Status S1 = 0;  // Valid: PENDING
+ 19 │     const Status S2 = 2;  // Invalid: 2 is not defined
+    │                  ˆˆ this constant evaluates to an invalid value
+ 20 │ };
+
+! prefer-enum-name: prefer using enum member name 'OK' instead of numeric literal
+  @ test.idl:8:18
+
   6 │     };
   7 │ 
   8 │     const Status S1 = 0;  // Valid: OK
+    │                  ˆˆ consider using 'OK' instead of '0'
   9 │     const Status S2 = 2;  // Invalid: 2 is not defined
-    ·                  ^^ this constant evaluates to an invalid value
  10 │ };
- 11 │ 
- 12 │ module B {
-    └──
 
-error[invalid-enum-literal]: `2` is not a valid `Status` value
-    ┌ test.idl:19:18
-    │
+! prefer-enum-name: prefer using enum member name 'PENDING' instead of numeric literal
+  @ test.idl:18:18
+
  16 │     };
  17 │ 
  18 │     const Status S1 = 0;  // Valid: PENDING
- 19 │     const Status S2 = 2;  // Invalid: 2 is not defined
-    ·                  ^^ this constant evaluates to an invalid value
- 20 │ };
-    └──
-
-warning[prefer-enum-name]: prefer using enum member name 'OK' instead of numeric literal
-    ┌ test.idl:8:18
-    │
-  5 │         ERROR = 1
-  6 │     };
-  7 │ 
-  8 │     const Status S1 = 0;  // Valid: OK
-    ·                  ^^ consider using 'OK' instead of '0'
-  9 │     const Status S2 = 2;  // Invalid: 2 is not defined
- 10 │ };
-    └──
-
-warning[prefer-enum-name]: prefer using enum member name 'PENDING' instead of numeric literal
-    ┌ test.idl:18:18
-    │
- 15 │         DONE = 1
- 16 │     };
- 17 │ 
- 18 │     const Status S1 = 0;  // Valid: PENDING
-    ·                  ^^ consider using 'PENDING' instead of '0'
+    │                  ˆˆ consider using 'PENDING' instead of '0'
  19 │     const Status S2 = 2;  // Invalid: 2 is not defined
  20 │ };
-    └──

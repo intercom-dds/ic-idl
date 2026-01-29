@@ -2,13 +2,12 @@
 source: crates/ic-hir/tests/union_discriminators.rs
 expression: diagnostics
 ---
-error: invalid discriminator type for union `BadUnion`
-   ┌ test.idl:4:32
-   │
- 2 │         struct Point { long x, y; };
+⨯: invalid discriminator type for union `BadUnion`
+  @ test.idl:4:32
+
+ 2 │ struct Point { long x, y; };
  3 │ 
- 4 │         union BadUnion switch (Point) {  // Structs can't be discriminators
-   ·                                ^^^^^ discriminator must be an enum or integral type
- 5 │             case 1: long value;
- 6 │         };
-   └──
+ 4 │ union BadUnion switch (Point) {  // Structs can't be discriminators
+   │                        ˆˆˆˆˆ discriminator must be an enum or integral type
+ 5 │     case 1: long value;
+ 6 │ };

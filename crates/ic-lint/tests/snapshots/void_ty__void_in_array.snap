@@ -2,23 +2,18 @@
 source: crates/ic-lint/tests/void_ty.rs
 expression: test_lint_hir(source)
 ---
-error[void-ty]: `void` is only allowed as a return type in prototypes
-   ┌ test.idl:3:5
-   │
+⨯ void-ty: `void` is only allowed as a return type in prototypes
+  @ test.idl:3:5
+
  2 │ struct ArrayStruct {
  3 │     void invalidArray[10];
-   ·     ^^^^ invalid use of `void`
+   │     ˆˆˆˆ invalid use of `void`
  4 │ };
- 5 │ 
- 6 │ typedef void VoidArray[5];
-   └──
 
-error[void-ty]: `void` is only allowed as a return type in prototypes
-   ┌ test.idl:6:9
-   │
- 3 │     void invalidArray[10];
+⨯ void-ty: `void` is only allowed as a return type in prototypes
+  @ test.idl:6:9
+
  4 │ };
  5 │ 
  6 │ typedef void VoidArray[5];
-   ·         ^^^^ invalid use of `void`
-   └──
+   │         ˆˆˆˆ invalid use of `void`

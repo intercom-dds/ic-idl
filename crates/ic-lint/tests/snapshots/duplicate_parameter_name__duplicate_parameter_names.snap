@@ -2,39 +2,39 @@
 source: crates/ic-lint/tests/duplicate_parameter_name.rs
 expression: test_lint_hir(input)
 ---
-error[duplicate-name]: duplicate parameter `x` in parameter 'methodA'
-   ┌ test.idl:3:45
-   │
- 2 │         interface TestInterface {
- 3 │             void methodA(in long x, in long x);
-   ·                                  ^          ^ duplicate parameter
-   ·                                  └─ first defined here
- 4 │             void methodB(in string name, out string result, in string name);
- 5 │             void methodC(in long param1, out long param2, inout long param1);
-   └──
- note: names are case-insensitive
+⨯ duplicate-name: duplicate parameter `x` in parameter 'methodA'
+  @ test.idl:3:45
 
-error[duplicate-name]: duplicate parameter `name` in parameter 'methodB'
-   ┌ test.idl:4:71
-   │
- 2 │         interface TestInterface {
- 3 │             void methodA(in long x, in long x);
- 4 │             void methodB(in string name, out string result, in string name);
-   ·                                    ^^^^                               ^^^^ duplicate parameter
-   ·                                    └─ first defined here
- 5 │             void methodC(in long param1, out long param2, inout long param1);
- 6 │         };
-   └──
- note: names are case-insensitive
+ 2 │ interface TestInterface {
+ 3 │     void methodA(in long x, in long x);
+   │                          ˆ          ˆ duplicate parameter
+   │                          └─ first defined here
+ 4 │     void methodB(in string name, out string result, in string name);
+ 5 │     void methodC(in long param1, out long param2, inout long param1);
 
-error[duplicate-name]: duplicate parameter `param1` in parameter 'methodC'
-   ┌ test.idl:5:70
-   │
- 3 │             void methodA(in long x, in long x);
- 4 │             void methodB(in string name, out string result, in string name);
- 5 │             void methodC(in long param1, out long param2, inout long param1);
-   ·                                  ^^^^^^                              ^^^^^^ duplicate parameter
-   ·                                  └─ first defined here
- 6 │         };
-   └──
- note: names are case-insensitive
+  * names are case-insensitive
+
+⨯ duplicate-name: duplicate parameter `name` in parameter 'methodB'
+  @ test.idl:4:71
+
+ 2 │ interface TestInterface {
+ 3 │     void methodA(in long x, in long x);
+ 4 │     void methodB(in string name, out string result, in string name);
+   │                            ˆˆˆˆ                               ˆˆˆˆ duplicate parameter
+   │                            └─ first defined here
+ 5 │     void methodC(in long param1, out long param2, inout long param1);
+ 6 │ };
+
+  * names are case-insensitive
+
+⨯ duplicate-name: duplicate parameter `param1` in parameter 'methodC'
+  @ test.idl:5:70
+
+ 3 │     void methodA(in long x, in long x);
+ 4 │     void methodB(in string name, out string result, in string name);
+ 5 │     void methodC(in long param1, out long param2, inout long param1);
+   │                          ˆˆˆˆˆˆ                              ˆˆˆˆˆˆ duplicate parameter
+   │                          └─ first defined here
+ 6 │ };
+
+  * names are case-insensitive

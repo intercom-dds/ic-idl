@@ -2,19 +2,19 @@
 source: crates/ic-lint/tests/exhaustive_union_default.rs
 expression: test_lint_hir(source)
 ---
-error[exhaustive-union-default]: default case is not allowed when all boolean values are covered in union `BoolUnion`
-   ┌ test.idl:2:1
-   │
- 2 │ union BoolUnion switch(boolean) {
-   · ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ exhausted all possible values
- 3 │ case TRUE:
- 4 │     string yes;
- 5 │ case FALSE:
- 6 │     string no;
- 7 │ default:
- 8 │     int32 shouldNotBeAllowed;  // Error: both boolean values covered
- 9 │ };
-   · ^^
-   └──
- help: both 'true' and 'false' are already handled by explicit cases
- note: default cases are only allowed when some discriminator values are not explicitly handled
+⨯ exhaustive-union-default: default case is not allowed when all boolean values are covered in union `BoolUnion`
+  @ test.idl:2:1
+
+  2 │ union BoolUnion switch(boolean) {
+    │ ˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆ exhausted all possible values
+  3 │ case TRUE:
+  4 │     string yes;
+  5 │ case FALSE:
+  6 │     string no;
+  7 │ default:
+  8 │     int32 shouldNotBeAllowed;  // Error: both boolean values covered
+  9 │ };
+    │ ˆˆ
+
+  ? both 'true' and 'false' are already handled by explicit cases
+  * default cases are only allowed when some discriminator values are not explicitly handled

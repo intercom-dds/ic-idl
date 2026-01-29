@@ -2,10 +2,8 @@
 source: crates/ic-lint/tests/preproc_warning.rs
 expression: "test_lint_preproc(r#\"\n#warning \"This is a warning\"\nstruct Foo {};\n\"#,)"
 ---
-warning[preproc-warning]: #warning directive: "This is a warning"
-   ┌ test.idl:2:2
-   │
+! preproc-warning: #warning directive: "This is a warning"
+  @ test.idl:2:2
+
  2 │ #warning "This is a warning"
-   ·  ^^^^^^^ 
- 3 │ struct Foo {};
-   └──
+   │  ˆˆˆˆˆˆˆ

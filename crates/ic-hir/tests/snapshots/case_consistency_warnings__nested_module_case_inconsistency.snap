@@ -2,72 +2,66 @@
 source: crates/ic-hir/tests/case_consistency_warnings.rs
 expression: compile_idl_with_warnings(idl)
 ---
-error: inconsistent capitalization: `outer` should be `Outer`
-    ┌ test.idl:11:13
-    │
-  8 │         };
-  9 │ 
- 10 │         struct Test {
- 11 │             outer::inner::type field1;  // All wrong
-    ·             ^^^^^ module name used here
- 12 │             Outer::INNER::Type field2;  // Middle wrong
- 13 │             OUTER::Inner::TYPE field3;  // First and last wrong
-    └──
- note: the canonical module name is `Outer`
-error: inconsistent capitalization: `inner` should be `Inner`
-    ┌ test.idl:11:20
-    │
-  8 │         };
-  9 │ 
- 10 │         struct Test {
- 11 │             outer::inner::type field1;  // All wrong
-    ·                    ^^^^^ module name used here
- 12 │             Outer::INNER::Type field2;  // Middle wrong
- 13 │             OUTER::Inner::TYPE field3;  // First and last wrong
-    └──
- note: the canonical module name is `Inner`
-error: inconsistent capitalization: `type` should be `Type`
-    ┌ test.idl:11:27
-    │
-  8 │         };
-  9 │ 
- 10 │         struct Test {
- 11 │             outer::inner::type field1;  // All wrong
-    ·                           ^^^^ used here
- 12 │             Outer::INNER::Type field2;  // Middle wrong
- 13 │             OUTER::Inner::TYPE field3;  // First and last wrong
-    └──
- note: the canonical name is `Type`
-error: inconsistent capitalization: `INNER` should be `Inner`
-    ┌ test.idl:12:20
-    │
- 10 │         struct Test {
- 11 │             outer::inner::type field1;  // All wrong
- 12 │             Outer::INNER::Type field2;  // Middle wrong
-    ·                    ^^^^^ module name used here
- 13 │             OUTER::Inner::TYPE field3;  // First and last wrong
- 14 │             Outer::Inner::Type field4;  // Correct
-    └──
- note: the canonical module name is `Inner`
-error: inconsistent capitalization: `OUTER` should be `Outer`
-    ┌ test.idl:13:13
-    │
- 11 │             outer::inner::type field1;  // All wrong
- 12 │             Outer::INNER::Type field2;  // Middle wrong
- 13 │             OUTER::Inner::TYPE field3;  // First and last wrong
-    ·             ^^^^^ module name used here
- 14 │             Outer::Inner::Type field4;  // Correct
- 15 │         };
-    └──
- note: the canonical module name is `Outer`
-error: inconsistent capitalization: `TYPE` should be `Type`
-    ┌ test.idl:13:27
-    │
- 11 │             outer::inner::type field1;  // All wrong
- 12 │             Outer::INNER::Type field2;  // Middle wrong
- 13 │             OUTER::Inner::TYPE field3;  // First and last wrong
-    ·                           ^^^^ used here
- 14 │             Outer::Inner::Type field4;  // Correct
- 15 │         };
-    └──
- note: the canonical name is `Type`
+⨯: inconsistent capitalization: `outer` should be `Outer`
+  @ test.idl:11:13
+
+ 10 │ struct Test {
+ 11 │     outer::inner::type field1;  // All wrong
+    │     ˆˆˆˆˆ module name used here
+ 12 │     Outer::INNER::Type field2;  // Middle wrong
+ 13 │     OUTER::Inner::TYPE field3;  // First and last wrong
+
+  * the canonical module name is `Outer`
+⨯: inconsistent capitalization: `inner` should be `Inner`
+  @ test.idl:11:20
+
+ 10 │ struct Test {
+ 11 │     outer::inner::type field1;  // All wrong
+    │            ˆˆˆˆˆ module name used here
+ 12 │     Outer::INNER::Type field2;  // Middle wrong
+ 13 │     OUTER::Inner::TYPE field3;  // First and last wrong
+
+  * the canonical module name is `Inner`
+⨯: inconsistent capitalization: `type` should be `Type`
+  @ test.idl:11:27
+
+ 10 │ struct Test {
+ 11 │     outer::inner::type field1;  // All wrong
+    │                   ˆˆˆˆ used here
+ 12 │     Outer::INNER::Type field2;  // Middle wrong
+ 13 │     OUTER::Inner::TYPE field3;  // First and last wrong
+
+  * the canonical name is `Type`
+⨯: inconsistent capitalization: `INNER` should be `Inner`
+  @ test.idl:12:20
+
+ 10 │ struct Test {
+ 11 │     outer::inner::type field1;  // All wrong
+ 12 │     Outer::INNER::Type field2;  // Middle wrong
+    │            ˆˆˆˆˆ module name used here
+ 13 │     OUTER::Inner::TYPE field3;  // First and last wrong
+ 14 │     Outer::Inner::Type field4;  // Correct
+
+  * the canonical module name is `Inner`
+⨯: inconsistent capitalization: `OUTER` should be `Outer`
+  @ test.idl:13:13
+
+ 11 │     outer::inner::type field1;  // All wrong
+ 12 │     Outer::INNER::Type field2;  // Middle wrong
+ 13 │     OUTER::Inner::TYPE field3;  // First and last wrong
+    │     ˆˆˆˆˆ module name used here
+ 14 │     Outer::Inner::Type field4;  // Correct
+ 15 │ };
+
+  * the canonical module name is `Outer`
+⨯: inconsistent capitalization: `TYPE` should be `Type`
+  @ test.idl:13:27
+
+ 11 │     outer::inner::type field1;  // All wrong
+ 12 │     Outer::INNER::Type field2;  // Middle wrong
+ 13 │     OUTER::Inner::TYPE field3;  // First and last wrong
+    │                   ˆˆˆˆ used here
+ 14 │     Outer::Inner::Type field4;  // Correct
+ 15 │ };
+
+  * the canonical name is `Type`

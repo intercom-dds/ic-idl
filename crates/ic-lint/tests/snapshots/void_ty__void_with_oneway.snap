@@ -2,13 +2,10 @@
 source: crates/ic-lint/tests/void_ty.rs
 expression: test_lint_hir(source)
 ---
-error[void-ty]: `void` is only allowed as a return type in prototypes
-   ┌ test.idl:8:28
-   │
- 5 │     oneway void shutdown();
- 6 │ 
- 7 │     // Still invalid: void as parameter
- 8 │     oneway void invalid(in void param);
-   ·                            ^^^^ invalid use of `void`
- 9 │ };
-   └──
+⨯ void-ty: `void` is only allowed as a return type in prototypes
+  @ test.idl:8:28
+
+  7 │     // Still invalid: void as parameter
+  8 │     oneway void invalid(in void param);
+    │                            ˆˆˆˆ invalid use of `void`
+  9 │ };

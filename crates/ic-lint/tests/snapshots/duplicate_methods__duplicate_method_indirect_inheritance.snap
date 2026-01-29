@@ -2,20 +2,16 @@
 source: crates/ic-lint/tests/duplicate_methods.rs
 expression: test_lint_hir(source)
 ---
-error[duplicate-name]: interface `Derived` defines method `method` which conflicts with inherited method
-    ┌ test.idl:10:10
-    │
-  2 │ interface Base {
-  3 │     void method();
-    ·          ^^^^^^ inherited from `Base`
-  4 │ };
-  5 │ 
-  6 │ interface Middle : Base {
-  7 │ };
-  8 │ 
+⨯ duplicate-name: interface `Derived` defines method `method` which conflicts with inherited method
+  @ test.idl:10:10
+
   9 │ interface Derived : Middle {
  10 │     long method();  // Error: conflicts with method from Base
-    ·          ^^^^^^ conflicting method definition
+    │          ˆˆˆˆˆˆ conflicting method definition
  11 │ };
-    └──
- note: method names are case-insensitive
+  2 │ interface Base {
+  3 │     void method();
+    │          ˆˆˆˆˆˆ inherited from `Base`
+  4 │ };
+
+  * method names are case-insensitive

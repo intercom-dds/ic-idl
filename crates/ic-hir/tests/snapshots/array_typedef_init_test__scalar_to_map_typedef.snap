@@ -2,10 +2,9 @@
 source: crates/ic-hir/tests/array_typedef_init_test.rs
 expression: output
 ---
-error: integer value cannot be assigned to type MyMap
-   ┌ test.idl:3:28
-   │
- 2 │         typedef map<long, string> MyMap;
- 3 │         const MyMap DATA = 456;
-   ·                            ^^^ incompatible types
-   └──
+⨯: integer value cannot be assigned to type MyMap
+  @ test.idl:3:28
+
+ 2 │ typedef map<long, string> MyMap;
+ 3 │ const MyMap DATA = 456;
+   │                    ˆˆˆ incompatible types

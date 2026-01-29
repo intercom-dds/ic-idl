@@ -2,18 +2,16 @@
 source: crates/ic-lint/tests/large_union_variant.rs
 expression: test_lint_hir(source)
 ---
-warning[large-union-variant]: union variant `large` is 768 bytes, which is significantly larger than the average of other variants (1 bytes)
-    ┌ test.idl:13:25
-    │
-  9 │ };
- 10 │ 
+! large-union-variant: union variant `large` is 768 bytes, which is significantly larger than the average of other variants (1 bytes)
+  @ test.idl:13:25
+
  11 │ union MyUnion switch (long) {
  12 │     case 1: SmallStruct small;
-    ·                         ^^^^^ 2 bytes
+    │                         ˆˆˆˆˆ 2 bytes
  13 │     case 2: LargeStruct large;  // Much larger than SmallStruct
-    ·                         ^^^^^ large variant (768 bytes)
+    │                         ˆˆˆˆˆ large variant (768 bytes)
  14 │     case 3: char tiny;
-    ·                  ^^^^ 1 bytes
+    │                  ˆˆˆˆ 1 bytes
  15 │ };
-    └──
- note: consider annotating large variants with `@shared` to heap allocate them
+
+  * consider annotating large variants with `@shared` to heap allocate them

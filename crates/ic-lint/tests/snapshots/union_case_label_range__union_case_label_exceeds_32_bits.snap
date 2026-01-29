@@ -2,33 +2,30 @@
 source: crates/ic-lint/tests/union_case_label_range.rs
 expression: output
 ---
-error: integer value out of range for 'int32'
-   ┌ test.idl:3:18
-   │
- 2 │         union MyUnion switch(long) {
- 3 │             case 0x100000000: long bigValue;  // 2^32, exceeds 32-bit range
-   ·                  ^^^^^^^^^^^ out of range
- 4 │             case 4294967295: long maxUint32;   // 2^32 - 1, still valid
- 5 │             case -2147483648: long minInt32;   // -2^31, valid
-   └──
+⨯: integer value out of range for 'int32'
+  @ test.idl:3:18
 
-error: integer value out of range for 'int32'
-   ┌ test.idl:4:18
-   │
- 2 │         union MyUnion switch(long) {
- 3 │             case 0x100000000: long bigValue;  // 2^32, exceeds 32-bit range
- 4 │             case 4294967295: long maxUint32;   // 2^32 - 1, still valid
-   ·                  ^^^^^^^^^^ out of range
- 5 │             case -2147483648: long minInt32;   // -2^31, valid
- 6 │             case 4294967296: long tooLarge;    // 2^32, exceeds range
-   └──
+ 2 │ union MyUnion switch(long) {
+ 3 │     case 0x100000000: long bigValue;  // 2^32, exceeds 32-bit range
+   │          ˆˆˆˆˆˆˆˆˆˆˆ out of range
+ 4 │     case 4294967295: long maxUint32;   // 2^32 - 1, still valid
+ 5 │     case -2147483648: long minInt32;   // -2^31, valid
 
-error: integer value out of range for 'int32'
-   ┌ test.idl:6:18
-   │
- 4 │             case 4294967295: long maxUint32;   // 2^32 - 1, still valid
- 5 │             case -2147483648: long minInt32;   // -2^31, valid
- 6 │             case 4294967296: long tooLarge;    // 2^32, exceeds range
-   ·                  ^^^^^^^^^^ out of range
- 7 │         };
-   └──
+⨯: integer value out of range for 'int32'
+  @ test.idl:4:18
+
+ 2 │ union MyUnion switch(long) {
+ 3 │     case 0x100000000: long bigValue;  // 2^32, exceeds 32-bit range
+ 4 │     case 4294967295: long maxUint32;   // 2^32 - 1, still valid
+   │          ˆˆˆˆˆˆˆˆˆˆ out of range
+ 5 │     case -2147483648: long minInt32;   // -2^31, valid
+ 6 │     case 4294967296: long tooLarge;    // 2^32, exceeds range
+
+⨯: integer value out of range for 'int32'
+  @ test.idl:6:18
+
+ 4 │     case 4294967295: long maxUint32;   // 2^32 - 1, still valid
+ 5 │     case -2147483648: long minInt32;   // -2^31, valid
+ 6 │     case 4294967296: long tooLarge;    // 2^32, exceeds range
+   │          ˆˆˆˆˆˆˆˆˆˆ out of range
+ 7 │ };

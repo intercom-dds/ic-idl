@@ -1,19 +1,18 @@
 ---
 source: crates/ic-hir/tests/annotation_redefinition.rs
-assertion_line: 136
 expression: diagnostics
 ---
-error: inconsistent redefinition of annotation `@my_doc`
-   ┌ test.idl:2:21
-   │
- 2 │         @annotation my_doc {
-   ·                     ^^^^^^ originally defined here
- 3 │             string value;
- 4 │         };
+⨯: inconsistent redefinition of annotation `@my_doc`
+  @ test.idl:2:21
+
+ 2 │ @annotation my_doc {
+   │             ˆˆˆˆˆˆ originally defined here
+ 3 │     string value;
+ 4 │ };
  5 │ 
- 6 │         @annotation my_doc {
-   ·                     ^^^^^^ redefined inconsistently here
- 7 │             long value;
- 8 │         };
-   └──
- note: annotation redefinitions must have the same parameters, types, and defaults
+ 6 │ @annotation my_doc {
+   │             ˆˆˆˆˆˆ redefined inconsistently here
+ 7 │     long value;
+ 8 │ };
+
+  * annotation redefinitions must have the same parameters, types, and defaults

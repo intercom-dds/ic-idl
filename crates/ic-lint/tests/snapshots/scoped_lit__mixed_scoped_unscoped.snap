@@ -2,27 +2,25 @@
 source: crates/ic-lint/tests/scoped_lit.rs
 expression: test_lint(source)
 ---
-warning[scoped-lit]: scoped enums are non-standard
-    ┌ test.idl:9:28
-    │
-  6 │         };
-  7 │ 
-  8 │         const Mode MODE1 = NORMAL;
-  9 │         const Mode MODE2 = Mode::FAST;
-    ·                            ^^^^ used here
- 10 │         const Mode MODE3 = SLOW;
- 11 │         const Mode MODE4 = Mode::SLOW;
-    └──
- help: use `FAST` instead of `Mode::FAST`
- note: enumerators are registered in the parent scope
+! scoped-lit: scoped enums are non-standard
+  @ test.idl:9:28
 
-warning[scoped-lit]: scoped enums are non-standard
-    ┌ test.idl:11:28
-    │
-  9 │         const Mode MODE2 = Mode::FAST;
- 10 │         const Mode MODE3 = SLOW;
- 11 │         const Mode MODE4 = Mode::SLOW;
-    ·                            ^^^^ used here
-    └──
- help: use `SLOW` instead of `Mode::SLOW`
- note: enumerators are registered in the parent scope
+  8 │ const Mode MODE1 = NORMAL;
+  9 │ const Mode MODE2 = Mode::FAST;
+    │                    ˆˆˆˆ used here
+ 10 │ const Mode MODE3 = SLOW;
+ 11 │ const Mode MODE4 = Mode::SLOW;
+
+  ? use `FAST` instead of `Mode::FAST`
+  * enumerators are registered in the parent scope
+
+! scoped-lit: scoped enums are non-standard
+  @ test.idl:11:28
+
+  9 │ const Mode MODE2 = Mode::FAST;
+ 10 │ const Mode MODE3 = SLOW;
+ 11 │ const Mode MODE4 = Mode::SLOW;
+    │                    ˆˆˆˆ used here
+
+  ? use `SLOW` instead of `Mode::SLOW`
+  * enumerators are registered in the parent scope

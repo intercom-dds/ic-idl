@@ -2,14 +2,11 @@
 source: crates/ic-lint/tests/default_type_mismatch.rs
 expression: test_lint_hir(source)
 ---
-warning[prefer-enum-name]: prefer using enum member name 'GREEN' instead of numeric literal
-   ┌ test.idl:5:14
-   │
- 2 │ enum Color { RED, GREEN, BLUE };
- 3 │ 
+! prefer-enum-name: prefer using enum member name 'GREEN' instead of numeric literal
+  @ test.idl:5:14
+
  4 │ struct Good {
  5 │     @default(1)
-   ·              ^ consider using 'GREEN' instead of '1'
+   │              ˆ consider using 'GREEN' instead of '1'
  6 │     Color my_color;
  7 │ };
-   └──

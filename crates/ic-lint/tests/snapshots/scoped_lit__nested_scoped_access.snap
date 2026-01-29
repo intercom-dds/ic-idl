@@ -2,14 +2,13 @@
 source: crates/ic-lint/tests/scoped_lit.rs
 expression: test_lint(source)
 ---
-warning[scoped-lit]: scoped enums are non-standard
-   ┌ test.idl:9:43
-   │
- 6 │             };
- 7 │         };
- 8 │ 
- 9 │         const Types::Result GOOD = Types::Result::SUCCESS;
-   ·                                           ^^^^^^ used here
-   └──
- help: use `SUCCESS` instead of `Result::SUCCESS`
- note: enumerators are registered in the parent scope
+! scoped-lit: scoped enums are non-standard
+  @ test.idl:9:43
+
+  7 │ };
+  8 │ 
+  9 │ const Types::Result GOOD = Types::Result::SUCCESS;
+    │                                   ˆˆˆˆˆˆ used here
+
+  ? use `SUCCESS` instead of `Result::SUCCESS`
+  * enumerators are registered in the parent scope

@@ -2,12 +2,11 @@
 source: crates/ic-hir/tests/builtin_annotation_warning.rs
 expression: diagnostics
 ---
-error: positional arguments not allowed for multi-parameter annotations
-   ┌ test.idl:3:10
-   │
- 2 │         // Built-in @range with positional args - should warn
- 3 │         @range(0, 10)
-   ·          ^^^^^ use named arguments instead
- 4 │         struct Test {
- 5 │             long value;
-   └──
+⨯: positional arguments not allowed for multi-parameter annotations
+  @ test.idl:3:10
+
+ 2 │ // Built-in @range with positional args - should warn
+ 3 │ @range(0, 10)
+   │  ˆˆˆˆˆ use named arguments instead
+ 4 │ struct Test {
+ 5 │     long value;

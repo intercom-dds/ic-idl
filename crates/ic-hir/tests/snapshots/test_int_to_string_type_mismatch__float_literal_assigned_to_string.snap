@@ -1,11 +1,9 @@
 ---
 source: crates/ic-hir/tests/test_int_to_string_type_mismatch.rs
-assertion_line: 57
 expression: diagnostics
 ---
-error: floating-point value cannot be assigned to type string
-   ┌ test.idl:2:32
-   │
- 2 │         const string myValue = 3.14;
-   ·                                ^^^^ incompatible types
-   └──
+⨯: floating-point value cannot be assigned to type string
+  @ test.idl:2:32
+
+ 2 │ const string myValue = 3.14;
+   │                        ˆˆˆˆ incompatible types

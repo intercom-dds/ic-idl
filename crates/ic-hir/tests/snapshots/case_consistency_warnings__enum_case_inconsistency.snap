@@ -2,26 +2,24 @@
 source: crates/ic-hir/tests/case_consistency_warnings.rs
 expression: compile_idl_with_warnings(idl)
 ---
-error: inconsistent capitalization: `status` should be `Status`
-    ┌ test.idl:8:13
-    │
-  5 │         };
-  6 │ 
-  7 │         struct Test {
-  8 │             status field1;
-    ·             ^^^^^^ used here
-  9 │             STATUS field2;
- 10 │             Status field3; // Correct
-    └──
- note: the canonical name is `Status`
-error: inconsistent capitalization: `STATUS` should be `Status`
-    ┌ test.idl:9:13
-    │
-  7 │         struct Test {
-  8 │             status field1;
-  9 │             STATUS field2;
-    ·             ^^^^^^ used here
- 10 │             Status field3; // Correct
- 11 │         };
-    └──
- note: the canonical name is `Status`
+⨯: inconsistent capitalization: `status` should be `Status`
+  @ test.idl:8:13
+
+  7 │ struct Test {
+  8 │     status field1;
+    │     ˆˆˆˆˆˆ used here
+  9 │     STATUS field2;
+ 10 │     Status field3; // Correct
+
+  * the canonical name is `Status`
+⨯: inconsistent capitalization: `STATUS` should be `Status`
+  @ test.idl:9:13
+
+  7 │ struct Test {
+  8 │     status field1;
+  9 │     STATUS field2;
+    │     ˆˆˆˆˆˆ used here
+ 10 │     Status field3; // Correct
+ 11 │ };
+
+  * the canonical name is `Status`

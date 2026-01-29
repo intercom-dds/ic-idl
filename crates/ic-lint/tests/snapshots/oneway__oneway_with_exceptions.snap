@@ -2,14 +2,11 @@
 source: crates/ic-lint/tests/oneway.rs
 expression: test_lint(source)
 ---
-error[oneway]: oneway operations cannot have exception specifiers
-   ┌ test.idl:7:49
-   │
- 4 │ };
- 5 │ 
+⨯ oneway: oneway operations cannot have exception specifiers
+  @ test.idl:7:49
+
  6 │ interface Service {
  7 │     oneway void process(in string data) raises (ProcessError);  // oneway cannot raise exceptions
-   ·     ^^^^^^                                      ^^^^^^^^^^^^ exception specifier
-   ·     └─ declared as oneway here
+   │     ˆˆˆˆˆˆ                                      ˆˆˆˆˆˆˆˆˆˆˆˆ exception specifier
+   │     └─ declared as oneway here
  8 │ };
-   └──

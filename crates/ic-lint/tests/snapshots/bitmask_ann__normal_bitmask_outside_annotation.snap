@@ -2,38 +2,36 @@
 source: crates/ic-lint/tests/bitmask_ann.rs
 expression: test_lint(source)
 ---
-warning[assign-expr]: assignment operator on bitmask flags is non-standard
-   ┌ test.idl:3:23
-   │
- 2 │         bitmask GlobalFlags {
- 3 │             ENABLED = 0x01,
-   ·                       ^^^^ non-standard assignment
- 4 │             VERBOSE = 0x02,
- 5 │             DEBUG = 0x04
-   └──
- help: use the `@position` annotation instead
+! assign-expr: assignment operator on bitmask flags is non-standard
+  @ test.idl:3:23
 
-warning[assign-expr]: assignment operator on bitmask flags is non-standard
-   ┌ test.idl:4:23
-   │
- 2 │         bitmask GlobalFlags {
- 3 │             ENABLED = 0x01,
- 4 │             VERBOSE = 0x02,
-   ·                       ^^^^ non-standard assignment
- 5 │             DEBUG = 0x04
- 6 │         };
-   └──
- help: use the `@position` annotation instead
+ 2 │ bitmask GlobalFlags {
+ 3 │     ENABLED = 0x01,
+   │               ˆˆˆˆ non-standard assignment
+ 4 │     VERBOSE = 0x02,
+ 5 │     DEBUG = 0x04
 
-warning[assign-expr]: assignment operator on bitmask flags is non-standard
-   ┌ test.idl:5:21
-   │
- 3 │             ENABLED = 0x01,
- 4 │             VERBOSE = 0x02,
- 5 │             DEBUG = 0x04
-   ·                     ^^^^ non-standard assignment
- 6 │         };
- 7 │ 
- 8 │         @annotation Settings {
-   └──
- help: use the `@position` annotation instead
+  ? use the `@position` annotation instead
+
+! assign-expr: assignment operator on bitmask flags is non-standard
+  @ test.idl:4:23
+
+ 2 │ bitmask GlobalFlags {
+ 3 │     ENABLED = 0x01,
+ 4 │     VERBOSE = 0x02,
+   │               ˆˆˆˆ non-standard assignment
+ 5 │     DEBUG = 0x04
+ 6 │ };
+
+  ? use the `@position` annotation instead
+
+! assign-expr: assignment operator on bitmask flags is non-standard
+  @ test.idl:5:21
+
+ 3 │     ENABLED = 0x01,
+ 4 │     VERBOSE = 0x02,
+ 5 │     DEBUG = 0x04
+   │             ˆˆˆˆ non-standard assignment
+ 6 │ };
+
+  ? use the `@position` annotation instead

@@ -2,14 +2,14 @@
 source: crates/ic-lint/tests/range_bound.rs
 expression: test_lint_hir(source)
 ---
-warning[range-bound]: @range min value (100) is greater than max value (0)
-   ┌ test.idl:4:10
-   │
+! range-bound: @range min value (100) is greater than max value (0)
+  @ test.idl:4:10
+
  2 │ module MyModule {
  3 │     struct BadRange {
  4 │         @range(min=100, max=0) long value;
-   ·          ^^^^^ invalid range
+   │          ˆˆˆˆˆ invalid range
  5 │     };
  6 │ };
-   └──
- help: swap min and max values
+
+  ? swap min and max values

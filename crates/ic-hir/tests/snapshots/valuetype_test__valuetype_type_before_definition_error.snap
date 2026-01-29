@@ -2,26 +2,20 @@
 source: crates/ic-hir/tests/valuetype_test.rs
 expression: rendered
 ---
-error: no type named 'Status' in this scope
-   ┌ test.idl:4:20
-   │
- 2 │         valuetype BadOrder {
- 3 │             // Error: Status is used before it's defined
- 4 │             public Status current_status;
-   ·                    ^^^^^^ unknown type
+⨯: no type named 'Status' in this scope
+  @ test.idl:4:20
+
+ 2 │ valuetype BadOrder {
+ 3 │     // Error: Status is used before it's defined
+ 4 │     public Status current_status;
+   │            ˆˆˆˆˆˆ unknown type
  5 │ 
- 6 │             enum Status {
- 7 │                 ACTIVE,
-   └──
-error: no type named 'Data' in this scope
-    ┌ test.idl:12:13
-    │
-  9 │             };
- 10 │ 
- 11 │             // This would also fail
- 12 │             Data getData();
-    ·             ^^^^ unknown type
+ 6 │     enum Status {
+⨯: no type named 'Data' in this scope
+  @ test.idl:12:13
+
+ 11 │ // This would also fail
+ 12 │ Data getData();
+    │ ˆˆˆˆ unknown type
  13 │ 
- 14 │             struct Data {
- 15 │                 string value;
-    └──
+ 14 │ struct Data {

@@ -2,11 +2,10 @@
 source: crates/ic-hir/tests/array_init_test.rs
 expression: output
 ---
-error: constant 'ARRAY1' of type array cannot be assigned to array
-   ┌ test.idl:3:33
-   │
- 2 │         const int32 ARRAY1[3] = { 1, 2, 3 };
-   ·                     ^^^^^^ 'ARRAY1' declared as array here
- 3 │         const int32 ARRAY2[4] = ARRAY1;
-   ·                                 ^^^^^^ incompatible types
-   └──
+⨯: constant 'ARRAY1' of type array cannot be assigned to array
+  @ test.idl:3:33
+
+ 2 │ const int32 ARRAY1[3] = { 1, 2, 3 };
+   │             ˆˆˆˆˆˆ 'ARRAY1' declared as array here
+ 3 │ const int32 ARRAY2[4] = ARRAY1;
+   │                         ˆˆˆˆˆˆ incompatible types

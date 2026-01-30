@@ -52,30 +52,29 @@ mod imp {
 
 #[cfg(windows)]
 mod imp {
-    use winapi::um::handleapi::INVALID_HANDLE_VALUE;
-    use winapi::um::processenv::GetStdHandle;
-    use winapi::um::winbase::{STD_ERROR_HANDLE, STD_OUTPUT_HANDLE};
-    use winapi::um::wincon::{
+    use windows_sys::Win32::Foundation::INVALID_HANDLE_VALUE;
+    use windows_sys::Win32::System::Console::{
         CONSOLE_SCREEN_BUFFER_INFO, ENABLE_VIRTUAL_TERMINAL_PROCESSING, GetConsoleMode,
-        GetConsoleScreenBufferInfo, SetConsoleMode,
+        GetConsoleScreenBufferInfo, GetStdHandle, STD_ERROR_HANDLE, STD_OUTPUT_HANDLE,
+        SetConsoleMode,
     };
 
     #[must_use]
     pub fn terminal_width() -> Option<u16> {
-        // SAFETY: GetStdHandle with STD_ERROR_HANDLE is always safe
+        // SAFETY: `GetStdHandle` is safe with standard handle constants
         let handle = unsafe { GetStdHandle(STD_ERROR_HANDLE) };
         if handle == INVALID_HANDLE_VALUE || handle.is_null() {
             return None;
         }
 
-        // SAFETY: CONSOLE_SCREEN_BUFFER_INFO is POD, zeroing is valid
+        // SAFETY: `CONSOLE_SCREEN_BUFFER_INFO` is POD, zeroing is valid
         let mut info: CONSOLE_SCREEN_BUFFER_INFO = unsafe { std::mem::zeroed() };
 
-        // SAFETY: GetConsoleScreenBufferInfo is safe with valid handle
-        if unsafe { GetConsoleScreenBufferInfo(handle, &mut info) } != 0 {
+        // SAFETY: `GetConsoleScreenBufferInfo` is safe with a valid handle
+        if unsafe { GetConsoleScreenBufferInfo(handle, &raw mut info) } != 0 {
             let width = info.srWindow.Right - info.srWindow.Left + 1;
             if width > 0 {
-                return Some(width as u16);
+                return Some(width.cast_unsigned());
             }
         }
         None
@@ -92,14 +91,14 @@ mod imp {
 
             let mut mode: u32 = 0;
 
-            // SAFETY: `GetConsoleMode` is safe with valid handle
-            if unsafe { GetConsoleMode(handle, &mut mode) } == 0 {
+            // SAFETY: `GetConsoleMode` is safe with a valid handle
+            if unsafe { GetConsoleMode(handle, &raw mut mode) } == 0 {
                 return false;
             }
 
             mode |= ENABLE_VIRTUAL_TERMINAL_PROCESSING;
 
-            // SAFETY: `SetConsoleMode` is safe with valid handle
+            // SAFETY: `SetConsoleMode` is safe with a valid handle
             unsafe { SetConsoleMode(handle, mode) != 0 }
         }
 

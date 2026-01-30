@@ -44,4 +44,4 @@ ic-cli-derive = { path = "../ic-cli-derive" }
 libc = "0.2"
 
 [target.'cfg(windows)'.dependencies]
-winapi = { version = "0.3", features = ["processenv", "winbase", "wincon", "handleapi"] }
+windows-sys = { version = "0.59", features = ["Win32_System_Console", "Win32_Foundation"] }

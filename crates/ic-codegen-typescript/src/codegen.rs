@@ -647,9 +647,12 @@ impl<'a> TsGen<'a> {
     }
 
     fn emit_const(&self, w: &mut Twine, def: &Def, const_ty: &ConstTy) {
-        let ty_str = self.ts_type(&const_ty.ty, def.id);
         let value_str = self.format_numeric(&const_ty.value, def.id);
-        w!(w, "export const ", def.ident.name, ": ", ty_str, " = ", value_str, ";\n\n");
+        w!(w, "export const ", def.ident.name, " = ", value_str);
+        if !matches!(const_ty.value, Numeric::Const(_)) {
+            w!(w, " as const");
+        }
+        w!(w, ";\n\n");
     }
 
     fn emit_non_module_definition(&self, w: &mut Twine, def_id: DefId) {

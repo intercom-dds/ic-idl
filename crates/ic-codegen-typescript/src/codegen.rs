@@ -792,12 +792,6 @@ impl<'a> TsGen<'a> {
             import_sources.remove(&None);
         }
 
-        if let Some(current_module) = dir_module
-            && let Some(root) = self.get_root_module(current_module)
-        {
-            import_sources.remove(&Some(root));
-        }
-
         if let Some(nested_modules) = re_exports {
             for &nested_id in nested_modules {
                 import_sources.remove(&Some(nested_id));

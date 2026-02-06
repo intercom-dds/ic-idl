@@ -453,6 +453,15 @@ impl<'a> TsGen<'a> {
         w!(w, "}\n\n");
     }
 
+    fn numeric_typeof(&self, value: &Numeric, def_id: DefId) -> String {
+        let formatted = self.format_numeric(value, def_id);
+        if matches!(value, Numeric::Const(_)) {
+            format!("typeof {formatted}")
+        } else {
+            formatted
+        }
+    }
+
     fn emit_union(&self, w: &mut Twine, def: &Def, union_ty: &UnionTy) {
         let disc_type = self.ts_type(&union_ty.disc.ty, def.id);
 
@@ -464,13 +473,13 @@ impl<'a> TsGen<'a> {
             if variant.is_default {
                 w!(w, "    | { $discriminator: ", disc_type);
             } else if variant.labels.len() == 1 {
-                let label_str = self.format_numeric(&variant.labels[0].value, def.id);
+                let label_str = self.numeric_typeof(&variant.labels[0].value, def.id);
                 w!(w, "    | { $discriminator: ", label_str);
             } else {
                 let labels: Vec<_> = variant
                     .labels
                     .iter()
-                    .map(|l| self.format_numeric(&l.value, def.id))
+                    .map(|l| self.numeric_typeof(&l.value, def.id))
                     .collect();
                 w!(w, "    | { $discriminator: ", labels.join(" | "));
             }

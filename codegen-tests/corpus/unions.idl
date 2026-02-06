@@ -25,8 +25,6 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-// Comprehensive union tests
-
 module union_tests {
     // Simple union with integer discriminator
     union SimpleUnion switch (long) {
@@ -83,5 +81,18 @@ module union_tests {
             string string_value;
         default:
             double double_value;
+    };
+
+    const int32 MY_UNION_CASE1 = 123;
+    const int32 MY_UNION_CASE2 = 456;
+
+    // Union with numeric constants as case labels
+    union NumericConstUnion switch(int32) {
+    case 0:
+        string abc;
+    case MY_UNION_CASE1:
+        string def;
+    case MY_UNION_CASE2:
+        string ghi;
     };
 };

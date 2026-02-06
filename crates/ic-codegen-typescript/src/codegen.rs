@@ -472,9 +472,6 @@ impl<'a> TsGen<'a> {
 
             if variant.is_default {
                 w!(w, "    | { $discriminator: ", disc_type);
-            } else if variant.labels.len() == 1 {
-                let label_str = self.numeric_typeof(&variant.labels[0].value, def.id);
-                w!(w, "    | { $discriminator: ", label_str);
             } else {
                 let labels: Vec<_> = variant
                     .labels

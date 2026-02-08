@@ -30,9 +30,6 @@ allow = [
     "MIT",
     "Apache-2.0",
     "BSD-3-Clause",
-    "ISC",
-    "Unlicense",
-    "Unicode-DFS-2016",
     "Unicode-3.0",
 ]
 confidence-threshold = 1.0
@@ -40,6 +37,3 @@ unused-allowed-license = "allow"
 
 [licenses.private]
 ignore = true
-
-[advisories]
-git-fetch-with-cli = true

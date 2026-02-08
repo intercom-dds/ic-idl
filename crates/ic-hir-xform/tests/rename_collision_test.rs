@@ -112,8 +112,6 @@ fn test_same_namespace_collision() {
     let renamed = rename::transform(hir, &test_rust_target());
 
     let mut struct_names = Vec::new();
-
-    // Look in the test module for structs
     for def in &renamed {
         if let DefKind::Module(m) = &def.kind
             && def.ident.name == "test"

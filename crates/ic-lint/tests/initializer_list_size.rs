@@ -37,14 +37,12 @@ fn test_array_correct_size() {
 }
 
 #[test]
-#[ignore]
 fn test_array_too_few_elements() {
     let input = r"const int32 MY_CONST[3] = {1, 2};";
     insta::assert_snapshot!(test_lint_hir(input));
 }
 
 #[test]
-#[ignore]
 fn test_array_too_many_elements() {
     let input = r"const int32 MY_CONST[3] = {1, 2, 3, 4};";
     insta::assert_snapshot!(test_lint_hir(input));
@@ -65,7 +63,6 @@ fn test_struct_correct_field_count() {
 }
 
 #[test]
-#[ignore]
 fn test_struct_too_few_fields() {
     let input = r"
         struct Point {
@@ -79,7 +76,6 @@ fn test_struct_too_few_fields() {
 }
 
 #[test]
-#[ignore]
 fn test_struct_too_many_fields() {
     let input = r"
         struct Point {
@@ -93,7 +89,6 @@ fn test_struct_too_many_fields() {
 }
 
 #[test]
-#[ignore]
 fn test_nested_array_validation() {
     let input = r"
         struct MyStruct {
@@ -105,7 +100,6 @@ fn test_nested_array_validation() {
 }
 
 #[test]
-#[ignore]
 fn test_empty_struct_initializer() {
     let input = r"
         struct Config {
@@ -118,14 +112,12 @@ fn test_empty_struct_initializer() {
 }
 
 #[test]
-#[ignore]
 fn test_multidimensional_array() {
     let input = r"const int32 matrix[2][3] = {{1, 2}, {3, 4, 5}};";
     insta::assert_snapshot!(test_lint_hir(input));
 }
 
 #[test]
-#[ignore]
 fn test_array_in_struct() {
     let input = r"
         struct Container {

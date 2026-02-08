@@ -2,15 +2,6 @@
 source: crates/ic-lint/tests/union_key.rs
 expression: test_lint_hir(source)
 ---
-⨯ invalid-annotation-target: @key can only be applied to struct fields
-  @ test.idl:4:6
-
- 2 │ union KeyMember switch(long) {
- 3 │ case 1:
- 4 │     @key string value;
-   │      ˆˆˆ invalid annotation target
- 5 │ };
-
 ⨯ union-key: union variant 'value' cannot use @key
   @ test.idl:4:6
 

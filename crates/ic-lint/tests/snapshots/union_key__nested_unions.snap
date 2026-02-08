@@ -2,15 +2,6 @@
 source: crates/ic-lint/tests/union_key.rs
 expression: test_lint_hir(source)
 ---
-⨯ invalid-annotation-target: @key can only be applied to struct fields
-  @ test.idl:11:6
-
-  9 │ union Outer switch(long) {
- 10 │ case 1:
- 11 │     @key Inner inner;
-    │      ˆˆˆ invalid annotation target
- 12 │ };
-
 ⨯ union-key: union discriminator for 'Inner' cannot be @optional
   @ test.idl:2:21
 

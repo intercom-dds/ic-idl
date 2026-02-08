@@ -7,7 +7,7 @@ expression: test_lint_hir(source)
 
  2 │ module MyModule {
  3 │     struct BadRange {
- 4 │         @range(min=-1, max=300) octet value;  // octet is 0..255
+ 4 │         @range(min=-1, max=300) octet value;
    │          ˆˆˆˆˆ value out of bounds
  5 │     };
  6 │ };
@@ -19,7 +19,7 @@ expression: test_lint_hir(source)
 
  2 │ module MyModule {
  3 │     struct BadRange {
- 4 │         @range(min=-1, max=300) octet value;  // octet is 0..255
+ 4 │         @range(min=-1, max=300) octet value;
    │          ˆˆˆˆˆ value out of bounds
  5 │     };
  6 │ };

@@ -2,26 +2,6 @@
 source: crates/ic-lint/tests/union_key.rs
 expression: test_lint_hir(source)
 ---
-⨯ invalid-annotation-target: @key can only be applied to struct fields
-  @ test.idl:10:6
-
-  8 │ union ColorData switch(Color) {
-  9 │ case RED:
- 10 │     @key long red_value;
-    │      ˆˆˆ invalid annotation target
- 11 │ case GREEN:
- 12 │     @key long green_value;
-
-⨯ invalid-annotation-target: @key can only be applied to struct fields
-  @ test.idl:12:6
-
- 10 │     @key long red_value;
- 11 │ case GREEN:
- 12 │     @key long green_value;
-    │      ˆˆˆ invalid annotation target
- 13 │ case BLUE:
- 14 │     long blue_value;  // OK - no @key
-
 ⨯ union-key: union variant 'red_value' cannot use @key
   @ test.idl:10:6
 

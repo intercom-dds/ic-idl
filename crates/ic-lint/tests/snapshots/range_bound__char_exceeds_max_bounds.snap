@@ -7,7 +7,7 @@ expression: test_lint_hir(source)
 
  2 │ module MyModule {
  3 │     struct BadChar {
- 4 │         @max(200) char value;  // char max is 127 (ASCII)
+ 4 │         @max(200) char value;
    │          ˆˆˆ value out of bounds
  5 │     };
  6 │ };

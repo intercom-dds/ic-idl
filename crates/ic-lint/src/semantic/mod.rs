@@ -38,7 +38,6 @@ pub mod duplicate_name;
 pub mod exception_member;
 pub mod exhaustive_union_default;
 pub mod initializer_list_size;
-pub mod invalid_annotation_target;
 pub mod invalid_enum_literal;
 pub mod invalid_enum_value;
 pub mod invalid_inheritance;

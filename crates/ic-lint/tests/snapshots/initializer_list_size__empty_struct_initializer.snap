@@ -2,10 +2,10 @@
 source: crates/ic-lint/tests/initializer_list_size.rs
 expression: test_lint_hir(input)
 ---
-error: missing required field `port` in struct initializer
-   ┌ test.idl:3:19
-   │
- 3 │             int32 port;
-   ·                   ^^^^ field is required here
-   └──
- note: add the missing field to the initializer list
+⨯: struct initializer cannot be empty
+  @ test.idl:6:28
+
+ 4 │     string host;
+ 5 │ };
+ 6 │ const Config cfg = {};
+   │                    ˆˆ expected field values

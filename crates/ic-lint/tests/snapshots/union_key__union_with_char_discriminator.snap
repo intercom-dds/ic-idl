@@ -2,16 +2,6 @@
 source: crates/ic-lint/tests/union_key.rs
 expression: test_lint_hir(source)
 ---
-⨯ invalid-annotation-target: @key can only be applied to struct fields
-  @ test.idl:4:6
-
- 2 │ union CharUnion switch(@optional char) {
- 3 │ case 'a':
- 4 │     @key string a_value;
-   │      ˆˆˆ invalid annotation target
- 5 │ case 'b':
- 6 │     string b_value;
-
 ⨯ union-key: union discriminator for 'CharUnion' cannot be @optional
   @ test.idl:2:25
 

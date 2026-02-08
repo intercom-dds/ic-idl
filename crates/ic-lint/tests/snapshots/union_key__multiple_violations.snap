@@ -2,25 +2,6 @@
 source: crates/ic-lint/tests/union_key.rs
 expression: test_lint_hir(source)
 ---
-⨯ invalid-annotation-target: @key can only be applied to struct fields
-  @ test.idl:4:6
-
- 2 │ union MultiViolations switch(@optional long) {
- 3 │ case 1:
- 4 │     @key string first;
-   │      ˆˆˆ invalid annotation target
- 5 │ case 2:
- 6 │     @key long second;
-
-⨯ invalid-annotation-target: @key can only be applied to struct fields
-  @ test.idl:6:6
-
- 4 │     @key string first;
- 5 │ case 2:
- 6 │     @key long second;
-   │      ˆˆˆ invalid annotation target
- 7 │ };
-
 ⨯ union-key: union discriminator for 'MultiViolations' cannot be @optional
   @ test.idl:2:31
 

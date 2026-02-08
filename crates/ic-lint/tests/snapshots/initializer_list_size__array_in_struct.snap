@@ -2,9 +2,10 @@
 source: crates/ic-lint/tests/initializer_list_size.rs
 expression: test_lint_hir(input)
 ---
-error: array size mismatch: expected 5 elements, found 3
-   ┌ test.idl:5:31
-   │
- 5 │         const Container c = {{1, 2, 3}};
-   ·                               ^^^^^^^ in this initializer
-   └──
+⨯: array expects 5 elements, but 3 were provided
+  @ test.idl:5:30
+
+ 3 │     int32 data[5];
+ 4 │ };
+ 5 │ const Container c = {{1, 2, 3}};
+   │                      ˆˆˆˆˆˆˆˆˆ incorrect number of elements

@@ -31,7 +31,6 @@ mod common;
 use common::test_lint_hir;
 
 #[test]
-#[ignore]
 fn valid_range() {
     let source = r"
 module MyModule {
@@ -41,7 +40,9 @@ module MyModule {
 };
 ";
 
-    assert_snapshot!(test_lint_hir(source));
+    let output = common::lint_hir(source);
+    assert!(output.warnings.is_empty());
+    assert!(output.errors.is_empty());
 }
 
 #[test]
@@ -195,7 +196,7 @@ fn max_exceeds_type_bounds() {
     let source = r"
 module MyModule {
     struct BadMax {
-        @max(299) octet value;  // octet max is 255
+        @max(299) octet value;
     };
 };
 ";
@@ -207,12 +208,10 @@ fn min_below_type_bounds() {
     let source = r"
 module MyModule {
     struct BadMin {
-        @min(-1) char value;  // char min is 0 (ASCII)
+        @min(-1) char value;
     };
 };
 ";
-    // TODO: This test currently shows CTS deserialization error for negative values
-    // instead of the expected "value below type bounds" error
     assert_snapshot!(test_lint_hir(source));
 }
 
@@ -221,7 +220,7 @@ fn range_exceeds_type_bounds() {
     let source = r"
 module MyModule {
     struct BadRange {
-        @range(min=-1, max=300) octet value;  // octet is 0..255
+        @range(min=-1, max=300) octet value;
     };
 };
 ";
@@ -229,7 +228,6 @@ module MyModule {
 }
 
 #[test]
-#[ignore]
 fn valid_type_bounds() {
     let source = r"
 module MyModule {
@@ -241,7 +239,10 @@ module MyModule {
     };
 };
 ";
-    assert_snapshot!(test_lint_hir(source));
+
+    let output = common::lint_hir(source);
+    assert!(output.warnings.is_empty());
+    assert!(output.errors.is_empty());
 }
 
 #[test]
@@ -249,7 +250,7 @@ fn char_exceeds_max_bounds() {
     let source = r"
 module MyModule {
     struct BadChar {
-        @max(200) char value;  // char max is 127 (ASCII)
+        @max(200) char value;
     };
 };
 ";
@@ -261,7 +262,7 @@ fn test_positive_min_works() {
     let source = r"
 module MyModule {
     struct TestPositive {
-        @min(10) octet value;  // positive min should work
+        @min(10) octet value;
     };
 };
 ";

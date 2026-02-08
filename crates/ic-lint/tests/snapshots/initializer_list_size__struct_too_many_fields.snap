@@ -2,9 +2,10 @@
 source: crates/ic-lint/tests/initializer_list_size.rs
 expression: test_lint_hir(input)
 ---
-error: too many initializers for struct (expected 3, got 4)
-   ┌ test.idl:7:42
-   │
- 7 │         const Point MY_POINT = {1, 2, 3, 4};
-   ·                                          ^ extra initializer
-   └──
+⨯: struct `Point` expects 3 fields, but 4 were provided
+  @ test.idl:7:32
+
+ 5 │     int32 z;
+ 6 │ };
+ 7 │ const Point MY_POINT = {1, 2, 3, 4};
+   │                        ˆˆˆˆˆˆˆˆˆˆˆˆ incorrect number of fields

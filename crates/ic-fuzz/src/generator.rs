@@ -30,7 +30,7 @@
 use std::fmt::Write;
 
 use rand::rngs::SmallRng;
-use rand::{Rng, SeedableRng};
+use rand::{RngExt, SeedableRng};
 
 use crate::grammar::{Grammar, Repetition, Rule, RuleElement};
 use crate::terminals::TerminalGenerator;
@@ -73,7 +73,7 @@ impl FuzzerConfig {
     pub fn effective_max_tokens(&self) -> usize {
         self.max_tokens.unwrap_or_else(|| {
             let base = self.max_depth * self.max_repetitions * self.max_repetitions * 100;
-            base.max(1000) // minimum 1000 tokens
+            base.max(1000)
         })
     }
 }
@@ -92,7 +92,7 @@ impl<'g> Fuzzer<'g> {
     pub fn new(grammar: &'g Grammar, config: FuzzerConfig) -> Self {
         let rng = match config.seed {
             Some(seed) => SmallRng::seed_from_u64(seed),
-            None => SmallRng::from_os_rng(),
+            None => SmallRng::from_rng(&mut rand::rng()),
         };
         let max_tokens = config.effective_max_tokens();
         Self {

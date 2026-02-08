@@ -27,7 +27,7 @@
 
 use std::fmt::Write;
 
-use rand::Rng;
+use rand::{Rng, RngExt};
 
 use crate::grammar::{IntegerBase, TerminalSpec};
 

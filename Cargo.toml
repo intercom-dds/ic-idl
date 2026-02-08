@@ -104,6 +104,7 @@ struct_excessive_bools = "allow"
 ignored_unit_patterns = "allow"
 struct_field_names = "allow"
 ignore_without_reason = "allow"
+multiple_crate_versions = "allow"
 
 [profile.release]
 lto = "thin"

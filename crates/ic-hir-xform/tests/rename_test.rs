@@ -30,8 +30,7 @@ mod common;
 use ic_emit::case::Case;
 use ic_hir::hir::{DefKind, EnumTy, InterfaceTy, StructTy, UnionTy, ValueTy};
 use ic_hir::visit::Visitor;
-use ic_hir_xform::rename::{Convention, Target};
-use ic_hir_xform::{rename, strip_common_suffixes};
+use ic_hir_xform::rename::{self, Convention, Target, strip_common_suffixes};
 
 /// Helper to create Rust naming convention target
 fn rust_target() -> Target {
@@ -593,4 +592,30 @@ fn test_constants_inside_interface_and_valuetype() {
     } else {
         panic!("Expected valuetype");
     }
+}
+
+#[test]
+fn debug_property_collision() {
+    let idl = r"
+        module mod_collision {
+            struct property_t {};
+            module Property {};
+        };
+    ";
+
+    let target = Target {
+        convention: Convention {
+            struct_type: Some(Case::Pascal),
+            module: Some(Case::Snake),
+            name_preprocessor: Some(strip_common_suffixes),
+            ..Default::default()
+        },
+        ..Default::default()
+    };
+
+    let hir = common::parse_and_resolve(idl);
+    let renamed = rename::transform(hir, &target);
+
+    // Verify transformation succeeded
+    assert!(renamed.iter().any(|def| def.ident.name == "mod_collision"));
 }

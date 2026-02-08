@@ -31,8 +31,6 @@
 //!
 //! Each transformation will consume the HIR and construct a new one.
 
-#![allow(unused, dead_code)]
-
 // pub mod nested;
 pub mod coalesce_null_variants;
 pub mod default_annotation;
@@ -47,7 +45,3 @@ pub mod squash_modules;
 pub mod strip_typedefs;
 pub mod synthesize_collections;
 pub mod type_flags;
-pub mod value_annotation;
-
-// Re-export commonly used items
-pub use rename::{Convention, NamePreprocessor, Target, strip_common_suffixes};

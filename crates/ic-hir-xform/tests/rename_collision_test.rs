@@ -29,10 +29,8 @@ mod common;
 
 use ic_emit::case::Case;
 use ic_hir::hir::DefKind;
-use ic_hir_xform::rename::{Convention, Target};
-use ic_hir_xform::{rename, strip_common_suffixes};
+use ic_hir_xform::rename::{self, Convention, Target, strip_common_suffixes};
 
-/// Helper to create a minimal Rust-like target for testing collisions
 fn test_rust_target() -> Target {
     Target {
         convention: Convention {
@@ -51,7 +49,7 @@ fn test_namespace_aware_collision_handling() {
         module test {
             // Should become "Property" - types are PascalCase
             struct property_t {};
-            
+
             // Should become "property" - modules are snake_case
             // This should NOT collide with the struct above
             module Property {};
@@ -104,7 +102,7 @@ fn test_same_namespace_collision() {
         module test {
             // Should keep "MyStruct" since it's already PascalCase
             struct MyStruct {};
-            
+
             // Should become "MyStruct_" due to collision
             struct my_struct {};
         };
@@ -133,4 +131,30 @@ fn test_same_namespace_collision() {
     struct_names.sort();
 
     assert_eq!(struct_names, vec!["MyStruct", "MyStruct_"]);
+}
+
+#[test]
+fn collision_after_suffix_removal() {
+    let idl = r"
+        module mod_collision {
+            struct property_t {};
+            module Property {};
+        };
+    ";
+
+    let target = Target {
+        convention: Convention {
+            struct_type: Some(Case::Pascal),
+            module: Some(Case::Snake),
+            name_preprocessor: Some(strip_common_suffixes),
+            ..Default::default()
+        },
+        ..Default::default()
+    };
+
+    let hir = common::parse_and_resolve(idl);
+    let renamed = rename::transform(hir, &target);
+
+    // Verify transformation succeeded
+    assert!(renamed.iter().any(|def| def.ident.name == "mod_collision"));
 }

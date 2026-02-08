@@ -30,7 +30,7 @@ mod codegen;
 use ic_cli::Command;
 use ic_emit::File;
 use ic_emit::case::Case;
-use ic_hir_xform::{Convention, Target, rename};
+use ic_hir_xform::rename::{self, Convention, Target};
 
 #[rustfmt::skip]
 pub(crate) const KEYWORDS: &[&str] = &[

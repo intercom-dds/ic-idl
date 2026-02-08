@@ -25,15 +25,14 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#![allow(unused, dead_code)]
+#![allow(unused_variables)]
 
 use crate::{
     AliasDef, AnnotationAppl, AnnotationArg, AnnotationDef, AnnotationField, Attribute, Binary,
     Bit, Bitfield, BitmaskDef, BitsetDef, ConstDef, Decl, Declarator, Discriminator, EnumDef,
     Enumerator, ExceptDef, Expr, Field, Group, Ident, InitList, InterfaceDef, InterfaceMember,
-    Item, ItemKind, Label, Literal, ModuleDef, NamedExpr, Param, Path, Prototype, Span, StructDef,
-    Type, Unary, UnionDef, UnionElement, UnionField, UnionMember, UnionNull, ValueElement,
-    ValuetypeDef,
+    Item, Label, Literal, ModuleDef, NamedExpr, Param, Path, Prototype, StructDef, Type, Unary,
+    UnionDef, UnionElement, UnionField, UnionMember, UnionNull, ValueElement, ValuetypeDef,
 };
 
 pub trait Visitor<'a> {

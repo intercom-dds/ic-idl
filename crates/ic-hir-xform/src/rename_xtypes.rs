@@ -31,16 +31,14 @@
 //! to match Rust naming conventions.
 
 use ic_hir::ResolvedGraph;
-use ic_hir::hir::{DefId, DefKind};
+use ic_hir::hir::DefKind;
 
 /// Transform HIR to rename `DDS::XTypes` module to `DDS::xtypes`
 #[must_use]
 pub fn transform(mut hir: ResolvedGraph) -> ResolvedGraph {
-    let xtypes_id = hir.context.lookup_symbol("DDS::XTypes");
-
     if let Some(xtypes_id) = hir.context.lookup_symbol("DDS::XTypes")
         && let def = hir.context.definitions.get(xtypes_id)
-        && let DefKind::Module(module) = &def.kind
+        && let DefKind::Module(_) = &def.kind
     {
         let xtypes_def = hir.context.definitions.get_mut(xtypes_id);
         xtypes_def.ident.name = "xtypes".into();

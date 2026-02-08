@@ -56,7 +56,6 @@ pub fn transform(mut hir: ResolvedGraph) -> (ResolvedGraph, HashSet<hir::DefId>)
     (hir, moved_defs)
 }
 
-/// Process a list of definitions and move nested types
 fn move_nested_from_list(
     hir: &mut ResolvedGraph,
     def_ids: Vec<hir::DefId>,
@@ -70,85 +69,59 @@ fn move_nested_from_list(
 
         match &def.kind {
             hir::DefKind::Interface(interface) => {
-                // Check if interface has nested definitions
                 let nested_defs = interface.definitions.clone();
                 result.push(def_id);
 
                 if !nested_defs.is_empty() {
-                    // Recursively process nested definitions
                     let processed_defs =
                         move_nested_from_list(hir, nested_defs.clone(), Some(def_id), moved_defs);
 
-                    // Create a module to hold the extracted types
-                    let module_def = create_module_for_parent(
-                        hir,
-                        def_id,
-                        &processed_defs,
-                        parent_scope,
-                        moved_defs,
-                    );
+                    let module_def =
+                        create_module_for_parent(hir, def_id, &processed_defs, parent_scope);
 
-                    // Insert module directly after the interface
                     result.push(module_def);
 
-                    // Clear the nested definitions from the interface
                     if let hir::DefKind::Interface(interface) =
                         &mut hir.context.definitions.get_mut(def_id).kind
                     {
                         interface.definitions.clear();
                     }
 
-                    // Mark all nested definitions as moved
                     for &nested_id in &nested_defs {
                         moved_defs.insert(nested_id);
                     }
                 }
             }
             hir::DefKind::Valuetype(valuetype) => {
-                // Check if valuetype has nested definitions
                 let nested_defs = valuetype.definitions.clone();
                 result.push(def_id);
 
                 if !nested_defs.is_empty() {
-                    // Recursively process nested definitions
                     let processed_defs =
                         move_nested_from_list(hir, nested_defs.clone(), Some(def_id), moved_defs);
 
-                    // Create a module to hold the extracted types
-                    let module_def = create_module_for_parent(
-                        hir,
-                        def_id,
-                        &processed_defs,
-                        parent_scope,
-                        moved_defs,
-                    );
+                    let module_def =
+                        create_module_for_parent(hir, def_id, &processed_defs, parent_scope);
 
-                    // Insert module directly after the valuetype
                     result.push(module_def);
 
-                    // Clear the nested definitions from the valuetype
                     if let hir::DefKind::Valuetype(valuetype) =
                         &mut hir.context.definitions.get_mut(def_id).kind
                     {
                         valuetype.definitions.clear();
                     }
 
-                    // Mark all nested definitions as moved
                     for &nested_id in &nested_defs {
                         moved_defs.insert(nested_id);
                     }
                 }
             }
             hir::DefKind::Module(module) => {
-                // Recursively process module members
                 let members = module.definitions.clone();
                 let new_members = move_nested_from_list(hir, members, Some(def_id), moved_defs);
-
-                // Update the module's members
                 if let hir::DefKind::Module(m) = &mut hir.context.definitions.get_mut(def_id).kind {
                     m.definitions = new_members;
                 }
-
                 result.push(def_id);
             }
             _ => {
@@ -160,15 +133,12 @@ fn move_nested_from_list(
     result
 }
 
-/// Create a module to hold extracted types
 fn create_module_for_parent(
     hir: &mut ResolvedGraph,
     parent_id: hir::DefId,
     extracted_types: &[hir::DefId],
     parent_scope: Option<hir::DefId>,
-    moved_defs: &mut HashSet<hir::DefId>,
 ) -> hir::DefId {
-    // Get parent information before borrowing mutably
     let (module_name, parent_span, parent_ident_span) = {
         let parent_def = hir.context.type_of(parent_id);
         (
@@ -178,7 +148,6 @@ fn create_module_for_parent(
         )
     };
 
-    // Create a new module definition
     let module_id = hir.context.definitions.alloc_with_id(|id| hir::Def {
         id,
         ident: hir::Ident {

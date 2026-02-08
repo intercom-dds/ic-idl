@@ -36,7 +36,7 @@ use std::collections::{HashMap, HashSet};
 
 use ic_hir::fold::Fold;
 use ic_hir::hir::{
-    DefId, DefKind, EnumTy, Ident, Label, Numeric, PrimitiveTy, Span, Ty, TyKind, UnionTy, Variant,
+    DefId, DefKind, Ident, Label, Numeric, PrimitiveTy, Ty, TyKind, UnionTy, Variant,
 };
 use ic_hir::{Context, ResolvedGraph};
 use tracing::{debug, debug_span};

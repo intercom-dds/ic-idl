@@ -344,7 +344,7 @@ pub fn transform(mut hir: ResolvedGraph, target: &Target) -> ResolvedGraph {
     // Process top-level definitions first (only user definitions, not builtins)
     let top_level_ids: Vec<_> = hir.order.clone();
 
-    rename_breadth(&mut hir, &top_level_ids, None, target);
+    rename_breadth(&mut hir, &top_level_ids, target);
 
     // Then recursively process each module's contents
     process_module_contents(&mut hir, target);
@@ -368,9 +368,9 @@ fn process_module_contents(hir: &mut ResolvedGraph, target: &Target) {
         })
         .collect();
 
-    for (container_id, child_ids) in container_ids {
+    for (_, child_ids) in container_ids {
         if !child_ids.is_empty() {
-            rename_breadth(hir, &child_ids, Some(container_id), target);
+            rename_breadth(hir, &child_ids, target);
         }
     }
 }
@@ -395,9 +395,9 @@ fn process_enum_constants(hir: &mut ResolvedGraph, target: &Target) {
             })
             .collect();
 
-        for (enum_id, const_ids) in enum_constants {
+        for (_, const_ids) in enum_constants {
             if !const_ids.is_empty() {
-                rename_breadth(hir, &const_ids, Some(enum_id), target);
+                rename_breadth(hir, &const_ids, target);
             }
         }
     }
@@ -416,9 +416,9 @@ fn process_enum_constants(hir: &mut ResolvedGraph, target: &Target) {
             })
             .collect();
 
-        for (bitmask_id, flag_ids) in bitmask_flags {
+        for (_, flag_ids) in bitmask_flags {
             if !flag_ids.is_empty() {
-                rename_breadth(hir, &flag_ids, Some(bitmask_id), target);
+                rename_breadth(hir, &flag_ids, target);
             }
         }
     }
@@ -496,12 +496,7 @@ fn is_enum_constant(hir: &ResolvedGraph, const_id: hir::DefId) -> bool {
     false
 }
 
-fn rename_breadth(
-    hir: &mut ResolvedGraph,
-    def_ids: &[hir::DefId],
-    parent_id: Option<hir::DefId>,
-    target: &Target,
-) {
+fn rename_breadth(hir: &mut ResolvedGraph, def_ids: &[hir::DefId], target: &Target) {
     let mut renames = Vec::new();
     let mut module_groups: HashMap<String, Vec<hir::DefId>> = HashMap::new();
 

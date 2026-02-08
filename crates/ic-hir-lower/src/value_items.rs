@@ -481,7 +481,7 @@ impl<'ctx> ValueItemProcessor<'ctx> {
                 let mut resolver = TypeResolver::new(self.ctx, self.current_scope);
                 match resolver.resolve_type(field_ty) {
                     Some(ty) => ty,
-                    None => continue, // Error already reported
+                    None => continue,
                 }
             } else {
                 // Default type based on size
@@ -678,7 +678,6 @@ pub(super) fn resolve_declarator(
 
             // Process bounds in reverse order
             for bound_expr in arr.bounds.iter().rev() {
-                // Evaluate the bound expression
                 let mut evaluator = ConstEvaluator::new(ctx, scope);
                 let len = evaluator.eval_nonneg_bound(bound_expr).unwrap_or(1);
 

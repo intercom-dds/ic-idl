@@ -32,7 +32,7 @@
 
 use ic_hir::ResolvedGraph;
 use ic_hir::fold::Fold;
-use ic_hir::hir::{DefKind, Numeric, TyKind, UnionTy, Variant};
+use ic_hir::hir::{TyKind, UnionTy, Variant};
 use tracing::{debug, debug_span};
 
 struct CoalesceNullVariants;

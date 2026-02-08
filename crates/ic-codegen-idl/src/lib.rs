@@ -31,7 +31,7 @@ mod deps;
 use ic_cli::Command;
 use ic_emit::File;
 use ic_hir::keywords::IDL_KEYWORDS;
-use ic_hir_xform::Target;
+use ic_hir_xform::rename::{self, Target};
 
 #[derive(Command, Copy, Clone, Debug, Default)]
 pub struct IdlOptions {
@@ -67,7 +67,7 @@ pub fn codegen_idl(
         ..Target::default()
     };
 
-    let hir = ic_hir_xform::rename::transform(hir.clone(), &target);
+    let hir = rename::transform(hir.clone(), &target);
     let generator = codegen::IdlGen::new(&hir, source_map, options);
     generator.generate()
 }

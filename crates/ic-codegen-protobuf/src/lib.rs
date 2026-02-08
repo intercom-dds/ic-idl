@@ -29,7 +29,7 @@ mod codegen;
 mod group;
 
 use ic_emit::File;
-use ic_hir_xform::{Convention, Target};
+use ic_hir_xform::rename::{self, Convention, Target};
 
 use crate::codegen::ProtoGen;
 
@@ -61,7 +61,7 @@ pub fn codegen_proto(hir: &ic_hir::ResolvedGraph) -> Vec<File> {
         convention: Convention::default(),
         keyword_escape: Some(escape_kw),
     };
-    let hir = ic_hir_xform::rename::transform(hir, &target);
+    let hir = rename::transform(hir, &target);
 
     let generator = ProtoGen::new(&hir);
     generator.generate()

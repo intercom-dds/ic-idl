@@ -33,7 +33,7 @@ mod marshal;
 use ic_cli::Command;
 use ic_emit::File;
 use ic_emit::case::Case;
-use ic_hir_xform::{Convention, rename};
+use ic_hir_xform::rename::{self, Convention};
 
 const RUST_KEYWORDS: &[&str] = &[
     "as", "break", "const", "continue", "crate", "else", "enum", "extern", "false", "fn", "for",

@@ -96,10 +96,7 @@
 use std::collections::HashMap;
 
 use ic_hir::ResolvedGraph;
-use ic_hir::hir::{
-    self, AliasTy, DefId, DefKind, Ident, InterfaceTy, ModuleTy, PrimitiveTy, Span, Ty, TyKind,
-    ValueTy,
-};
+use ic_hir::hir::{self, AliasTy, DefId, DefKind, Ident, PrimitiveTy, Span, Ty, TyKind};
 use tracing::{debug, debug_span};
 
 const ARRAY_SUFFIX: &str = "_Array";
@@ -465,13 +462,6 @@ fn collection_nesting_depth(ty: &Ty) -> usize {
             }
         }
     }
-}
-
-struct DefInsertion {
-    def_id: DefId,
-    parent_id: Option<DefId>,
-    insert_before: DefId,
-    encounter_order: usize,
 }
 
 fn create_typedef_def(

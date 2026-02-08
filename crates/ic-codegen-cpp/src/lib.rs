@@ -29,7 +29,7 @@
 
 use ic_cli::Command;
 use ic_emit::File;
-use ic_hir_xform::{Target, rename};
+use ic_hir_xform::rename::{self, Target};
 
 mod codegen;
 mod deps;

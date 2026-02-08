@@ -25,6 +25,7 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+use ic_lexer::stream::{Stream, StreamCheckpoint};
 use ic_lexer::token::{Kind, Kw, Token};
 use ic_syntax::{
     AnnotationAppl, AnnotationArg, Expr, Ident, Item, Literal, LiteralValue, Path, Span,
@@ -36,7 +37,7 @@ use crate::error::{Expected, ParseError, Result};
 /// A checkpoint that can be used to rewind the parser state.
 #[derive(Clone)]
 pub struct Checkpoint {
-    pos: usize,
+    stream: StreamCheckpoint,
     prev_span: Span,
     pending_annotations: Vec<AnnotationAppl>,
     annotation_errors_len: usize,
@@ -49,10 +50,7 @@ pub const MAX_DEPTH: usize = 1024;
 /// A recursive descent parser for IDL.
 pub struct Parser<'a> {
     /// The token stream.
-    tokens: Vec<Token>,
-
-    /// Current position in the token stream.
-    pos: usize,
+    stream: Stream,
 
     /// Annotations accumulated during trivia skimming.
     pub pending_annotations: Vec<AnnotationAppl>,
@@ -75,10 +73,9 @@ pub struct Parser<'a> {
 
 impl<'a> Parser<'a> {
     /// Creates a new parser from a token stream.
-    pub fn new(tokens: Vec<Token>, source: &'a SourceMap) -> Self {
+    pub fn new(stream: Stream, source: &'a SourceMap) -> Self {
         Self {
-            tokens,
-            pos: 0,
+            stream,
             pending_annotations: Vec::new(),
             prev_span: Span::default(),
             source,
@@ -91,7 +88,7 @@ impl<'a> Parser<'a> {
     /// Creates a checkpoint that can be used to rewind the parser.
     pub fn checkpoint(&self) -> Checkpoint {
         Checkpoint {
-            pos: self.pos,
+            stream: self.stream.checkpoint(),
             prev_span: self.prev_span,
             pending_annotations: self.pending_annotations.clone(),
             annotation_errors_len: self.annotation_errors.len(),
@@ -100,7 +97,7 @@ impl<'a> Parser<'a> {
 
     /// Rewinds the parser to a previous checkpoint.
     pub fn rewind(&mut self, checkpoint: Checkpoint) {
-        self.pos = checkpoint.pos;
+        self.stream.rewind(checkpoint.stream);
         self.prev_span = checkpoint.prev_span;
         self.pending_annotations = checkpoint.pending_annotations;
         self.annotation_errors
@@ -119,34 +116,28 @@ impl<'a> Parser<'a> {
     /// Returns the kind of the current token without skimming annotations.
     #[inline]
     pub fn peek_raw(&self) -> Kind {
-        self.tokens.get(self.pos).map_or(Kind::Eoi, |tok| tok.kind)
+        self.stream.peek()
     }
 
     /// Returns the current token without skimming annotations.
     #[inline]
     pub fn current_raw(&self) -> Token {
-        self.tokens.get(self.pos).copied().unwrap_or(Token {
-            kind: Kind::Eoi,
-            span: self.prev_span,
-        })
+        self.stream.current()
     }
 
     /// Advances to the next token without skimming annotations.
     /// Returns the consumed token.
     #[inline]
     pub fn advance_raw(&mut self) -> Token {
-        let tok = self.current_raw();
+        let tok = self.stream.advance();
         self.prev_span = tok.span;
-        if self.pos < self.tokens.len() {
-            self.pos += 1;
-        }
         tok
     }
 
     /// Checks if the current token matches the given kind (without skimming).
     #[inline]
     pub fn at_raw(&self, kind: Kind) -> bool {
-        self.peek_raw() == kind
+        self.stream.at(kind)
     }
 
     /// Returns the kind of the current token, skimming any annotations first.
@@ -402,49 +393,44 @@ impl<'a> Parser<'a> {
     /// Peeks at the nth token ahead (0 = current token) without skimming.
     #[inline]
     pub(super) fn peek_nth_raw(&self, n: usize) -> Kind {
-        self.tokens
-            .get(self.pos + n)
-            .map_or(Kind::Eoi, |tok| tok.kind)
+        self.stream.peek_nth(n)
     }
 
     /// Peeks at the next token after `n` tokens, skipping over annotations.
     /// This is useful for lookahead disambiguation when annotations can appear.
     pub(super) fn peek_nth_skip_annotations(&self, n: usize) -> Kind {
-        let mut pos = self.pos;
+        let remaining = self.stream.remaining();
+        let mut offset = 0;
         let mut count = 0;
-        while pos < self.tokens.len() {
-            let kind = self.tokens[pos].kind;
-            // Skip annotations and comments
+        while offset < remaining {
+            let kind = self.stream.peek_nth(offset);
             if matches!(kind, Kind::At | Kind::Comment { .. }) {
-                // For annotations, we need to skip the entire annotation including args
                 if kind == Kind::At {
-                    pos += 1;
-                    // Skip the annotation name (identifier or keyword)
-                    if pos < self.tokens.len() {
-                        pos += 1;
+                    offset += 1;
+                    if offset < remaining {
+                        offset += 1;
                     }
-                    // Skip annotation arguments if present: ( ... )
-                    if pos < self.tokens.len() && self.tokens[pos].kind == Kind::LParen {
+                    if offset < remaining && self.stream.peek_nth(offset) == Kind::LParen {
                         let mut depth = 1;
-                        pos += 1;
-                        while pos < self.tokens.len() && depth > 0 {
-                            match self.tokens[pos].kind {
+                        offset += 1;
+                        while offset < remaining && depth > 0 {
+                            match self.stream.peek_nth(offset) {
                                 Kind::LParen => depth += 1,
                                 Kind::RParen => depth -= 1,
                                 _ => {}
                             }
-                            pos += 1;
+                            offset += 1;
                         }
                     }
                 } else {
-                    pos += 1;
+                    offset += 1;
                 }
             } else {
                 if count == n {
                     return kind;
                 }
                 count += 1;
-                pos += 1;
+                offset += 1;
             }
         }
         Kind::Eoi

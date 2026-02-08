@@ -90,6 +90,7 @@ mod types;
 
 pub use error::{Error, Expected, Reason};
 use ic_lexer::cursor::Cursor;
+use ic_lexer::stream::Stream;
 use ic_lexer::token::{Kind, Token};
 use ic_syntax::{AnnotationAppl, Item};
 use ic_vfs::FileId;
@@ -102,8 +103,6 @@ use tracing::debug;
 pub struct ParseResult {
     pub tree: Vec<Item>,
     pub errors: Vec<Error>,
-
-    /// Annotations that couldn't be attached to any construct.
     pub orphaned_annotations: Vec<AnnotationAppl>,
 }
 
@@ -132,13 +131,12 @@ pub fn from_iter<I>(tokens: I, vfs: &SourceMap) -> ParseResult
 where
     I: IntoIterator<Item = Token>,
 {
-    let tokens: Vec<_> = tokens
-        .into_iter()
-        .filter(|t| !matches!(t.kind, Kind::Newline))
-        .collect();
-
-    debug!(tokens = tokens.len(), "lexed");
-    let parser = Parser::new(tokens, vfs);
+    let stream = Stream::new(
+        tokens
+            .into_iter()
+            .filter(|t| !matches!(t.kind, Kind::Newline)),
+    );
+    let parser = Parser::new(stream, vfs);
     let (tree, errors, orphaned_annotations) = parser.parse();
     debug!(items = tree.len(), errors = errors.len(), "parsed");
 

@@ -89,6 +89,12 @@ impl Stream {
     }
 
     #[inline]
+    #[must_use]
+    pub fn remaining(&self) -> usize {
+        self.tokens.len() - self.pos
+    }
+
+    #[inline]
     pub fn checkpoint(&self) -> StreamCheckpoint {
         StreamCheckpoint { pos: self.pos }
     }

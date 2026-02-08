@@ -145,7 +145,6 @@ impl Iterator for OwnedChars {
     #[allow(clippy::cast_possible_truncation)]
     fn next(&mut self) -> Option<Self::Item> {
         let c = self.chars.next()?;
-        // Most characters are ASCII (1 byte), optimize for that case
         if c.is_ascii() {
             self.index += 1;
             if c == '\n' {

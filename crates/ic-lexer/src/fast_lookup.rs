@@ -34,13 +34,12 @@ pub const ASCII_WHITESPACE: [bool; 128] = {
     table[b'\t' as usize] = true;
     table[b'\n' as usize] = true;
     table[b'\r' as usize] = true;
-    table[0x0B] = true; // vertical tab
-    table[0x0C] = true; // form feed
+    table[0x0B] = true;
+    table[0x0C] = true;
     table
 };
 
 /// Lookup table for single-character tokens
-/// This avoids the overhead of a large match statement for common cases
 pub const SINGLE_CHAR_TOKENS: [Option<Kind>; 128] = {
     let mut table = [None; 128];
     table[b'#' as usize] = Some(Kind::Hash);
@@ -68,7 +67,6 @@ pub const SINGLE_CHAR_TOKENS: [Option<Kind>; 128] = {
 /// Fast lookup for ASCII characters to determine if they need special handling
 pub const SPECIAL_CHARS: [bool; 128] = {
     let mut table = [false; 128];
-    // Two-character operators
     table[b'&' as usize] = true;
     table[b'|' as usize] = true;
     table[b'=' as usize] = true;
@@ -76,10 +74,8 @@ pub const SPECIAL_CHARS: [bool; 128] = {
     table[b'!' as usize] = true;
     table[b'>' as usize] = true;
     table[b'<' as usize] = true;
-    // String/char literals
     table[b'"' as usize] = true;
     table[b'\'' as usize] = true;
-    // Special cases
     table[b'@' as usize] = true;
     table[b'/' as usize] = true;
     table

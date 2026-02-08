@@ -65,7 +65,42 @@ const ASCII_HEX_DIGIT: [bool; 128] = {
     table
 };
 
-/// Result of parsing a comment.
+/// ASCII identifier character lookup table
+const ASCII_IDENT: [bool; 128] = {
+    let mut table = [false; 128];
+
+    let mut i = b'0' as usize;
+    while i <= b'9' as usize {
+        table[i] = true;
+        i += 1;
+    }
+
+    let mut i = b'A' as usize;
+    while i <= b'Z' as usize {
+        table[i] = true;
+        i += 1;
+    }
+
+    let mut i = b'a' as usize;
+    while i <= b'z' as usize {
+        table[i] = true;
+        i += 1;
+    }
+
+    table[b'_' as usize] = true;
+    table
+};
+
+#[inline]
+fn is_ident(c: char) -> bool {
+    let code = c as u32;
+    if code < 128 {
+        ASCII_IDENT[code as usize]
+    } else {
+        c.is_alphanumeric()
+    }
+}
+
 struct CommentResult {
     is_doc: bool,
     trailing: bool,
@@ -81,7 +116,6 @@ struct CommentResult {
 pub struct Cursor {
     chars: OwnedChars,
     file_id: FileId,
-    /// Tracks if non-whitespace tokens have been emitted on the current line
     has_content_on_line: bool,
 }
 
@@ -119,7 +153,6 @@ impl Cursor {
         self.span_since(start)
     }
 
-    // Specialized eat_while for common cases - avoids function call overhead
     #[inline]
     fn eat_while_ascii_digit(&mut self) {
         loop {
@@ -167,33 +200,25 @@ impl Cursor {
         if leading == '0' {
             match self.chars.peek() {
                 'x' | 'X' => {
-                    // consume 'x' or 'X'
                     _ = self.chars.next();
                     self.eat_while_ascii_hexdigit();
                     return Kind::Number {
                         base: Base::Hexadecimal,
                     };
                 }
-                _ => {
-                    // Could be octal or just '0'
-                }
+                _ => {}
             }
         }
 
-        // Consume all digits
         self.eat_while_ascii_digit();
 
-        // Check for float indicators
         match self.chars.peek() {
             '.' => {
-                // consume '.'
                 _ = self.chars.next();
                 self.eat_while_ascii_digit();
-                // Check for exponent
+
                 if matches!(self.chars.peek(), 'e' | 'E') {
-                    // consume 'e' or 'E'
                     _ = self.chars.next();
-                    // Handle optional sign
                     if matches!(self.chars.peek(), '+' | '-') {
                         _ = self.chars.next();
                     }
@@ -202,8 +227,7 @@ impl Cursor {
                 Kind::Float
             }
             'e' | 'E' => {
-                _ = self.chars.next(); // consume 'e' or 'E'
-                // Handle optional sign
+                _ = self.chars.next();
                 if matches!(self.chars.peek(), '+' | '-') {
                     _ = self.chars.next();
                 }
@@ -222,7 +246,6 @@ impl Cursor {
 
     #[inline]
     fn string_lit(&mut self) -> Kind {
-        // Fast path for strings without escapes (common case)
         let mut escape_seen = false;
         loop {
             let Some(c) = self.chars.next() else {
@@ -247,19 +270,14 @@ impl Cursor {
     fn char_lit(&mut self) -> Kind {
         if let Some(v) = self.chars.next() {
             if v == '\'' {
-                // Empty char literal ''
                 return Kind::Char;
             }
 
-            // Handle escape sequences
             if v == '\\' {
                 if let Some(escaped) = self.chars.next() {
                     match escaped {
-                        '\'' | '\\' | 'n' | 't' | 'r' | '0' | 'b' | 'f' | 'v' | '"' => {
-                            // Valid simple escape sequences
-                        }
+                        '\'' | '\\' | 'n' | 't' | 'r' | '0' | 'b' | 'f' | 'v' | '"' => {}
                         'x' => {
-                            // Hex escape sequence \xHH
                             if self.chars.next().is_some_and(|c| c.is_ascii_hexdigit())
                                 && self.chars.next().is_some_and(|c| c.is_ascii_hexdigit())
                             {
@@ -268,16 +286,13 @@ impl Cursor {
                                 return Kind::Unknown;
                             }
                         }
-                        // Invalid escape sequence
                         _ => return Kind::Unknown,
                     }
                 } else {
-                    // Unterminated escape
                     return Kind::Unknown;
                 }
             }
 
-            // Expect closing quote
             if self.chars.peek() == '\'' {
                 self.chars.next();
                 return Kind::Char;
@@ -304,10 +319,9 @@ impl Cursor {
     // comments (`///`) are not.
     #[inline]
     fn comment(&mut self) -> CommentResult {
-        // Consume the leading '/'
+        // consume the leading '/'
         _ = self.chars.next();
 
-        // Check for documentation comment markers
         let next_char = self.chars.peek();
         let is_doc = matches!(next_char, '/' | '!');
         let trailing = if is_doc {
@@ -318,7 +332,6 @@ impl Cursor {
             false
         };
 
-        // Consume the rest of the line directly
         loop {
             match self.chars.peek() {
                 '\n' | EOF => break,
@@ -327,7 +340,7 @@ impl Cursor {
                 }
             }
         }
-        // Line comments are always "terminated" (by newline or EOF)
+
         CommentResult {
             is_doc,
             trailing,
@@ -337,43 +350,33 @@ impl Cursor {
 
     #[inline]
     fn block_comment(&mut self) -> CommentResult {
-        // Consume the leading '*'
+        // consume the leading '*'
         _ = self.chars.next();
 
-        // Check if this might be a doc comment
         let first_char = self.chars.peek();
         let mut is_doc = false;
         let mut trailing = false;
 
         if first_char == '!' {
-            // /*! style doc comment
             is_doc = true;
 
-            // consume the !
             _ = self.chars.next();
-            // Check for trailing marker or if there's content on the line
             trailing = self.chars.peek() == '<' || self.has_content_on_line;
         } else if first_char == '*' {
-            // Could be /** style doc comment
-            // We need to check if there's actual content after /**
             let mut chars_clone = self.chars.clone();
-            chars_clone.next(); // Skip the first *
+            // skip the first '*'
+            chars_clone.next();
 
-            // Skip any additional stars
             while chars_clone.peek() == '*' {
                 chars_clone.next();
             }
 
-            // Now check what comes after the stars
             let next_char = chars_clone.peek();
             if next_char == '<' {
-                // /**< style trailing comment
                 is_doc = true;
                 trailing = true;
             } else if next_char != '/' && next_char != EOF {
-                // /** text */ style doc comment
                 is_doc = true;
-                // Check if it's trailing based on content on line
                 trailing = self.has_content_on_line;
             }
         }
@@ -441,11 +444,7 @@ impl Cursor {
         while let Some(tok) = self.advance() {
             match tok.kind {
                 Kind::Backslash => {
-                    // Don't include the bachslash in the macro definition if
-                    // it was used to escape a newline.
                     if let Some(next) = self.advance() {
-                        // An escaped newline followed by a non-escaped newline
-                        // counts as an empty macro definition.
                         if next.kind != Kind::Newline {
                             tokens.push(tok);
                         }
@@ -467,9 +466,7 @@ impl Cursor {
             let start = self.chars.index();
             let c = self.chars.next()?;
 
-            // Fast path for common single-character tokens
             if let Some(kind) = get_single_char_token(c) {
-                // Reset line state on newline
                 self.has_content_on_line = kind != Kind::Newline;
                 return Some(Token {
                     kind,
@@ -477,13 +474,10 @@ impl Cursor {
                 });
             }
 
-            // Handle whitespace early to avoid further checks
             if is_ascii_whitespace(c) || (c as u32 >= 128 && c.is_whitespace()) {
-                // Note: newlines are handled in single-char tokens above
                 continue;
             }
 
-            // Check for digits early (common case)
             if (c as u32) < 128 && ASCII_DIGIT[c as usize] {
                 self.has_content_on_line = true;
                 let kind = self.number(c);
@@ -493,7 +487,6 @@ impl Cursor {
                 });
             }
 
-            // Check for identifiers (common case)
             if is_ident(c) {
                 self.has_content_on_line = true;
                 let kind = self.ident(start);
@@ -503,7 +496,6 @@ impl Cursor {
                 });
             }
 
-            // Handle special characters that need lookahead
             let kind = if is_special_char(c) {
                 match c {
                     '&' => self.peek_or('&', Kind::And, Kind::BitAnd),
@@ -537,20 +529,17 @@ impl Cursor {
                                     terminated: c.terminated,
                                 }
                             } else {
-                                // Skip regular line comments
                                 continue;
                             }
                         }
                         '*' => {
                             let c = self.block_comment();
                             if c.is_doc || !c.terminated {
-                                // Emit doc comments and unterminated comments (for error reporting)
                                 Kind::Comment {
                                     trailing: c.trailing,
                                     terminated: c.terminated,
                                 }
                             } else {
-                                // Skip regular terminated block comments
                                 continue;
                             }
                         }
@@ -565,7 +554,6 @@ impl Cursor {
                 Kind::Unknown
             };
 
-            // Mark that we've seen content on this line (unless it's a comment)
             if !matches!(kind, Kind::Comment { .. }) {
                 self.has_content_on_line = true;
             }
@@ -624,51 +612,6 @@ impl Iterator for Cursor {
     fn next(&mut self) -> Option<Self::Item> {
         Cursor::advance(self)
     }
-}
-
-/// ASCII identifier character lookup table
-const ASCII_IDENT: [bool; 128] = {
-    let mut table = [false; 128];
-    // Digits
-    let mut i = b'0' as usize;
-    while i <= b'9' as usize {
-        table[i] = true;
-        i += 1;
-    }
-    // Uppercase letters
-    let mut i = b'A' as usize;
-    while i <= b'Z' as usize {
-        table[i] = true;
-        i += 1;
-    }
-    // Lowercase letters
-    let mut i = b'a' as usize;
-    while i <= b'z' as usize {
-        table[i] = true;
-        i += 1;
-    }
-    // Underscore
-    table[b'_' as usize] = true;
-    table
-};
-
-/// Returns true if the character can appear in an identifier.
-#[inline]
-fn is_ident(c: char) -> bool {
-    // Fast path for ASCII (most common)
-    let code = c as u32;
-    if code < 128 {
-        ASCII_IDENT[code as usize]
-    } else {
-        // Slower path for Unicode
-        c.is_alphanumeric()
-    }
-}
-
-/// Returns true if the character can start an identifier.
-#[allow(dead_code)]
-fn is_ident_start(c: char) -> bool {
-    c.is_alphabetic() || c == '_'
 }
 
 #[cfg(test)]
@@ -756,7 +699,7 @@ mod tests {
         assert_eq!(single(r"'\b'"), Kind::Char);
         assert_eq!(single(r"'\f'"), Kind::Char);
         assert_eq!(single(r"'\v'"), Kind::Char);
-        assert_eq!(single(r#"'\"'"#), Kind::Char); // \" is now valid
+        assert_eq!(single(r#"'\"'"#), Kind::Char);
 
         // Hex escape sequences
         assert_eq!(single(r"'\x41'"), Kind::Char);

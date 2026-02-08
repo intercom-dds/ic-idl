@@ -28,4 +28,5 @@
 pub mod cursor;
 mod fast_lookup;
 pub mod iter;
+pub mod stream;
 pub mod token;

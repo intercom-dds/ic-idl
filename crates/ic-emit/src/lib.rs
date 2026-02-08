@@ -70,8 +70,6 @@ pub mod case;
 /// Pretty-printing utilities for code generation.
 pub mod printer;
 
-mod ffi;
-
 /// Represents a file in the code generation output.
 #[derive(Debug)]
 pub enum File {

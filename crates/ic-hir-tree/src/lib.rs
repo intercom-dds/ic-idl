@@ -119,7 +119,7 @@ fn emit_flags(flags: DefFlags) -> String {
 }
 
 fn prim_ty(ty: PrimitiveTy) -> String {
-    ty.to_string().to_ascii_lowercase().cyan().to_string()
+    ty.name().to_ascii_lowercase().cyan().to_string()
 }
 
 fn emit_ty(context: &Context, ty: &Ty) -> String {

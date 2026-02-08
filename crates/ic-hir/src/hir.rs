@@ -29,7 +29,6 @@
 
 use std::fmt::Debug;
 
-use ic_macros::{EnumIter, ToString};
 pub use ic_syntax::{Ident, ParamKind, Span};
 
 pub type DefId = ic_alloc::arena::Id<Def>;
@@ -37,7 +36,7 @@ pub type DefId = ic_alloc::arena::Id<Def>;
 /// Built-in primitive types. These types are effectively stateless and have no
 /// bounds or other attributes attached to them.
 #[must_use]
-#[derive(Copy, Clone, Debug, PartialEq, Eq, EnumIter, ToString)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum PrimitiveTy {
     Void,
     Bool,

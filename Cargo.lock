@@ -548,7 +548,6 @@ dependencies = [
  "ic-cli",
  "ic-diagnostic",
  "ic-hir-lower",
- "ic-macros",
  "ic-parse",
  "ic-syntax",
  "ic-vfs",
@@ -655,15 +654,6 @@ dependencies = [
  "ic-vfs",
  "insta",
  "tracing",
-]
-
-[[package]]
-name = "ic-macros"
-version = "0.4.9"
-dependencies = [
- "proc-macro2",
- "quote",
- "syn",
 ]
 
 [[package]]

@@ -54,7 +54,6 @@ members = [
     "crates/ic-idl",
     "crates/ic-lexer",
     "crates/ic-lint",
-    "crates/ic-macros",
     "crates/ic-omgidl",
     "crates/ic-parse",
     "crates/ic-preproc",

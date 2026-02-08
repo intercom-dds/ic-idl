@@ -376,7 +376,7 @@ impl<'a> XmlGen<'a> {
             }
             TyKind::Sequence { ty, bound, .. } => {
                 self.collect_type_info(ty, attrs, array_dims, seq_lengths);
-                let len = bound.map(|b| b.to_string()).unwrap_or("-1".to_string());
+                let len = bound.map_or_else(|| "-1".to_string(), |b| b.to_string());
                 seq_lengths.push(len);
             }
             TyKind::Array { ty, len, .. } => {

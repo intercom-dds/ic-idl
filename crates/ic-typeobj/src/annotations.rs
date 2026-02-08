@@ -303,7 +303,7 @@ fn populate_annotation_details(
                 })
                 .collect();
 
-            params.sort_by(|a, b| a.paramname_hash.cmp(&b.paramname_hash));
+            params.sort_by_key(|a| a.paramname_hash);
             applied_ann.param_seq = Some(params);
 
             detail.add_custom_annotation(applied_ann);

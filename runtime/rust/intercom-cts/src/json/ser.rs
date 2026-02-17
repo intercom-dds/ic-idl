@@ -81,7 +81,25 @@ impl<W: Write> JsonWriter<W> {
 
     fn write_str(&mut self, value: &str) -> Result<(), Error> {
         self.write("\"")?;
-        self.write(value.escape_default().to_string())?;
+        for c in value.chars() {
+            match c {
+                '"' => self.write("\\\"")?,
+                '\\' => self.write("\\\\")?,
+                '\x08' => self.write("\\b")?,
+                '\x0c' => self.write("\\f")?,
+                '\n' => self.write("\\n")?,
+                '\r' => self.write("\\r")?,
+                '\t' => self.write("\\t")?,
+                c if c.is_control() => {
+                    write!(self.w, "\\u{:04x}", c as u32).map_err(Error::custom)?;
+                }
+                c => {
+                    let mut buf = [0; 4];
+                    let s = c.encode_utf8(&mut buf);
+                    self.write(s)?;
+                }
+            }
+        }
         self.write("\"")
     }
 

@@ -634,3 +634,60 @@ fn test_hashmap() {
     value.insert('v', "foo".to_string());
     assert_eq!(value, roundtrip(&value).unwrap());
 }
+
+#[test]
+fn test_string_escaping_serialization() {
+    let input = "Hello \"World\"\n\t\\";
+    let _serialized = json::to_string(&input, false).unwrap();
+
+    let input_unicode = "😀";
+    let serialized_unicode = json::to_string(&input_unicode, false).unwrap();
+
+    assert!(!serialized_unicode.contains("\\u{"));
+}
+
+#[test]
+fn test_string_parsing_escapes() {
+    let json = "\"Hello \\\"World\\\"\\n\\t\\\\\"";
+    let parsed = json::from_str::<Value>(json);
+    match parsed {
+        Ok(Value::String(s)) => {
+            assert_eq!(s, "Hello \"World\"\n\t\\");
+        }
+        _ => assert!(false),
+    }
+
+    let json_unicode = "\"\\uD83D\\uDE00\"";
+    let parsed_unicode = json::from_str::<Value>(json_unicode);
+    match parsed_unicode {
+        Ok(Value::String(s)) => {
+            assert_eq!(s, "😀");
+        }
+        _ => {
+            assert!(false);
+        }
+    }
+}
+
+#[test]
+fn test_number_parsing_scientific() {
+    let json = "1.23e5";
+    let parsed = json::from_str::<Value>(json);
+    match parsed {
+        Ok(Value::Number(n)) => match n {
+            Number::Float(f) => assert!((f - 123000.0).abs() < 0.001),
+            _ => assert!(false),
+        },
+        _ => assert!(false),
+    }
+
+    let json2 = "1e-10";
+    let parsed2 = json::from_str::<Value>(json2);
+    match parsed2 {
+        Ok(Value::Number(n)) => match n {
+            Number::Float(f) => assert!((f - 1e-10).abs() < 1e-12),
+            _ => assert!(false),
+        },
+        _ => assert!(false),
+    }
+}

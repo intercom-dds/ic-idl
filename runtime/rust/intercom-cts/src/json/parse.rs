@@ -179,13 +179,71 @@ where
         Ok(values)
     }
 
+    fn parse_hex4(&mut self) -> Result<u16> {
+        let mut value = 0;
+        for _ in 0..4 {
+            let c = self
+                .next()
+                .ok_or_else(|| error!(self, "incomplete unicode escape"))?;
+
+            let d = c
+                .to_digit(16)
+                .ok_or_else(|| error!(self, "invalid unicode escape"))?;
+            value = (value << 4) | d;
+        }
+        Ok(value as u16)
+    }
+
     fn string(&mut self) -> Result<String> {
         let mut str = String::new();
         while let Some(c) = self.next() {
             if c == '"' {
                 break;
             }
-            str.push(c);
+            if c == '\\' {
+                let escape = self
+                    .next()
+                    .ok_or_else(|| error!(self, "unterminated string"))?;
+                match escape {
+                    '"' => str.push('"'),
+                    '\\' => str.push('\\'),
+                    '/' => str.push('/'),
+                    'b' => str.push('\x08'),
+                    'f' => str.push('\x0c'),
+                    'n' => str.push('\n'),
+                    'r' => str.push('\r'),
+                    't' => str.push('\t'),
+                    'u' => {
+                        let code = self.parse_hex4()?;
+                        if (0xD800..=0xDBFF).contains(&code) {
+                            if self.next() != Some('\\') || self.next() != Some('u') {
+                                return Err(error!(
+                                    self,
+                                    "expected low surrogate after high surrogate"
+                                ));
+                            }
+                            let code2 = self.parse_hex4()?;
+                            if !(0xDC00..=0xDFFF).contains(&code2) {
+                                return Err(error!(self, "invalid low surrogate"));
+                            }
+                            let combined = 0x10000
+                                + (((code as u32 - 0xD800) << 10) | (code2 as u32 - 0xDC00));
+                            if let Some(c) = std::char::from_u32(combined) {
+                                str.push(c);
+                            } else {
+                                return Err(error!(self, "invalid unicode codepoint"));
+                            }
+                        } else if let Some(c) = std::char::from_u32(code as u32) {
+                            str.push(c);
+                        } else {
+                            return Err(error!(self, "invalid unicode codepoint"));
+                        }
+                    }
+                    c => return Err(error!(self, "invalid escape character '{c}'")),
+                }
+            } else {
+                str.push(c);
+            }
         }
 
         self.expect('"')
@@ -193,61 +251,87 @@ where
         Ok(str)
     }
 
-    // TODO: leading zeroes are not permitted
-    fn integer(&mut self) -> Option<u64> {
-        let mut value: u64 = 0;
-        while let Some(c) = self.get() {
-            match c {
-                c @ '0'..='9' => {
-                    value = value.checked_mul(10)?;
-                    value = value.checked_add(c as u64 - ('0' as u64))?;
-                    self.advance();
-                }
-                _ => break,
-            }
-        }
-        Some(value)
-    }
-
     #[allow(clippy::cast_precision_loss)]
     fn number(&mut self) -> Result<Number> {
-        let neg = if self.get() == Some('-') {
-            self.advance();
-            true
-        } else {
-            false
-        };
+        let mut num_str = String::new();
 
-        let value = self
-            .integer()
-            .ok_or_else(|| error!(self, "invalid number"))?;
-
-        if self.get() == Some('.') {
-            self.advance();
-
-            let mut dec = 1.0;
-            let mut frac = 0.0;
-            while let Some(c) = self.get() {
-                match c {
-                    c @ '0'..='9' => {
-                        dec /= 10.0;
-                        frac += ((c as u64) - ('0' as u64)) as f64 * dec;
-                        self.advance();
-                    }
-                    _ => break,
-                }
+        if let Some(c) = self.get() {
+            if c == '-' {
+                num_str.push('-');
+                self.advance();
             }
-            return Ok(Number::Float(value as f64 + frac));
+        } else {
+            return Err(error!(self, "unexpected end of file"));
         }
 
-        if neg {
-            if value > i64::MAX as u64 + 1 {
-                Err(error!(self, "invalid number"))
+        let mut has_digits = false;
+        while let Some(c) = self.get() {
+            if c.is_ascii_digit() {
+                num_str.push(c);
+                self.advance();
+                has_digits = true;
             } else {
-                Ok(Number::Signed((value as i64).wrapping_neg()))
+                break;
             }
+        }
+        if !has_digits {
+            return Err(error!(self, "invalid number"));
+        }
+
+        let mut is_float = false;
+        if self.get() == Some('.') {
+            is_float = true;
+            num_str.push('.');
+            self.advance();
+            while let Some(c) = self.get() {
+                if c.is_ascii_digit() {
+                    num_str.push(c);
+                    self.advance();
+                } else {
+                    break;
+                }
+            }
+        }
+
+        if let Some(c) = self.get()
+            && (c == 'e' || c == 'E')
+        {
+            is_float = true;
+            num_str.push(c);
+            self.advance();
+
+            if let Some(sign) = self.get()
+                && (sign == '+' || sign == '-')
+            {
+                num_str.push(sign);
+                self.advance();
+            }
+
+            while let Some(c) = self.get() {
+                if c.is_ascii_digit() {
+                    num_str.push(c);
+                    self.advance();
+                } else {
+                    break;
+                }
+            }
+        }
+
+        if is_float {
+            let f = num_str
+                .parse::<f64>()
+                .map_err(|_| error!(self, "invalid float"))?;
+            Ok(Number::Float(f))
+        } else if num_str.starts_with('-') {
+            let i = num_str
+                .parse::<i64>()
+                .map_err(|_| error!(self, "invalid integer"))?;
+            Ok(Number::Signed(i))
         } else {
-            Ok(Number::Unsigned(value))
+            let u = num_str
+                .parse::<u64>()
+                .map_err(|_| error!(self, "invalid integer"))?;
+            Ok(Number::Unsigned(u))
         }
     }
 

@@ -76,15 +76,20 @@ pub fn collect_type_dependencies(hir: &ResolvedGraph, def_id: DefId) -> HashSet<
     let mut deps = HashSet::new();
     let members = collect_struct_members(hir, def_id);
 
-    for (_name, ty) in members {
-        find_type_dependencies(hir, &ty, &mut deps);
+    for member in members {
+        find_type_dependencies(hir, &member.ty, &mut deps);
     }
 
     deps.remove(&def_id);
     deps
 }
 
-pub fn collect_struct_members(hir: &ResolvedGraph, def_id: DefId) -> Vec<(String, Ty)> {
+pub struct MemberInfo {
+    pub name: String,
+    pub ty: Ty,
+}
+
+pub fn collect_struct_members(hir: &ResolvedGraph, def_id: DefId) -> Vec<MemberInfo> {
     let def = hir.context.definitions.get(def_id);
     let mut members = Vec::new();
 
@@ -95,12 +100,18 @@ pub fn collect_struct_members(hir: &ResolvedGraph, def_id: DefId) -> Vec<(String
             }
 
             for member in &struct_ty.members {
-                members.push((member.ident.name.clone(), member.ty.clone()));
+                members.push(MemberInfo {
+                    name: member.ident.name.clone(),
+                    ty: member.ty.clone(),
+                });
             }
         }
         DefKind::Except(except_ty) => {
             for member in &except_ty.members {
-                members.push((member.ident.name.clone(), member.ty.clone()));
+                members.push(MemberInfo {
+                    name: member.ident.name.clone(),
+                    ty: member.ty.clone(),
+                });
             }
         }
         DefKind::Valuetype(valuetype_ty) => {
@@ -109,12 +120,18 @@ pub fn collect_struct_members(hir: &ResolvedGraph, def_id: DefId) -> Vec<(String
             }
 
             for member in &valuetype_ty.members {
-                members.push((member.ident.name.clone(), member.ty.clone()));
+                members.push(MemberInfo {
+                    name: member.ident.name.clone(),
+                    ty: member.ty.clone(),
+                });
             }
         }
         DefKind::Union(union_ty) => {
             for variant in &union_ty.variants {
-                members.push((variant.ident.name.clone(), variant.ty.clone()));
+                members.push(MemberInfo {
+                    name: variant.ident.name.clone(),
+                    ty: variant.ty.clone(),
+                });
             }
         }
         _ => {}

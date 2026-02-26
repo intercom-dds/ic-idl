@@ -49,7 +49,10 @@ def protobuf_output_dir(request: pytest.FixtureRequest) -> Path:
 
 
 def test_protobuf(
-    idl_file: Path, idl_compiler: Path, protoc: str, protobuf_output_dir: Path
+    idl_file: Path,
+    idl_compiler: Path,
+    protoc: str,
+    protobuf_output_dir: Path,
 ) -> None:
     proto_files = run_codegen(idl_compiler, idl_file, protobuf_output_dir, "proto-out")
     if not proto_files:

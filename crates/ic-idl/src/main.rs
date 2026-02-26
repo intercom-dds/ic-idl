@@ -281,7 +281,7 @@ fn generate_code(
             ic_codegen_json_schema::codegen_schema(hir, vfs, options.json_schema.clone())
         };
         xml_out, "xml" => ic_codegen_xml::codegen_xml(hir, vfs);
-        proto_out, "proto" => ic_codegen_protobuf::codegen_proto(hir);
+        proto_out, "proto" => ic_codegen_protobuf::codegen_proto(hir, options.proto.clone());
         typeobj_out, "typeobj" => ic_codegen_typeobj::codegen_typeobj(hir, options.typeobj);
         typescript_out, "typescript"  => {
             ic_codegen_typescript::codegen_typescript(hir, options.typescript.clone())

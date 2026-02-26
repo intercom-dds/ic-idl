@@ -244,6 +244,9 @@ pub struct Options {
     #[option(section = "idl options")]
     pub idl: ic_codegen_idl::IdlOptions,
 
+    #[option(section = "proto options")]
+    pub proto: ic_codegen_protobuf::ProtoOptions,
+
     #[option(section = "java options")]
     pub java: ic_codegen_java::JavaOptions,
 

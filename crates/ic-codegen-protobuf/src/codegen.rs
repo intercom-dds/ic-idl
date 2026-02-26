@@ -28,6 +28,7 @@
 use std::collections::{BTreeMap, HashMap, HashSet};
 use std::path::PathBuf;
 
+use ic_cli::color::Colorize;
 use ic_emit::File;
 use ic_emit::printer::{Twine, w};
 use ic_hir::ResolvedGraph;
@@ -37,21 +38,113 @@ use crate::group::{
     collect_struct_members, collect_type_dependencies, group_types_by_scc, is_proto_type,
     resolve_typedef,
 };
+use crate::options::ProtoOptions;
 
 type Path = Vec<String>;
 
 pub struct ProtoGen<'a> {
     hir: &'a ResolvedGraph,
+    _options: ProtoOptions,
+    scc_map: HashMap<DefId, DefId>,
+}
+
+fn collect_all_proto_types(hir: &ResolvedGraph) -> Vec<DefId> {
+    let mut types = vec![];
+    for &def_id in &hir.order {
+        collect_types_recursive(hir, def_id, &mut types);
+    }
+    types
+}
+
+fn collect_types_recursive(hir: &ResolvedGraph, def_id: DefId, types: &mut Vec<DefId>) {
+    let def = hir.context.definitions.get(def_id);
+    if def.flags.contains(DefFlags::IS_BUILTIN) {
+        return;
+    }
+
+    if is_proto_type(hir, def_id) {
+        types.push(def_id);
+    }
+
+    if let DefKind::Module(module_ty) = &def.kind {
+        for &nested_id in &module_ty.definitions {
+            collect_types_recursive(hir, nested_id, types);
+        }
+    }
+}
+
+fn get_containing_module(hir: &ResolvedGraph, def_id: DefId) -> Option<DefId> {
+    let mut current = def_id;
+    while let Some(parent_id) = hir.context.definitions.get(current).parent {
+        let parent_def = hir.context.definitions.get(parent_id);
+        if matches!(parent_def.kind, DefKind::Module(_)) {
+            return Some(parent_id);
+        }
+        current = parent_id;
+    }
+    None
 }
 
 impl<'a> ProtoGen<'a> {
-    pub fn new(hir: &'a ResolvedGraph) -> Self {
-        Self { hir }
+    #[allow(clippy::print_stderr)]
+    pub fn new(hir: &'a ResolvedGraph, options: ProtoOptions) -> Self {
+        let types = collect_all_proto_types(hir);
+        let type_order: HashMap<DefId, usize> =
+            types.iter().enumerate().map(|(i, &id)| (id, i)).collect();
+        let groups = group_types_by_scc(hir, &types);
+
+        let mut scc_map = HashMap::new();
+
+        for group in groups {
+            let mut scc = group.types;
+            if scc.is_empty() {
+                continue;
+            }
+
+            scc.sort_by_key(|id| type_order.get(id).unwrap_or(&usize::MAX));
+            let leader = scc[0];
+            let leader_mod = get_containing_module(hir, leader);
+
+            let mut foreign_types = Vec::new();
+
+            for &id in &scc {
+                let type_mod = get_containing_module(hir, id);
+                if type_mod != leader_mod {
+                    foreign_types.push(id);
+                    continue;
+                }
+                scc_map.insert(id, leader);
+            }
+
+            if !foreign_types.is_empty() {
+                let leader_name = &hir.context.definitions.get(leader).ident.name;
+                let foreign_names: Vec<&str> = foreign_types
+                    .iter()
+                    .map(|&id| hir.context.definitions.get(id).ident.name.as_str())
+                    .collect();
+
+                eprintln!(
+                    "{}: Type(s) {} are part of an SCC with '{}' but belong to different modules. \
+                     Inter-module recursion is not supported in Protobuf generation.",
+                    "warning".yellow().bold(),
+                    foreign_names.join(", "),
+                    leader_name
+                );
+            }
+        }
+
+        Self {
+            hir,
+            _options: options,
+            scc_map,
+        }
     }
 
     fn package_path(&self, def_id: DefId) -> Path {
+        let effective_id = self.scc_map.get(&def_id).copied().unwrap_or(def_id);
+
         let mut path = vec![];
-        let mut current = def_id;
+        let mut current = effective_id;
 
         while let Some(parent_id) = self.hir.context.definitions.get(current).parent {
             let parent_def = self.hir.context.definitions.get(parent_id);
@@ -107,42 +200,37 @@ impl<'a> ProtoGen<'a> {
         }
     }
 
-    fn is_proto_type(&self, def_id: DefId) -> bool {
-        is_proto_type(self.hir, def_id)
-    }
-
     fn resolve_typedef(&self, def_id: DefId) -> DefId {
         resolve_typedef(self.hir, def_id)
     }
 
-    fn contains_sequence(&self, ty: &Ty) -> bool {
+    fn is_message_type(&self, ty: &Ty) -> bool {
         match &ty.kind {
-            TyKind::Array { .. } | TyKind::Sequence { .. } => true,
             TyKind::Adt(def_id) => {
                 let resolved_id = self.resolve_typedef(*def_id);
-                let resolved_def = self.hir.context.definitions.get(resolved_id);
-                if let DefKind::Alias(alias_ty) = &resolved_def.kind {
-                    self.contains_sequence(&alias_ty.ty)
-                } else {
-                    false
+                let def = self.hir.context.definitions.get(resolved_id);
+                match &def.kind {
+                    DefKind::Struct(_)
+                    | DefKind::Union(_)
+                    | DefKind::Except(_)
+                    | DefKind::Valuetype(_) => true,
+                    DefKind::Alias(alias) => self.is_message_type(&alias.ty),
+                    _ => false,
                 }
             }
-            _ => false,
-        }
-    }
+            // Wrapped repeated fields and maps are messages
+            TyKind::Array { ty: elem_ty, .. } | TyKind::Sequence { ty: elem_ty, .. } => {
+                // octet/int8 arrays map to 'bytes' scalar, not a message
+                if matches!(
+                    elem_ty.kind,
+                    TyKind::Primitive(PrimitiveTy::UInt8 | PrimitiveTy::Int8)
+                ) {
+                    return false;
+                }
 
-    fn contains_map(&self, ty: &Ty) -> bool {
-        match &ty.kind {
-            TyKind::Map { .. } => true,
-            TyKind::Adt(def_id) => {
-                let resolved_id = self.resolve_typedef(*def_id);
-                let resolved_def = self.hir.context.definitions.get(resolved_id);
-                if let DefKind::Alias(alias_ty) = &resolved_def.kind {
-                    self.contains_map(&alias_ty.ty)
-                } else {
-                    false
-                }
+                true
             }
+            TyKind::Map { .. } => true,
             _ => false,
         }
     }
@@ -164,6 +252,12 @@ impl<'a> ProtoGen<'a> {
         }
     }
 
+    fn sanitize_proto_name(name: &str) -> String {
+        name.replace('.', "_")
+            .replace("::", "_")
+            .replace(['<', '>', ',', ' '], "_")
+    }
+
     fn proto_type(
         &self,
         ty: &Ty,
@@ -179,43 +273,37 @@ impl<'a> ProtoGen<'a> {
                     TyKind::Primitive(PrimitiveTy::UInt8 | PrimitiveTy::Int8)
                 ) {
                     "bytes".to_string()
-                } else if self.contains_sequence(elem_ty) || self.contains_map(elem_ty) {
-                    // Nested sequence or map - need a wrapper message
-                    let inner_type = self.proto_type(elem_ty, current_package, wrappers);
-                    let wrapper_content = format!("{inner_type} value");
-
-                    if let Some(existing_name) = wrappers.get(&wrapper_content) {
-                        format!("repeated {existing_name}")
-                    } else {
-                        let wrapper_name = format!("Seq{}", wrappers.len());
-                        wrappers.insert(wrapper_content, wrapper_name.clone());
-                        format!("repeated {wrapper_name}")
-                    }
                 } else {
-                    format!(
-                        "repeated {}",
-                        self.proto_type(elem_ty, current_package, wrappers)
-                    )
+                    // Wrapped sequence or nested sequence or map - need a wrapper message
+                    let inner_type = self.proto_type(elem_ty, current_package, wrappers);
+                    let wrapper_content = format!("repeated {inner_type} value");
+
+                    // Return the wrapper name directly (singular message field)
+                    if let Some(existing_name) = wrappers.get(&wrapper_content) {
+                        existing_name.clone()
+                    } else {
+                        let clean_inner = inner_type.trim_start_matches("repeated ").trim();
+                        let safe_inner_type = Self::sanitize_proto_name(clean_inner);
+                        let name = format!("Seq_{safe_inner_type}_");
+                        wrappers.insert(wrapper_content, name.clone());
+                        name
+                    }
                 }
             }
             TyKind::Map { key, elem, .. } => {
                 let key_type = self.proto_type(key, current_package, wrappers);
+                let value_type = self.proto_type(elem, current_package, wrappers);
 
-                // If the value is a map, we need to wrap it in a message
-                if self.contains_map(elem) {
-                    let inner_type = self.proto_type(elem, current_package, wrappers);
-                    let wrapper_content = format!("{inner_type} value");
+                let wrapper_content = format!("map<{key_type}, {value_type}> value");
 
-                    if let Some(existing_name) = wrappers.get(&wrapper_content) {
-                        format!("map<{key_type}, {existing_name}>")
-                    } else {
-                        let wrapper_name = format!("MapValue{}", wrappers.len());
-                        wrappers.insert(wrapper_content, wrapper_name.clone());
-                        format!("map<{key_type}, {wrapper_name}>")
-                    }
+                if let Some(existing_name) = wrappers.get(&wrapper_content) {
+                    existing_name.clone()
                 } else {
-                    let value_type = self.proto_type(elem, current_package, wrappers);
-                    format!("map<{key_type}, {value_type}>")
+                    let safe_key = Self::sanitize_proto_name(&key_type);
+                    let safe_value = Self::sanitize_proto_name(&value_type);
+                    let name = format!("Map_{safe_key}_{safe_value}_");
+                    wrappers.insert(wrapper_content, name.clone());
+                    name
                 }
             }
             TyKind::Adt(def_id) => {
@@ -243,13 +331,32 @@ impl<'a> ProtoGen<'a> {
         w!(w, "message ", def, " ", "{\n");
 
         let mut field_id = 0;
-        for (member_name, member_ty) in members {
+        for member in members {
             field_id += 1;
-            let ty_str = self.proto_type(&member_ty, &current_package, &mut wrappers);
-            w!(w, ty_str, " ", member_name, " = ", field_id, ";\n");
+            let ty_str = self.proto_type(&member.ty, &current_package, &mut wrappers);
+
+            let is_message_type = self.is_message_type(&member.ty);
+            let label_optional =
+                !is_message_type && !ty_str.starts_with("repeated") && !ty_str.starts_with("map");
+
+            if label_optional {
+                w!(
+                    w,
+                    "optional ",
+                    ty_str,
+                    " ",
+                    member.name,
+                    " = ",
+                    field_id,
+                    ";\n"
+                );
+            } else {
+                w!(w, ty_str, " ", member.name, " = ", field_id, ";\n");
+            }
         }
 
         for (content, name) in wrappers {
+            w.blank();
             w!(w, "message ", name, " {\n", content, " = 1;\n}\n");
         }
 
@@ -299,8 +406,6 @@ impl<'a> ProtoGen<'a> {
         let mut w = Twine::new();
         let current_package = self.package_path(def.id);
         let mut wrappers = BTreeMap::new();
-        let mut variant_wrappers = vec![];
-
         w!(w, "message ", def, " {\n");
         w!(w, "oneof inner {\n");
 
@@ -313,26 +418,14 @@ impl<'a> ProtoGen<'a> {
             field_id += 1;
             let variant_name = &variant.ident.name;
 
-            if self.contains_sequence(&variant.ty) || self.contains_map(&variant.ty) {
-                let wrapper_name = format!("{variant_name}_wrapper");
-                let inner_type = self.proto_type(&variant.ty, &current_package, &mut wrappers);
-                let wrapper_def =
-                    format!("message {wrapper_name} {{\n{inner_type} value = 1;\n}}\n");
-                variant_wrappers.push(wrapper_def);
-                w!(w, wrapper_name, " ", variant_name, " = ", field_id, ";\n");
-            } else {
-                let ty_str = self.proto_type(&variant.ty, &current_package, &mut wrappers);
-                w!(w, ty_str, " ", variant_name, " = ", field_id, ";\n");
-            }
+            let ty_str = self.proto_type(&variant.ty, &current_package, &mut wrappers);
+            w!(w, ty_str, " ", variant_name, " = ", field_id, ";\n");
         }
 
         w!(w, "}\n");
 
-        for wrapper_def in variant_wrappers {
-            w!(w, wrapper_def);
-        }
-
         for (content, name) in wrappers {
+            w.blank();
             w!(w, "message ", name, " {\n", content, " = 1;\n}\n");
         }
 
@@ -384,29 +477,15 @@ impl<'a> ProtoGen<'a> {
         w.finish()
     }
 
-    fn collect_types(&self, def_id: DefId, types: &mut Vec<DefId>) {
-        let def = self.hir.context.definitions.get(def_id);
-        if def.flags.contains(DefFlags::IS_BUILTIN) {
-            return;
-        }
-
-        if self.is_proto_type(def_id) {
-            types.push(def_id);
-        }
-
-        if let DefKind::Module(module_ty) = &def.kind {
-            for &nested_id in &module_ty.definitions {
-                self.collect_types(nested_id, types);
-            }
-        }
-    }
-
     fn emit_prelude_multi(
         &self,
         def_ids: &[DefId],
         def_to_file: &HashMap<DefId, String>,
     ) -> String {
+        const IC_VERSION: &str = env!("CARGO_PKG_VERSION");
+
         let mut w = Twine::new();
+        w!(w, "// @generated by ic-idl ", IC_VERSION, "\n\n");
         w!(w, "syntax = \"proto3\";\n");
         w.blank();
 
@@ -452,52 +531,115 @@ impl<'a> ProtoGen<'a> {
         } else {
             out.push_str(&self.emit_prelude_multi(def_ids, def_to_file));
         }
-        for &def_id in def_ids {
+        for (i, &def_id) in def_ids.iter().enumerate() {
+            if i > 0 {
+                out.push('\n');
+            }
             out.push_str(&self.emit_definition(def_id));
         }
         out
     }
 
-    pub fn generate(&self) -> Vec<File> {
-        let mut types = vec![];
-        for &def_id in &self.hir.order {
-            self.collect_types(def_id, &mut types);
+    fn emit_facade(&self, def_id: DefId, target_file: &str) -> String {
+        const IC_VERSION: &str = env!("CARGO_PKG_VERSION");
+
+        let mut w = Twine::new();
+        w!(w, "// @generated by ic-idl ", IC_VERSION, "\n\n");
+        w!(w, "syntax = \"proto3\";\n");
+        w.blank();
+
+        let mut path = vec![];
+        let mut current = def_id;
+
+        while let Some(parent_id) = self.hir.context.definitions.get(current).parent {
+            let parent_def = self.hir.context.definitions.get(parent_id);
+            if matches!(parent_def.kind, DefKind::Module(_)) {
+                path.push(parent_def.ident.name.clone());
+            }
+            current = parent_id;
+        }
+        path.reverse();
+        let pkg_name = path.join(".");
+
+        if !pkg_name.is_empty() {
+            w!(w, "package ", pkg_name, ";\n");
+            w.blank();
         }
 
-        let groups = group_types_by_scc(self.hir, &types);
+        w!(w, "import public \"", target_file, "\";\n");
+        w.finish()
+    }
+
+    pub fn generate(&self) -> Vec<File> {
+        enum FileKind {
+            Definition(Vec<DefId>),
+            Facade(DefId, String),
+        }
+
+        let types = collect_all_proto_types(self.hir);
+
+        let mut groups: BTreeMap<DefId, Vec<DefId>> = BTreeMap::new();
+        for def_id in types {
+            let leader = self.scc_map.get(&def_id).copied().unwrap_or(def_id);
+            groups.entry(leader).or_default().push(def_id);
+        }
 
         let mut def_to_file: HashMap<DefId, String> = HashMap::new();
-        let mut file_specs = vec![];
+        let mut pending_files: Vec<(String, FileKind)> = vec![];
 
-        for group in groups {
-            let scc = group.types;
-            if scc.is_empty() {
-                continue;
-            }
+        for (leader_def, mut scc) in groups {
+            let type_order: HashMap<DefId, usize> = self
+                .hir
+                .order
+                .iter()
+                .enumerate()
+                .map(|(i, &id)| (id, i))
+                .collect();
+            scc.sort_by_key(|id| type_order.get(id).unwrap_or(&usize::MAX));
 
-            let file_name = if scc.len() == 1 {
-                self.file_name(scc[0])
-            } else {
-                let path = self.package_path(scc[0]);
-                let mut names: Vec<_> = scc.iter().map(|&id| self.proto_name(id)).collect();
-                names.sort_unstable();
-                let combined_name = names.join("_");
-                let mut file = PathBuf::from_iter(path);
-                file.push(combined_name);
-                file.set_extension("proto");
-                file.to_string_lossy().replace('\\', "/")
-            };
+            let leader_file_name = self.file_name(leader_def);
 
             for &def_id in &scc {
-                def_to_file.insert(def_id, file_name.clone());
+                def_to_file.insert(def_id, leader_file_name.clone());
             }
 
-            file_specs.push((scc, file_name));
+            pending_files.push((leader_file_name.clone(), FileKind::Definition(scc.clone())));
+
+            for &def_id in &scc {
+                if def_id == leader_def {
+                    continue;
+                }
+
+                let mut path = vec![];
+                let mut current = def_id;
+                while let Some(parent_id) = self.hir.context.definitions.get(current).parent {
+                    let parent_def = self.hir.context.definitions.get(parent_id);
+                    if matches!(parent_def.kind, DefKind::Module(_)) {
+                        path.push(parent_def.ident.name.clone());
+                    }
+                    current = parent_id;
+                }
+                path.reverse();
+
+                let name = self.proto_name(def_id);
+                let mut file = PathBuf::from_iter(path);
+                file.push(name);
+                file.set_extension("proto");
+                let facade_file_name = file.to_string_lossy().replace('\\', "/");
+
+                pending_files.push((
+                    facade_file_name,
+                    FileKind::Facade(def_id, leader_file_name.clone()),
+                ));
+            }
         }
 
         let mut files = vec![];
-        for (scc, file_name) in file_specs {
-            let content = self.emit_file_multi(&scc, &def_to_file);
+        for (file_name, kind) in pending_files {
+            let content = match kind {
+                FileKind::Definition(ids) => self.emit_file_multi(&ids, &def_to_file),
+                FileKind::Facade(def_id, target) => self.emit_facade(def_id, &target),
+            };
             files.push(File::Generated {
                 path: PathBuf::from(file_name),
                 source: content,
@@ -505,5 +647,32 @@ impl<'a> ProtoGen<'a> {
         }
 
         files
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_proto_primitive() {
+        assert_eq!(ProtoGen::proto_primitive(PrimitiveTy::Bool), "bool");
+        assert_eq!(ProtoGen::proto_primitive(PrimitiveTy::Int8), "int32");
+        assert_eq!(ProtoGen::proto_primitive(PrimitiveTy::Int16), "int32");
+        assert_eq!(ProtoGen::proto_primitive(PrimitiveTy::Int32), "int32");
+        assert_eq!(ProtoGen::proto_primitive(PrimitiveTy::Int64), "int64");
+        assert_eq!(ProtoGen::proto_primitive(PrimitiveTy::Char), "uint32");
+        assert_eq!(ProtoGen::proto_primitive(PrimitiveTy::WChar), "uint32");
+        assert_eq!(ProtoGen::proto_primitive(PrimitiveTy::UInt8), "uint32");
+        assert_eq!(ProtoGen::proto_primitive(PrimitiveTy::UInt16), "uint32");
+        assert_eq!(ProtoGen::proto_primitive(PrimitiveTy::UInt32), "uint32");
+        assert_eq!(ProtoGen::proto_primitive(PrimitiveTy::UInt64), "uint64");
+        assert_eq!(ProtoGen::proto_primitive(PrimitiveTy::Float32), "float");
+        assert_eq!(ProtoGen::proto_primitive(PrimitiveTy::Float64), "double");
+        assert_eq!(ProtoGen::proto_primitive(PrimitiveTy::Float128), "double");
+        assert_eq!(
+            ProtoGen::proto_primitive(PrimitiveTy::Void),
+            "google.protobuf.Empty"
+        );
     }
 }

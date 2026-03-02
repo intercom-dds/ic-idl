@@ -1625,7 +1625,7 @@ impl TypeIdentifier {
             Self::ScComponentId(_) => crate::types::xtypes::TI_STRONGLY_CONNECTED_COMPONENT,
             Self::EkComplete(_) => crate::types::xtypes::EK_COMPLETE,
             Self::EkMinimal(_) => crate::types::xtypes::EK_MINIMAL,
-            Self::ExtendedDefn(_) => 0,
+            Self::ExtendedDefn(_) => 14,
         }
     }
 }

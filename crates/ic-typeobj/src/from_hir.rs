@@ -520,6 +520,7 @@ impl TypeObjectCache<'_> {
 
                 type_def.type_info.complete.dependent_typeids = complete_deps
                     .into_iter()
+                    .filter(has_type_object)
                     .map(|type_id| {
                         let size = self
                             .complete_type_map
@@ -536,6 +537,7 @@ impl TypeObjectCache<'_> {
 
                 type_def.type_info.minimal.dependent_typeids = minimal_deps
                     .into_iter()
+                    .filter(has_type_object)
                     .map(|type_id| {
                         let size = self
                             .complete_type_map
@@ -552,9 +554,28 @@ impl TypeObjectCache<'_> {
             }
         }
 
-        for (type_id, type_obj) in &self.complete_type_map {
+        for (complete_id, type_obj) in &self.complete_type_map {
+            if let TypeObject::Complete(complete) = type_obj {
+                let minimal = util::complete_to_minimal(complete.clone());
+                let minimal_obj = TypeObject::Minimal(minimal);
+                let minimal_id = util::equivalence_hash(&minimal_obj);
+
+                // Add the complete-to-minimal mapping
+                type_def.complete_to_minimal.push(TypeIdentifierPair {
+                    type_identifier1: complete_id.clone(),
+                    type_identifier2: minimal_id.clone(),
+                });
+
+                // Add the minimal type object
+                type_def.type_objects.push(TypeIdentifierTypeObjectPair {
+                    type_identifier: minimal_id,
+                    type_object: minimal_obj,
+                });
+            }
+
+            // Add the complete type object
             type_def.type_objects.push(TypeIdentifierTypeObjectPair {
-                type_identifier: type_id.clone(),
+                type_identifier: complete_id.clone(),
                 type_object: type_obj.clone(),
             });
         }
@@ -989,6 +1010,19 @@ impl TypeObjectCache<'_> {
     }
 }
 
+fn has_type_object(id: &TypeIdentifier) -> bool {
+    matches!(
+        id,
+        TypeIdentifier::EkComplete(_)
+            | TypeIdentifier::EkMinimal(_)
+            | TypeIdentifier::ScComponentId(_)
+    )
+}
+
+fn is_none(id: &TypeIdentifier) -> bool {
+    matches!(id, TypeIdentifier::TkNone(_))
+}
+
 fn collect_type_dependencies(
     complete: &CompleteTypeObject,
     complete_deps: &mut BTreeSet<TypeIdentifier>,
@@ -1006,7 +1040,7 @@ fn collect_type_dependencies(
             }
         }
         CompleteTypeObject::StructType(struct_ty) => {
-            if !matches!(struct_ty.header.base_type, TypeIdentifier::TkNone(_)) {
+            if !is_none(&struct_ty.header.base_type) {
                 complete_deps.insert(struct_ty.header.base_type.clone());
                 minimal_deps.insert(struct_ty.header.base_type.clone());
             }
@@ -1016,7 +1050,7 @@ fn collect_type_dependencies(
             }
         }
         CompleteTypeObject::UnionType(union) => {
-            if !matches!(union.header.base_type, TypeIdentifier::TkNone(_)) {
+            if !is_none(&union.header.base_type) {
                 complete_deps.insert(union.header.base_type.clone());
                 minimal_deps.insert(union.header.base_type.clone());
             }

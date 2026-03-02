@@ -89,8 +89,10 @@ pub mod util;
 pub use config::{ErrorFormat, Options as CompilerOptions, Unstable, Warnings};
 use ic_cli::color::Colorize as _;
 pub use ic_emit::File;
+pub use ic_hir as hir;
+pub use ic_hir_lower as hir_lower;
+pub use ic_vfs as vfs;
 pub use util::Error as DiagnosticError;
-pub use {ic_hir as hir, ic_hir_lower as hir_lower, ic_vfs as vfs};
 
 /// Error type for compilation failures.
 #[derive(Debug)]

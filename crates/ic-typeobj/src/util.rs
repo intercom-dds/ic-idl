@@ -43,6 +43,7 @@ use ic_omgidl::types::xtypes::{
     TK_INT64, TK_NONE, TK_UINT8, TK_UINT16, TK_UINT32, TK_UINT64, TypeIdentifier, TypeKind,
     TypeObject, TypeObjectHashId,
 };
+use intercom_cts::cdr2;
 
 pub fn name_hash(name: &str) -> NameHash {
     let digest = md5::digest(name.as_bytes());
@@ -242,7 +243,7 @@ pub fn equivalence_kind(ident: &TypeIdentifier) -> EquivalenceKind {
 }
 
 pub fn type_object_size(obj: &TypeObject) -> usize {
-    intercom_cts::cdr2::to_le_bytes(obj)
+    cdr2::to_le_bytes(obj)
         .expect("failed to serialize TypeObject")
         .len()
 }
@@ -266,8 +267,7 @@ pub fn get_holder_type(ty: &hir::Ty) -> TypeKind {
 }
 
 pub fn equivalence_hash(type_obj: &TypeObject) -> TypeIdentifier {
-    let serialized =
-        intercom_cts::cdr2::to_le_bytes(type_obj).expect("failed to serialize TypeObject");
+    let serialized = cdr2::to_le_bytes(type_obj).expect("failed to serialize TypeObject");
     let digest = md5::digest(&serialized);
 
     let mut hash = [0u8; 14];
@@ -325,8 +325,7 @@ pub fn scc_equivalence_hash(
     type_objects: &[TypeObject],
     kind: EquivalenceKind,
 ) -> StronglyConnectedComponentId {
-    let serialized =
-        intercom_cts::cdr1::to_le_bytes(type_objects).expect("failed to serialize TypeObject");
+    let serialized = cdr2::to_le_bytes(&type_objects).expect("failed to serialize TypeObject");
     let digest = md5::digest(&serialized);
 
     let mut hash = [0u8; 14];

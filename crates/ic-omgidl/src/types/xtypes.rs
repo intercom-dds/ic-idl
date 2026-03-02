@@ -503,7 +503,7 @@ const _: () = {
 
     const TYPE_INFO: ::intercom_cts::TypeInfo<'static> = ::intercom_cts::TypeInfo {
         name: "DDS::XTypes::TypeObjectHashId",
-        flags: ::intercom_cts::TypeFlag::IS_APPENDABLE,
+        flags: ::intercom_cts::TypeFlag::IS_FINAL.union(::intercom_cts::TypeFlag::IS_NESTED),
         kind: ::intercom_cts::TypeKind::Union,
         key_info: None,
         element_info: None,
@@ -584,7 +584,7 @@ const _: () = {
 
     const TYPE_INFO: ::intercom_cts::TypeInfo<'static> = ::intercom_cts::TypeInfo {
         name: "DDS::XTypes::StringSTypeDefn",
-        flags: ::intercom_cts::TypeFlag::IS_APPENDABLE,
+        flags: ::intercom_cts::TypeFlag::IS_FINAL.union(::intercom_cts::TypeFlag::IS_NESTED),
         kind: ::intercom_cts::TypeKind::Struct,
         key_info: None,
         element_info: None,
@@ -652,7 +652,7 @@ const _: () = {
 
     const TYPE_INFO: ::intercom_cts::TypeInfo<'static> = ::intercom_cts::TypeInfo {
         name: "DDS::XTypes::StringLTypeDefn",
-        flags: ::intercom_cts::TypeFlag::IS_APPENDABLE,
+        flags: ::intercom_cts::TypeFlag::IS_FINAL.union(::intercom_cts::TypeFlag::IS_NESTED),
         kind: ::intercom_cts::TypeKind::Struct,
         key_info: None,
         element_info: None,
@@ -722,7 +722,7 @@ const _: () = {
 
     const TYPE_INFO: ::intercom_cts::TypeInfo<'static> = ::intercom_cts::TypeInfo {
         name: "DDS::XTypes::PlainCollectionHeader",
-        flags: ::intercom_cts::TypeFlag::IS_APPENDABLE,
+        flags: ::intercom_cts::TypeFlag::IS_FINAL.union(::intercom_cts::TypeFlag::IS_NESTED),
         kind: ::intercom_cts::TypeKind::Struct,
         key_info: None,
         element_info: None,
@@ -804,7 +804,7 @@ const _: () = {
 
     const TYPE_INFO: ::intercom_cts::TypeInfo<'static> = ::intercom_cts::TypeInfo {
         name: "DDS::XTypes::PlainSequenceSElemDefn",
-        flags: ::intercom_cts::TypeFlag::IS_APPENDABLE,
+        flags: ::intercom_cts::TypeFlag::IS_FINAL.union(::intercom_cts::TypeFlag::IS_NESTED),
         kind: ::intercom_cts::TypeKind::Struct,
         key_info: None,
         element_info: None,
@@ -826,7 +826,7 @@ const _: () = {
         ::intercom_cts::MemberInfo {
             name: "element_identifier",
             member_id: 2,
-            flags: ::intercom_cts::MemberFlag::nil(),
+            flags: ::intercom_cts::MemberFlag::IS_EXTERNAL,
             type_info: ::intercom_cts::type_info::<crate::types::xtypes::TypeIdentifier>(),
         },
     ];
@@ -894,7 +894,7 @@ const _: () = {
 
     const TYPE_INFO: ::intercom_cts::TypeInfo<'static> = ::intercom_cts::TypeInfo {
         name: "DDS::XTypes::PlainSequenceLElemDefn",
-        flags: ::intercom_cts::TypeFlag::IS_APPENDABLE,
+        flags: ::intercom_cts::TypeFlag::IS_FINAL.union(::intercom_cts::TypeFlag::IS_NESTED),
         kind: ::intercom_cts::TypeKind::Struct,
         key_info: None,
         element_info: None,
@@ -916,7 +916,7 @@ const _: () = {
         ::intercom_cts::MemberInfo {
             name: "element_identifier",
             member_id: 2,
-            flags: ::intercom_cts::MemberFlag::nil(),
+            flags: ::intercom_cts::MemberFlag::IS_EXTERNAL,
             type_info: ::intercom_cts::type_info::<crate::types::xtypes::TypeIdentifier>(),
         },
     ];
@@ -984,7 +984,7 @@ const _: () = {
 
     const TYPE_INFO: ::intercom_cts::TypeInfo<'static> = ::intercom_cts::TypeInfo {
         name: "DDS::XTypes::PlainArraySElemDefn",
-        flags: ::intercom_cts::TypeFlag::IS_APPENDABLE,
+        flags: ::intercom_cts::TypeFlag::IS_FINAL.union(::intercom_cts::TypeFlag::IS_NESTED),
         kind: ::intercom_cts::TypeKind::Struct,
         key_info: None,
         element_info: None,
@@ -1006,7 +1006,7 @@ const _: () = {
         ::intercom_cts::MemberInfo {
             name: "element_identifier",
             member_id: 2,
-            flags: ::intercom_cts::MemberFlag::nil(),
+            flags: ::intercom_cts::MemberFlag::IS_EXTERNAL,
             type_info: ::intercom_cts::type_info::<crate::types::xtypes::TypeIdentifier>(),
         },
     ];
@@ -1074,7 +1074,7 @@ const _: () = {
 
     const TYPE_INFO: ::intercom_cts::TypeInfo<'static> = ::intercom_cts::TypeInfo {
         name: "DDS::XTypes::PlainArrayLElemDefn",
-        flags: ::intercom_cts::TypeFlag::IS_APPENDABLE,
+        flags: ::intercom_cts::TypeFlag::IS_FINAL.union(::intercom_cts::TypeFlag::IS_NESTED),
         kind: ::intercom_cts::TypeKind::Struct,
         key_info: None,
         element_info: None,
@@ -1096,7 +1096,7 @@ const _: () = {
         ::intercom_cts::MemberInfo {
             name: "element_identifier",
             member_id: 2,
-            flags: ::intercom_cts::MemberFlag::nil(),
+            flags: ::intercom_cts::MemberFlag::IS_EXTERNAL,
             type_info: ::intercom_cts::type_info::<crate::types::xtypes::TypeIdentifier>(),
         },
     ];
@@ -1168,7 +1168,7 @@ const _: () = {
 
     const TYPE_INFO: ::intercom_cts::TypeInfo<'static> = ::intercom_cts::TypeInfo {
         name: "DDS::XTypes::PlainMapSTypeDefn",
-        flags: ::intercom_cts::TypeFlag::IS_APPENDABLE,
+        flags: ::intercom_cts::TypeFlag::IS_FINAL.union(::intercom_cts::TypeFlag::IS_NESTED),
         kind: ::intercom_cts::TypeKind::Struct,
         key_info: None,
         element_info: None,
@@ -1190,7 +1190,7 @@ const _: () = {
         ::intercom_cts::MemberInfo {
             name: "element_identifier",
             member_id: 2,
-            flags: ::intercom_cts::MemberFlag::nil(),
+            flags: ::intercom_cts::MemberFlag::IS_EXTERNAL,
             type_info: ::intercom_cts::type_info::<crate::types::xtypes::TypeIdentifier>(),
         },
         ::intercom_cts::MemberInfo {
@@ -1202,7 +1202,7 @@ const _: () = {
         ::intercom_cts::MemberInfo {
             name: "key_identifier",
             member_id: 4,
-            flags: ::intercom_cts::MemberFlag::nil(),
+            flags: ::intercom_cts::MemberFlag::IS_EXTERNAL,
             type_info: ::intercom_cts::type_info::<crate::types::xtypes::TypeIdentifier>(),
         },
     ];
@@ -1278,7 +1278,7 @@ const _: () = {
 
     const TYPE_INFO: ::intercom_cts::TypeInfo<'static> = ::intercom_cts::TypeInfo {
         name: "DDS::XTypes::PlainMapLTypeDefn",
-        flags: ::intercom_cts::TypeFlag::IS_APPENDABLE,
+        flags: ::intercom_cts::TypeFlag::IS_FINAL.union(::intercom_cts::TypeFlag::IS_NESTED),
         kind: ::intercom_cts::TypeKind::Struct,
         key_info: None,
         element_info: None,
@@ -1300,7 +1300,7 @@ const _: () = {
         ::intercom_cts::MemberInfo {
             name: "element_identifier",
             member_id: 2,
-            flags: ::intercom_cts::MemberFlag::nil(),
+            flags: ::intercom_cts::MemberFlag::IS_EXTERNAL,
             type_info: ::intercom_cts::type_info::<crate::types::xtypes::TypeIdentifier>(),
         },
         ::intercom_cts::MemberInfo {
@@ -1312,7 +1312,7 @@ const _: () = {
         ::intercom_cts::MemberInfo {
             name: "key_identifier",
             member_id: 4,
-            flags: ::intercom_cts::MemberFlag::nil(),
+            flags: ::intercom_cts::MemberFlag::IS_EXTERNAL,
             type_info: ::intercom_cts::type_info::<crate::types::xtypes::TypeIdentifier>(),
         },
     ];
@@ -1384,7 +1384,7 @@ const _: () = {
 
     const TYPE_INFO: ::intercom_cts::TypeInfo<'static> = ::intercom_cts::TypeInfo {
         name: "DDS::XTypes::StronglyConnectedComponentId",
-        flags: ::intercom_cts::TypeFlag::IS_APPENDABLE,
+        flags: ::intercom_cts::TypeFlag::IS_APPENDABLE.union(::intercom_cts::TypeFlag::IS_NESTED),
         kind: ::intercom_cts::TypeKind::Struct,
         key_info: None,
         element_info: None,
@@ -1466,7 +1466,7 @@ const _: () = {
 
     const TYPE_INFO: ::intercom_cts::TypeInfo<'static> = ::intercom_cts::TypeInfo {
         name: "DDS::XTypes::ExtendedTypeDefn",
-        flags: ::intercom_cts::TypeFlag::IS_APPENDABLE,
+        flags: ::intercom_cts::TypeFlag::IS_MUTABLE.union(::intercom_cts::TypeFlag::IS_NESTED),
         kind: ::intercom_cts::TypeKind::Struct,
         key_info: None,
         element_info: None,
@@ -1521,7 +1521,7 @@ const _: () = {
 
     const TYPE_INFO: ::intercom_cts::TypeInfo<'static> = ::intercom_cts::TypeInfo {
         name: "DDS::XTypes::Empty",
-        flags: ::intercom_cts::TypeFlag::IS_FINAL,
+        flags: ::intercom_cts::TypeFlag::IS_FINAL.union(::intercom_cts::TypeFlag::IS_NESTED),
         kind: ::intercom_cts::TypeKind::Struct,
         key_info: None,
         element_info: None,
@@ -1590,7 +1590,7 @@ pub enum TypeIdentifier {
 impl TypeIdentifier {
     #[must_use]
     pub fn new() -> Self {
-        Self::ExtendedDefn(<crate::types::xtypes::ExtendedTypeDefn>::default())
+        Self::TkNone(Empty::default())
     }
 
     #[must_use]
@@ -1732,7 +1732,7 @@ const _: () = {
 
     const TYPE_INFO: ::intercom_cts::TypeInfo<'static> = ::intercom_cts::TypeInfo {
         name: "DDS::XTypes::TypeIdentifier",
-        flags: ::intercom_cts::TypeFlag::IS_APPENDABLE,
+        flags: ::intercom_cts::TypeFlag::IS_FINAL.union(::intercom_cts::TypeFlag::IS_NESTED),
         kind: ::intercom_cts::TypeKind::Union,
         key_info: None,
         element_info: None,
@@ -1985,7 +1985,7 @@ const _: () = {
 
     const TYPE_INFO: ::intercom_cts::TypeInfo<'static> = ::intercom_cts::TypeInfo {
         name: "DDS::XTypes::ExtendedAnnotationParameterValue",
-        flags: ::intercom_cts::TypeFlag::IS_APPENDABLE,
+        flags: ::intercom_cts::TypeFlag::IS_MUTABLE.union(::intercom_cts::TypeFlag::IS_NESTED),
         kind: ::intercom_cts::TypeKind::Struct,
         key_info: None,
         element_info: None,
@@ -2115,7 +2115,7 @@ const _: () = {
 
     const TYPE_INFO: ::intercom_cts::TypeInfo<'static> = ::intercom_cts::TypeInfo {
         name: "DDS::XTypes::AnnotationParameterValue",
-        flags: ::intercom_cts::TypeFlag::IS_APPENDABLE,
+        flags: ::intercom_cts::TypeFlag::IS_FINAL.union(::intercom_cts::TypeFlag::IS_NESTED),
         kind: ::intercom_cts::TypeKind::Union,
         key_info: None,
         element_info: None,
@@ -2395,7 +2395,7 @@ const _: () = {
 
     const TYPE_INFO: ::intercom_cts::TypeInfo<'static> = ::intercom_cts::TypeInfo {
         name: "DDS::XTypes::AppliedAnnotationParameter",
-        flags: ::intercom_cts::TypeFlag::IS_APPENDABLE,
+        flags: ::intercom_cts::TypeFlag::IS_APPENDABLE.union(::intercom_cts::TypeFlag::IS_NESTED),
         kind: ::intercom_cts::TypeKind::Struct,
         key_info: None,
         element_info: None,
@@ -2479,7 +2479,7 @@ const _: () = {
 
     const TYPE_INFO: ::intercom_cts::TypeInfo<'static> = ::intercom_cts::TypeInfo {
         name: "DDS::XTypes::AppliedAnnotation",
-        flags: ::intercom_cts::TypeFlag::IS_APPENDABLE,
+        flags: ::intercom_cts::TypeFlag::IS_APPENDABLE.union(::intercom_cts::TypeFlag::IS_NESTED),
         kind: ::intercom_cts::TypeKind::Struct,
         key_info: None,
         element_info: None,
@@ -2565,7 +2565,7 @@ const _: () = {
 
     const TYPE_INFO: ::intercom_cts::TypeInfo<'static> = ::intercom_cts::TypeInfo {
         name: "DDS::XTypes::AppliedVerbatimAnnotation",
-        flags: ::intercom_cts::TypeFlag::IS_APPENDABLE,
+        flags: ::intercom_cts::TypeFlag::IS_FINAL.union(::intercom_cts::TypeFlag::IS_NESTED),
         kind: ::intercom_cts::TypeKind::Struct,
         key_info: None,
         element_info: None,
@@ -2657,7 +2657,7 @@ const _: () = {
 
     const TYPE_INFO: ::intercom_cts::TypeInfo<'static> = ::intercom_cts::TypeInfo {
         name: "DDS::XTypes::AppliedBuiltinMemberAnnotations",
-        flags: ::intercom_cts::TypeFlag::IS_APPENDABLE,
+        flags: ::intercom_cts::TypeFlag::IS_APPENDABLE.union(::intercom_cts::TypeFlag::IS_NESTED),
         kind: ::intercom_cts::TypeKind::Struct,
         key_info: None,
         element_info: None,
@@ -2757,7 +2757,7 @@ const _: () = {
 
     const TYPE_INFO: ::intercom_cts::TypeInfo<'static> = ::intercom_cts::TypeInfo {
         name: "DDS::XTypes::CommonStructMember",
-        flags: ::intercom_cts::TypeFlag::IS_APPENDABLE,
+        flags: ::intercom_cts::TypeFlag::IS_FINAL.union(::intercom_cts::TypeFlag::IS_NESTED),
         kind: ::intercom_cts::TypeKind::Struct,
         key_info: None,
         element_info: None,
@@ -2847,7 +2847,7 @@ const _: () = {
 
     const TYPE_INFO: ::intercom_cts::TypeInfo<'static> = ::intercom_cts::TypeInfo {
         name: "DDS::XTypes::CompleteMemberDetail",
-        flags: ::intercom_cts::TypeFlag::IS_APPENDABLE,
+        flags: ::intercom_cts::TypeFlag::IS_FINAL.union(::intercom_cts::TypeFlag::IS_NESTED),
         kind: ::intercom_cts::TypeKind::Struct,
         key_info: None,
         element_info: None,
@@ -2935,7 +2935,7 @@ const _: () = {
 
     const TYPE_INFO: ::intercom_cts::TypeInfo<'static> = ::intercom_cts::TypeInfo {
         name: "DDS::XTypes::MinimalMemberDetail",
-        flags: ::intercom_cts::TypeFlag::IS_APPENDABLE,
+        flags: ::intercom_cts::TypeFlag::IS_FINAL.union(::intercom_cts::TypeFlag::IS_NESTED),
         kind: ::intercom_cts::TypeKind::Struct,
         key_info: None,
         element_info: None,
@@ -3005,7 +3005,7 @@ const _: () = {
 
     const TYPE_INFO: ::intercom_cts::TypeInfo<'static> = ::intercom_cts::TypeInfo {
         name: "DDS::XTypes::CompleteStructMember",
-        flags: ::intercom_cts::TypeFlag::IS_APPENDABLE,
+        flags: ::intercom_cts::TypeFlag::IS_APPENDABLE.union(::intercom_cts::TypeFlag::IS_NESTED),
         kind: ::intercom_cts::TypeKind::Struct,
         key_info: None,
         element_info: None,
@@ -3087,7 +3087,7 @@ const _: () = {
 
     const TYPE_INFO: ::intercom_cts::TypeInfo<'static> = ::intercom_cts::TypeInfo {
         name: "DDS::XTypes::MinimalStructMember",
-        flags: ::intercom_cts::TypeFlag::IS_APPENDABLE,
+        flags: ::intercom_cts::TypeFlag::IS_APPENDABLE.union(::intercom_cts::TypeFlag::IS_NESTED),
         kind: ::intercom_cts::TypeKind::Struct,
         key_info: None,
         element_info: None,
@@ -3167,7 +3167,7 @@ const _: () = {
 
     const TYPE_INFO: ::intercom_cts::TypeInfo<'static> = ::intercom_cts::TypeInfo {
         name: "DDS::XTypes::AppliedBuiltinTypeAnnotations",
-        flags: ::intercom_cts::TypeFlag::IS_APPENDABLE,
+        flags: ::intercom_cts::TypeFlag::IS_APPENDABLE.union(::intercom_cts::TypeFlag::IS_NESTED),
         kind: ::intercom_cts::TypeKind::Struct,
         key_info: None,
         element_info: None,
@@ -3231,7 +3231,7 @@ const _: () = {
 
     const TYPE_INFO: ::intercom_cts::TypeInfo<'static> = ::intercom_cts::TypeInfo {
         name: "DDS::XTypes::MinimalTypeDetail",
-        flags: ::intercom_cts::TypeFlag::IS_APPENDABLE,
+        flags: ::intercom_cts::TypeFlag::IS_FINAL.union(::intercom_cts::TypeFlag::IS_NESTED),
         kind: ::intercom_cts::TypeKind::Struct,
         key_info: None,
         element_info: None,
@@ -3294,7 +3294,7 @@ const _: () = {
 
     const TYPE_INFO: ::intercom_cts::TypeInfo<'static> = ::intercom_cts::TypeInfo {
         name: "DDS::XTypes::CompleteTypeDetail",
-        flags: ::intercom_cts::TypeFlag::IS_APPENDABLE,
+        flags: ::intercom_cts::TypeFlag::IS_FINAL.union(::intercom_cts::TypeFlag::IS_NESTED),
         kind: ::intercom_cts::TypeKind::Struct,
         key_info: None,
         element_info: None,
@@ -3384,7 +3384,7 @@ const _: () = {
 
     const TYPE_INFO: ::intercom_cts::TypeInfo<'static> = ::intercom_cts::TypeInfo {
         name: "DDS::XTypes::CompleteStructHeader",
-        flags: ::intercom_cts::TypeFlag::IS_APPENDABLE,
+        flags: ::intercom_cts::TypeFlag::IS_APPENDABLE.union(::intercom_cts::TypeFlag::IS_NESTED),
         kind: ::intercom_cts::TypeKind::Struct,
         key_info: None,
         element_info: None,
@@ -3464,7 +3464,7 @@ const _: () = {
 
     const TYPE_INFO: ::intercom_cts::TypeInfo<'static> = ::intercom_cts::TypeInfo {
         name: "DDS::XTypes::MinimalStructHeader",
-        flags: ::intercom_cts::TypeFlag::IS_APPENDABLE,
+        flags: ::intercom_cts::TypeFlag::IS_APPENDABLE.union(::intercom_cts::TypeFlag::IS_NESTED),
         kind: ::intercom_cts::TypeKind::Struct,
         key_info: None,
         element_info: None,
@@ -3546,7 +3546,7 @@ const _: () = {
 
     const TYPE_INFO: ::intercom_cts::TypeInfo<'static> = ::intercom_cts::TypeInfo {
         name: "DDS::XTypes::CompleteStructType",
-        flags: ::intercom_cts::TypeFlag::IS_APPENDABLE,
+        flags: ::intercom_cts::TypeFlag::IS_FINAL.union(::intercom_cts::TypeFlag::IS_NESTED),
         kind: ::intercom_cts::TypeKind::Struct,
         key_info: None,
         element_info: None,
@@ -3636,7 +3636,7 @@ const _: () = {
 
     const TYPE_INFO: ::intercom_cts::TypeInfo<'static> = ::intercom_cts::TypeInfo {
         name: "DDS::XTypes::MinimalStructType",
-        flags: ::intercom_cts::TypeFlag::IS_APPENDABLE,
+        flags: ::intercom_cts::TypeFlag::IS_FINAL.union(::intercom_cts::TypeFlag::IS_NESTED),
         kind: ::intercom_cts::TypeKind::Struct,
         key_info: None,
         element_info: None,
@@ -3730,7 +3730,7 @@ const _: () = {
 
     const TYPE_INFO: ::intercom_cts::TypeInfo<'static> = ::intercom_cts::TypeInfo {
         name: "DDS::XTypes::CommonUnionMember",
-        flags: ::intercom_cts::TypeFlag::IS_APPENDABLE,
+        flags: ::intercom_cts::TypeFlag::IS_FINAL.union(::intercom_cts::TypeFlag::IS_NESTED),
         kind: ::intercom_cts::TypeKind::Struct,
         key_info: None,
         element_info: None,
@@ -3826,7 +3826,7 @@ const _: () = {
 
     const TYPE_INFO: ::intercom_cts::TypeInfo<'static> = ::intercom_cts::TypeInfo {
         name: "DDS::XTypes::CompleteUnionMember",
-        flags: ::intercom_cts::TypeFlag::IS_APPENDABLE,
+        flags: ::intercom_cts::TypeFlag::IS_APPENDABLE.union(::intercom_cts::TypeFlag::IS_NESTED),
         kind: ::intercom_cts::TypeKind::Struct,
         key_info: None,
         element_info: None,
@@ -3908,7 +3908,7 @@ const _: () = {
 
     const TYPE_INFO: ::intercom_cts::TypeInfo<'static> = ::intercom_cts::TypeInfo {
         name: "DDS::XTypes::MinimalUnionMember",
-        flags: ::intercom_cts::TypeFlag::IS_APPENDABLE,
+        flags: ::intercom_cts::TypeFlag::IS_APPENDABLE.union(::intercom_cts::TypeFlag::IS_NESTED),
         kind: ::intercom_cts::TypeKind::Struct,
         key_info: None,
         element_info: None,
@@ -3990,7 +3990,7 @@ const _: () = {
 
     const TYPE_INFO: ::intercom_cts::TypeInfo<'static> = ::intercom_cts::TypeInfo {
         name: "DDS::XTypes::CommonDiscriminatorMember",
-        flags: ::intercom_cts::TypeFlag::IS_APPENDABLE,
+        flags: ::intercom_cts::TypeFlag::IS_FINAL.union(::intercom_cts::TypeFlag::IS_NESTED),
         kind: ::intercom_cts::TypeKind::Struct,
         key_info: None,
         element_info: None,
@@ -4072,7 +4072,7 @@ const _: () = {
 
     const TYPE_INFO: ::intercom_cts::TypeInfo<'static> = ::intercom_cts::TypeInfo {
         name: "DDS::XTypes::CompleteDiscriminatorMember",
-        flags: ::intercom_cts::TypeFlag::IS_APPENDABLE,
+        flags: ::intercom_cts::TypeFlag::IS_APPENDABLE.union(::intercom_cts::TypeFlag::IS_NESTED),
         kind: ::intercom_cts::TypeKind::Struct,
         key_info: None,
         element_info: None,
@@ -4161,7 +4161,7 @@ const _: () = {
 
     const TYPE_INFO: ::intercom_cts::TypeInfo<'static> = ::intercom_cts::TypeInfo {
         name: "DDS::XTypes::MinimalDiscriminatorMember",
-        flags: ::intercom_cts::TypeFlag::IS_APPENDABLE,
+        flags: ::intercom_cts::TypeFlag::IS_APPENDABLE.union(::intercom_cts::TypeFlag::IS_NESTED),
         kind: ::intercom_cts::TypeKind::Struct,
         key_info: None,
         element_info: None,
@@ -4231,7 +4231,7 @@ const _: () = {
 
     const TYPE_INFO: ::intercom_cts::TypeInfo<'static> = ::intercom_cts::TypeInfo {
         name: "DDS::XTypes::CompleteUnionHeader",
-        flags: ::intercom_cts::TypeFlag::IS_APPENDABLE,
+        flags: ::intercom_cts::TypeFlag::IS_APPENDABLE.union(::intercom_cts::TypeFlag::IS_NESTED),
         kind: ::intercom_cts::TypeKind::Struct,
         key_info: None,
         element_info: None,
@@ -4311,7 +4311,7 @@ const _: () = {
 
     const TYPE_INFO: ::intercom_cts::TypeInfo<'static> = ::intercom_cts::TypeInfo {
         name: "DDS::XTypes::MinimalUnionHeader",
-        flags: ::intercom_cts::TypeFlag::IS_APPENDABLE,
+        flags: ::intercom_cts::TypeFlag::IS_APPENDABLE.union(::intercom_cts::TypeFlag::IS_NESTED),
         kind: ::intercom_cts::TypeKind::Struct,
         key_info: None,
         element_info: None,
@@ -4395,7 +4395,7 @@ const _: () = {
 
     const TYPE_INFO: ::intercom_cts::TypeInfo<'static> = ::intercom_cts::TypeInfo {
         name: "DDS::XTypes::CompleteUnionType",
-        flags: ::intercom_cts::TypeFlag::IS_APPENDABLE,
+        flags: ::intercom_cts::TypeFlag::IS_FINAL.union(::intercom_cts::TypeFlag::IS_NESTED),
         kind: ::intercom_cts::TypeKind::Struct,
         key_info: None,
         element_info: None,
@@ -4496,7 +4496,7 @@ const _: () = {
 
     const TYPE_INFO: ::intercom_cts::TypeInfo<'static> = ::intercom_cts::TypeInfo {
         name: "DDS::XTypes::MinimalUnionType",
-        flags: ::intercom_cts::TypeFlag::IS_APPENDABLE,
+        flags: ::intercom_cts::TypeFlag::IS_FINAL.union(::intercom_cts::TypeFlag::IS_NESTED),
         kind: ::intercom_cts::TypeKind::Struct,
         key_info: None,
         element_info: None,
@@ -4593,7 +4593,7 @@ const _: () = {
 
     const TYPE_INFO: ::intercom_cts::TypeInfo<'static> = ::intercom_cts::TypeInfo {
         name: "DDS::XTypes::CommonAnnotationParameter",
-        flags: ::intercom_cts::TypeFlag::IS_APPENDABLE,
+        flags: ::intercom_cts::TypeFlag::IS_FINAL.union(::intercom_cts::TypeFlag::IS_NESTED),
         kind: ::intercom_cts::TypeKind::Struct,
         key_info: None,
         element_info: None,
@@ -4675,7 +4675,7 @@ const _: () = {
 
     const TYPE_INFO: ::intercom_cts::TypeInfo<'static> = ::intercom_cts::TypeInfo {
         name: "DDS::XTypes::CompleteAnnotationParameter",
-        flags: ::intercom_cts::TypeFlag::IS_APPENDABLE,
+        flags: ::intercom_cts::TypeFlag::IS_APPENDABLE.union(::intercom_cts::TypeFlag::IS_NESTED),
         kind: ::intercom_cts::TypeKind::Struct,
         key_info: None,
         element_info: None,
@@ -4770,7 +4770,7 @@ const _: () = {
 
     const TYPE_INFO: ::intercom_cts::TypeInfo<'static> = ::intercom_cts::TypeInfo {
         name: "DDS::XTypes::MinimalAnnotationParameter",
-        flags: ::intercom_cts::TypeFlag::IS_APPENDABLE,
+        flags: ::intercom_cts::TypeFlag::IS_APPENDABLE.union(::intercom_cts::TypeFlag::IS_NESTED),
         kind: ::intercom_cts::TypeKind::Struct,
         key_info: None,
         element_info: None,
@@ -4861,7 +4861,7 @@ const _: () = {
 
     const TYPE_INFO: ::intercom_cts::TypeInfo<'static> = ::intercom_cts::TypeInfo {
         name: "DDS::XTypes::CompleteAnnotationHeader",
-        flags: ::intercom_cts::TypeFlag::IS_APPENDABLE,
+        flags: ::intercom_cts::TypeFlag::IS_APPENDABLE.union(::intercom_cts::TypeFlag::IS_NESTED),
         kind: ::intercom_cts::TypeKind::Struct,
         key_info: None,
         element_info: None,
@@ -4925,7 +4925,7 @@ const _: () = {
 
     const TYPE_INFO: ::intercom_cts::TypeInfo<'static> = ::intercom_cts::TypeInfo {
         name: "DDS::XTypes::MinimalAnnotationHeader",
-        flags: ::intercom_cts::TypeFlag::IS_APPENDABLE,
+        flags: ::intercom_cts::TypeFlag::IS_APPENDABLE.union(::intercom_cts::TypeFlag::IS_NESTED),
         kind: ::intercom_cts::TypeKind::Struct,
         key_info: None,
         element_info: None,
@@ -4988,7 +4988,7 @@ const _: () = {
 
     const TYPE_INFO: ::intercom_cts::TypeInfo<'static> = ::intercom_cts::TypeInfo {
         name: "DDS::XTypes::CompleteAnnotationType",
-        flags: ::intercom_cts::TypeFlag::IS_APPENDABLE,
+        flags: ::intercom_cts::TypeFlag::IS_FINAL.union(::intercom_cts::TypeFlag::IS_NESTED),
         kind: ::intercom_cts::TypeKind::Struct,
         key_info: None,
         element_info: None,
@@ -5081,7 +5081,7 @@ const _: () = {
 
     const TYPE_INFO: ::intercom_cts::TypeInfo<'static> = ::intercom_cts::TypeInfo {
         name: "DDS::XTypes::MinimalAnnotationType",
-        flags: ::intercom_cts::TypeFlag::IS_APPENDABLE,
+        flags: ::intercom_cts::TypeFlag::IS_FINAL.union(::intercom_cts::TypeFlag::IS_NESTED),
         kind: ::intercom_cts::TypeKind::Struct,
         key_info: None,
         element_info: None,
@@ -5171,7 +5171,7 @@ const _: () = {
 
     const TYPE_INFO: ::intercom_cts::TypeInfo<'static> = ::intercom_cts::TypeInfo {
         name: "DDS::XTypes::CommonAliasBody",
-        flags: ::intercom_cts::TypeFlag::IS_APPENDABLE,
+        flags: ::intercom_cts::TypeFlag::IS_FINAL.union(::intercom_cts::TypeFlag::IS_NESTED),
         kind: ::intercom_cts::TypeKind::Struct,
         key_info: None,
         element_info: None,
@@ -5253,7 +5253,7 @@ const _: () = {
 
     const TYPE_INFO: ::intercom_cts::TypeInfo<'static> = ::intercom_cts::TypeInfo {
         name: "DDS::XTypes::CompleteAliasBody",
-        flags: ::intercom_cts::TypeFlag::IS_APPENDABLE,
+        flags: ::intercom_cts::TypeFlag::IS_APPENDABLE.union(::intercom_cts::TypeFlag::IS_NESTED),
         kind: ::intercom_cts::TypeKind::Struct,
         key_info: None,
         element_info: None,
@@ -5341,7 +5341,7 @@ const _: () = {
 
     const TYPE_INFO: ::intercom_cts::TypeInfo<'static> = ::intercom_cts::TypeInfo {
         name: "DDS::XTypes::MinimalAliasBody",
-        flags: ::intercom_cts::TypeFlag::IS_APPENDABLE,
+        flags: ::intercom_cts::TypeFlag::IS_APPENDABLE.union(::intercom_cts::TypeFlag::IS_NESTED),
         kind: ::intercom_cts::TypeKind::Struct,
         key_info: None,
         element_info: None,
@@ -5409,7 +5409,7 @@ const _: () = {
 
     const TYPE_INFO: ::intercom_cts::TypeInfo<'static> = ::intercom_cts::TypeInfo {
         name: "DDS::XTypes::CompleteAliasHeader",
-        flags: ::intercom_cts::TypeFlag::IS_APPENDABLE,
+        flags: ::intercom_cts::TypeFlag::IS_APPENDABLE.union(::intercom_cts::TypeFlag::IS_NESTED),
         kind: ::intercom_cts::TypeKind::Struct,
         key_info: None,
         element_info: None,
@@ -5473,7 +5473,7 @@ const _: () = {
 
     const TYPE_INFO: ::intercom_cts::TypeInfo<'static> = ::intercom_cts::TypeInfo {
         name: "DDS::XTypes::MinimalAliasHeader",
-        flags: ::intercom_cts::TypeFlag::IS_APPENDABLE,
+        flags: ::intercom_cts::TypeFlag::IS_APPENDABLE.union(::intercom_cts::TypeFlag::IS_NESTED),
         kind: ::intercom_cts::TypeKind::Struct,
         key_info: None,
         element_info: None,
@@ -5536,7 +5536,7 @@ const _: () = {
 
     const TYPE_INFO: ::intercom_cts::TypeInfo<'static> = ::intercom_cts::TypeInfo {
         name: "DDS::XTypes::CompleteAliasType",
-        flags: ::intercom_cts::TypeFlag::IS_APPENDABLE,
+        flags: ::intercom_cts::TypeFlag::IS_FINAL.union(::intercom_cts::TypeFlag::IS_NESTED),
         kind: ::intercom_cts::TypeKind::Struct,
         key_info: None,
         element_info: None,
@@ -5626,7 +5626,7 @@ const _: () = {
 
     const TYPE_INFO: ::intercom_cts::TypeInfo<'static> = ::intercom_cts::TypeInfo {
         name: "DDS::XTypes::MinimalAliasType",
-        flags: ::intercom_cts::TypeFlag::IS_APPENDABLE,
+        flags: ::intercom_cts::TypeFlag::IS_FINAL.union(::intercom_cts::TypeFlag::IS_NESTED),
         kind: ::intercom_cts::TypeKind::Struct,
         key_info: None,
         element_info: None,
@@ -5714,7 +5714,7 @@ const _: () = {
 
     const TYPE_INFO: ::intercom_cts::TypeInfo<'static> = ::intercom_cts::TypeInfo {
         name: "DDS::XTypes::CompleteElementDetail",
-        flags: ::intercom_cts::TypeFlag::IS_APPENDABLE,
+        flags: ::intercom_cts::TypeFlag::IS_FINAL.union(::intercom_cts::TypeFlag::IS_NESTED),
         kind: ::intercom_cts::TypeKind::Struct,
         key_info: None,
         element_info: None,
@@ -5796,7 +5796,7 @@ const _: () = {
 
     const TYPE_INFO: ::intercom_cts::TypeInfo<'static> = ::intercom_cts::TypeInfo {
         name: "DDS::XTypes::CommonCollectionElement",
-        flags: ::intercom_cts::TypeFlag::IS_APPENDABLE,
+        flags: ::intercom_cts::TypeFlag::IS_FINAL.union(::intercom_cts::TypeFlag::IS_NESTED),
         kind: ::intercom_cts::TypeKind::Struct,
         key_info: None,
         element_info: None,
@@ -5876,7 +5876,7 @@ const _: () = {
 
     const TYPE_INFO: ::intercom_cts::TypeInfo<'static> = ::intercom_cts::TypeInfo {
         name: "DDS::XTypes::CompleteCollectionElement",
-        flags: ::intercom_cts::TypeFlag::IS_APPENDABLE,
+        flags: ::intercom_cts::TypeFlag::IS_APPENDABLE.union(::intercom_cts::TypeFlag::IS_NESTED),
         kind: ::intercom_cts::TypeKind::Struct,
         key_info: None,
         element_info: None,
@@ -5954,7 +5954,7 @@ const _: () = {
 
     const TYPE_INFO: ::intercom_cts::TypeInfo<'static> = ::intercom_cts::TypeInfo {
         name: "DDS::XTypes::MinimalCollectionElement",
-        flags: ::intercom_cts::TypeFlag::IS_APPENDABLE,
+        flags: ::intercom_cts::TypeFlag::IS_APPENDABLE.union(::intercom_cts::TypeFlag::IS_NESTED),
         kind: ::intercom_cts::TypeKind::Struct,
         key_info: None,
         element_info: None,
@@ -6022,7 +6022,7 @@ const _: () = {
 
     const TYPE_INFO: ::intercom_cts::TypeInfo<'static> = ::intercom_cts::TypeInfo {
         name: "DDS::XTypes::CommonCollectionHeader",
-        flags: ::intercom_cts::TypeFlag::IS_APPENDABLE,
+        flags: ::intercom_cts::TypeFlag::IS_FINAL.union(::intercom_cts::TypeFlag::IS_NESTED),
         kind: ::intercom_cts::TypeKind::Struct,
         key_info: None,
         element_info: None,
@@ -6092,7 +6092,7 @@ const _: () = {
 
     const TYPE_INFO: ::intercom_cts::TypeInfo<'static> = ::intercom_cts::TypeInfo {
         name: "DDS::XTypes::CompleteCollectionHeader",
-        flags: ::intercom_cts::TypeFlag::IS_APPENDABLE,
+        flags: ::intercom_cts::TypeFlag::IS_APPENDABLE.union(::intercom_cts::TypeFlag::IS_NESTED),
         kind: ::intercom_cts::TypeKind::Struct,
         key_info: None,
         element_info: None,
@@ -6170,7 +6170,7 @@ const _: () = {
 
     const TYPE_INFO: ::intercom_cts::TypeInfo<'static> = ::intercom_cts::TypeInfo {
         name: "DDS::XTypes::MinimalCollectionHeader",
-        flags: ::intercom_cts::TypeFlag::IS_APPENDABLE,
+        flags: ::intercom_cts::TypeFlag::IS_APPENDABLE.union(::intercom_cts::TypeFlag::IS_NESTED),
         kind: ::intercom_cts::TypeKind::Struct,
         key_info: None,
         element_info: None,
@@ -6242,7 +6242,7 @@ const _: () = {
 
     const TYPE_INFO: ::intercom_cts::TypeInfo<'static> = ::intercom_cts::TypeInfo {
         name: "DDS::XTypes::CompleteSequenceType",
-        flags: ::intercom_cts::TypeFlag::IS_APPENDABLE,
+        flags: ::intercom_cts::TypeFlag::IS_FINAL.union(::intercom_cts::TypeFlag::IS_NESTED),
         kind: ::intercom_cts::TypeKind::Struct,
         key_info: None,
         element_info: None,
@@ -6334,7 +6334,7 @@ const _: () = {
 
     const TYPE_INFO: ::intercom_cts::TypeInfo<'static> = ::intercom_cts::TypeInfo {
         name: "DDS::XTypes::MinimalSequenceType",
-        flags: ::intercom_cts::TypeFlag::IS_APPENDABLE,
+        flags: ::intercom_cts::TypeFlag::IS_FINAL.union(::intercom_cts::TypeFlag::IS_NESTED),
         kind: ::intercom_cts::TypeKind::Struct,
         key_info: None,
         element_info: None,
@@ -6421,7 +6421,7 @@ const _: () = {
 
     const TYPE_INFO: ::intercom_cts::TypeInfo<'static> = ::intercom_cts::TypeInfo {
         name: "DDS::XTypes::CommonArrayHeader",
-        flags: ::intercom_cts::TypeFlag::IS_APPENDABLE,
+        flags: ::intercom_cts::TypeFlag::IS_FINAL.union(::intercom_cts::TypeFlag::IS_NESTED),
         kind: ::intercom_cts::TypeKind::Struct,
         key_info: None,
         element_info: None,
@@ -6491,7 +6491,7 @@ const _: () = {
 
     const TYPE_INFO: ::intercom_cts::TypeInfo<'static> = ::intercom_cts::TypeInfo {
         name: "DDS::XTypes::CompleteArrayHeader",
-        flags: ::intercom_cts::TypeFlag::IS_APPENDABLE,
+        flags: ::intercom_cts::TypeFlag::IS_APPENDABLE.union(::intercom_cts::TypeFlag::IS_NESTED),
         kind: ::intercom_cts::TypeKind::Struct,
         key_info: None,
         element_info: None,
@@ -6569,7 +6569,7 @@ const _: () = {
 
     const TYPE_INFO: ::intercom_cts::TypeInfo<'static> = ::intercom_cts::TypeInfo {
         name: "DDS::XTypes::MinimalArrayHeader",
-        flags: ::intercom_cts::TypeFlag::IS_APPENDABLE,
+        flags: ::intercom_cts::TypeFlag::IS_APPENDABLE.union(::intercom_cts::TypeFlag::IS_NESTED),
         kind: ::intercom_cts::TypeKind::Struct,
         key_info: None,
         element_info: None,
@@ -6641,7 +6641,7 @@ const _: () = {
 
     const TYPE_INFO: ::intercom_cts::TypeInfo<'static> = ::intercom_cts::TypeInfo {
         name: "DDS::XTypes::CompleteArrayType",
-        flags: ::intercom_cts::TypeFlag::IS_APPENDABLE,
+        flags: ::intercom_cts::TypeFlag::IS_APPENDABLE.union(::intercom_cts::TypeFlag::IS_NESTED),
         kind: ::intercom_cts::TypeKind::Struct,
         key_info: None,
         element_info: None,
@@ -6732,7 +6732,7 @@ const _: () = {
 
     const TYPE_INFO: ::intercom_cts::TypeInfo<'static> = ::intercom_cts::TypeInfo {
         name: "DDS::XTypes::MinimalArrayType",
-        flags: ::intercom_cts::TypeFlag::IS_APPENDABLE,
+        flags: ::intercom_cts::TypeFlag::IS_FINAL.union(::intercom_cts::TypeFlag::IS_NESTED),
         kind: ::intercom_cts::TypeKind::Struct,
         key_info: None,
         element_info: None,
@@ -6825,7 +6825,7 @@ const _: () = {
 
     const TYPE_INFO: ::intercom_cts::TypeInfo<'static> = ::intercom_cts::TypeInfo {
         name: "DDS::XTypes::CompleteMapType",
-        flags: ::intercom_cts::TypeFlag::IS_APPENDABLE,
+        flags: ::intercom_cts::TypeFlag::IS_FINAL.union(::intercom_cts::TypeFlag::IS_NESTED),
         kind: ::intercom_cts::TypeKind::Struct,
         key_info: None,
         element_info: None,
@@ -6928,7 +6928,7 @@ const _: () = {
 
     const TYPE_INFO: ::intercom_cts::TypeInfo<'static> = ::intercom_cts::TypeInfo {
         name: "DDS::XTypes::MinimalMapType",
-        flags: ::intercom_cts::TypeFlag::IS_APPENDABLE,
+        flags: ::intercom_cts::TypeFlag::IS_FINAL.union(::intercom_cts::TypeFlag::IS_NESTED),
         kind: ::intercom_cts::TypeKind::Struct,
         key_info: None,
         element_info: None,
@@ -7028,7 +7028,7 @@ const _: () = {
 
     const TYPE_INFO: ::intercom_cts::TypeInfo<'static> = ::intercom_cts::TypeInfo {
         name: "DDS::XTypes::CommonEnumeratedLiteral",
-        flags: ::intercom_cts::TypeFlag::IS_APPENDABLE,
+        flags: ::intercom_cts::TypeFlag::IS_APPENDABLE.union(::intercom_cts::TypeFlag::IS_NESTED),
         kind: ::intercom_cts::TypeKind::Struct,
         key_info: None,
         element_info: None,
@@ -7108,7 +7108,7 @@ const _: () = {
 
     const TYPE_INFO: ::intercom_cts::TypeInfo<'static> = ::intercom_cts::TypeInfo {
         name: "DDS::XTypes::CompleteEnumeratedLiteral",
-        flags: ::intercom_cts::TypeFlag::IS_APPENDABLE,
+        flags: ::intercom_cts::TypeFlag::IS_APPENDABLE.union(::intercom_cts::TypeFlag::IS_NESTED),
         kind: ::intercom_cts::TypeKind::Struct,
         key_info: None,
         element_info: None,
@@ -7191,7 +7191,7 @@ const _: () = {
 
     const TYPE_INFO: ::intercom_cts::TypeInfo<'static> = ::intercom_cts::TypeInfo {
         name: "DDS::XTypes::MinimalEnumeratedLiteral",
-        flags: ::intercom_cts::TypeFlag::IS_APPENDABLE,
+        flags: ::intercom_cts::TypeFlag::IS_APPENDABLE.union(::intercom_cts::TypeFlag::IS_NESTED),
         kind: ::intercom_cts::TypeKind::Struct,
         key_info: None,
         element_info: None,
@@ -7272,7 +7272,7 @@ const _: () = {
 
     const TYPE_INFO: ::intercom_cts::TypeInfo<'static> = ::intercom_cts::TypeInfo {
         name: "DDS::XTypes::CommonEnumeratedHeader",
-        flags: ::intercom_cts::TypeFlag::IS_APPENDABLE,
+        flags: ::intercom_cts::TypeFlag::IS_FINAL.union(::intercom_cts::TypeFlag::IS_NESTED),
         kind: ::intercom_cts::TypeKind::Struct,
         key_info: None,
         element_info: None,
@@ -7342,7 +7342,7 @@ const _: () = {
 
     const TYPE_INFO: ::intercom_cts::TypeInfo<'static> = ::intercom_cts::TypeInfo {
         name: "DDS::XTypes::CompleteEnumeratedHeader",
-        flags: ::intercom_cts::TypeFlag::IS_APPENDABLE,
+        flags: ::intercom_cts::TypeFlag::IS_APPENDABLE.union(::intercom_cts::TypeFlag::IS_NESTED),
         kind: ::intercom_cts::TypeKind::Struct,
         key_info: None,
         element_info: None,
@@ -7420,7 +7420,7 @@ const _: () = {
 
     const TYPE_INFO: ::intercom_cts::TypeInfo<'static> = ::intercom_cts::TypeInfo {
         name: "DDS::XTypes::MinimalEnumeratedHeader",
-        flags: ::intercom_cts::TypeFlag::IS_APPENDABLE,
+        flags: ::intercom_cts::TypeFlag::IS_APPENDABLE.union(::intercom_cts::TypeFlag::IS_NESTED),
         kind: ::intercom_cts::TypeKind::Struct,
         key_info: None,
         element_info: None,
@@ -7492,7 +7492,7 @@ const _: () = {
 
     const TYPE_INFO: ::intercom_cts::TypeInfo<'static> = ::intercom_cts::TypeInfo {
         name: "DDS::XTypes::CompleteEnumeratedType",
-        flags: ::intercom_cts::TypeFlag::IS_APPENDABLE,
+        flags: ::intercom_cts::TypeFlag::IS_FINAL.union(::intercom_cts::TypeFlag::IS_NESTED),
         kind: ::intercom_cts::TypeKind::Struct,
         key_info: None,
         element_info: None,
@@ -7585,7 +7585,7 @@ const _: () = {
 
     const TYPE_INFO: ::intercom_cts::TypeInfo<'static> = ::intercom_cts::TypeInfo {
         name: "DDS::XTypes::MinimalEnumeratedType",
-        flags: ::intercom_cts::TypeFlag::IS_APPENDABLE,
+        flags: ::intercom_cts::TypeFlag::IS_FINAL.union(::intercom_cts::TypeFlag::IS_NESTED),
         kind: ::intercom_cts::TypeKind::Struct,
         key_info: None,
         element_info: None,
@@ -7674,7 +7674,7 @@ const _: () = {
 
     const TYPE_INFO: ::intercom_cts::TypeInfo<'static> = ::intercom_cts::TypeInfo {
         name: "DDS::XTypes::CommonBitflag",
-        flags: ::intercom_cts::TypeFlag::IS_APPENDABLE,
+        flags: ::intercom_cts::TypeFlag::IS_FINAL.union(::intercom_cts::TypeFlag::IS_NESTED),
         kind: ::intercom_cts::TypeKind::Struct,
         key_info: None,
         element_info: None,
@@ -7754,7 +7754,7 @@ const _: () = {
 
     const TYPE_INFO: ::intercom_cts::TypeInfo<'static> = ::intercom_cts::TypeInfo {
         name: "DDS::XTypes::CompleteBitflag",
-        flags: ::intercom_cts::TypeFlag::IS_APPENDABLE,
+        flags: ::intercom_cts::TypeFlag::IS_APPENDABLE.union(::intercom_cts::TypeFlag::IS_NESTED),
         kind: ::intercom_cts::TypeKind::Struct,
         key_info: None,
         element_info: None,
@@ -7836,7 +7836,7 @@ const _: () = {
 
     const TYPE_INFO: ::intercom_cts::TypeInfo<'static> = ::intercom_cts::TypeInfo {
         name: "DDS::XTypes::MinimalBitflag",
-        flags: ::intercom_cts::TypeFlag::IS_APPENDABLE,
+        flags: ::intercom_cts::TypeFlag::IS_APPENDABLE.union(::intercom_cts::TypeFlag::IS_NESTED),
         kind: ::intercom_cts::TypeKind::Struct,
         key_info: None,
         element_info: None,
@@ -7916,7 +7916,7 @@ const _: () = {
 
     const TYPE_INFO: ::intercom_cts::TypeInfo<'static> = ::intercom_cts::TypeInfo {
         name: "DDS::XTypes::CommonBitmaskHeader",
-        flags: ::intercom_cts::TypeFlag::IS_APPENDABLE,
+        flags: ::intercom_cts::TypeFlag::IS_FINAL.union(::intercom_cts::TypeFlag::IS_NESTED),
         kind: ::intercom_cts::TypeKind::Struct,
         key_info: None,
         element_info: None,
@@ -7992,7 +7992,7 @@ const _: () = {
 
     const TYPE_INFO: ::intercom_cts::TypeInfo<'static> = ::intercom_cts::TypeInfo {
         name: "DDS::XTypes::CompleteBitmaskType",
-        flags: ::intercom_cts::TypeFlag::IS_APPENDABLE,
+        flags: ::intercom_cts::TypeFlag::IS_APPENDABLE.union(::intercom_cts::TypeFlag::IS_NESTED),
         kind: ::intercom_cts::TypeKind::Struct,
         key_info: None,
         element_info: None,
@@ -8082,7 +8082,7 @@ const _: () = {
 
     const TYPE_INFO: ::intercom_cts::TypeInfo<'static> = ::intercom_cts::TypeInfo {
         name: "DDS::XTypes::MinimalBitmaskType",
-        flags: ::intercom_cts::TypeFlag::IS_APPENDABLE,
+        flags: ::intercom_cts::TypeFlag::IS_APPENDABLE.union(::intercom_cts::TypeFlag::IS_NESTED),
         kind: ::intercom_cts::TypeKind::Struct,
         key_info: None,
         element_info: None,
@@ -8174,7 +8174,7 @@ const _: () = {
 
     const TYPE_INFO: ::intercom_cts::TypeInfo<'static> = ::intercom_cts::TypeInfo {
         name: "DDS::XTypes::CommonBitfield",
-        flags: ::intercom_cts::TypeFlag::IS_APPENDABLE,
+        flags: ::intercom_cts::TypeFlag::IS_FINAL.union(::intercom_cts::TypeFlag::IS_NESTED),
         kind: ::intercom_cts::TypeKind::Struct,
         key_info: None,
         element_info: None,
@@ -8270,7 +8270,7 @@ const _: () = {
 
     const TYPE_INFO: ::intercom_cts::TypeInfo<'static> = ::intercom_cts::TypeInfo {
         name: "DDS::XTypes::CompleteBitfield",
-        flags: ::intercom_cts::TypeFlag::IS_APPENDABLE,
+        flags: ::intercom_cts::TypeFlag::IS_APPENDABLE.union(::intercom_cts::TypeFlag::IS_NESTED),
         kind: ::intercom_cts::TypeKind::Struct,
         key_info: None,
         element_info: None,
@@ -8352,7 +8352,7 @@ const _: () = {
 
     const TYPE_INFO: ::intercom_cts::TypeInfo<'static> = ::intercom_cts::TypeInfo {
         name: "DDS::XTypes::MinimalBitfield",
-        flags: ::intercom_cts::TypeFlag::IS_APPENDABLE,
+        flags: ::intercom_cts::TypeFlag::IS_APPENDABLE.union(::intercom_cts::TypeFlag::IS_NESTED),
         kind: ::intercom_cts::TypeKind::Struct,
         key_info: None,
         element_info: None,
@@ -8432,7 +8432,7 @@ const _: () = {
 
     const TYPE_INFO: ::intercom_cts::TypeInfo<'static> = ::intercom_cts::TypeInfo {
         name: "DDS::XTypes::CompleteBitsetHeader",
-        flags: ::intercom_cts::TypeFlag::IS_APPENDABLE,
+        flags: ::intercom_cts::TypeFlag::IS_APPENDABLE.union(::intercom_cts::TypeFlag::IS_NESTED),
         kind: ::intercom_cts::TypeKind::Struct,
         key_info: None,
         element_info: None,
@@ -8496,7 +8496,7 @@ const _: () = {
 
     const TYPE_INFO: ::intercom_cts::TypeInfo<'static> = ::intercom_cts::TypeInfo {
         name: "DDS::XTypes::MinimalBitsetHeader",
-        flags: ::intercom_cts::TypeFlag::IS_APPENDABLE,
+        flags: ::intercom_cts::TypeFlag::IS_APPENDABLE.union(::intercom_cts::TypeFlag::IS_NESTED),
         kind: ::intercom_cts::TypeKind::Struct,
         key_info: None,
         element_info: None,
@@ -8559,7 +8559,7 @@ const _: () = {
 
     const TYPE_INFO: ::intercom_cts::TypeInfo<'static> = ::intercom_cts::TypeInfo {
         name: "DDS::XTypes::CompleteBitsetType",
-        flags: ::intercom_cts::TypeFlag::IS_APPENDABLE,
+        flags: ::intercom_cts::TypeFlag::IS_APPENDABLE.union(::intercom_cts::TypeFlag::IS_NESTED),
         kind: ::intercom_cts::TypeKind::Struct,
         key_info: None,
         element_info: None,
@@ -8649,7 +8649,7 @@ const _: () = {
 
     const TYPE_INFO: ::intercom_cts::TypeInfo<'static> = ::intercom_cts::TypeInfo {
         name: "DDS::XTypes::MinimalBitsetType",
-        flags: ::intercom_cts::TypeFlag::IS_APPENDABLE,
+        flags: ::intercom_cts::TypeFlag::IS_APPENDABLE.union(::intercom_cts::TypeFlag::IS_NESTED),
         kind: ::intercom_cts::TypeKind::Struct,
         key_info: None,
         element_info: None,
@@ -8731,7 +8731,7 @@ const _: () = {
 
     const TYPE_INFO: ::intercom_cts::TypeInfo<'static> = ::intercom_cts::TypeInfo {
         name: "DDS::XTypes::CompleteExtendedType",
-        flags: ::intercom_cts::TypeFlag::IS_APPENDABLE,
+        flags: ::intercom_cts::TypeFlag::IS_MUTABLE.union(::intercom_cts::TypeFlag::IS_NESTED),
         kind: ::intercom_cts::TypeKind::Struct,
         key_info: None,
         element_info: None,
@@ -8853,7 +8853,7 @@ const _: () = {
 
     const TYPE_INFO: ::intercom_cts::TypeInfo<'static> = ::intercom_cts::TypeInfo {
         name: "DDS::XTypes::CompleteTypeObject",
-        flags: ::intercom_cts::TypeFlag::IS_APPENDABLE,
+        flags: ::intercom_cts::TypeFlag::IS_FINAL.union(::intercom_cts::TypeFlag::IS_NESTED),
         kind: ::intercom_cts::TypeKind::Union,
         key_info: None,
         element_info: None,
@@ -9048,7 +9048,7 @@ const _: () = {
 
     const TYPE_INFO: ::intercom_cts::TypeInfo<'static> = ::intercom_cts::TypeInfo {
         name: "DDS::XTypes::MinimalExtendedType",
-        flags: ::intercom_cts::TypeFlag::IS_APPENDABLE,
+        flags: ::intercom_cts::TypeFlag::IS_MUTABLE.union(::intercom_cts::TypeFlag::IS_NESTED),
         kind: ::intercom_cts::TypeKind::Struct,
         key_info: None,
         element_info: None,
@@ -9170,7 +9170,7 @@ const _: () = {
 
     const TYPE_INFO: ::intercom_cts::TypeInfo<'static> = ::intercom_cts::TypeInfo {
         name: "DDS::XTypes::MinimalTypeObject",
-        flags: ::intercom_cts::TypeFlag::IS_APPENDABLE,
+        flags: ::intercom_cts::TypeFlag::IS_FINAL.union(::intercom_cts::TypeFlag::IS_NESTED),
         kind: ::intercom_cts::TypeKind::Union,
         key_info: None,
         element_info: None,
@@ -9392,7 +9392,7 @@ const _: () = {
 
     const TYPE_INFO: ::intercom_cts::TypeInfo<'static> = ::intercom_cts::TypeInfo {
         name: "DDS::XTypes::TypeObject",
-        flags: ::intercom_cts::TypeFlag::IS_APPENDABLE,
+        flags: ::intercom_cts::TypeFlag::IS_APPENDABLE.union(::intercom_cts::TypeFlag::IS_NESTED),
         kind: ::intercom_cts::TypeKind::Union,
         key_info: None,
         element_info: None,
@@ -9491,7 +9491,7 @@ const _: () = {
 
     const TYPE_INFO: ::intercom_cts::TypeInfo<'static> = ::intercom_cts::TypeInfo {
         name: "DDS::XTypes::TypeIdentifierTypeObjectPair",
-        flags: ::intercom_cts::TypeFlag::IS_APPENDABLE,
+        flags: ::intercom_cts::TypeFlag::IS_FINAL.union(::intercom_cts::TypeFlag::IS_NESTED),
         kind: ::intercom_cts::TypeKind::Struct,
         key_info: None,
         element_info: None,
@@ -9574,7 +9574,7 @@ const _: () = {
 
     const TYPE_INFO: ::intercom_cts::TypeInfo<'static> = ::intercom_cts::TypeInfo {
         name: "DDS::XTypes::TypeIdentifierPair",
-        flags: ::intercom_cts::TypeFlag::IS_APPENDABLE,
+        flags: ::intercom_cts::TypeFlag::IS_FINAL.union(::intercom_cts::TypeFlag::IS_NESTED),
         kind: ::intercom_cts::TypeKind::Struct,
         key_info: None,
         element_info: None,
@@ -9656,7 +9656,7 @@ const _: () = {
 
     const TYPE_INFO: ::intercom_cts::TypeInfo<'static> = ::intercom_cts::TypeInfo {
         name: "DDS::XTypes::TypeIdentifierWithSize",
-        flags: ::intercom_cts::TypeFlag::IS_APPENDABLE,
+        flags: ::intercom_cts::TypeFlag::IS_APPENDABLE.union(::intercom_cts::TypeFlag::IS_NESTED),
         kind: ::intercom_cts::TypeKind::Struct,
         key_info: None,
         element_info: None,
@@ -9740,7 +9740,7 @@ const _: () = {
 
     const TYPE_INFO: ::intercom_cts::TypeInfo<'static> = ::intercom_cts::TypeInfo {
         name: "DDS::XTypes::TypeIdentifierWithDependencies",
-        flags: ::intercom_cts::TypeFlag::IS_APPENDABLE,
+        flags: ::intercom_cts::TypeFlag::IS_APPENDABLE.union(::intercom_cts::TypeFlag::IS_NESTED),
         kind: ::intercom_cts::TypeKind::Struct,
         key_info: None,
         element_info: None,
@@ -9833,7 +9833,7 @@ const _: () = {
 
     const TYPE_INFO: ::intercom_cts::TypeInfo<'static> = ::intercom_cts::TypeInfo {
         name: "DDS::XTypes::TypeInformation",
-        flags: ::intercom_cts::TypeFlag::IS_APPENDABLE,
+        flags: ::intercom_cts::TypeFlag::IS_MUTABLE.union(::intercom_cts::TypeFlag::IS_NESTED),
         kind: ::intercom_cts::TypeKind::Struct,
         key_info: None,
         element_info: None,
@@ -9842,7 +9842,7 @@ const _: () = {
     const MEMBER_INFO: &[::intercom_cts::MemberInfo<'static>] = &[
         ::intercom_cts::MemberInfo {
             name: "minimal",
-            member_id: 0,
+            member_id: 4097,
             flags: ::intercom_cts::MemberFlag::nil(),
             type_info: ::intercom_cts::type_info::<
                 crate::types::xtypes::TypeIdentifierWithDependencies,
@@ -9850,7 +9850,7 @@ const _: () = {
         },
         ::intercom_cts::MemberInfo {
             name: "complete",
-            member_id: 1,
+            member_id: 4098,
             flags: ::intercom_cts::MemberFlag::nil(),
             type_info: ::intercom_cts::type_info::<
                 crate::types::xtypes::TypeIdentifierWithDependencies,
@@ -9923,7 +9923,7 @@ const _: () = {
 
     const TYPE_INFO: ::intercom_cts::TypeInfo<'static> = ::intercom_cts::TypeInfo {
         name: "DDS::XTypes::TypeDefinition",
-        flags: ::intercom_cts::TypeFlag::IS_APPENDABLE,
+        flags: ::intercom_cts::TypeFlag::IS_APPENDABLE.union(::intercom_cts::TypeFlag::IS_NESTED),
         kind: ::intercom_cts::TypeKind::Struct,
         key_info: None,
         element_info: None,

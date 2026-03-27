@@ -47,7 +47,7 @@ ic-vfs = { path = "../ic-vfs" }
 tracing.workspace = true
 
 [dev-dependencies]
-insta = "1.46.3"
+insta = "1.47.0"
 ic-hir-lower = { path = "../ic-hir-lower" }
 ic-lexer = { path = "../ic-lexer" }
 ic-parse = { path = "../ic-parse" }

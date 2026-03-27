@@ -49,4 +49,4 @@ tracing.workspace = true
 ic-parse = { path = "../ic-parse" }
 ic-preproc = { path = "../ic-preproc" }
 ic-vfs = { path = "../ic-vfs" }
-insta = "1.46.3"
+insta = "1.47.0"

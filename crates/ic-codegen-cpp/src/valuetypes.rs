@@ -42,7 +42,7 @@ impl CppGen<'_> {
 
         w!(decl_w, "struct ", valuetype_name);
         if let Some(parent) = valuetype_ty.parent {
-            w!(decl_w, " : public ", self.scoped_name(parent, def.id));
+            w!(decl_w, " : public ", self.scoped_name(parent.value, def.id));
         }
 
         w!(decl_w, " {\n");
@@ -178,10 +178,10 @@ impl CppGen<'_> {
         w!(w, "\n) : ");
 
         let mut has_parent = false;
-        if let Some(parent_id) = valuetype_ty.parent {
+        if let Some(parent) = valuetype_ty.parent {
             has_parent = true;
-            let parent_name = self.scoped_name(parent_id, None);
-            let parent_all_members = self.collect_all_members(parent_id);
+            let parent_name = self.scoped_name(parent.value, None);
+            let parent_all_members = self.collect_all_members(parent.value);
 
             w!(w, parent_name, "(");
             for (i, member) in parent_all_members.iter().enumerate() {

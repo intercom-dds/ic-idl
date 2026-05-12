@@ -62,8 +62,8 @@ impl<'a> ic_hir::visit::Visitor<'a> for InvalidInheritance<'a> {
     }
 
     fn visit_struct(&mut self, def: &'a hir::Def, data: &'a hir::StructTy) {
-        if let Some(parent_id) = data.parent {
-            let parent_def = self.hir.context.definitions.get(parent_id);
+        if let Some(parent) = data.parent {
+            let parent_def = self.hir.context.definitions.get(parent.value);
             if !matches!(&parent_def.kind, DefKind::Struct(_)) {
                 self.ctx.report(
                     InvalidInheritance::name(),
@@ -85,8 +85,8 @@ impl<'a> ic_hir::visit::Visitor<'a> for InvalidInheritance<'a> {
     }
 
     fn visit_interface(&mut self, def: &'a hir::Def, data: &'a hir::InterfaceTy) {
-        for parent_id in &data.parents {
-            let parent_def = self.hir.context.definitions.get(*parent_id);
+        for parent in &data.parents {
+            let parent_def = self.hir.context.definitions.get(parent.value);
             if !matches!(&parent_def.kind, DefKind::Interface(_)) {
                 self.ctx.report(
                     InvalidInheritance::name(),
@@ -108,8 +108,8 @@ impl<'a> ic_hir::visit::Visitor<'a> for InvalidInheritance<'a> {
     }
 
     fn visit_valuetype(&mut self, def: &'a hir::Def, data: &'a hir::ValueTy) {
-        if let Some(parent_id) = data.parent {
-            let parent_def = self.hir.context.definitions.get(parent_id);
+        if let Some(parent) = data.parent {
+            let parent_def = self.hir.context.definitions.get(parent.value);
             if !matches!(&parent_def.kind, DefKind::Valuetype(_)) {
                 self.ctx.report(
                     InvalidInheritance::name(),
@@ -129,8 +129,8 @@ impl<'a> ic_hir::visit::Visitor<'a> for InvalidInheritance<'a> {
             }
         }
 
-        if let Some(supports_id) = data.supports {
-            let supports_def = self.hir.context.definitions.get(supports_id);
+        if let Some(supports) = data.supports {
+            let supports_def = self.hir.context.definitions.get(supports.value);
             if !matches!(&supports_def.kind, DefKind::Interface(_)) {
                 self.ctx.report(
                     InvalidInheritance::name(),
@@ -152,8 +152,8 @@ impl<'a> ic_hir::visit::Visitor<'a> for InvalidInheritance<'a> {
     }
 
     fn visit_bitset(&mut self, def: &'a hir::Def, data: &'a hir::BitsetTy) {
-        if let Some(parent_id) = data.parent {
-            let parent_def = self.hir.context.definitions.get(parent_id);
+        if let Some(parent) = data.parent {
+            let parent_def = self.hir.context.definitions.get(parent.value);
             if !matches!(&parent_def.kind, DefKind::Bitset(_)) {
                 self.ctx.report(
                     InvalidInheritance::name(),

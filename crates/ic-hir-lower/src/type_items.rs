@@ -97,7 +97,7 @@ impl<'ctx> TypeItemProcessor<'ctx> {
             annotations,
             span: s.span,
             kind: DefKind::Struct(StructTy {
-                parent: self.ctx.context.scopes.get_scope(self.current_scope).def_id,
+                parent: None,
                 members: Vec::new(),
             }),
             flags: DefFlags::nil(),
@@ -118,20 +118,19 @@ impl<'ctx> TypeItemProcessor<'ctx> {
         );
 
         let parent = if let Some(ref parent_type) = s.parent {
+            let path_span = crate::utils::path_span(parent_type);
             let mut resolver = TypeResolver::new(self.ctx, self.current_scope);
             resolver.resolve_path_type(parent_type).and_then(|ty| {
                 if let Some(parent_id) = ty.as_adt() {
-                    self.validate_parent_inheritance(
-                        parent_id,
-                        "struct",
-                        &s.ident.name,
-                        crate::utils::path_span(parent_type),
-                    )
+                    self.validate_parent_inheritance(parent_id, "struct", &s.ident.name, path_span)
+                        .map(|value| Spanned {
+                            value,
+                            span: path_span,
+                        })
                 } else {
                     self.ctx.diagnostics.error(
                         "parent must be a struct type".to_string(),
-                        ic_diagnostic::Label::new(crate::utils::path_span(parent_type))
-                            .message("expected struct type"),
+                        ic_diagnostic::Label::new(path_span).message("expected struct type"),
                     );
                     None
                 }
@@ -158,22 +157,25 @@ impl<'ctx> TypeItemProcessor<'ctx> {
         let annotations = convert_annotations(self.ctx, &i.annotations, self.current_scope);
 
         for parent_path in &i.inherits {
+            let path_span = crate::utils::path_span(parent_path);
             let mut resolver = TypeResolver::new(self.ctx, self.current_scope);
             if let Some(ty) = resolver.resolve_path_type(parent_path) {
                 if let Some(parent_id) = ty.as_adt() {
-                    if let Some(valid_parent_id) = self.validate_parent_inheritance(
+                    if let Some(value) = self.validate_parent_inheritance(
                         parent_id,
                         "interface",
                         &i.ident.name,
-                        crate::utils::path_span(parent_path),
+                        path_span,
                     ) {
-                        parents.push(valid_parent_id);
+                        parents.push(Spanned {
+                            value,
+                            span: path_span,
+                        });
                     }
                 } else {
                     self.ctx.diagnostics.error(
                         "parent must be an interface type".to_string(),
-                        ic_diagnostic::Label::new(ic_syntax::util::path_span(parent_path))
-                            .message("expected interface type"),
+                        ic_diagnostic::Label::new(path_span).message("expected interface type"),
                     );
                 }
             }
@@ -412,26 +414,27 @@ impl<'ctx> TypeItemProcessor<'ctx> {
     }
 
     /// Resolve valuetype parent.
-    fn resolve_valuetype_parent(&mut self, v: &ValuetypeDef) -> Option<DefId> {
+    fn resolve_valuetype_parent(&mut self, v: &ValuetypeDef) -> Option<Spanned<DefId>> {
         let parent_type = v.inherits.as_ref()?;
+        let path_span = crate::utils::path_span(parent_type);
 
         let mut resolver = TypeResolver::new(self.ctx, self.current_scope);
         resolver
             .resolve_path_type(parent_type)
             .and_then(|ty| ty.as_adt())
             .and_then(|parent_id| {
-                self.validate_parent_inheritance(
-                    parent_id,
-                    "valuetype",
-                    &v.ident.name,
-                    crate::utils::path_span(parent_type),
-                )
+                self.validate_parent_inheritance(parent_id, "valuetype", &v.ident.name, path_span)
+            })
+            .map(|value| Spanned {
+                value,
+                span: path_span,
             })
     }
 
     /// Resolve valuetype supports interface.
-    fn resolve_valuetype_supports(&mut self, v: &ValuetypeDef) -> Option<DefId> {
+    fn resolve_valuetype_supports(&mut self, v: &ValuetypeDef) -> Option<Spanned<DefId>> {
         let supports_type = v.supports.as_ref()?;
+        let path_span = crate::utils::path_span(supports_type);
 
         let mut resolver = TypeResolver::new(self.ctx, self.current_scope);
         resolver.resolve_path_type(supports_type).and_then(|ty| {
@@ -442,12 +445,14 @@ impl<'ctx> TypeItemProcessor<'ctx> {
                     // Mark the supported interface as having children
                     let def = self.ctx.context.definitions.get_mut(supports_id);
                     def.flags |= DefFlags::HAS_CHILDREN;
-                    Some(supports_id)
+                    Some(Spanned {
+                        value: supports_id,
+                        span: path_span,
+                    })
                 } else {
                     self.ctx.diagnostics.error(
                         "supports must be an interface type".to_string(),
-                        ic_diagnostic::Label::new(crate::utils::path_span(supports_type))
-                            .message("expected interface type"),
+                        ic_diagnostic::Label::new(path_span).message("expected interface type"),
                     );
                     None
                 }

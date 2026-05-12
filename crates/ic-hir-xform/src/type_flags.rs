@@ -69,7 +69,7 @@ fn analyze_def(def_id: DefId, context: &mut Context, seen: &mut HashSet<DefId>) 
     // Collect parent `DefId`s, member types, and check for @external annotations
     let (parents, types, has_external): (Vec<DefId>, Vec<Ty>, bool) = match &def.kind {
         DefKind::Struct(s) => (
-            s.parent.into_iter().collect(),
+            s.parent.into_iter().map(|p| p.value).collect(),
             s.members.iter().map(|m| m.ty.clone()).collect(),
             s.members
                 .iter()
@@ -83,7 +83,7 @@ fn analyze_def(def_id: DefId, context: &mut Context, seen: &mut HashSet<DefId>) 
                 .any(|v| has_external_annotation(&v.annotations)),
         ),
         DefKind::Valuetype(v) => (
-            v.parent.into_iter().collect(),
+            v.parent.into_iter().map(|p| p.value).collect(),
             v.members.iter().map(|m| m.ty.clone()).collect(),
             v.members
                 .iter()

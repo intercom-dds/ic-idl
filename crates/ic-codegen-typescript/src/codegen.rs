@@ -421,7 +421,7 @@ impl<'a> TsGen<'a> {
     fn emit_struct(&self, w: &mut Twine, def: &Def, struct_ty: &StructTy) {
         w!(w, "export interface ", def.ident.name);
         if let Some(parent) = struct_ty.parent {
-            let parent_name = self.scoped_name(parent, def.id);
+            let parent_name = self.scoped_name(parent.value, def.id);
             w!(w, " extends ", parent_name);
         }
         w!(w, " {\n");
@@ -528,11 +528,11 @@ impl<'a> TsGen<'a> {
 
         if !interface_ty.parents.is_empty() {
             w!(w, " extends ");
-            for (i, &parent_id) in interface_ty.parents.iter().enumerate() {
+            for (i, parent) in interface_ty.parents.iter().enumerate() {
                 if i > 0 {
                     w!(w, ", ");
                 }
-                let parent_name = self.scoped_name(parent_id, def.id);
+                let parent_name = self.scoped_name(parent.value, def.id);
                 w!(w, parent_name);
             }
         }
@@ -616,7 +616,7 @@ impl<'a> TsGen<'a> {
     fn emit_valuetype(&self, w: &mut Twine, def: &Def, value_ty: &ValueTy) {
         w!(w, "export interface ", def.ident.name, "Data");
         if let Some(parent) = value_ty.parent {
-            let parent_name = self.scoped_name(parent, def.id);
+            let parent_name = self.scoped_name(parent.value, def.id);
             w!(w, " extends ", parent_name, "Data");
         }
         w!(w, " {\n");
@@ -635,7 +635,7 @@ impl<'a> TsGen<'a> {
 
         w!(w, "export interface ", def.ident.name, " extends ", def.ident.name, "Data");
         if let Some(supports) = value_ty.supports {
-            let supports_name = self.scoped_name(supports, def.id);
+            let supports_name = self.scoped_name(supports.value, def.id);
             w!(w, ", ", supports_name);
         }
         w!(w, " {\n");

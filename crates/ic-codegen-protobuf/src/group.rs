@@ -95,8 +95,8 @@ pub fn collect_struct_members(hir: &ResolvedGraph, def_id: DefId) -> Vec<MemberI
 
     match &def.kind {
         DefKind::Struct(struct_ty) => {
-            if let Some(parent_id) = struct_ty.parent {
-                members.extend(collect_struct_members(hir, parent_id));
+            if let Some(parent) = struct_ty.parent {
+                members.extend(collect_struct_members(hir, parent.value));
             }
 
             for member in &struct_ty.members {
@@ -115,8 +115,8 @@ pub fn collect_struct_members(hir: &ResolvedGraph, def_id: DefId) -> Vec<MemberI
             }
         }
         DefKind::Valuetype(valuetype_ty) => {
-            if let Some(parent_id) = valuetype_ty.parent {
-                members.extend(collect_struct_members(hir, parent_id));
+            if let Some(parent) = valuetype_ty.parent {
+                members.extend(collect_struct_members(hir, parent.value));
             }
 
             for member in &valuetype_ty.members {

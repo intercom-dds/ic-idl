@@ -314,14 +314,14 @@ impl<'a> CppGen<'a> {
 
         match &def.kind {
             DefKind::Struct(struct_ty) => {
-                if let Some(parent_id) = struct_ty.parent {
-                    all_members.extend(self.collect_all_members(parent_id));
+                if let Some(parent) = struct_ty.parent {
+                    all_members.extend(self.collect_all_members(parent.value));
                 }
                 all_members.extend(struct_ty.members.clone());
             }
             DefKind::Valuetype(valuetype_ty) => {
-                if let Some(parent_id) = valuetype_ty.parent {
-                    all_members.extend(self.collect_all_members(parent_id));
+                if let Some(parent) = valuetype_ty.parent {
+                    all_members.extend(self.collect_all_members(parent.value));
                 }
                 all_members.extend(valuetype_ty.members.clone());
             }
@@ -580,15 +580,15 @@ impl<'a> CppGen<'a> {
 
         match &def.kind {
             DefKind::Struct(struct_ty) => {
-                if let Some(parent_id) = struct_ty.parent {
-                    let parent_name = self.scoped_name(parent_id, None);
+                if let Some(parent) = struct_ty.parent {
+                    let parent_name = self.scoped_name(parent.value, None);
                     w!(w, "::std::hash<", parent_name, ">()(s)");
                     first = false;
                 }
             }
             DefKind::Valuetype(valuetype_ty) => {
-                if let Some(parent_id) = valuetype_ty.parent {
-                    let parent_name = self.scoped_name(parent_id, None);
+                if let Some(parent) = valuetype_ty.parent {
+                    let parent_name = self.scoped_name(parent.value, None);
                     w!(w, "::std::hash<", parent_name, ">()(s)");
                     first = false;
                 }

@@ -388,7 +388,7 @@ fn test_inheritance_with_defined_base() {
     if let DefKind::Interface(interface_ty) = &derived_def.kind {
         assert_eq!(interface_ty.parents.len(), 1);
         assert_eq!(
-            interface_ty.parents[0], base,
+            interface_ty.parents[0].value, base,
             "Derived should inherit from Base"
         );
     } else {

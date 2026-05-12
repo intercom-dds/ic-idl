@@ -448,15 +448,18 @@ impl<'ctx> ValueItemProcessor<'ctx> {
 
     pub fn process_bitset(&mut self, b: &BitsetDef) -> DefId {
         let parent = if let Some(ref parent_path) = b.parent {
+            let path_span = crate::utils::path_span(parent_path);
             let mut resolver = TypeResolver::new(self.ctx, self.current_scope);
             resolver.resolve_path_type(parent_path).and_then(|ty| {
                 if let Some(parent_id) = ty.as_adt() {
-                    Some(parent_id)
+                    Some(ic_hir::hir::Spanned {
+                        value: parent_id,
+                        span: path_span,
+                    })
                 } else {
                     self.ctx.diagnostics.error(
                         "parent must be a bitset type".to_string(),
-                        Label::new(crate::utils::path_span(parent_path))
-                            .message("expected bitset type"),
+                        Label::new(path_span).message("expected bitset type"),
                     );
                     None
                 }

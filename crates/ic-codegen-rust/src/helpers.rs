@@ -74,8 +74,8 @@ impl RustGen<'_> {
         struct_ty: &ic_hir::hir::StructTy,
     ) -> Vec<ic_hir::hir::Member> {
         let mut members = Vec::new();
-        if let Some(parent_id) = struct_ty.parent {
-            let parent_def = self.hir.context.definitions.get(parent_id);
+        if let Some(parent) = struct_ty.parent {
+            let parent_def = self.hir.context.definitions.get(parent.value);
             if let DefKind::Struct(parent_struct) = &parent_def.kind {
                 members.extend(self.struct_members(parent_struct));
             }
@@ -89,8 +89,8 @@ impl RustGen<'_> {
         struct_ty: &ic_hir::hir::StructTy,
     ) -> Vec<ic_hir::hir::Member> {
         let mut members = Vec::new();
-        if let Some(parent_id) = struct_ty.parent {
-            let parent_def = self.original_hir.context.definitions.get(parent_id);
+        if let Some(parent) = struct_ty.parent {
+            let parent_def = self.original_hir.context.definitions.get(parent.value);
             if let DefKind::Struct(parent_struct) = &parent_def.kind {
                 members.extend(self.original_struct_members(parent_struct));
             }
@@ -108,8 +108,8 @@ impl RustGen<'_> {
         value_ty: &ic_hir::hir::ValueTy,
     ) -> Vec<ic_hir::hir::Member> {
         let mut members = Vec::new();
-        if let Some(parent_id) = value_ty.parent {
-            let parent_def = self.hir.context.definitions.get(parent_id);
+        if let Some(parent) = value_ty.parent {
+            let parent_def = self.hir.context.definitions.get(parent.value);
             if let DefKind::Valuetype(parent_value) = &parent_def.kind {
                 members.extend(self.valuetype_members(parent_value));
             }
@@ -123,8 +123,8 @@ impl RustGen<'_> {
         value_ty: &ic_hir::hir::ValueTy,
     ) -> Vec<ic_hir::hir::Member> {
         let mut members = Vec::new();
-        if let Some(parent_id) = value_ty.parent {
-            let parent_def = self.original_hir.context.definitions.get(parent_id);
+        if let Some(parent) = value_ty.parent {
+            let parent_def = self.original_hir.context.definitions.get(parent.value);
             if let DefKind::Valuetype(parent_value) = &parent_def.kind {
                 members.extend(self.original_valuetype_members(parent_value));
             }

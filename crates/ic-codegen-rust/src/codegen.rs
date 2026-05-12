@@ -233,8 +233,8 @@ impl<'a> RustGen<'a> {
 
         if !interface_ty.parents.is_empty() {
             w!(w, ": ");
-            for (i, &parent_id) in interface_ty.parents.iter().enumerate() {
-                let parent_def = self.hir.context.definitions.get(parent_id);
+            for (i, parent) in interface_ty.parents.iter().enumerate() {
+                let parent_def = self.hir.context.definitions.get(parent.value);
                 w!(w, parent_def);
                 if i + 1 < interface_ty.parents.len() {
                     w!(w, " + ");

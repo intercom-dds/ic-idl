@@ -203,6 +203,19 @@ impl HirMerger {
             .collect()
     }
 
+    fn map_spanned_def_id(
+        &self,
+        graph_index: usize,
+        def_ref: Option<crate::hir::Spanned<DefId>>,
+    ) -> Option<crate::hir::Spanned<DefId>> {
+        let def_ref = def_ref?;
+        self.map_def_id(graph_index, Some(def_ref.value))
+            .map(|value| crate::hir::Spanned {
+                value,
+                span: def_ref.span,
+            })
+    }
+
     /// Checks if two annotation definitions are identical.
     /// Two annotations are considered identical if they have the same members with
     /// the same types in the same order.
@@ -902,7 +915,7 @@ impl HirMerger {
 
     fn update_interface_def(&self, graph_index: usize, i: &InterfaceTy) -> DefKind {
         DefKind::Interface(InterfaceTy {
-            parents: self.map_def_ids(graph_index, &i.parents),
+            parents: self.map_spanned_def_ids(graph_index, &i.parents),
             prototypes: i
                 .prototypes
                 .iter()
@@ -920,8 +933,8 @@ impl HirMerger {
 
     fn update_valuetype_def(&self, graph_index: usize, v: &ValueTy) -> DefKind {
         DefKind::Valuetype(ValueTy {
-            parent: self.map_def_id(graph_index, v.parent),
-            supports: self.map_def_id(graph_index, v.supports),
+            parent: self.map_spanned_def_id(graph_index, v.parent),
+            supports: self.map_spanned_def_id(graph_index, v.supports),
             prototypes: v
                 .prototypes
                 .iter()
@@ -944,7 +957,7 @@ impl HirMerger {
     fn update_def_kind(&self, graph_index: usize, kind: &DefKind) -> DefKind {
         match kind {
             DefKind::Struct(s) => DefKind::Struct(StructTy {
-                parent: self.map_def_id(graph_index, s.parent),
+                parent: self.map_spanned_def_id(graph_index, s.parent),
                 members: s
                     .members
                     .iter()
@@ -999,7 +1012,7 @@ impl HirMerger {
                     .collect(),
             }),
             DefKind::Bitset(b) => DefKind::Bitset(BitsetTy {
-                parent: self.map_def_id(graph_index, b.parent),
+                parent: self.map_spanned_def_id(graph_index, b.parent),
                 fields: b
                     .fields
                     .iter()

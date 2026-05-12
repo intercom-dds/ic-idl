@@ -382,7 +382,7 @@ pub struct ModuleTy {
 #[derive(Debug, Clone)]
 pub struct StructTy {
     /// Parent type, i.e. the type from which this type inherits.
-    pub parent: Option<DefId>,
+    pub parent: Option<Spanned<DefId>>,
 
     /// Direct members of the struct. Does not include inherited members.
     pub members: Vec<Member>,
@@ -476,7 +476,7 @@ pub struct BitmaskTy {
 #[derive(Debug, Clone)]
 pub struct BitsetTy {
     /// Parent bitset for inheritance.
-    pub parent: Option<DefId>,
+    pub parent: Option<Spanned<DefId>>,
 
     /// The bitset fields.
     pub fields: Vec<BitsetField>,
@@ -499,7 +499,7 @@ pub struct BitsetField {
 
 #[derive(Debug, Clone, Default)]
 pub struct InterfaceTy {
-    pub parents: Vec<DefId>,
+    pub parents: Vec<Spanned<DefId>>,
     pub prototypes: Vec<ProtoTy>,
     pub attributes: Vec<Attribute>,
     pub definitions: Vec<DefId>,
@@ -508,8 +508,8 @@ pub struct InterfaceTy {
 
 #[derive(Debug, Clone)]
 pub struct ValueTy {
-    pub parent: Option<DefId>,
-    pub supports: Option<DefId>,
+    pub parent: Option<Spanned<DefId>>,
+    pub supports: Option<Spanned<DefId>>,
     pub prototypes: Vec<ProtoTy>,
     pub attributes: Vec<Attribute>,
     pub members: Vec<Member>,

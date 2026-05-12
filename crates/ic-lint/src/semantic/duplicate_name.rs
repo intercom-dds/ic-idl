@@ -153,8 +153,8 @@ impl<'a> DuplicateName<'a> {
             }
 
             // Recursively collect from parent interfaces
-            for &parent_id in &interface.parents {
-                let parent_methods = self.collect_methods_with_sources(parent_id, visited);
+            for parent in &interface.parents {
+                let parent_methods = self.collect_methods_with_sources(parent.value, visited);
                 for (name, sources) in parent_methods {
                     methods.entry(name).or_insert_with(Vec::new).extend(sources);
                 }
@@ -174,15 +174,15 @@ impl<'a> Visitor<'a> for DuplicateName<'a> {
         let mut seen: HashMap<CaseString, ic_syntax::Span> = HashMap::new();
 
         // Check members from all parent structs first
-        let mut parent_id = struct_ty.parent;
+        let mut parent = struct_ty.parent;
         let mut visited_parents = HashSet::new();
 
-        while let Some(parent) = parent_id {
-            if !visited_parents.insert(parent) {
+        while let Some(parent_ref) = parent {
+            if !visited_parents.insert(parent_ref.value) {
                 break;
             }
 
-            let parent_def = self.hir.context.definitions.get(parent);
+            let parent_def = self.hir.context.definitions.get(parent_ref.value);
             if let DefKind::Struct(parent_struct) = &parent_def.kind {
                 for member in &parent_struct.members {
                     seen.insert(
@@ -190,7 +190,7 @@ impl<'a> Visitor<'a> for DuplicateName<'a> {
                         member.ident.span,
                     );
                 }
-                parent_id = parent_struct.parent;
+                parent = parent_struct.parent;
             } else {
                 break;
             }
@@ -273,8 +273,8 @@ impl<'a> Visitor<'a> for DuplicateName<'a> {
         let mut inherited_methods = HashMap::new();
 
         // Collect methods from parent interfaces only
-        for &parent_id in &interface.parents {
-            let parent_methods = self.collect_methods_with_sources(parent_id, &mut visited);
+        for parent in &interface.parents {
+            let parent_methods = self.collect_methods_with_sources(parent.value, &mut visited);
             for (name, sources) in parent_methods {
                 inherited_methods
                     .entry(name)

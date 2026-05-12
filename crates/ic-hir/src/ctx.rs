@@ -365,7 +365,7 @@ impl DepCollector<'_> {
 
         match &def.kind {
             DefKind::Struct(s) => {
-                self.insert_if(s.parent, &include, &mut deps);
+                self.extend_if(&s.parent, &include, &mut deps);
                 for m in &s.members {
                     self.collect_ty_refs(&m.ty, &include, &mut deps);
                 }
@@ -383,31 +383,31 @@ impl DepCollector<'_> {
                 self.extend_if(&i.parents, &include, &mut deps);
                 for attr in &i.attributes {
                     self.collect_ty_refs(&attr.ty, &include, &mut deps);
-                    self.extend_spanned_def_ids_if(&attr.getraises, &include, &mut deps);
-                    self.extend_spanned_def_ids_if(&attr.setraises, &include, &mut deps);
+                    self.extend_if(&attr.getraises, &include, &mut deps);
+                    self.extend_if(&attr.setraises, &include, &mut deps);
                 }
                 for proto in &i.prototypes {
                     self.collect_ty_refs(&proto.ty, &include, &mut deps);
-                    self.extend_spanned_def_ids_if(&proto.raises, &include, &mut deps);
+                    self.extend_if(&proto.raises, &include, &mut deps);
                     for param in &proto.params {
                         self.collect_ty_refs(&param.ty, &include, &mut deps);
                     }
                 }
             }
             DefKind::Valuetype(v) => {
-                self.insert_if(v.parent, &include, &mut deps);
-                self.insert_if(v.supports, &include, &mut deps);
+                self.extend_if(&v.parent, &include, &mut deps);
+                self.extend_if(&v.supports, &include, &mut deps);
                 for m in &v.members {
                     self.collect_ty_refs(&m.ty, &include, &mut deps);
                 }
                 for attr in &v.attributes {
                     self.collect_ty_refs(&attr.ty, &include, &mut deps);
-                    self.extend_spanned_def_ids_if(&attr.getraises, &include, &mut deps);
-                    self.extend_spanned_def_ids_if(&attr.setraises, &include, &mut deps);
+                    self.extend_if(&attr.getraises, &include, &mut deps);
+                    self.extend_if(&attr.setraises, &include, &mut deps);
                 }
                 for proto in &v.prototypes {
                     self.collect_ty_refs(&proto.ty, &include, &mut deps);
-                    self.extend_spanned_def_ids_if(&proto.raises, &include, &mut deps);
+                    self.extend_if(&proto.raises, &include, &mut deps);
                     for param in &proto.params {
                         self.collect_ty_refs(&param.ty, &include, &mut deps);
                     }
@@ -426,7 +426,7 @@ impl DepCollector<'_> {
                 self.collect_numeric_refs(&c.value, &include, &mut deps);
             }
             DefKind::Bitset(b) => {
-                self.insert_if(b.parent, &include, &mut deps);
+                self.extend_if(&b.parent, &include, &mut deps);
                 for field in &b.fields {
                     self.collect_ty_refs(&field.ty, &include, &mut deps);
                 }
@@ -445,34 +445,9 @@ impl DepCollector<'_> {
         deps
     }
 
-    fn insert_if<F>(&self, id: Option<DefId>, include: &F, deps: &mut HashSet<DefId>)
+    fn extend_if<'a, I, F>(&self, refs: I, include: &F, deps: &mut HashSet<DefId>)
     where
-        F: Fn(&Def) -> bool,
-    {
-        if let Some(id) = id
-            && include(self.ctx.type_of(id))
-        {
-            deps.insert(id);
-        }
-    }
-
-    fn extend_if<F>(&self, ids: &[DefId], include: &F, deps: &mut HashSet<DefId>)
-    where
-        F: Fn(&Def) -> bool,
-    {
-        for &id in ids {
-            if include(self.ctx.type_of(id)) {
-                deps.insert(id);
-            }
-        }
-    }
-
-    fn extend_spanned_def_ids_if<F>(
-        &self,
-        refs: &[crate::hir::Spanned<DefId>],
-        include: &F,
-        deps: &mut HashSet<DefId>,
-    ) where
+        I: IntoIterator<Item = &'a crate::hir::Spanned<DefId>>,
         F: Fn(&Def) -> bool,
     {
         for def_id in refs {

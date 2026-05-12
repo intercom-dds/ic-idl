@@ -63,11 +63,7 @@ fn replace_def_ids_in_def<S: std::hash::BuildHasher>(
 
     match &mut def.kind {
         DefKind::Struct(s) => {
-            if let Some(parent) = &mut s.parent
-                && let Some(new_id) = mapping.get(parent)
-            {
-                *parent = *new_id;
-            }
+            replace_def_ids_in_spanned(&mut s.parent, mapping);
 
             for member in &mut s.members {
                 replace_def_ids_in_ty(&mut member.ty, mapping);
@@ -81,11 +77,7 @@ fn replace_def_ids_in_def<S: std::hash::BuildHasher>(
             }
         }
         DefKind::Interface(i) => {
-            for parent in &mut i.parents {
-                if let Some(new_id) = mapping.get(parent) {
-                    *parent = *new_id;
-                }
-            }
+            replace_def_ids_in_spanned(&mut i.parents, mapping);
 
             for proto in &mut i.prototypes {
                 replace_def_ids_in_ty(&mut proto.ty, mapping);
@@ -102,17 +94,8 @@ fn replace_def_ids_in_def<S: std::hash::BuildHasher>(
             }
         }
         DefKind::Valuetype(v) => {
-            if let Some(parent) = &mut v.parent
-                && let Some(new_id) = mapping.get(parent)
-            {
-                *parent = *new_id;
-            }
-
-            if let Some(supports) = &mut v.supports
-                && let Some(new_id) = mapping.get(supports)
-            {
-                *supports = *new_id;
-            }
+            replace_def_ids_in_spanned(&mut v.parent, mapping);
+            replace_def_ids_in_spanned(&mut v.supports, mapping);
 
             for member in &mut v.members {
                 replace_def_ids_in_ty(&mut member.ty, mapping);
@@ -153,10 +136,11 @@ fn replace_def_ids_in_def<S: std::hash::BuildHasher>(
     }
 }
 
-fn replace_def_ids_in_spanned<S: std::hash::BuildHasher>(
-    refs: &mut [crate::hir::Spanned<DefId>],
-    mapping: &HashMap<DefId, DefId, S>,
-) {
+fn replace_def_ids_in_spanned<'a, I, S>(refs: I, mapping: &HashMap<DefId, DefId, S>)
+where
+    I: IntoIterator<Item = &'a mut crate::hir::Spanned<DefId>>,
+    S: std::hash::BuildHasher,
+{
     for def_id in refs {
         if let Some(new_id) = mapping.get(&def_id.value) {
             def_id.value = *new_id;

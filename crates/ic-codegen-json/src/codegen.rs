@@ -123,9 +123,12 @@ impl<'a> JsonGen<'a> {
         struct_obj.insert("kind".to_string(), Value::String("struct".to_string()));
         self.emit_annotations(&def.annotations, &mut struct_obj);
 
-        if let Some(parent_id) = struct_ty.parent {
+        if let Some(parent) = struct_ty.parent {
             let mut base_obj = BTreeMap::new();
-            Self::emit_type_info(self.hir.context.definitions.get(parent_id), &mut base_obj);
+            Self::emit_type_info(
+                self.hir.context.definitions.get(parent.value),
+                &mut base_obj,
+            );
             struct_obj.insert("base_type".to_string(), Value::Object(base_obj));
         }
 
@@ -290,10 +293,10 @@ impl<'a> JsonGen<'a> {
                 let parents: Vec<Value> = interface
                     .parents
                     .iter()
-                    .map(|&parent_id| {
+                    .map(|parent| {
                         let mut parent_obj = BTreeMap::new();
                         Self::emit_type_info(
-                            self.hir.context.definitions.get(parent_id),
+                            self.hir.context.definitions.get(parent.value),
                             &mut parent_obj,
                         );
                         Value::Object(parent_obj)
@@ -303,7 +306,7 @@ impl<'a> JsonGen<'a> {
             } else {
                 let mut parent_obj = BTreeMap::new();
                 Self::emit_type_info(
-                    self.hir.context.definitions.get(interface.parents[0]),
+                    self.hir.context.definitions.get(interface.parents[0].value),
                     &mut parent_obj,
                 );
                 interface_obj.insert("base_type".to_string(), Value::Object(parent_obj));
@@ -333,16 +336,19 @@ impl<'a> JsonGen<'a> {
         valuetype_obj.insert("kind".to_string(), Value::String("valuetype".to_string()));
         self.emit_annotations(&def.annotations, &mut valuetype_obj);
 
-        if let Some(parent_id) = valuetype.parent {
+        if let Some(parent) = valuetype.parent {
             let mut base_obj = BTreeMap::new();
-            Self::emit_type_info(self.hir.context.definitions.get(parent_id), &mut base_obj);
+            Self::emit_type_info(
+                self.hir.context.definitions.get(parent.value),
+                &mut base_obj,
+            );
             valuetype_obj.insert("base_type".to_string(), Value::Object(base_obj));
         }
 
-        if let Some(supports_id) = valuetype.supports {
+        if let Some(supports) = valuetype.supports {
             let mut supports_obj = BTreeMap::new();
             Self::emit_type_info(
-                self.hir.context.definitions.get(supports_id),
+                self.hir.context.definitions.get(supports.value),
                 &mut supports_obj,
             );
             valuetype_obj.insert("supports".to_string(), Value::Object(supports_obj));

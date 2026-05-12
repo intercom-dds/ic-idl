@@ -346,7 +346,7 @@ fn emit_interface_def(context: &Context, node: &mut Leaf<String>, v: &InterfaceT
 
 fn emit_bitset_def(context: &Context, node: &mut Leaf<String>, v: &BitsetTy) {
     if let Some(parent) = v.parent {
-        let parent = &context.type_of(parent).ident.name;
+        let parent = &context.type_of(parent.value).ident.name;
         node.push(leaf!("{} {}", "parent".purple(), parent.cyan()));
     }
 
@@ -419,7 +419,7 @@ fn emit_def(context: &Context, id: DefId) -> Leaf<String> {
         }
         DefKind::Struct(v) => {
             if let Some(parent) = v.parent {
-                let parent = &context.type_of(parent).ident.name;
+                let parent = &context.type_of(parent.value).ident.name;
                 node.push(leaf!("{} {}", "parent".purple(), parent.cyan()));
             }
             let members = v.members.iter().map(|v| emit_member(context, v));

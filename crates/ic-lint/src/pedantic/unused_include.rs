@@ -192,8 +192,8 @@ impl<'a> Visitor<'a> for UsedFileCollector<'a> {
 
     fn visit_struct(&mut self, _def: &'a ic_hir::hir::Def, data: &'a StructTy) {
         // Mark the parent struct's file as used if inheriting
-        if let Some(parent_id) = data.parent {
-            let parent_def = self.hir.context.type_of(parent_id);
+        if let Some(parent) = data.parent {
+            let parent_def = self.hir.context.type_of(parent.value);
             if !parent_def.flags.contains(DefFlags::IS_BUILTIN) {
                 self.used_files.insert(parent_def.span.start.file_id);
             }
@@ -204,8 +204,8 @@ impl<'a> Visitor<'a> for UsedFileCollector<'a> {
 
     fn visit_interface(&mut self, def: &'a ic_hir::hir::Def, data: &'a InterfaceTy) {
         // Mark parent interfaces' files as used
-        for &parent_id in &data.parents {
-            let parent_def = self.hir.context.type_of(parent_id);
+        for parent in &data.parents {
+            let parent_def = self.hir.context.type_of(parent.value);
             if !parent_def.flags.contains(DefFlags::IS_BUILTIN) {
                 self.used_files.insert(parent_def.span.start.file_id);
             }
@@ -216,16 +216,16 @@ impl<'a> Visitor<'a> for UsedFileCollector<'a> {
 
     fn visit_valuetype(&mut self, def: &'a ic_hir::hir::Def, data: &'a ValueTy) {
         // Mark the parent valuetype's file as used if inheriting
-        if let Some(parent_id) = data.parent {
-            let parent_def = self.hir.context.type_of(parent_id);
+        if let Some(parent) = data.parent {
+            let parent_def = self.hir.context.type_of(parent.value);
             if !parent_def.flags.contains(DefFlags::IS_BUILTIN) {
                 self.used_files.insert(parent_def.span.start.file_id);
             }
         }
 
         // Mark the supported interface's file as used if present
-        if let Some(supports_id) = data.supports {
-            let supports_def = self.hir.context.type_of(supports_id);
+        if let Some(supports) = data.supports {
+            let supports_def = self.hir.context.type_of(supports.value);
             if !supports_def.flags.contains(DefFlags::IS_BUILTIN) {
                 self.used_files.insert(supports_def.span.start.file_id);
             }

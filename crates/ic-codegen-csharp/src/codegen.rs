@@ -441,7 +441,7 @@ impl<'a> CSharpGen<'a> {
                 for member in struct_ty.members.iter().rev() {
                     members.push((member.ident.name.clone(), member.ty.clone()));
                 }
-                current_id = struct_ty.parent;
+                current_id = struct_ty.parent.map(|p| p.value);
             } else {
                 break;
             }
@@ -455,8 +455,8 @@ impl<'a> CSharpGen<'a> {
         self.emit_doc_comments(w, &def.annotations);
 
         w!(w, "public partial class ", def.ident.name);
-        if let Some(parent_id) = struct_ty.parent {
-            let parent_name = self.scoped_name(parent_id, def.id);
+        if let Some(parent) = struct_ty.parent {
+            let parent_name = self.scoped_name(parent.value, def.id);
             w!(w, " : ", parent_name);
         } else {
             w!(w, " : IComparable<", def, ">, IEquatable<", def, ">");
@@ -514,8 +514,8 @@ impl<'a> CSharpGen<'a> {
 
             w!(w, ")");
 
-            if let Some(parent_id) = struct_ty.parent {
-                let parent_members = self.collect_members(parent_id);
+            if let Some(parent) = struct_ty.parent {
+                let parent_members = self.collect_members(parent.value);
                 if !parent_members.is_empty() {
                     w!(w, " : base(");
                     for (i, (name, _)) in parent_members.iter().enumerate() {
@@ -1009,11 +1009,11 @@ impl<'a> CSharpGen<'a> {
         // Handle inheritance
         if !interface.parents.is_empty() {
             w!(w, " : ");
-            for (i, &parent_id) in interface.parents.iter().enumerate() {
+            for (i, parent) in interface.parents.iter().enumerate() {
                 if i > 0 {
                     w!(w, ", ");
                 }
-                let parent_name = self.scoped_name(parent_id, def.id);
+                let parent_name = self.scoped_name(parent.value, def.id);
                 w!(w, "I", parent_name);
             }
         }
@@ -1076,16 +1076,16 @@ impl<'a> CSharpGen<'a> {
         w!(w, "public abstract class ", def.ident.name);
 
         // Handle inheritance
-        if let Some(parent_id) = valuetype.parent {
-            let parent_name = self.scoped_name(parent_id, def.id);
+        if let Some(parent) = valuetype.parent {
+            let parent_name = self.scoped_name(parent.value, def.id);
             w!(w, " : ", parent_name);
 
-            if let Some(supports_id) = valuetype.supports {
-                let supports_name = self.scoped_name(supports_id, def.id);
+            if let Some(supports) = valuetype.supports {
+                let supports_name = self.scoped_name(supports.value, def.id);
                 w!(w, ", I", supports_name);
             }
-        } else if let Some(supports_id) = valuetype.supports {
-            let supports_name = self.scoped_name(supports_id, def.id);
+        } else if let Some(supports) = valuetype.supports {
+            let supports_name = self.scoped_name(supports.value, def.id);
             w!(w, " : I", supports_name);
         }
 

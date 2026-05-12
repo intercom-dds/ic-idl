@@ -1467,7 +1467,7 @@ impl<'a> JavaGen<'a> {
             let exceptions = proto
                 .raises
                 .iter()
-                .map(|e| self.scoped_name(*e, def.id))
+                .map(|e| self.scoped_name(e.value, def.id))
                 .join(", ");
 
             w!(w, " throws ", exceptions);

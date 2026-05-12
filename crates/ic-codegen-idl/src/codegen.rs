@@ -446,11 +446,11 @@ impl<'a> IdlGen<'a> {
 
         if !attr.getraises.is_empty() {
             w!(w, " getraises (");
-            for (i, &exc) in attr.getraises.iter().enumerate() {
+            for (i, exc) in attr.getraises.iter().enumerate() {
                 if i > 0 {
                     w!(w, ", ");
                 }
-                let exc_name = self.scoped_name(exc, relative_to_def_id);
+                let exc_name = self.scoped_name(exc.value, relative_to_def_id);
                 w!(w, exc_name);
             }
             w!(w, ")");
@@ -458,11 +458,11 @@ impl<'a> IdlGen<'a> {
 
         if !attr.setraises.is_empty() {
             w!(w, " setraises (");
-            for (i, &exc) in attr.setraises.iter().enumerate() {
+            for (i, exc) in attr.setraises.iter().enumerate() {
                 if i > 0 {
                     w!(w, ", ");
                 }
-                let exc_name = self.scoped_name(exc, relative_to_def_id);
+                let exc_name = self.scoped_name(exc.value, relative_to_def_id);
                 w!(w, exc_name);
             }
             w!(w, ")");
@@ -490,11 +490,11 @@ impl<'a> IdlGen<'a> {
 
         if !proto.raises.is_empty() {
             w!(w, " raises (");
-            for (i, &exc) in proto.raises.iter().enumerate() {
+            for (i, exc) in proto.raises.iter().enumerate() {
                 if i > 0 {
                     w!(w, ", ");
                 }
-                let exc_name = self.scoped_name(exc, relative_to_def_id);
+                let exc_name = self.scoped_name(exc.value, relative_to_def_id);
                 w!(w, exc_name);
             }
             w!(w, ")");

@@ -521,7 +521,7 @@ pub struct ProtoTy {
     pub ident: Ident,
     pub ty: Ty,
     pub params: Vec<Parameter>,
-    pub raises: Vec<DefId>,
+    pub raises: Vec<Spanned<DefId>>,
 }
 
 #[derive(Debug, Clone)]
@@ -536,8 +536,14 @@ pub struct Attribute {
     pub ident: Ident,
     pub ty: Ty,
     pub is_readonly: bool,
-    pub getraises: Vec<DefId>,
-    pub setraises: Vec<DefId>,
+    pub getraises: Vec<Spanned<DefId>>,
+    pub setraises: Vec<Spanned<DefId>>,
+}
+
+#[derive(Copy, Clone, Debug)]
+pub struct Spanned<T> {
+    pub value: T,
+    pub span: Span,
 }
 
 #[derive(Debug, Clone)]

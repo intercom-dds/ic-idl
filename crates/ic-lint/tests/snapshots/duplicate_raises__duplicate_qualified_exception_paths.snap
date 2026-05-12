@@ -1,0 +1,14 @@
+---
+source: crates/ic-lint/tests/duplicate_raises.rs
+expression: test_lint_hir(source)
+---
+⨯ duplicate-raises: duplicate exception `NotFound` in raises clause of `get`
+  @ test.idl:9:42
+
+  8 │ interface Service {
+  9 │     void get() raises (Errors::NotFound, Errors::NotFound);
+    │                        ˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆ  ˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆ duplicate exception
+    │                        └─ first listed here
+ 10 │ };
+
+  ? remove the duplicate exception from the clause

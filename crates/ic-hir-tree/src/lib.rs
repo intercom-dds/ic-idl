@@ -324,7 +324,7 @@ fn emit_interface_def(context: &Context, node: &mut Leaf<String>, v: &InterfaceT
             let raises = attr
                 .getraises
                 .iter()
-                .map(|&id| context.type_of(id).ident.name.as_str())
+                .map(|exception_ref| context.type_of(exception_ref.value).ident.name.as_str())
                 .collect::<Vec<_>>()
                 .join(", ");
             attr_node.push(leaf!("{} {}", "getraises".purple(), raises.cyan()));
@@ -334,7 +334,7 @@ fn emit_interface_def(context: &Context, node: &mut Leaf<String>, v: &InterfaceT
             let raises = attr
                 .setraises
                 .iter()
-                .map(|&id| context.type_of(id).ident.name.as_str())
+                .map(|exception_ref| context.type_of(exception_ref.value).ident.name.as_str())
                 .collect::<Vec<_>>()
                 .join(", ");
             attr_node.push(leaf!("{} {}", "setraises".purple(), raises.cyan()));

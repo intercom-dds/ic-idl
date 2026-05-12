@@ -1,0 +1,14 @@
+---
+source: crates/ic-lint/tests/duplicate_raises.rs
+expression: test_lint_hir(source)
+---
+⨯ duplicate-raises: duplicate exception `WriteError` in setraises clause of `value`
+  @ test.idl:7:51
+
+ 6 │ interface Service {
+ 7 │     attribute string value setraises (WriteError, WriteError);
+   │                                       ˆˆˆˆˆˆˆˆˆˆ  ˆˆˆˆˆˆˆˆˆˆ duplicate exception
+   │                                       └─ first listed here
+ 8 │ };
+
+  ? remove the duplicate exception from the clause

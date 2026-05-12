@@ -89,6 +89,7 @@ fn replace_def_ids_in_def<S: std::hash::BuildHasher>(
 
             for proto in &mut i.prototypes {
                 replace_def_ids_in_ty(&mut proto.ty, mapping);
+                replace_def_ids_in_spanned(&mut proto.raises, mapping);
                 for param in &mut proto.params {
                     replace_def_ids_in_ty(&mut param.ty, mapping);
                 }
@@ -96,6 +97,8 @@ fn replace_def_ids_in_def<S: std::hash::BuildHasher>(
 
             for attr in &mut i.attributes {
                 replace_def_ids_in_ty(&mut attr.ty, mapping);
+                replace_def_ids_in_spanned(&mut attr.getraises, mapping);
+                replace_def_ids_in_spanned(&mut attr.setraises, mapping);
             }
         }
         DefKind::Valuetype(v) => {
@@ -117,6 +120,7 @@ fn replace_def_ids_in_def<S: std::hash::BuildHasher>(
 
             for proto in &mut v.prototypes {
                 replace_def_ids_in_ty(&mut proto.ty, mapping);
+                replace_def_ids_in_spanned(&mut proto.raises, mapping);
                 for param in &mut proto.params {
                     replace_def_ids_in_ty(&mut param.ty, mapping);
                 }
@@ -124,6 +128,8 @@ fn replace_def_ids_in_def<S: std::hash::BuildHasher>(
 
             for attr in &mut v.attributes {
                 replace_def_ids_in_ty(&mut attr.ty, mapping);
+                replace_def_ids_in_spanned(&mut attr.getraises, mapping);
+                replace_def_ids_in_spanned(&mut attr.setraises, mapping);
             }
         }
         DefKind::Alias(a) => {
@@ -144,6 +150,17 @@ fn replace_def_ids_in_def<S: std::hash::BuildHasher>(
         | DefKind::Module(_)
         | DefKind::Decl(_)
         | DefKind::Annotation(_) => {}
+    }
+}
+
+fn replace_def_ids_in_spanned<S: std::hash::BuildHasher>(
+    refs: &mut [crate::hir::Spanned<DefId>],
+    mapping: &HashMap<DefId, DefId, S>,
+) {
+    for def_id in refs {
+        if let Some(new_id) = mapping.get(&def_id.value) {
+            def_id.value = *new_id;
+        }
     }
 }
 

@@ -99,11 +99,11 @@ pub fn collect_def_dependencies(
             }
             for attr in &interface.attributes {
                 collect_type_dependencies(hir, &attr.ty, current_file, deps);
-                for &exc_id in &attr.getraises {
-                    add_def_dependency(hir, exc_id, current_file, deps);
+                for exc in &attr.getraises {
+                    add_def_dependency(hir, exc.value, current_file, deps);
                 }
-                for &exc_id in &attr.setraises {
-                    add_def_dependency(hir, exc_id, current_file, deps);
+                for exc in &attr.setraises {
+                    add_def_dependency(hir, exc.value, current_file, deps);
                 }
             }
             for proto in &interface.prototypes {
@@ -111,8 +111,8 @@ pub fn collect_def_dependencies(
                 for param in &proto.params {
                     collect_type_dependencies(hir, &param.ty, current_file, deps);
                 }
-                for &exc_id in &proto.raises {
-                    add_def_dependency(hir, exc_id, current_file, deps);
+                for exc in &proto.raises {
+                    add_def_dependency(hir, exc.value, current_file, deps);
                 }
             }
         }

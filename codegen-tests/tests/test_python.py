@@ -28,11 +28,25 @@
 import subprocess
 from pathlib import Path
 
+import pytest
+
 from conftest import run_codegen
 
 
-def test_python(idl_file: Path, idl_compiler: Path, output_dir: Path) -> None:
-    py_files = run_codegen(idl_compiler, idl_file, output_dir, "python-out")
+@pytest.mark.parametrize("extra_args", [
+    pytest.param([], id="default"),
+    pytest.param(["--no-rename"], id="no-rename"),
+    pytest.param(["--py-typed"], id="py-typed"),
+])
+def test_python(
+    idl_file: Path,
+    idl_compiler: Path,
+    output_dir: Path,
+    extra_args: list[str],
+) -> None:
+    py_files = run_codegen(
+        idl_compiler, idl_file, output_dir, "python-out", extra_args
+    )
     if not py_files:
         return
 

@@ -383,12 +383,12 @@ impl DepCollector<'_> {
                 self.extend_if(&i.parents, &include, &mut deps);
                 for attr in &i.attributes {
                     self.collect_ty_refs(&attr.ty, &include, &mut deps);
-                    self.extend_if(&attr.getraises, &include, &mut deps);
-                    self.extend_if(&attr.setraises, &include, &mut deps);
+                    self.extend_spanned_def_ids_if(&attr.getraises, &include, &mut deps);
+                    self.extend_spanned_def_ids_if(&attr.setraises, &include, &mut deps);
                 }
                 for proto in &i.prototypes {
                     self.collect_ty_refs(&proto.ty, &include, &mut deps);
-                    self.extend_if(&proto.raises, &include, &mut deps);
+                    self.extend_spanned_def_ids_if(&proto.raises, &include, &mut deps);
                     for param in &proto.params {
                         self.collect_ty_refs(&param.ty, &include, &mut deps);
                     }
@@ -402,12 +402,12 @@ impl DepCollector<'_> {
                 }
                 for attr in &v.attributes {
                     self.collect_ty_refs(&attr.ty, &include, &mut deps);
-                    self.extend_if(&attr.getraises, &include, &mut deps);
-                    self.extend_if(&attr.setraises, &include, &mut deps);
+                    self.extend_spanned_def_ids_if(&attr.getraises, &include, &mut deps);
+                    self.extend_spanned_def_ids_if(&attr.setraises, &include, &mut deps);
                 }
                 for proto in &v.prototypes {
                     self.collect_ty_refs(&proto.ty, &include, &mut deps);
-                    self.extend_if(&proto.raises, &include, &mut deps);
+                    self.extend_spanned_def_ids_if(&proto.raises, &include, &mut deps);
                     for param in &proto.params {
                         self.collect_ty_refs(&param.ty, &include, &mut deps);
                     }
@@ -463,6 +463,21 @@ impl DepCollector<'_> {
         for &id in ids {
             if include(self.ctx.type_of(id)) {
                 deps.insert(id);
+            }
+        }
+    }
+
+    fn extend_spanned_def_ids_if<F>(
+        &self,
+        refs: &[crate::hir::Spanned<DefId>],
+        include: &F,
+        deps: &mut HashSet<DefId>,
+    ) where
+        F: Fn(&Def) -> bool,
+    {
+        for def_id in refs {
+            if include(self.ctx.type_of(def_id.value)) {
+                deps.insert(def_id.value);
             }
         }
     }

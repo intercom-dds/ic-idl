@@ -187,6 +187,22 @@ impl HirMerger {
             .collect()
     }
 
+    fn map_spanned_def_ids(
+        &self,
+        graph_index: usize,
+        refs: &[crate::hir::Spanned<DefId>],
+    ) -> Vec<crate::hir::Spanned<DefId>> {
+        refs.iter()
+            .filter_map(|def_id| {
+                self.map_def_id(graph_index, Some(def_id.value))
+                    .map(|value| crate::hir::Spanned {
+                        value,
+                        span: def_id.span,
+                    })
+            })
+            .collect()
+    }
+
     /// Checks if two annotation definitions are identical.
     /// Two annotations are considered identical if they have the same members with
     /// the same types in the same order.
@@ -1104,7 +1120,7 @@ impl HirMerger {
                 .iter()
                 .map(|p| self.update_parameter(graph_index, p))
                 .collect(),
-            raises: self.map_def_ids(graph_index, &proto.raises),
+            raises: self.map_spanned_def_ids(graph_index, &proto.raises),
         }
     }
 
@@ -1113,8 +1129,8 @@ impl HirMerger {
             ident: attr.ident.clone(),
             ty: self.update_type(graph_index, &attr.ty),
             is_readonly: attr.is_readonly,
-            getraises: self.map_def_ids(graph_index, &attr.getraises),
-            setraises: self.map_def_ids(graph_index, &attr.setraises),
+            getraises: self.map_spanned_def_ids(graph_index, &attr.getraises),
+            setraises: self.map_spanned_def_ids(graph_index, &attr.setraises),
         }
     }
 

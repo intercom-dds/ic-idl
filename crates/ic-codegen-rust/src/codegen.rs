@@ -320,14 +320,20 @@ impl<'a> RustGen<'a> {
         w!(w, ty);
     }
 
-    fn emit_prototype_return_type(&self, ty: &Ty, raises: &[DefId], ctx: DefId, w: &mut Twine) {
+    fn emit_prototype_return_type(
+        &self,
+        ty: &Ty,
+        raises: &[ic_hir::hir::Spanned<DefId>],
+        ctx: DefId,
+        w: &mut Twine,
+    ) {
         if raises.len() > 1 {
             w!(w, "\n\t");
             w!(w, "::std::result::Result<");
             self.emit_prototype_return_type(ty, &[], ctx, w);
             w!(w, ", ::std::boxed::Box<dyn ::std::error::Error>>");
         } else if !raises.is_empty() {
-            let except_name = self.scoped_name(raises[0], ctx);
+            let except_name = self.scoped_name(raises[0].value, ctx);
             w!(w, except_name, "Result<");
             self.emit_prototype_return_type(ty, &[], ctx, w);
             w!(w, ">");

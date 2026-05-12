@@ -27,7 +27,7 @@
 
 use ic_hir::hir::{
     AliasTy, Attribute, Decl, Def, DefFlags, DefId, DefKind, ExceptTy, InterfaceTy, Label, Member,
-    Parameter, PrimitiveTy, ProtoTy, StructTy, Ty, TyKind, UnionTy, ValueTy, Variant,
+    Parameter, PrimitiveTy, ProtoTy, Spanned, StructTy, Ty, TyKind, UnionTy, ValueTy, Variant,
 };
 use ic_hir::scope::ScopeId;
 use ic_syntax::{AliasDef, ExceptDef, InterfaceDef, StructDef, UnionDef, ValuetypeDef};
@@ -719,7 +719,7 @@ impl<'ctx> TypeItemProcessor<'ctx> {
         attributes
     }
 
-    fn resolve_exception_paths(&mut self, paths: &[ic_syntax::Path]) -> Vec<DefId> {
+    fn resolve_exception_paths(&mut self, paths: &[ic_syntax::Path]) -> Vec<Spanned<DefId>> {
         paths
             .iter()
             .filter_map(|path| {
@@ -728,7 +728,10 @@ impl<'ctx> TypeItemProcessor<'ctx> {
                     if let Some(def_id) = ty.as_adt() {
                         let def = self.ctx.context.definitions.get(def_id);
                         if matches!(&def.kind, DefKind::Except(_)) {
-                            Some(def_id)
+                            Some(Spanned {
+                                value: def_id,
+                                span: crate::utils::path_span(path),
+                            })
                         } else {
                             self.ctx.diagnostics.error(
                                 format!("'{}' is not an exception type", def.ident.name),

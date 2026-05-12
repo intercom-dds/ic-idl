@@ -35,6 +35,7 @@
 .worktrees
 uv.lock
 bun.lock
+.DS_Store
 
 # artifacts from integration tests
 integration-tests/csharp/bin/

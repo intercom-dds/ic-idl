@@ -98,27 +98,26 @@ impl RecursiveType<'_> {
         member_span: ic_syntax::Span,
     ) {
         match &ty.kind {
-            TyKind::Adt(id) => {
-                if *id == containing_type {
+            TyKind::Adt(id)
+                if *id == containing_type
                     // Found direct recursion - check if it's properly indirected
-                    if !self.is_indirected(ty, member_annotations) {
-                        let def = self.hir.context.definitions.get(containing_type);
-                        Self::report(
-                            self.ctx,
-                            ic_diagnostic::error_span(
-                                format!(
-                                    "type `{}` contains itself without indirection",
-                                    def.ident.name
-                                ),
-                                Label::new(member_span).message("recursive member here"),
-                            )
-                            .note(
-                                "recursive types must use indirection through sequences, maps, or \
-                                 @external annotations",
-                            ),
-                        );
-                    }
-                }
+                    && !self.is_indirected(ty, member_annotations) =>
+            {
+                let def = self.hir.context.definitions.get(containing_type);
+                Self::report(
+                    self.ctx,
+                    ic_diagnostic::error_span(
+                        format!(
+                            "type `{}` contains itself without indirection",
+                            def.ident.name
+                        ),
+                        Label::new(member_span).message("recursive member here"),
+                    )
+                    .note(
+                        "recursive types must use indirection through sequences, maps, or \
+                         @external annotations",
+                    ),
+                );
             }
             // Arrays of self are also problematic
             TyKind::Array { ty, .. } => {

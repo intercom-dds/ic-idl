@@ -487,10 +487,8 @@ impl DepCollector<'_> {
         F: Fn(&Def) -> bool,
     {
         match &ty.kind {
-            TyKind::Adt(def_id) => {
-                if include(self.ctx.type_of(*def_id)) {
-                    deps.insert(*def_id);
-                }
+            TyKind::Adt(def_id) if include(self.ctx.type_of(*def_id)) => {
+                deps.insert(*def_id);
             }
             TyKind::Array { ty, .. } | TyKind::Sequence { ty, .. } => {
                 self.collect_ty_refs(ty, include, deps);
@@ -508,10 +506,8 @@ impl DepCollector<'_> {
         F: Fn(&Def) -> bool,
     {
         match numeric {
-            Numeric::Const(def_id) => {
-                if include(self.ctx.type_of(*def_id)) {
-                    deps.insert(*def_id);
-                }
+            Numeric::Const(def_id) if include(self.ctx.type_of(*def_id)) => {
+                deps.insert(*def_id);
             }
             Numeric::Array { values, .. } | Numeric::Sequence { values, .. } => {
                 for v in &**values {

@@ -174,13 +174,13 @@ fn find_type_dependencies(hir: &ResolvedGraph, ty: &Ty, deps: &mut HashSet<DefId
                 deps.insert(resolved_id);
             }
         }
-        TyKind::Array { ty, .. } | TyKind::Sequence { ty, .. } => {
+        TyKind::Array { ty, .. } | TyKind::Sequence { ty, .. }
             if !matches!(
                 ty.kind,
                 TyKind::Primitive(PrimitiveTy::UInt8 | PrimitiveTy::Int8)
-            ) {
-                find_type_dependencies(hir, ty, deps);
-            }
+            ) =>
+        {
+            find_type_dependencies(hir, ty, deps);
         }
         TyKind::Map { key, elem, .. } => {
             find_type_dependencies(hir, key, deps);

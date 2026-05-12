@@ -460,15 +460,15 @@ impl<'a> ic_hir::visit::Visitor<'a> for StdlibVisitor<'a> {
             DefKind::Alias(_) => {
                 self.stdlib.typing = true;
             }
-            DefKind::Const(_) => {
+            DefKind::Const(_)
                 if def.parent.is_none_or(|p| {
                     !matches!(
                         self.context.type_of(p).kind,
                         DefKind::Enum(_) | DefKind::Bitmask(_)
                     )
-                }) {
-                    self.stdlib.typing = true;
-                }
+                }) =>
+            {
+                self.stdlib.typing = true;
             }
             DefKind::Interface(_) => {
                 self.stdlib.abc = true;

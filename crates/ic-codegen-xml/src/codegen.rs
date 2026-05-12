@@ -118,10 +118,8 @@ impl<'a> XmlGen<'a> {
             DefKind::Enum(e) => self.emit_enum(def, e, w),
             DefKind::Bitmask(b) => self.emit_bitmask(def, b, w),
             DefKind::Alias(a) => self.emit_alias(def, a, w),
-            DefKind::Const(c) => {
-                if is_basic_type(&c.ty) {
-                    self.emit_const(def, c, w);
-                }
+            DefKind::Const(c) if is_basic_type(&c.ty) => {
+                self.emit_const(def, c, w);
             }
             DefKind::Decl(d) => self.emit_forward_decl(def, *d, w),
             _ => {}

@@ -152,11 +152,9 @@ fn resolve_typedef_fully(hir: &ResolvedGraph, def_id: DefId, typedef_ids: &[DefI
 /// Deep resolution - resolves types within container types as well
 fn resolve_type_deep(ty: &mut Ty, hir: &ResolvedGraph, typedef_ids: &[DefId]) {
     match &mut ty.kind {
-        TyKind::Adt(def_id) => {
-            if typedef_ids.contains(def_id) {
-                let resolved = resolve_typedef_fully(hir, *def_id, typedef_ids);
-                *ty = resolved;
-            }
+        TyKind::Adt(def_id) if typedef_ids.contains(def_id) => {
+            let resolved = resolve_typedef_fully(hir, *def_id, typedef_ids);
+            *ty = resolved;
         }
         TyKind::Array { ty: elem_ty, .. } | TyKind::Sequence { ty: elem_ty, .. } => {
             resolve_type_deep(elem_ty, hir, typedef_ids);

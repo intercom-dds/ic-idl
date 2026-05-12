@@ -234,10 +234,8 @@ impl ExhaustiveUnionDefaultLint<'_> {
                     Numeric::Int64(v) => {
                         covered_values.insert(*v);
                     }
-                    Numeric::UInt64(v) => {
-                        if i64::try_from(*v).is_ok() {
-                            covered_values.insert(*v as i64);
-                        }
+                    Numeric::UInt64(v) if i64::try_from(*v).is_ok() => {
+                        covered_values.insert(*v as i64);
                     }
                     _ => {}
                 }

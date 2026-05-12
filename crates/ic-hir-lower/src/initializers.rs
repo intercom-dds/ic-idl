@@ -229,11 +229,9 @@ impl<'a, 'b> InitializerEvaluator<'a, 'b> {
                 );
                 return None;
             }
-            if let Some(value) = self.evaluator.eval_for_type(&named_expr.value, elem_ty) {
+            {
+                let value = self.evaluator.eval_for_type(&named_expr.value, elem_ty)?;
                 elements.push(value);
-            } else {
-                // eval_for_type already reported error
-                return None;
             }
         }
 
@@ -257,11 +255,9 @@ impl<'a, 'b> InitializerEvaluator<'a, 'b> {
                 );
                 return None;
             }
-            if let Some(value) = self.evaluator.eval_for_type(&named_expr.value, elem_ty) {
+            {
+                let value = self.evaluator.eval_for_type(&named_expr.value, elem_ty)?;
                 elements.push(value);
-            } else {
-                // eval_for_type already reported error
-                return None;
             }
         }
 

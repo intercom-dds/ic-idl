@@ -576,13 +576,9 @@ fn parse_char_literal(text: &str) -> Option<char> {
             Some('b') => '\u{0008}',
             Some('f') => '\u{000C}',
             Some('v') => '\u{000B}',
-            Some('x') => {
-                if inner.len() >= 4 {
-                    let hex_str = &inner[2..4];
-                    u8::from_str_radix(hex_str, 16).ok().map(|v| v as char)?
-                } else {
-                    return None;
-                }
+            Some('x') if inner.len() >= 4 => {
+                let hex_str = &inner[2..4];
+                u8::from_str_radix(hex_str, 16).ok().map(|v| v as char)?
             }
             // unknown escape sequence
             _ => return None,

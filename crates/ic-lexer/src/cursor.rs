@@ -277,14 +277,10 @@ impl Cursor {
                 if let Some(escaped) = self.chars.next() {
                     match escaped {
                         '\'' | '\\' | 'n' | 't' | 'r' | '0' | 'b' | 'f' | 'v' | '"' => {}
-                        'x' => {
-                            if self.chars.next().is_some_and(|c| c.is_ascii_hexdigit())
-                                && self.chars.next().is_some_and(|c| c.is_ascii_hexdigit())
-                            {
-                                // Valid hex escape
-                            } else {
-                                return Kind::Unknown;
-                            }
+                        'x' if self.chars.next().is_some_and(|c| c.is_ascii_hexdigit())
+                            && self.chars.next().is_some_and(|c| c.is_ascii_hexdigit()) =>
+                        {
+                            // Valid hex escape
                         }
                         _ => return Kind::Unknown,
                     }

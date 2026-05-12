@@ -640,25 +640,17 @@ impl HirMerger {
     /// Ensures a child definition is registered in its parent's definitions list.
     fn ensure_child_in_parent(&mut self, child_id: DefId, parent_id: DefId) {
         match &mut self.new_context.definitions.get_mut(parent_id).kind {
-            DefKind::Module(module) => {
-                if !module.definitions.contains(&child_id) {
-                    module.definitions.push(child_id);
-                }
+            DefKind::Module(module) if !module.definitions.contains(&child_id) => {
+                module.definitions.push(child_id);
             }
-            DefKind::Interface(interface) => {
-                if !interface.definitions.contains(&child_id) {
-                    interface.definitions.push(child_id);
-                }
+            DefKind::Interface(interface) if !interface.definitions.contains(&child_id) => {
+                interface.definitions.push(child_id);
             }
-            DefKind::Annotation(annotation) => {
-                if !annotation.types.contains(&child_id) {
-                    annotation.types.push(child_id);
-                }
+            DefKind::Annotation(annotation) if !annotation.types.contains(&child_id) => {
+                annotation.types.push(child_id);
             }
-            DefKind::Valuetype(valuetype) => {
-                if !valuetype.definitions.contains(&child_id) {
-                    valuetype.definitions.push(child_id);
-                }
+            DefKind::Valuetype(valuetype) if !valuetype.definitions.contains(&child_id) => {
+                valuetype.definitions.push(child_id);
             }
             _ => {}
         }

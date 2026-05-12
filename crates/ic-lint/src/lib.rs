@@ -64,17 +64,16 @@
 //! Lints can be configured using [`LintConfig`]:
 //!
 //! ```no_run
-//! use ic_lint::{LintConfig, Category, Level, lint_syntax_with_config};
+//! use ic_lint::{LintConfig, Category, Level, SyntaxInput, lint_syntax_with_config};
 //! # use ic_vfs::SourceMap;
-//! # use ic_syntax::Item;
 //! # let vfs = SourceMap::default();
-//! # let ast: Vec<Item> = vec![];
+//! # let input = SyntaxInput::default();
 //!
 //! let mut config = LintConfig::new();
 //! config.set_category_level(Category::Pedantic, Level::Error);
 //! config.set_lint_level("null", Level::Warning);
 //!
-//! let report = lint_syntax_with_config(&ast, &vfs, &config);
+//! let report = lint_syntax_with_config(&input, &vfs, &config);
 //! ```
 //!
 //! ## Writing New Lints

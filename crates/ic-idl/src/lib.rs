@@ -48,7 +48,7 @@
 //!             let formatted = ic_idl::pretty::fmt_warnings(
 //!                 &diagnostics.warnings,
 //!                 compiler.source_map(),
-//!                 ic_idl::ErrorFormat::Human,
+//!                 ic_idl::ErrorFormat::Detailed,
 //!             );
 //!             eprintln!("{formatted}");
 //!         }
@@ -61,7 +61,7 @@
 //!             &diagnostics.errors,
 //!             compiler.source_map(),
 //!             &diagnostics.expansion_info,
-//!             ic_idl::ErrorFormat::Human,
+//!             ic_idl::ErrorFormat::Detailed,
 //!         );
 //!         eprintln!("{formatted_errors}");
 //!     }

@@ -95,4 +95,18 @@ module union_tests {
     case MY_UNION_CASE2:
         string ghi;
     };
+
+    typedef octet TypeKind;
+    const TypeKind TK_NONE    = 0;
+    const TypeKind TK_BOOLEAN = 1;
+    const TypeKind TK_BYTE    = 2;
+
+    union ConstLabelUnion switch (TypeKind) {
+    case TK_NONE:
+    case TK_BOOLEAN:
+    case TK_BYTE:
+        long primitive;
+    default:
+        string other;
+    };
 };

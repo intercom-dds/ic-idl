@@ -27,6 +27,7 @@
 
 use std::collections::BTreeMap;
 
+use ic_emit::case::{self, Case};
 use ic_emit::printer::Twine;
 use ic_emit::{File, w};
 use ic_hir::ResolvedGraph;
@@ -476,7 +477,11 @@ impl<'a> RustGen<'a> {
         match &label.value {
             Numeric::Const(def_id) => {
                 let label_def = self.hir.context.definitions.get(*def_id);
-                label_def.ident.name.clone()
+                if self.options.no_rename {
+                    label_def.ident.name.clone()
+                } else {
+                    case::convert(&label_def.ident.name, Case::Pascal)
+                }
             }
             _ => {
                 format!(

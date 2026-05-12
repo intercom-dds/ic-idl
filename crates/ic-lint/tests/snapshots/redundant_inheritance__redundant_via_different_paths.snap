@@ -1,0 +1,12 @@
+---
+source: crates/ic-lint/tests/redundant_inheritance.rs
+assertion_line: 89
+expression: test_lint_hir(source)
+---
+⨯ redundant-inheritance: interface `Derived` inherits from `A` multiple times
+  @ test.idl:3:24
+
+ 2 │ interface A {};
+ 3 │ interface Derived : A, ::A {};
+   │                     ˆ  ˆˆˆ redundant inheritance
+   │                     └─ first listed here

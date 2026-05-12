@@ -1,0 +1,22 @@
+---
+source: crates/ic-lint/tests/redundant_inheritance.rs
+assertion_line: 90
+expression: test_lint_hir(source)
+---
+⨯ redundant-inheritance: interface `C` inherits from `A` multiple times
+  @ test.idl:4:21
+
+ 2 │ interface A {};
+ 3 │ interface B {};
+ 4 │ interface C : A, B, A, B {};
+   │               ˆ     ˆ redundant inheritance
+   │               └─ first listed here
+
+⨯ redundant-inheritance: interface `C` inherits from `B` multiple times
+  @ test.idl:4:24
+
+ 2 │ interface A {};
+ 3 │ interface B {};
+ 4 │ interface C : A, B, A, B {};
+   │                  ˆ     ˆ redundant inheritance
+   │                  └─ first listed here

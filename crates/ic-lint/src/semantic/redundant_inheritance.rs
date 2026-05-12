@@ -25,16 +25,18 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use std::collections::HashSet;
+use std::collections::HashMap;
 
 use ic_diagnostic::Label;
-use ic_syntax::visit::{Visitor, walk_tree};
-use ic_syntax::{InterfaceDef, ValuetypeDef};
+use ic_hir::ResolvedGraph;
+use ic_hir::hir::{DefId, InterfaceTy, Spanned, ValueTy};
+use ic_hir::visit::Visitor;
 
 use crate::{Category, Lint, LintCtx};
 
 pub struct RedundantInheritance<'a> {
     ctx: &'a LintCtx<'a>,
+    hir: &'a ResolvedGraph,
 }
 
 impl<'a> Lint<'a> for RedundantInheritance<'a> {
@@ -50,55 +52,51 @@ impl<'a> Lint<'a> for RedundantInheritance<'a> {
         "Errors when interfaces inherit from same parent multiple times"
     }
 
-    fn check(ctx: &'a LintCtx<'_>, ast: &[ic_syntax::Item]) {
-        let mut visitor = RedundantInheritance { ctx };
-        walk_tree(&mut visitor, ast);
+    fn check_hir(ctx: &'a LintCtx<'_>, hir: &ResolvedGraph) {
+        let mut visitor = RedundantInheritance { ctx, hir };
+        ic_hir::visit::walk_tree(&mut visitor, hir);
     }
 }
 
 impl RedundantInheritance<'_> {
-    fn check_inheritance_list(&mut self, inherits: &[ic_syntax::Path], item_name: &str) {
-        let mut seen = HashSet::new();
-
-        for parent_path in inherits {
-            let parent_name = parent_path
-                .segments
-                .iter()
-                .map(|s| s.name.as_str())
-                .collect::<Vec<_>>()
-                .join("::");
-
-            if !seen.insert(parent_name.clone()) {
-                let diag = self.ctx.diag_span(
-                    Self::name(),
-                    Self::category(),
-                    format!("{item_name} inherits from '{parent_name}' multiple times"),
-                    Label::new(ic_syntax::util::path_span(parent_path))
-                        .message("redundant inheritance"),
-                );
+    fn check_parents<'p, I>(&self, parents: I, owner: &str)
+    where
+        I: IntoIterator<Item = &'p Spanned<DefId>>,
+    {
+        let mut seen = HashMap::new();
+        for parent in parents {
+            let name = &self.hir.context.type_of(parent.value).ident.name;
+            if let Some(&first_span) = seen.get(&parent.value) {
+                let diag = self
+                    .ctx
+                    .diag_span(
+                        Self::name(),
+                        Self::category(),
+                        format!("{owner} inherits from `{name}` multiple times"),
+                        Label::new(parent.span).message("redundant inheritance"),
+                    )
+                    .label(Label::new(first_span).message("first listed here"));
                 Self::report(self.ctx, diag);
+            } else {
+                seen.insert(parent.value, parent.span);
             }
         }
     }
 }
 
 impl<'a> Visitor<'a> for RedundantInheritance<'a> {
-    fn visit_interface(&mut self, def: &'a InterfaceDef) {
-        self.check_inheritance_list(&def.inherits, &format!("interface '{}'", def.ident.name));
-        ic_syntax::visit::walk_interface(self, def);
+    fn context(&self) -> &'a ic_hir::Context {
+        &self.hir.context
     }
 
-    fn visit_valuetype(&mut self, def: &'a ValuetypeDef) {
-        // Check both inherits and supports for valuetypes
-        let mut all_parents = Vec::new();
-        if let Some(inherits) = &def.inherits {
-            all_parents.push(inherits.clone());
-        }
-        if let Some(supports) = &def.supports {
-            all_parents.push(supports.clone());
-        }
+    fn visit_interface(&mut self, def: &'a ic_hir::hir::Def, data: &'a InterfaceTy) {
+        self.check_parents(&data.parents, &format!("interface `{}`", def.ident.name));
+        ic_hir::visit::walk_interface(self, def, data);
+    }
 
-        self.check_inheritance_list(&all_parents, &format!("valuetype '{}'", def.ident.name));
-        ic_syntax::visit::walk_valuetype(self, def);
+    fn visit_valuetype(&mut self, def: &'a ic_hir::hir::Def, data: &'a ValueTy) {
+        let parents = data.parent.iter().chain(data.supports.iter());
+        self.check_parents(parents, &format!("valuetype `{}`", def.ident.name));
+        ic_hir::visit::walk_valuetype(self, def, data);
     }
 }

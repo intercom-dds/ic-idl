@@ -27,7 +27,8 @@
 
 mod common;
 
-use common::lint_hir;
+use common::{lint_hir, test_lint_hir};
+use insta::assert_snapshot;
 
 #[test]
 fn valid_inheritance() {
@@ -49,9 +50,7 @@ interface Base {};
 interface Derived : Base, Base {};
 ";
 
-    let report = lint_hir(source);
-    assert!(report.errors.is_empty());
-    assert!(report.warnings.is_empty());
+    assert_snapshot!(test_lint_hir(source));
 }
 
 #[test]
@@ -64,9 +63,7 @@ module M {
 interface Derived : M::Base, M::Base {};
 ";
 
-    let report = lint_hir(source);
-    assert!(report.errors.is_empty());
-    assert!(report.warnings.is_empty());
+    assert_snapshot!(test_lint_hir(source));
 }
 
 #[test]
@@ -83,6 +80,31 @@ valuetype Derived : Base supports Bar {};
 }
 
 #[test]
+fn redundant_via_different_paths() {
+    let source = r"
+interface A {};
+interface Derived : A, ::A {};
+";
+
+    assert_snapshot!(test_lint_hir(source));
+}
+
+#[test]
+fn shadowed_name_is_not_redundant() {
+    let source = r"
+interface A {};
+module M {
+    interface A {};
+    interface Derived : A, ::A {};
+};
+";
+
+    let report = lint_hir(source);
+    assert!(report.errors.is_empty());
+    assert!(report.warnings.is_empty());
+}
+
+#[test]
 fn multiple_redundant_parents() {
     let source = r"
 interface A {};
@@ -90,7 +112,5 @@ interface B {};
 interface C : A, B, A, B {};
 ";
 
-    let report = lint_hir(source);
-    assert!(report.errors.is_empty());
-    assert!(report.warnings.is_empty());
+    assert_snapshot!(test_lint_hir(source));
 }

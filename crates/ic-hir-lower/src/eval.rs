@@ -83,11 +83,65 @@ impl<'a> ConstEvaluator<'a> {
                 ConstPathOutcome::Rejected => return None,
                 ConstPathOutcome::NotApplicable => {}
             }
+        } else if let Some(target_enum) = enum_def_id_for_type(&self.ctx.context, ty)
+            && let Some((const_id, src_enum)) = self.find_foreign_enum_ref(expr, target_enum)
+        {
+            self.emit_enum_mismatch(const_id, src_enum, target_enum, expr.span(), ty);
+            return None;
         }
         check_precision_loss(expr, ty, &mut self.ctx.diagnostics);
         let v = self.eval_expr(expr)?;
         let is_literal = matches!(expr, ic_syntax::Expr::Literal(_));
         self.cast_value(v, ty, expr.span(), is_literal)
+    }
+
+    /// Walks an expression looking for a path that resolves to a constant
+    /// belonging to an enum different from `target_enum`. Returns the
+    /// offending const's `DefId` along with the enum it belongs to.
+    fn find_foreign_enum_ref(
+        &self,
+        expr: &ic_syntax::Expr,
+        target_enum: DefId,
+    ) -> Option<(DefId, DefId)> {
+        match expr {
+            ic_syntax::Expr::Path(path) => {
+                let id = self.resolve_path(path).ok()?;
+                let DefKind::Const(c) = &self.ctx.context.definitions.get(id).kind else {
+                    return None;
+                };
+                let src_enum = enum_def_id_for_type(&self.ctx.context, &c.ty)?;
+                (src_enum != target_enum).then_some((id, src_enum))
+            }
+            ic_syntax::Expr::Unary(u) => self.find_foreign_enum_ref(&u.expr, target_enum),
+            ic_syntax::Expr::Binary(b) => self
+                .find_foreign_enum_ref(&b.lhs, target_enum)
+                .or_else(|| self.find_foreign_enum_ref(&b.rhs, target_enum)),
+            ic_syntax::Expr::Group(g) => self.find_foreign_enum_ref(&g.expr, target_enum),
+            ic_syntax::Expr::Literal(_) | ic_syntax::Expr::InitList(_) => None,
+        }
+    }
+
+    fn emit_enum_mismatch(
+        &mut self,
+        const_id: DefId,
+        src_enum: DefId,
+        tgt_enum: DefId,
+        use_span: ic_syntax::Span,
+        target_ty: &Ty,
+    ) {
+        let const_name = self.ctx.context.type_of(const_id).ident.name.clone();
+        let from_name = self.ctx.context.type_of(src_enum).ident.name.clone();
+        let to_name = self.ctx.context.type_of(tgt_enum).ident.name.clone();
+        self.ctx.diagnostics.errors.push(
+            error_span(
+                format!(
+                    "value '{const_name}' of enum '{from_name}' cannot be assigned to enum \
+                     '{to_name}'"
+                ),
+                Label::new(use_span).message(format!("value of enum '{from_name}'")),
+            )
+            .label(Label::new(target_ty.span).message(format!("expected enum '{to_name}'"))),
+        );
     }
 
     /// Evaluate expression without target type.
@@ -181,6 +235,11 @@ impl<'a> ConstEvaluator<'a> {
         let DefKind::Const(c) = &def.kind else {
             return ConstPathOutcome::NotApplicable;
         };
+
+        if let Some((src_enum, tgt_enum)) = mismatched_enums(&c.ty, ty, &self.ctx.context) {
+            self.emit_enum_mismatch(id, src_enum, tgt_enum, use_span, ty);
+            return ConstPathOutcome::Rejected;
+        }
 
         if let Some(val) = value_from_numeric(&c.value) {
             let resolved = resolve_value(&self.ctx.context, &val).unwrap_or(val);
@@ -709,6 +768,23 @@ fn check_precision_loss(
             ));
         }
     }
+}
+
+/// Returns `Some((src_enum, tgt_enum))` if `src` and `tgt` resolve to two
+/// different enum definitions. Used to reject assignments that mix enum types.
+fn mismatched_enums(src: &Ty, tgt: &Ty, ctx: &ic_hir::Context) -> Option<(DefId, DefId)> {
+    let src_enum = enum_def_id_for_type(ctx, src)?;
+    let tgt_enum = enum_def_id_for_type(ctx, tgt)?;
+    (src_enum != tgt_enum).then_some((src_enum, tgt_enum))
+}
+
+/// Returns the enum `DefId` that `ty` ultimately refers to, or `None` if
+/// `ty` is not an enum (after alias resolution).
+fn enum_def_id_for_type(ctx: &ic_hir::Context, ty: &Ty) -> Option<DefId> {
+    let TyKind::Adt(id) = ctx.resolve_ty(ty).kind else {
+        return None;
+    };
+    matches!(ctx.type_of(id).kind, DefKind::Enum(_)).then_some(id)
 }
 
 fn ty_name<'a>(ty: &'a Ty, ctx: &'a LoweringContext) -> &'a str {

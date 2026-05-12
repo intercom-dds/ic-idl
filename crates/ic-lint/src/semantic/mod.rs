@@ -48,7 +48,6 @@ pub mod oneway;
 pub mod recursive_type;
 pub mod redundant_inheritance;
 pub mod union_case_label_range;
-pub mod union_case_type_mismatch;
 pub mod union_key;
 pub mod unreachable_union_cases;
 pub mod void_ty;

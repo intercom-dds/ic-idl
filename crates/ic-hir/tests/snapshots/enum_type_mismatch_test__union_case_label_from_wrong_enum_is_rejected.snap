@@ -1,0 +1,15 @@
+---
+source: crates/ic-hir/tests/enum_type_mismatch_test.rs
+assertion_line: 107
+expression: "common::parse_and_expect_errors(input)"
+---
+⨯: value 'SMALL' of enum 'Size' cannot be assigned to enum 'Color'
+  @ test.idl:5:18
+
+ 2 │ enum Color { RED, GREEN };
+ 3 │ enum Size { SMALL, LARGE };
+ 4 │ union U switch (Color) {
+   │                 ˆˆˆˆˆ expected enum 'Color'
+ 5 │     case SMALL: long s;
+   │          ˆˆˆˆˆ value of enum 'Size'
+ 6 │ };

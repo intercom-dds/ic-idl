@@ -1,0 +1,13 @@
+---
+source: crates/ic-hir/tests/enum_type_mismatch_test.rs
+assertion_line: 131
+expression: "common::parse_and_expect_errors(input)"
+---
+⨯: value 'CIRCLE' of enum 'Shape' cannot be assigned to enum 'Color'
+  @ test.idl:4:25
+
+ 2 │ enum Color { RED };
+ 3 │ enum Shape { CIRCLE };
+ 4 │ const Color C = (CIRCLE);
+   │       ˆˆˆˆˆ     ˆˆˆˆˆˆˆˆ value of enum 'Shape'
+   │       └─ expected enum 'Color'

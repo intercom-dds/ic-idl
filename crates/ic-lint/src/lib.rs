@@ -568,7 +568,6 @@ define_lints! {
         semantic::recursive_type::RecursiveType,
         semantic::redundant_inheritance::RedundantInheritance,
         semantic::union_case_label_range::UnionCaseLabelRange,
-        semantic::union_case_type_mismatch::UnionCaseTypeMismatch,
         semantic::union_key::UnionKey,
         semantic::unreachable_union_cases::UnreachableUnionCases,
         semantic::void_ty::VoidTy,

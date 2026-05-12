@@ -1,0 +1,13 @@
+---
+source: crates/ic-hir/tests/enum_type_mismatch_test.rs
+assertion_line: 94
+expression: "common::parse_and_expect_errors(input)"
+---
+⨯: value 'CIRCLE' of enum 'Shape' cannot be assigned to enum 'Color'
+  @ test.idl:5:37
+
+ 3 │ enum Shape { CIRCLE };
+ 4 │ typedef Color ColorAlias;
+ 5 │ const ColorAlias MY_COLOR = CIRCLE;
+   │       ˆˆˆˆˆˆˆˆˆˆ            ˆˆˆˆˆˆ value of enum 'Shape'
+   │       └─ expected enum 'Color'

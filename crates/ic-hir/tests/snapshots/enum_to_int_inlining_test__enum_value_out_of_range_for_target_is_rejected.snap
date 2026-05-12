@@ -1,0 +1,12 @@
+---
+source: crates/ic-hir/tests/enum_to_int_inlining_test.rs
+assertion_line: 143
+expression: "common::parse_and_expect_errors(input)"
+---
+⨯: constant 'BIG' out of range for 'int8'
+  @ test.idl:3:24
+
+ 2 │ enum E { BIG = 300 };
+   │          ˆˆˆ 'BIG' defined here
+ 3 │ const int8 X = BIG;
+   │                ˆˆˆ out of range

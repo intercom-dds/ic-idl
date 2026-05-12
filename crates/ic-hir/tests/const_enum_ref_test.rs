@@ -39,6 +39,7 @@ fn test_const_enum_reference() {
         
         const MyEnum MY_CONST = MyEnum::ZERO;
         const int32 INT_CONST = MyEnum::TWO;
+        const int64 LONG_CONST = MyEnum::THREE;
     ";
 
     let (result, _, _) = common::parse_and_resolve(input);
@@ -52,6 +53,7 @@ fn test_const_enum_reference() {
 
     let mut found_my_const = false;
     let mut found_int_const = false;
+    let mut found_long_const = false;
     for (_, def) in &result.context.definitions {
         if def.ident.name == "MY_CONST" {
             if let ic_hir::hir::DefKind::Const(const_ty) = &def.kind
@@ -63,16 +65,28 @@ fn test_const_enum_reference() {
             }
         } else if def.ident.name == "INT_CONST"
             && let ic_hir::hir::DefKind::Const(const_ty) = &def.kind
-            && let ic_hir::hir::Numeric::Const(ref_id) = const_ty.value
         {
-            let ref_def = result.context.definitions.get(ref_id);
-            assert_eq!(ref_def.ident.name, "TWO", "INT_CONST should reference TWO");
+            assert_eq!(
+                const_ty.value,
+                ic_hir::hir::Numeric::Int32(5),
+                "INT_CONST should inline MyEnum::TWO as an int32"
+            );
             found_int_const = true;
+        } else if def.ident.name == "LONG_CONST"
+            && let ic_hir::hir::DefKind::Const(const_ty) = &def.kind
+        {
+            assert_eq!(
+                const_ty.value,
+                ic_hir::hir::Numeric::Int64(6),
+                "LONG_CONST should inline MyEnum::THREE as an int64"
+            );
+            found_long_const = true;
         }
     }
 
     assert!(found_my_const, "MY_CONST not found or has wrong type");
     assert!(found_int_const, "INT_CONST not found or has wrong type");
+    assert!(found_long_const, "LONG_CONST not found or has wrong type");
 }
 
 #[test]

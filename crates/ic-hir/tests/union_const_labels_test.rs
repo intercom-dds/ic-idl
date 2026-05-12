@@ -186,23 +186,14 @@ fn test_union_with_mixed_case_labels() {
     if let DefKind::Union(union_ty) = &union_def.1.kind {
         assert_eq!(union_ty.variants.len(), 4);
 
-        // First two should have Const references to enum values
-        assert!(matches!(
-            union_ty.variants[0].labels[0].value,
-            Numeric::Const(_)
-        )); // PENDING
-        assert!(matches!(
-            union_ty.variants[1].labels[0].value,
-            Numeric::Const(_)
-        )); // ACTIVE
+        assert_eq!(union_ty.variants[0].labels[0].value, Numeric::Int32(0));
+        assert_eq!(union_ty.variants[1].labels[0].value, Numeric::Int32(1));
 
-        // Third should have Const reference to SPECIAL_CODE
         assert!(matches!(
             union_ty.variants[2].labels[0].value,
             Numeric::Const(_)
-        )); // SPECIAL_CODE
+        ));
 
-        // Fourth should be numeric literal
         assert_eq!(union_ty.variants[3].labels[0].value, Numeric::Int32(42));
     } else {
         panic!("Data should be a union");

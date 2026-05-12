@@ -244,7 +244,21 @@ impl<'a> ConstEvaluator<'a> {
         if let Some(val) = value_from_numeric(&c.value) {
             let resolved = resolve_value(&self.ctx.context, &val).unwrap_or(val);
             match cast_value_to_type(resolved, ty, &self.ctx.context, false) {
-                Ok(_) => ConstPathOutcome::Accepted(Box::new(Numeric::Const(id))),
+                Ok(cast) => {
+                    if enum_def_id_for_type(&self.ctx.context, &c.ty).is_some()
+                        && is_numeric_primitive(&self.ctx.context, ty)
+                    {
+                        match numeric_from_value(&cast) {
+                            Ok(numeric) => ConstPathOutcome::Accepted(Box::new(numeric)),
+                            Err(err) => {
+                                self.emit_type_error(&err, use_span, ty, cast.kind_name());
+                                ConstPathOutcome::Rejected
+                            }
+                        }
+                    } else {
+                        ConstPathOutcome::Accepted(Box::new(Numeric::Const(id)))
+                    }
+                }
                 Err(Error::RangeError) => {
                     let to_ty = ty_name(ty, self.ctx);
                     self.ctx.diagnostics.errors.push(
@@ -785,6 +799,17 @@ fn enum_def_id_for_type(ctx: &ic_hir::Context, ty: &Ty) -> Option<DefId> {
         return None;
     };
     matches!(ctx.type_of(id).kind, DefKind::Enum(_)).then_some(id)
+}
+
+/// Returns true if `ty` resolves to a primitive integer or floating-point
+/// type. Used to decide when to inline an enum value as a numeric literal
+/// rather than preserving the enum reference.
+fn is_numeric_primitive(ctx: &ic_hir::Context, ty: &Ty) -> bool {
+    if let TyKind::Primitive(p) = ctx.resolve_ty(ty).kind {
+        rank_for_primitive(p).is_some() || float_rank_for_primitive(p).is_some()
+    } else {
+        false
+    }
 }
 
 fn ty_name<'a>(ty: &'a Ty, ctx: &'a LoweringContext) -> &'a str {

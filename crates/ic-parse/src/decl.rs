@@ -30,8 +30,7 @@ use ic_syntax::{
     AliasDef, ArrayDeclarator, Attribute, Bit, Bitfield, BitmaskDef, BitsetDef, ConstDef, Decl,
     DeclKind, Declarator, Discriminator, Empty, EnumDef, Enumerator, ExceptDef, Field,
     InterfaceDef, InterfaceMember, Item, Label, ModuleDef, Param, ParamKind, Prototype, StructDef,
-    UnionDef, UnionElement, UnionField, UnionMember, UnionNull, ValueElement, ValueMember,
-    ValuetypeDef,
+    UnionDef, UnionField, ValueElement, ValueMember, ValuetypeDef,
 };
 
 use super::Parser;
@@ -270,14 +269,15 @@ impl Parser<'_> {
 
         // Rule 55: element_spec
         let mut annotations = self.take_annotations();
-        let field = self.element_spec()?;
+        let (ty, decl) = self.element_spec()?;
         annotations.extend(self.take_trailing_comments());
 
         Ok(UnionField {
             span: self.make_span(start, self.prev_span),
             annotations,
             labels,
-            field,
+            ty: Box::new(ty),
+            decl,
         })
     }
 
@@ -296,22 +296,11 @@ impl Parser<'_> {
     }
 
     // Rule 55
-    fn element_spec(&mut self) -> Result<UnionElement> {
-        // InterCOM extension that lets you define an "empty" member.
-        if self.eat_keyword(Kw::Null).is_some() {
-            let span = self.prev_span;
-            self.expect(Kind::Semi)?;
-            return Ok(UnionElement::Null(UnionNull { span }));
-        }
-
+    fn element_spec(&mut self) -> Result<(ic_syntax::Type, ic_syntax::Declarator)> {
         let ty = self.type_spec()?;
         let decl = self.declarator()?;
         self.expect(Kind::Semi)?;
-
-        Ok(UnionElement::Member(UnionMember {
-            ty: Box::new(ty),
-            decl,
-        }))
+        Ok((ty, decl))
     }
 
     // Rule 57

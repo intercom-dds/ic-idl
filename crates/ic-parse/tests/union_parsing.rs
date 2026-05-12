@@ -26,7 +26,7 @@
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use ic_parse::from_str;
-use ic_syntax::{Item, Label, UnionElement};
+use ic_syntax::{Item, Label};
 
 #[test]
 fn parse_simple_union() {
@@ -211,10 +211,8 @@ fn parse_union_with_sequence_member() {
     let Item::UnionValue(def) = &result.tree[0] else {
         panic!("expected union")
     };
-    let UnionElement::Member(member) = &def.fields[0].field else {
-        panic!("expected member")
-    };
-    assert!(matches!(member.ty.as_ref(), ic_syntax::Type::Sequence(_)));
+    let field = &def.fields[0];
+    assert!(matches!(field.ty.as_ref(), ic_syntax::Type::Sequence(_)));
 }
 
 #[test]
@@ -229,10 +227,7 @@ fn parse_union_with_array_member() {
     let Item::UnionValue(def) = &result.tree[0] else {
         panic!("expected union")
     };
-    let UnionElement::Member(member) = &def.fields[0].field else {
-        panic!("expected member")
-    };
-    let ic_syntax::Declarator::Array(arr) = &member.decl else {
+    let ic_syntax::Declarator::Array(arr) = &def.fields[0].decl else {
         panic!("expected array declarator")
     };
     assert_eq!(arr.ident.name, "arrVal");

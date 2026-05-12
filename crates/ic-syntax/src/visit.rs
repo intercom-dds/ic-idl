@@ -32,7 +32,7 @@ use crate::{
     Bit, Bitfield, BitmaskDef, BitsetDef, ConstDef, Decl, Declarator, Discriminator, EnumDef,
     Enumerator, ExceptDef, Expr, Field, Group, Ident, InitList, InterfaceDef, InterfaceMember,
     Item, Label, Literal, ModuleDef, NamedExpr, Param, Path, Prototype, StructDef, Type, Unary,
-    UnionDef, UnionElement, UnionField, UnionMember, UnionNull, ValueElement, ValuetypeDef,
+    UnionDef, UnionField, ValueElement, ValuetypeDef,
 };
 
 pub trait Visitor<'a> {
@@ -83,12 +83,6 @@ pub trait Visitor<'a> {
     fn visit_union_label(&mut self, def: &'a Label) {
         walk_union_label(self, def);
     }
-
-    fn visit_union_member(&mut self, def: &'a UnionMember) {
-        walk_union_member(self, def);
-    }
-
-    fn visit_union_null(&mut self, def: &'a UnionNull) {}
 
     fn visit_enum(&mut self, def: &'a EnumDef) {
         walk_enum(self, def);
@@ -329,10 +323,8 @@ where
     for label in &def.labels {
         visitor.visit_union_label(label);
     }
-    match &def.field {
-        UnionElement::Member(v) => visitor.visit_union_member(v),
-        UnionElement::Null(v) => visitor.visit_union_null(v),
-    }
+    visitor.visit_type(&def.ty);
+    visitor.visit_declarator(&def.decl);
 }
 
 pub fn walk_union_label<'a, V>(visitor: &mut V, def: &'a Label)
@@ -342,14 +334,6 @@ where
     if let Label::Case(v) = def {
         visitor.visit_expr(v);
     }
-}
-
-pub fn walk_union_member<'a, V>(visitor: &mut V, def: &'a UnionMember)
-where
-    V: Visitor<'a> + ?Sized,
-{
-    visitor.visit_type(&def.ty);
-    visitor.visit_declarator(&def.decl);
 }
 
 pub fn walk_enum<'a, V>(visitor: &mut V, def: &'a EnumDef)

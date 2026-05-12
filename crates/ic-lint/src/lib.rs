@@ -526,7 +526,6 @@ define_lints! {
         extensions::complex_lit::ComplexLit,
         extensions::empty_mod::EmptyMod,
         extensions::lowercase_bool::LowercaseBool,
-        extensions::null::NullVariant,
         extensions::omitted_in::OmittedIn,
         extensions::scoped_lit::ScopedLit,
         extensions::shift_bound::ShiftBound,

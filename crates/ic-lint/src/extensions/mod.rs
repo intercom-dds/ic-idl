@@ -36,7 +36,6 @@ pub mod complex_key;
 pub mod complex_lit;
 pub mod empty_mod;
 pub mod lowercase_bool;
-pub mod null;
 pub mod omitted_in;
 pub mod scoped_lit;
 pub mod shift_bound;

@@ -47,10 +47,10 @@ impl<'a> Visitor<'a> for KwIdent<'a> {
     // don't visit types
     fn visit_type(&mut self, _: &'a ic_syntax::Type) {}
 
-    // Visit union members to check their declarators
-    fn visit_union_member(&mut self, member: &'a ic_syntax::UnionMember) {
+    // Visit union variants to check their declarators
+    fn visit_union_variant(&mut self, field: &'a ic_syntax::UnionField) {
         // Handle the declarator which can be Simple(Ident) or Array(ArrayDeclarator)
-        match &member.decl {
+        match &field.decl {
             ic_syntax::Declarator::Simple(ident) => self.visit_ident(ident),
             ic_syntax::Declarator::Array(array_decl) => self.visit_ident(&array_decl.ident),
         }

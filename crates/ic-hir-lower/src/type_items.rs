@@ -576,84 +576,44 @@ impl<'ctx> TypeItemProcessor<'ctx> {
         fields: &[ic_syntax::UnionField],
         disc: &Ty,
     ) -> Vec<Variant> {
-        let mut variants = Vec::new();
+        let mut variants = vec![];
 
         for field in fields {
             let annotations = convert_annotations(self.ctx, &field.annotations, self.current_scope);
-            match &field.field {
-                ic_syntax::UnionElement::Member(member) => {
-                    let mut resolver = TypeResolver::new(self.ctx, self.current_scope);
-                    let Some(ty) = resolver.resolve_type(&member.ty) else {
-                        continue;
-                    };
 
-                    let (ident, variant_ty) =
-                        resolve_declarator(&member.decl, ty, self.ctx, self.current_scope);
+            let mut resolver = TypeResolver::new(self.ctx, self.current_scope);
+            let Some(ty) = resolver.resolve_type(&field.ty) else {
+                continue;
+            };
 
-                    let is_default = field
-                        .labels
-                        .iter()
-                        .any(|label| matches!(label, ic_syntax::Label::Default(_)));
+            let (ident, variant_ty) =
+                resolve_declarator(&field.decl, ty, self.ctx, self.current_scope);
 
-                    let mut labels = Vec::new();
-                    for label in &field.labels {
-                        if let ic_syntax::Label::Case(expr) = label {
-                            let mut evaluator = ConstEvaluator::new(self.ctx, self.current_scope);
-                            if let Some(numeric) = evaluator.eval_union_case_label(expr, disc) {
-                                labels.push(Label {
-                                    value: numeric,
-                                    span: expr.span(),
-                                });
-                            }
-                        }
+            let is_default = field
+                .labels
+                .iter()
+                .any(|label| matches!(label, ic_syntax::Label::Default(_)));
+
+            let mut labels = vec![];
+            for label in &field.labels {
+                if let ic_syntax::Label::Case(expr) = label {
+                    let mut evaluator = ConstEvaluator::new(self.ctx, self.current_scope);
+                    if let Some(numeric) = evaluator.eval_union_case_label(expr, disc) {
+                        labels.push(Label {
+                            value: numeric,
+                            span: expr.span(),
+                        });
                     }
-
-                    variants.push(Variant {
-                        annotations,
-                        ident,
-                        ty: variant_ty,
-                        labels,
-                        is_default,
-                    });
-                }
-                ic_syntax::UnionElement::Null(null_elem) => {
-                    let ident = ic_syntax::Ident {
-                        name: format!("__null_case_{}", variants.len()),
-                        span: null_elem.span,
-                    };
-
-                    let is_default = field
-                        .labels
-                        .iter()
-                        .any(|label| matches!(label, ic_syntax::Label::Default(_)));
-
-                    let mut labels = Vec::new();
-                    for label in &field.labels {
-                        if let ic_syntax::Label::Case(expr) = label {
-                            let mut evaluator = ConstEvaluator::new(self.ctx, self.current_scope);
-                            if let Some(numeric) = evaluator.eval_union_case_label(expr, disc) {
-                                labels.push(Label {
-                                    value: numeric,
-                                    span: expr.span(),
-                                });
-                            }
-                        }
-                    }
-
-                    let null_ty = Ty {
-                        span: null_elem.span,
-                        kind: TyKind::Null,
-                    };
-
-                    variants.push(Variant {
-                        annotations: annotations.clone(),
-                        ident,
-                        ty: null_ty,
-                        labels,
-                        is_default,
-                    });
                 }
             }
+
+            variants.push(Variant {
+                annotations,
+                ident,
+                ty: variant_ty,
+                labels,
+                is_default,
+            });
         }
 
         variants

@@ -436,36 +436,13 @@ case LABEL_DEFAULT:
     Empty _default;
 };
 
-enum UnionElementKind {
-    ELEMENT_MEMBER,
-    ELEMENT_NULL
-};
-
-@nested
-struct UnionMember {
-    @external Type ty;
-    Declarator decl;
-};
-
-@nested
-struct UnionNull {
-    Span span;
-};
-
-@nested
-union UnionElement switch(UnionElementKind) {
-case ELEMENT_MEMBER:
-    UnionMember member;
-case ELEMENT_NULL:
-    UnionNull _null;
-};
-
 @nested
 struct UnionField : IDecl {
     /// Case labels that map to this variant.
     sequence<Label> labels;
 
-    UnionElement field;
+    @external Type ty;
+    Declarator decl;
 };
 
 @nested

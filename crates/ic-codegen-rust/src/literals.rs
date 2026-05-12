@@ -124,6 +124,9 @@ impl RustGen<'_> {
                         let default_const_def = self.hir.context.definitions.get(default_field);
                         w!(w, ty_str, "::", default_const_def.ident.name);
                     }
+                    DefKind::Alias(alias_ty) => {
+                        self.emit_const_default_value(&alias_ty.ty, ctx_id, w);
+                    }
                     _ => {
                         let ty_str = self.rust_type(ty, ctx_id);
                         w!(w, "<", ty_str, ">::default()");

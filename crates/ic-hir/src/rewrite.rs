@@ -142,8 +142,8 @@ where
     S: std::hash::BuildHasher,
 {
     for def_id in refs {
-        if let Some(new_id) = mapping.get(&def_id.value) {
-            def_id.value = *new_id;
+        if let Some(new_id) = mapping.get(&def_id.def_id) {
+            def_id.def_id = *new_id;
         }
     }
 }

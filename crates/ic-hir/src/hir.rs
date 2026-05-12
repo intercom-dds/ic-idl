@@ -542,7 +542,7 @@ pub struct Attribute {
 
 #[derive(Copy, Clone, Debug)]
 pub struct Spanned<T> {
-    pub value: T,
+    pub def_id: T,
     pub span: Span,
 }
 

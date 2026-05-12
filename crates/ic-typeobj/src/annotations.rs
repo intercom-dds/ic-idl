@@ -230,8 +230,8 @@ pub fn get_parents_last_member_id(ctx: &Context, def_id: DefId) -> MemberId {
     };
 
     if let Some(parent) = parent_id {
-        let parent_last = get_parents_last_member_id(ctx, parent.value);
-        let parent_def = ctx.type_of(parent.value);
+        let parent_last = get_parents_last_member_id(ctx, parent.def_id);
+        let parent_def = ctx.type_of(parent.def_id);
 
         let mut current_id = parent_last;
         if let DefKind::Struct(s) = &parent_def.kind {

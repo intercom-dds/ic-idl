@@ -324,7 +324,7 @@ fn emit_interface_def(context: &Context, node: &mut Leaf<String>, v: &InterfaceT
             let raises = attr
                 .getraises
                 .iter()
-                .map(|exception_ref| context.type_of(exception_ref.value).ident.name.as_str())
+                .map(|exception_ref| context.type_of(exception_ref.def_id).ident.name.as_str())
                 .collect::<Vec<_>>()
                 .join(", ");
             attr_node.push(leaf!("{} {}", "getraises".purple(), raises.cyan()));
@@ -334,7 +334,7 @@ fn emit_interface_def(context: &Context, node: &mut Leaf<String>, v: &InterfaceT
             let raises = attr
                 .setraises
                 .iter()
-                .map(|exception_ref| context.type_of(exception_ref.value).ident.name.as_str())
+                .map(|exception_ref| context.type_of(exception_ref.def_id).ident.name.as_str())
                 .collect::<Vec<_>>()
                 .join(", ");
             attr_node.push(leaf!("{} {}", "setraises".purple(), raises.cyan()));
@@ -346,7 +346,7 @@ fn emit_interface_def(context: &Context, node: &mut Leaf<String>, v: &InterfaceT
 
 fn emit_bitset_def(context: &Context, node: &mut Leaf<String>, v: &BitsetTy) {
     if let Some(parent) = v.parent {
-        let parent = &context.type_of(parent.value).ident.name;
+        let parent = &context.type_of(parent.def_id).ident.name;
         node.push(leaf!("{} {}", "parent".purple(), parent.cyan()));
     }
 
@@ -419,7 +419,7 @@ fn emit_def(context: &Context, id: DefId) -> Leaf<String> {
         }
         DefKind::Struct(v) => {
             if let Some(parent) = v.parent {
-                let parent = &context.type_of(parent.value).ident.name;
+                let parent = &context.type_of(parent.def_id).ident.name;
                 node.push(leaf!("{} {}", "parent".purple(), parent.cyan()));
             }
             let members = v.members.iter().map(|v| emit_member(context, v));

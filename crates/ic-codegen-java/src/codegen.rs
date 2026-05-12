@@ -633,7 +633,7 @@ impl<'a> JavaGen<'a> {
             w!(w, "public class ", def);
         }
         if let Some(parent) = struct_ty.parent {
-            let parent = self.java_name(parent.value);
+            let parent = self.java_name(parent.def_id);
             w!(w, " extends ", parent);
         }
         w!(w, " implements java.io.Serializable {\n");
@@ -644,7 +644,7 @@ impl<'a> JavaGen<'a> {
         self.emit_copy_ctor(
             w,
             def,
-            struct_ty.parent.map(|p| p.value),
+            struct_ty.parent.map(|p| p.def_id),
             &struct_ty.members,
         );
         if !struct_ty.members.is_empty() {
@@ -1472,7 +1472,7 @@ impl<'a> JavaGen<'a> {
             let exceptions = proto
                 .raises
                 .iter()
-                .map(|e| self.scoped_name(e.value, def.id))
+                .map(|e| self.scoped_name(e.def_id, def.id))
                 .join(", ");
 
             w!(w, " throws ", exceptions);
@@ -1483,7 +1483,7 @@ impl<'a> JavaGen<'a> {
         let parents = interface_ty
             .parents
             .iter()
-            .map(|v| self.java_name(v.value))
+            .map(|v| self.java_name(v.def_id))
             .collect::<Vec<_>>()
             .join(", ");
 
@@ -1521,13 +1521,13 @@ impl<'a> JavaGen<'a> {
         w!(w, "public abstract class ", def, "Abstract");
 
         if let Some(extends) = value_ty.parent {
-            let name = self.java_name(extends.value);
+            let name = self.java_name(extends.def_id);
             w!(w, " extends ", name);
         }
 
         w!(w, " implements Cloneable");
         if let Some(supports) = value_ty.supports {
-            let name = self.java_name(supports.value);
+            let name = self.java_name(supports.def_id);
             w!(w, ", ", name);
         }
         w!(w, " {\n");

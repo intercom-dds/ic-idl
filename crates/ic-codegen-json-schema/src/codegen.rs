@@ -365,7 +365,7 @@ impl<'a> JsonSchemaGen<'a> {
         obj.insert("type".to_string(), Value::String("object".to_string()));
 
         if let Some(parent) = struct_ty.parent {
-            let ref_url = self.make_reference(parent.value, current_file_id);
+            let ref_url = self.make_reference(parent.def_id, current_file_id);
             obj.insert("allOf".to_string(), value!([{ "$ref": ref_url }]));
         }
 

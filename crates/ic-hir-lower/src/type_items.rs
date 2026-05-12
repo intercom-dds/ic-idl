@@ -124,7 +124,7 @@ impl<'ctx> TypeItemProcessor<'ctx> {
                 if let Some(parent_id) = ty.as_adt() {
                     self.validate_parent_inheritance(parent_id, "struct", &s.ident.name, path_span)
                         .map(|value| Spanned {
-                            value,
+                            def_id: value,
                             span: path_span,
                         })
                 } else {
@@ -168,7 +168,7 @@ impl<'ctx> TypeItemProcessor<'ctx> {
                         path_span,
                     ) {
                         parents.push(Spanned {
-                            value,
+                            def_id: value,
                             span: path_span,
                         });
                     }
@@ -426,7 +426,7 @@ impl<'ctx> TypeItemProcessor<'ctx> {
                 self.validate_parent_inheritance(parent_id, "valuetype", &v.ident.name, path_span)
             })
             .map(|value| Spanned {
-                value,
+                def_id: value,
                 span: path_span,
             })
     }
@@ -446,7 +446,7 @@ impl<'ctx> TypeItemProcessor<'ctx> {
                     let def = self.ctx.context.definitions.get_mut(supports_id);
                     def.flags |= DefFlags::HAS_CHILDREN;
                     Some(Spanned {
-                        value: supports_id,
+                        def_id: supports_id,
                         span: path_span,
                     })
                 } else {
@@ -734,7 +734,7 @@ impl<'ctx> TypeItemProcessor<'ctx> {
                         let def = self.ctx.context.definitions.get(def_id);
                         if matches!(&def.kind, DefKind::Except(_)) {
                             Some(Spanned {
-                                value: def_id,
+                                def_id,
                                 span: crate::utils::path_span(path),
                             })
                         } else {

@@ -194,9 +194,9 @@ impl HirMerger {
     ) -> Vec<crate::hir::Spanned<DefId>> {
         refs.iter()
             .filter_map(|def_id| {
-                self.map_def_id(graph_index, Some(def_id.value))
+                self.map_def_id(graph_index, Some(def_id.def_id))
                     .map(|value| crate::hir::Spanned {
-                        value,
+                        def_id: value,
                         span: def_id.span,
                     })
             })
@@ -209,9 +209,9 @@ impl HirMerger {
         def_ref: Option<crate::hir::Spanned<DefId>>,
     ) -> Option<crate::hir::Spanned<DefId>> {
         let def_ref = def_ref?;
-        self.map_def_id(graph_index, Some(def_ref.value))
+        self.map_def_id(graph_index, Some(def_ref.def_id))
             .map(|value| crate::hir::Spanned {
-                value,
+                def_id: value,
                 span: def_ref.span,
             })
     }

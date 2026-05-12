@@ -453,7 +453,7 @@ impl<'ctx> ValueItemProcessor<'ctx> {
             resolver.resolve_path_type(parent_path).and_then(|ty| {
                 if let Some(parent_id) = ty.as_adt() {
                     Some(ic_hir::hir::Spanned {
-                        value: parent_id,
+                        def_id: parent_id,
                         span: path_span,
                     })
                 } else {

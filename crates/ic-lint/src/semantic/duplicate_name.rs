@@ -154,7 +154,7 @@ impl<'a> DuplicateName<'a> {
 
             // Recursively collect from parent interfaces
             for parent in &interface.parents {
-                let parent_methods = self.collect_methods_with_sources(parent.value, visited);
+                let parent_methods = self.collect_methods_with_sources(parent.def_id, visited);
                 for (name, sources) in parent_methods {
                     methods.entry(name).or_insert_with(Vec::new).extend(sources);
                 }
@@ -178,11 +178,11 @@ impl<'a> Visitor<'a> for DuplicateName<'a> {
         let mut visited_parents = HashSet::new();
 
         while let Some(parent_ref) = parent {
-            if !visited_parents.insert(parent_ref.value) {
+            if !visited_parents.insert(parent_ref.def_id) {
                 break;
             }
 
-            let parent_def = self.hir.context.definitions.get(parent_ref.value);
+            let parent_def = self.hir.context.definitions.get(parent_ref.def_id);
             if let DefKind::Struct(parent_struct) = &parent_def.kind {
                 for member in &parent_struct.members {
                     seen.insert(
@@ -274,7 +274,7 @@ impl<'a> Visitor<'a> for DuplicateName<'a> {
 
         // Collect methods from parent interfaces only
         for parent in &interface.parents {
-            let parent_methods = self.collect_methods_with_sources(parent.value, &mut visited);
+            let parent_methods = self.collect_methods_with_sources(parent.def_id, &mut visited);
             for (name, sources) in parent_methods {
                 inherited_methods
                     .entry(name)

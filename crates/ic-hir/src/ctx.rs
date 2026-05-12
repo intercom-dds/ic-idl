@@ -451,8 +451,8 @@ impl DepCollector<'_> {
         F: Fn(&Def) -> bool,
     {
         for def_id in refs {
-            if include(self.ctx.type_of(def_id.value)) {
-                deps.insert(def_id.value);
+            if include(self.ctx.type_of(def_id.def_id)) {
+                deps.insert(def_id.def_id);
             }
         }
     }

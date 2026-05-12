@@ -81,7 +81,7 @@ pub fn collect_def_dependencies(
         }
         DefKind::Struct(struct_ty) => {
             if let Some(parent) = struct_ty.parent {
-                add_def_dependency(hir, parent.value, current_file, deps);
+                add_def_dependency(hir, parent.def_id, current_file, deps);
             }
             for member in &struct_ty.members {
                 collect_type_dependencies(hir, &member.ty, current_file, deps);
@@ -95,15 +95,15 @@ pub fn collect_def_dependencies(
         }
         DefKind::Interface(interface) => {
             for parent in &interface.parents {
-                add_def_dependency(hir, parent.value, current_file, deps);
+                add_def_dependency(hir, parent.def_id, current_file, deps);
             }
             for attr in &interface.attributes {
                 collect_type_dependencies(hir, &attr.ty, current_file, deps);
                 for exc in &attr.getraises {
-                    add_def_dependency(hir, exc.value, current_file, deps);
+                    add_def_dependency(hir, exc.def_id, current_file, deps);
                 }
                 for exc in &attr.setraises {
-                    add_def_dependency(hir, exc.value, current_file, deps);
+                    add_def_dependency(hir, exc.def_id, current_file, deps);
                 }
             }
             for proto in &interface.prototypes {
@@ -112,16 +112,16 @@ pub fn collect_def_dependencies(
                     collect_type_dependencies(hir, &param.ty, current_file, deps);
                 }
                 for exc in &proto.raises {
-                    add_def_dependency(hir, exc.value, current_file, deps);
+                    add_def_dependency(hir, exc.def_id, current_file, deps);
                 }
             }
         }
         DefKind::Valuetype(valuetype) => {
             if let Some(parent) = valuetype.parent {
-                add_def_dependency(hir, parent.value, current_file, deps);
+                add_def_dependency(hir, parent.def_id, current_file, deps);
             }
             if let Some(supports) = valuetype.supports {
-                add_def_dependency(hir, supports.value, current_file, deps);
+                add_def_dependency(hir, supports.def_id, current_file, deps);
             }
             for member in &valuetype.members {
                 collect_type_dependencies(hir, &member.ty, current_file, deps);
@@ -140,7 +140,7 @@ pub fn collect_def_dependencies(
         }
         DefKind::Bitset(bitset) => {
             if let Some(parent) = bitset.parent {
-                add_def_dependency(hir, parent.value, current_file, deps);
+                add_def_dependency(hir, parent.def_id, current_file, deps);
             }
         }
         _ => {}

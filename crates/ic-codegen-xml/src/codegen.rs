@@ -159,7 +159,7 @@ impl<'a> XmlGen<'a> {
     fn emit_struct(&self, def: &Def, struct_ty: &StructTy, w: &mut XmlWriter) {
         let mut attrs = vec![("name".to_string(), def.ident.name.clone())];
         if let Some(parent) = struct_ty.parent {
-            let base_type = self.make_scoped_name(parent.value);
+            let base_type = self.make_scoped_name(parent.def_id);
             attrs.push(("baseType".to_string(), base_type));
         }
         let type_attrs = type_attrs(def);

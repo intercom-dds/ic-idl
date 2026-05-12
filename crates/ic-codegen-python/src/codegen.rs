@@ -332,7 +332,7 @@ impl<'a> PyGen<'a> {
         py!(w, "@_dataclasses_.dataclass(slots=True, order=True)\n");
         py!(w, "class ", def);
         if let Some(parent) = struct_ty.parent {
-            let parent_name = self.py_def(w, parent.value);
+            let parent_name = self.py_def(w, parent.def_id);
             py!(w, "(", parent_name, ")");
         }
         py!(w, ":\n");
@@ -592,7 +592,7 @@ impl<'a> PyGen<'a> {
             interface_ty
                 .parents
                 .iter()
-                .map(|p| self.py_def(w, p.value))
+                .map(|p| self.py_def(w, p.def_id))
                 .collect()
         };
 
@@ -650,11 +650,11 @@ impl<'a> PyGen<'a> {
     fn emit_valuetype(&self, w: &mut PyWriter, def: &Def, value_ty: &ValueTy) {
         let mut bases = vec![];
         if let Some(parent) = value_ty.parent {
-            bases.push(self.py_def(w, parent.value));
+            bases.push(self.py_def(w, parent.def_id));
         }
 
         if let Some(supports) = value_ty.supports {
-            bases.push(self.py_def(w, supports.value));
+            bases.push(self.py_def(w, supports.def_id));
         }
 
         if bases.is_empty() && !value_ty.prototypes.is_empty() {

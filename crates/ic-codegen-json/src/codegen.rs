@@ -126,7 +126,7 @@ impl<'a> JsonGen<'a> {
         if let Some(parent) = struct_ty.parent {
             let mut base_obj = BTreeMap::new();
             Self::emit_type_info(
-                self.hir.context.definitions.get(parent.value),
+                self.hir.context.definitions.get(parent.def_id),
                 &mut base_obj,
             );
             struct_obj.insert("base_type".to_string(), Value::Object(base_obj));
@@ -296,7 +296,7 @@ impl<'a> JsonGen<'a> {
                     .map(|parent| {
                         let mut parent_obj = BTreeMap::new();
                         Self::emit_type_info(
-                            self.hir.context.definitions.get(parent.value),
+                            self.hir.context.definitions.get(parent.def_id),
                             &mut parent_obj,
                         );
                         Value::Object(parent_obj)
@@ -306,7 +306,10 @@ impl<'a> JsonGen<'a> {
             } else {
                 let mut parent_obj = BTreeMap::new();
                 Self::emit_type_info(
-                    self.hir.context.definitions.get(interface.parents[0].value),
+                    self.hir
+                        .context
+                        .definitions
+                        .get(interface.parents[0].def_id),
                     &mut parent_obj,
                 );
                 interface_obj.insert("base_type".to_string(), Value::Object(parent_obj));
@@ -339,7 +342,7 @@ impl<'a> JsonGen<'a> {
         if let Some(parent) = valuetype.parent {
             let mut base_obj = BTreeMap::new();
             Self::emit_type_info(
-                self.hir.context.definitions.get(parent.value),
+                self.hir.context.definitions.get(parent.def_id),
                 &mut base_obj,
             );
             valuetype_obj.insert("base_type".to_string(), Value::Object(base_obj));
@@ -348,7 +351,7 @@ impl<'a> JsonGen<'a> {
         if let Some(supports) = valuetype.supports {
             let mut supports_obj = BTreeMap::new();
             Self::emit_type_info(
-                self.hir.context.definitions.get(supports.value),
+                self.hir.context.definitions.get(supports.def_id),
                 &mut supports_obj,
             );
             valuetype_obj.insert("supports".to_string(), Value::Object(supports_obj));

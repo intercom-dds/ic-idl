@@ -234,7 +234,7 @@ impl<'a> RustGen<'a> {
         if !interface_ty.parents.is_empty() {
             w!(w, ": ");
             for (i, parent) in interface_ty.parents.iter().enumerate() {
-                let parent_def = self.hir.context.definitions.get(parent.value);
+                let parent_def = self.hir.context.definitions.get(parent.def_id);
                 w!(w, parent_def);
                 if i + 1 < interface_ty.parents.len() {
                     w!(w, " + ");
@@ -333,7 +333,7 @@ impl<'a> RustGen<'a> {
             self.emit_prototype_return_type(ty, &[], ctx, w);
             w!(w, ", ::std::boxed::Box<dyn ::std::error::Error>>");
         } else if !raises.is_empty() {
-            let except_name = self.scoped_name(raises[0].value, ctx);
+            let except_name = self.scoped_name(raises[0].def_id, ctx);
             w!(w, except_name, "Result<");
             self.emit_prototype_return_type(ty, &[], ctx, w);
             w!(w, ">");

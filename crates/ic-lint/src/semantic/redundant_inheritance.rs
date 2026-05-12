@@ -65,8 +65,8 @@ impl RedundantInheritance<'_> {
     {
         let mut seen = HashMap::new();
         for parent in parents {
-            let name = &self.hir.context.type_of(parent.value).ident.name;
-            if let Some(&first_span) = seen.get(&parent.value) {
+            let name = &self.hir.context.type_of(parent.def_id).ident.name;
+            if let Some(&first_span) = seen.get(&parent.def_id) {
                 let diag = self
                     .ctx
                     .diag_span(
@@ -78,7 +78,7 @@ impl RedundantInheritance<'_> {
                     .label(Label::new(first_span).message("first listed here"));
                 Self::report(self.ctx, diag);
             } else {
-                seen.insert(parent.value, parent.span);
+                seen.insert(parent.def_id, parent.span);
             }
         }
     }

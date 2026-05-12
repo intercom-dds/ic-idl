@@ -441,7 +441,7 @@ impl<'a> CSharpGen<'a> {
                 for member in struct_ty.members.iter().rev() {
                     members.push((member.ident.name.clone(), member.ty.clone()));
                 }
-                current_id = struct_ty.parent.map(|p| p.value);
+                current_id = struct_ty.parent.map(|p| p.def_id);
             } else {
                 break;
             }
@@ -456,7 +456,7 @@ impl<'a> CSharpGen<'a> {
 
         w!(w, "public partial class ", def.ident.name);
         if let Some(parent) = struct_ty.parent {
-            let parent_name = self.scoped_name(parent.value, def.id);
+            let parent_name = self.scoped_name(parent.def_id, def.id);
             w!(w, " : ", parent_name);
         } else {
             w!(w, " : IComparable<", def, ">, IEquatable<", def, ">");
@@ -515,7 +515,7 @@ impl<'a> CSharpGen<'a> {
             w!(w, ")");
 
             if let Some(parent) = struct_ty.parent {
-                let parent_members = self.collect_members(parent.value);
+                let parent_members = self.collect_members(parent.def_id);
                 if !parent_members.is_empty() {
                     w!(w, " : base(");
                     for (i, (name, _)) in parent_members.iter().enumerate() {
@@ -1013,7 +1013,7 @@ impl<'a> CSharpGen<'a> {
                 if i > 0 {
                     w!(w, ", ");
                 }
-                let parent_name = self.scoped_name(parent.value, def.id);
+                let parent_name = self.scoped_name(parent.def_id, def.id);
                 w!(w, "I", parent_name);
             }
         }
@@ -1077,15 +1077,15 @@ impl<'a> CSharpGen<'a> {
 
         // Handle inheritance
         if let Some(parent) = valuetype.parent {
-            let parent_name = self.scoped_name(parent.value, def.id);
+            let parent_name = self.scoped_name(parent.def_id, def.id);
             w!(w, " : ", parent_name);
 
             if let Some(supports) = valuetype.supports {
-                let supports_name = self.scoped_name(supports.value, def.id);
+                let supports_name = self.scoped_name(supports.def_id, def.id);
                 w!(w, ", I", supports_name);
             }
         } else if let Some(supports) = valuetype.supports {
-            let supports_name = self.scoped_name(supports.value, def.id);
+            let supports_name = self.scoped_name(supports.def_id, def.id);
             w!(w, " : I", supports_name);
         }
 

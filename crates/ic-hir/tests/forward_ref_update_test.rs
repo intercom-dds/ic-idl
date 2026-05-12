@@ -37,17 +37,17 @@ fn test_forward_declaration_reference_update() {
     let source = r"
         // Forward declare A
         struct A;
-        
+
         // Use A in B (should initially point to forward declaration)
         struct B {
             A field;
         };
-        
+
         // Define A
         struct A {
             long x;
         };
-        
+
         // Use A in C (should point to definition directly)
         struct C {
             A field;
@@ -133,20 +133,20 @@ fn test_multiple_forward_declarations() {
         // Multiple forward declarations
         struct X;
         struct X;
-        
+
         // Use X
         struct Y {
             X field;
         };
-        
+
         // Another forward declaration
         struct X;
-        
+
         // Define X
         struct X {
             string value;
         };
-        
+
         // Use X again
         struct Z {
             X field;
@@ -222,14 +222,14 @@ fn test_nested_type_reference_update() {
     let source = r"
         // Forward declare
         struct Element;
-        
+
         // Use in nested types
         struct Container {
             Element array_field[10];
             sequence<Element> seq_field;
             map<string, Element> map_field;
         };
-        
+
         // Define Element
         struct Element {
             long data;
@@ -325,12 +325,12 @@ fn test_inheritance_from_forward_declaration_error() {
     let source = r"
         // Forward declare base
         interface Base;
-        
+
         // Inherit from forward declaration - this should fail
         interface Derived : Base {
             void method();
         };
-        
+
         // Define Base
         interface Base {
             void base_method();
@@ -353,7 +353,7 @@ fn test_inheritance_with_defined_base() {
         interface Base {
             void base_method();
         };
-        
+
         // Now inherit from it
         interface Derived : Base {
             void method();
@@ -388,7 +388,7 @@ fn test_inheritance_with_defined_base() {
     if let DefKind::Interface(interface_ty) = &derived_def.kind {
         assert_eq!(interface_ty.parents.len(), 1);
         assert_eq!(
-            interface_ty.parents[0].value, base,
+            interface_ty.parents[0].def_id, base,
             "Derived should inherit from Base"
         );
     } else {
@@ -404,12 +404,12 @@ fn test_no_update_for_non_forward_declarations() {
         struct A {
             long x;
         };
-        
+
         // Use A (points to definition)
         struct B {
             A field;
         };
-        
+
         // Forward declare A again (should not affect B)
         struct A;
     ";

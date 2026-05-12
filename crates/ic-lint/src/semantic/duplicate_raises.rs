@@ -63,9 +63,9 @@ impl DuplicateRaises<'_> {
         let mut seen = HashMap::new();
 
         for exception in exceptions {
-            let def = self.hir.context.type_of(exception.value);
+            let def = self.hir.context.type_of(exception.def_id);
 
-            if let Some(&first_span) = seen.get(&exception.value) {
+            if let Some(&first_span) = seen.get(&exception.def_id) {
                 let diag = self
                     .ctx
                     .diag_span(
@@ -81,7 +81,7 @@ impl DuplicateRaises<'_> {
                     .help("remove the duplicate exception from the clause");
                 Self::report(self.ctx, diag);
             } else {
-                seen.insert(exception.value, exception.span);
+                seen.insert(exception.def_id, exception.span);
             }
         }
     }

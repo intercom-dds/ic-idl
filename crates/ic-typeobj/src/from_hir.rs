@@ -302,17 +302,17 @@ impl TypeObjectCache<'_> {
         match &def.kind {
             DefKind::Struct(s) => {
                 if let Some(parent) = s.parent {
-                    self.add_dependency(parent.value, vertex, graph, id_to_vertex, visited);
+                    self.add_dependency(parent.def_id, vertex, graph, id_to_vertex, visited);
                 }
             }
             DefKind::Bitset(b) => {
                 if let Some(parent) = b.parent {
-                    self.add_dependency(parent.value, vertex, graph, id_to_vertex, visited);
+                    self.add_dependency(parent.def_id, vertex, graph, id_to_vertex, visited);
                 }
             }
             DefKind::Valuetype(v) => {
                 if let Some(parent) = v.parent {
-                    self.add_dependency(parent.value, vertex, graph, id_to_vertex, visited);
+                    self.add_dependency(parent.def_id, vertex, graph, id_to_vertex, visited);
                 }
             }
             _ => {}
@@ -753,14 +753,14 @@ impl TypeObjectCache<'_> {
         let complete = match &def.kind {
             DefKind::Struct(s) => CompleteTypeObject::StructType(self.create_complete_struct_type(
                 def,
-                s.parent.map(|p| p.value),
+                s.parent.map(|p| p.def_id),
                 &s.members,
             )),
             DefKind::Except(e) => CompleteTypeObject::StructType(
                 self.create_complete_struct_type(def, None, &e.members),
             ),
             DefKind::Valuetype(v) => CompleteTypeObject::StructType(
-                self.create_complete_struct_type(def, v.parent.map(|p| p.value), &v.members),
+                self.create_complete_struct_type(def, v.parent.map(|p| p.def_id), &v.members),
             ),
             DefKind::Union(u) => {
                 CompleteTypeObject::UnionType(self.create_complete_union_type(def, u))

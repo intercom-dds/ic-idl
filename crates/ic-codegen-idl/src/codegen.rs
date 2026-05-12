@@ -297,7 +297,7 @@ impl<'a> IdlGen<'a> {
         parents: impl IntoIterator<Item = &'ctx ic_hir::hir::Spanned<DefId>>,
         relative_to_def_id: DefId,
     ) {
-        let mut parents_iter = parents.into_iter().map(|p| p.value);
+        let mut parents_iter = parents.into_iter().map(|p| p.def_id);
         if let Some(first) = parents_iter.next() {
             w!(w, " : ");
             let first_name = self.scoped_name(first, relative_to_def_id);
@@ -450,7 +450,7 @@ impl<'a> IdlGen<'a> {
                 if i > 0 {
                     w!(w, ", ");
                 }
-                let exc_name = self.scoped_name(exc.value, relative_to_def_id);
+                let exc_name = self.scoped_name(exc.def_id, relative_to_def_id);
                 w!(w, exc_name);
             }
             w!(w, ")");
@@ -462,7 +462,7 @@ impl<'a> IdlGen<'a> {
                 if i > 0 {
                     w!(w, ", ");
                 }
-                let exc_name = self.scoped_name(exc.value, relative_to_def_id);
+                let exc_name = self.scoped_name(exc.def_id, relative_to_def_id);
                 w!(w, exc_name);
             }
             w!(w, ")");
@@ -494,7 +494,7 @@ impl<'a> IdlGen<'a> {
                 if i > 0 {
                     w!(w, ", ");
                 }
-                let exc_name = self.scoped_name(exc.value, relative_to_def_id);
+                let exc_name = self.scoped_name(exc.def_id, relative_to_def_id);
                 w!(w, exc_name);
             }
             w!(w, ")");
@@ -537,7 +537,7 @@ impl<'a> IdlGen<'a> {
         self.emit_parents(w, &valuetype.parent, def.id);
 
         if let Some(supports) = valuetype.supports {
-            let supports_name = self.scoped_name(supports.value, def.id);
+            let supports_name = self.scoped_name(supports.def_id, def.id);
             w!(w, " supports ", supports_name);
         }
 

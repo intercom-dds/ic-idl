@@ -40,7 +40,7 @@ fn test_string_literal_assigned_to_string() {
 
     let def = result.context.definitions.get(result.order[0]);
     if let DefKind::Const(const_ty) = &def.kind
-        && let Numeric::String(s) | Numeric::WString(s) = &const_ty.value
+        && let Numeric::String(s) = &const_ty.value
     {
         assert_eq!(s, "hello world");
     } else {
@@ -78,7 +78,7 @@ fn test_string_literal_with_escapes() {
 
     let def = result.context.definitions.get(result.order[0]);
     if let DefKind::Const(const_ty) = &def.kind
-        && let Numeric::String(s) | Numeric::WString(s) = &const_ty.value
+        && let Numeric::String(s) = &const_ty.value
     {
         assert_eq!(s, "hello\nworld\ttab");
     } else {
@@ -97,7 +97,7 @@ fn test_adjacent_string_literal_concatenation() {
 
     let def = result.context.definitions.get(result.order[0]);
     if let DefKind::Const(const_ty) = &def.kind
-        && let Numeric::String(s) | Numeric::WString(s) = &const_ty.value
+        && let Numeric::String(s) = &const_ty.value
     {
         assert_eq!(s, "helloworld");
     } else {
@@ -116,7 +116,7 @@ fn test_multiple_adjacent_string_literals() {
 
     let def = result.context.definitions.get(result.order[0]);
     if let DefKind::Const(const_ty) = &def.kind
-        && let Numeric::String(s) | Numeric::WString(s) = &const_ty.value
+        && let Numeric::String(s) = &const_ty.value
     {
         assert_eq!(s, "onetwothree");
     } else {
@@ -135,7 +135,7 @@ fn test_string_literal_concatenation_with_spaces() {
 
     let def = result.context.definitions.get(result.order[0]);
     if let DefKind::Const(const_ty) = &def.kind
-        && let Numeric::String(s) | Numeric::WString(s) = &const_ty.value
+        && let Numeric::String(s) = &const_ty.value
     {
         assert_eq!(s, "hello world");
     } else {
@@ -154,7 +154,7 @@ fn test_string_literal_concatenation_with_escapes() {
 
     let def = result.context.definitions.get(result.order[0]);
     if let DefKind::Const(const_ty) = &def.kind
-        && let Numeric::String(s) | Numeric::WString(s) = &const_ty.value
+        && let Numeric::String(s) = &const_ty.value
     {
         assert_eq!(s, "hello\nworld\t!");
     } else {

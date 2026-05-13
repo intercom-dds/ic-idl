@@ -80,7 +80,8 @@ impl DuplicateCaseLabels<'_> {
     fn numeric_to_string(&self, num: &Numeric) -> String {
         match num {
             Numeric::Bool(v) => v.to_string(),
-            Numeric::Char(value) | Numeric::WChar(value) => format!("'{value}'"),
+            Numeric::Char(value) => format!("'{value}'"),
+            Numeric::WChar(value) => format!("L'{value}'"),
             Numeric::Int8(v) => v.to_string(),
             Numeric::Int16(v) => v.to_string(),
             Numeric::Int32(v) => v.to_string(),
@@ -91,7 +92,8 @@ impl DuplicateCaseLabels<'_> {
             Numeric::UInt64(v) => v.to_string(),
             Numeric::Float(v) => v.to_string(),
             Numeric::Double(v) => v.to_string(),
-            Numeric::String(value) | Numeric::WString(value) => format!("\"{value}\""),
+            Numeric::String(value) => format!("\"{value}\""),
+            Numeric::WString(value) => format!("L\"{value}\""),
             Numeric::Const(id) => {
                 let def = self.hir.context.definitions.get(*id);
                 def.ident.name.clone()

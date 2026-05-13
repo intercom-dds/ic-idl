@@ -47,7 +47,7 @@ fn test_character_literal_propagation() {
 
     for def in &hir {
         if let DefKind::Const(c) = &def.kind
-            && let Numeric::Char(ch) | Numeric::WChar(ch) = &c.value
+            && let Numeric::Char(ch) = &c.value
         {
             found_chars.insert(def.ident.name.clone(), *ch);
         }

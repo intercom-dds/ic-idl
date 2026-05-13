@@ -96,7 +96,8 @@ impl DefaultTypeMismatch<'_> {
         let resolved_ty = self.hir.context.resolve_ty(ty);
         match (&resolved_ty.kind, value) {
             (_, Numeric::Null)
-            | (TyKind::String { .. }, Numeric::String(_) | Numeric::WString(_)) => true,
+            | (TyKind::String { wide: false, .. }, Numeric::String(_))
+            | (TyKind::String { wide: true, .. }, Numeric::WString(_)) => true,
 
             (TyKind::Primitive(prim), _) => Self::is_primitive_compatible(value, *prim),
 
@@ -205,9 +206,18 @@ impl DefaultTypeMismatch<'_> {
             (prim, value),
             (PrimitiveTy::Bool, Numeric::Bool(_))
                 | (
-                    PrimitiveTy::Char | PrimitiveTy::WChar,
+                    PrimitiveTy::Char,
                     Numeric::Char(_)
-                        | Numeric::WChar(_)
+                        | Numeric::Int8(_)
+                        | Numeric::UInt8(_)
+                        | Numeric::Int16(_)
+                        | Numeric::UInt16(_)
+                        | Numeric::Int32(_)
+                        | Numeric::UInt32(_)
+                )
+                | (
+                    PrimitiveTy::WChar,
+                    Numeric::WChar(_)
                         | Numeric::Int8(_)
                         | Numeric::UInt8(_)
                         | Numeric::Int16(_)

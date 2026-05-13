@@ -151,7 +151,7 @@ impl RustGen<'_> {
             return false;
         }
         match value {
-            Numeric::String(_) => true,
+            Numeric::String(_) | Numeric::WString(_) => true,
             Numeric::Const(def_id) => {
                 let const_def = self.hir.context.definitions.get(*def_id);
                 if let DefKind::Const(const_ty) = &const_def.kind {

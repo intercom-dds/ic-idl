@@ -100,9 +100,9 @@ fn test_sequence_init() {
                 assert_eq!(values.len(), 3);
                 match (values.first(), values.get(1), values.get(2)) {
                     (
-                        Some(Numeric::String(s1)),
-                        Some(Numeric::String(s2)),
-                        Some(Numeric::String(s3)),
+                        Some(Numeric::String(s1) | Numeric::WString(s1)),
+                        Some(Numeric::String(s2) | Numeric::WString(s2)),
+                        Some(Numeric::String(s3) | Numeric::WString(s3)),
                     ) => {
                         assert_eq!(s1, "Alice");
                         assert_eq!(s2, "Bob");
@@ -143,7 +143,7 @@ fn test_map_init() {
                 assert_eq!(values.len(), 3);
                 // Check first pair
                 match values.first() {
-                    Some((Numeric::String(key), Numeric::Int32(value))) => {
+                    Some((Numeric::String(key) | Numeric::WString(key), Numeric::Int32(value))) => {
                         assert_eq!(key, "Alice");
                         assert_eq!(*value, 30);
                     }

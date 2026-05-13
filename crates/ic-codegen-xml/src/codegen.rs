@@ -444,7 +444,7 @@ impl<'a> XmlGen<'a> {
     fn format_numeric(&self, value: &Numeric) -> String {
         match value {
             Numeric::Bool(b) => b.to_string(),
-            Numeric::Char(c) => c.to_string(),
+            Numeric::Char(value) | Numeric::WChar(value) => value.to_string(),
             Numeric::Int8(v) => v.to_string(),
             Numeric::UInt8(v) => v.to_string(),
             Numeric::Int16(v) => v.to_string(),
@@ -455,7 +455,7 @@ impl<'a> XmlGen<'a> {
             Numeric::UInt64(v) => v.to_string(),
             Numeric::Float(v) => v.to_string(),
             Numeric::Double(v) => v.to_string(),
-            Numeric::String(s) => s.clone(),
+            Numeric::String(value) | Numeric::WString(value) => value.clone(),
             Numeric::Const(def_id) => self.make_scoped_name(*def_id),
             Numeric::Null => "null".to_string(),
             _ => String::new(),
@@ -558,8 +558,8 @@ fn annotation_str(def: &Def, name: &str) -> Option<String> {
     def.annotations.iter().find_map(|ann| {
         if ann.ident.name == name {
             ann.args.first().and_then(|arg| {
-                if let Numeric::String(s) = &arg.value {
-                    Some(s.clone())
+                if let Numeric::String(value) | Numeric::WString(value) = &arg.value {
+                    Some(value.clone())
                 } else {
                     None
                 }

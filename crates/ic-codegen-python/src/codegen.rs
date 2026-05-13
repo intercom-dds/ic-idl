@@ -368,7 +368,7 @@ impl<'a> PyGen<'a> {
         match value {
             Numeric::Null => "None".to_string(),
             Numeric::Bool(b) => if *b { "True" } else { "False" }.to_string(),
-            Numeric::Char(c) => format!("\"{}\"", escape_python_char(*c)),
+            Numeric::Char(c) | Numeric::WChar(c) => format!("\"{}\"", escape_python_char(*c)),
             Numeric::Int8(v) => v.to_string(),
             Numeric::UInt8(v) => v.to_string(),
             Numeric::Int16(v) => v.to_string(),
@@ -379,7 +379,7 @@ impl<'a> PyGen<'a> {
             Numeric::UInt64(v) => v.to_string(),
             Numeric::Float(v) => format_float(f64::from(*v)),
             Numeric::Double(v) => format_float(*v),
-            Numeric::String(s) => format!("\"{}\"", escape_python_string(s)),
+            Numeric::String(s) | Numeric::WString(s) => format!("\"{}\"", escape_python_string(s)),
             Numeric::Const(def_id) => {
                 let def = self.hir.context.type_of(*def_id);
                 if let Some(parent_id) = def.parent

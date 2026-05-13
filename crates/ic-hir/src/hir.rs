@@ -286,8 +286,11 @@ pub enum Numeric {
     /// A boolean literal.
     Bool(bool),
 
-    /// A char literal.
+    /// A narrow char literal (8-bit).
     Char(char),
+
+    /// A wide char literal (16-bit, IDL's `wchar`).
+    WChar(char),
 
     /// An i8 literal.
     Int8(i8),
@@ -319,8 +322,11 @@ pub enum Numeric {
     /// An f64 literal.
     Double(f64),
 
-    /// A string literal.
+    /// A narrow string literal.
     String(String),
+
+    /// A wide string literal (IDL's `wstring`).
+    WString(String),
 
     /// Value that points to another constant.
     /// To retrieve the fully resolved value, use [`Context::resolve_expr`].

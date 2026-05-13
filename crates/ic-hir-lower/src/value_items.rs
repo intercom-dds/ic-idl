@@ -833,12 +833,12 @@ fn compare_map(
 fn numerics_equal(a: &Numeric, b: &Numeric, ctx: &Context) -> bool {
     use Numeric::{
         Array, Bool, Char, Const, Double, Float, Int8, Int16, Int32, Int64, Map, Null, Sequence,
-        String, Struct, UInt8, UInt16, UInt32, UInt64, Union,
+        String, Struct, UInt8, UInt16, UInt32, UInt64, Union, WChar, WString,
     };
     match (a, b) {
         (Null, Null) => true,
         (Bool(v1), Bool(v2)) => v1 == v2,
-        (Char(v1), Char(v2)) => v1 == v2,
+        (Char(v1), Char(v2)) | (WChar(v1), WChar(v2)) => v1 == v2,
         (Int8(v1), Int8(v2)) => v1 == v2,
         (UInt8(v1), UInt8(v2)) => v1 == v2,
         (Int16(v1), Int16(v2)) => v1 == v2,
@@ -849,7 +849,7 @@ fn numerics_equal(a: &Numeric, b: &Numeric, ctx: &Context) -> bool {
         (UInt64(v1), UInt64(v2)) => v1 == v2,
         (Float(v1), Float(v2)) => v1.to_bits() == v2.to_bits(),
         (Double(v1), Double(v2)) => v1.to_bits() == v2.to_bits(),
-        (String(v1), String(v2)) => v1 == v2,
+        (String(v1), String(v2)) | (WString(v1), WString(v2)) => v1 == v2,
         (Const(id1), Const(id2)) => {
             if id1 == id2 {
                 return true;

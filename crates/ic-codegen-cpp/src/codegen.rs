@@ -365,7 +365,7 @@ impl<'a> CppGen<'a> {
         match value {
             Numeric::Null => w!(w, "nullptr"),
             Numeric::Bool(v) => w!(w, if *v { "true" } else { "false" }),
-            Numeric::Char(v) => escape_char(w, *v),
+            Numeric::Char(v) | Numeric::WChar(v) => escape_char(w, *v),
             Numeric::Int8(v) => w!(w, v),
             Numeric::UInt8(v) => w!(w, v, "U"),
             Numeric::Int16(v) => w!(w, v),
@@ -382,7 +382,7 @@ impl<'a> CppGen<'a> {
             Numeric::UInt64(v) => w!(w, v, "ULL"),
             Numeric::Float(v) => w!(w, format!("{:.7}", v), "f"),
             Numeric::Double(v) => w!(w, format!("{:.16}", v)),
-            Numeric::String(s) => {
+            Numeric::String(s) | Numeric::WString(s) => {
                 if let Some(ty) = expected_ty {
                     let resolved_ty = self.hir.context.resolve_ty(ty);
                     if matches!(resolved_ty.kind, TyKind::String { wide: true, .. }) {

@@ -99,7 +99,7 @@ fn test_struct_init_with_strings() {
                 assert_eq!(fields.len(), 3);
                 // Fields are in struct member declaration order: name, port, enabled
                 match &fields[0] {
-                    Numeric::String(s) => assert_eq!(s, "localhost"),
+                    Numeric::String(s) | Numeric::WString(s) => assert_eq!(s, "localhost"),
                     _ => panic!("Expected string for name field"),
                 }
                 match &fields[1] {

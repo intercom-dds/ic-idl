@@ -66,7 +66,7 @@ impl<'a> IdlGen<'a> {
         match value {
             Numeric::Null => "null".to_string(),
             Numeric::Bool(b) => if *b { "TRUE" } else { "FALSE" }.to_string(),
-            Numeric::Char(c) => format!("'{}'", c.escape_default()),
+            Numeric::Char(c) | Numeric::WChar(c) => format!("'{}'", c.escape_default()),
             Numeric::Int8(v) => v.to_string(),
             Numeric::UInt8(v) => v.to_string(),
             Numeric::Int16(v) => v.to_string(),
@@ -77,7 +77,7 @@ impl<'a> IdlGen<'a> {
             Numeric::UInt64(v) => v.to_string(),
             Numeric::Float(v) => v.to_string(),
             Numeric::Double(v) => v.to_string(),
-            Numeric::String(s) => format!("\"{}\"", s.escape_default()),
+            Numeric::String(s) | Numeric::WString(s) => format!("\"{}\"", s.escape_default()),
             Numeric::Const(def_id) => self.scoped_name(*def_id, relative_to_def_id),
             Numeric::Array { values, .. } => {
                 let formatted: Vec<_> = values

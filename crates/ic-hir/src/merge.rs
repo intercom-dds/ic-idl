@@ -334,8 +334,11 @@ impl HirMerger {
             (Numeric::UInt64(v1), Numeric::UInt64(v2)) => v1 == v2,
             (Numeric::Float(v1), Numeric::Float(v2)) => v1.to_bits() == v2.to_bits(),
             (Numeric::Double(v1), Numeric::Double(v2)) => v1.to_bits() == v2.to_bits(),
-            (Numeric::Char(c1), Numeric::Char(c2)) => c1 == c2,
-            (Numeric::String(s1), Numeric::String(s2)) => s1 == s2,
+            (Numeric::Char(c1), Numeric::Char(c2)) | (Numeric::WChar(c1), Numeric::WChar(c2)) => {
+                c1 == c2
+            }
+            (Numeric::String(s1), Numeric::String(s2))
+            | (Numeric::WString(s1), Numeric::WString(s2)) => s1 == s2,
             // For complex types, we need more sophisticated comparison
             _ => false,
         }

@@ -259,7 +259,7 @@ fn test_char_discriminator() {
     assert_eq!(implicit.labels.len(), 1);
     // Should find first available char value
     match &implicit.labels[0].value {
-        Numeric::Char(c) => assert!(*c != 'a' && *c != 'b'),
+        Numeric::Char(c) | Numeric::WChar(c) => assert!(*c != 'a' && *c != 'b'),
         _ => panic!("Expected char value"),
     }
 }

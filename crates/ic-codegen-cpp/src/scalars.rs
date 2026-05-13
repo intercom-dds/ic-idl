@@ -175,7 +175,7 @@ impl CppGen<'_> {
         };
 
         match &const_ty.value {
-            Numeric::String(_) => {
+            Numeric::String(_) | Numeric::WString(_) => {
                 let string_ty = self.string_literal_ty(const_ty);
                 w!(decl_w, "inline ", static_keyword, "constexpr const ", string_ty, "* ", const_name, " = ");
                 self.emit_numeric_value_with_ty(decl_w, &const_ty.value, &const_ty.ty, def.id);
@@ -186,7 +186,7 @@ impl CppGen<'_> {
                 let scoped_name = self.scoped_name(*const_def_id, def.id);
 
                 let ty_str = if let DefKind::Const(ref_const_ty) = &referenced_const_def.kind {
-                    if matches!(ref_const_ty.value, Numeric::String(_)) {
+                    if matches!(ref_const_ty.value, Numeric::String(_) | Numeric::WString(_)) {
                         "const char*".to_string()
                     } else {
                         self.cpp_type(&const_ty.ty, def.id)

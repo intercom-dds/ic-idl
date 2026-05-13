@@ -80,7 +80,7 @@ impl<'a> CSharpGen<'a> {
         match value {
             Numeric::Null => "null".to_string(),
             Numeric::Bool(b) => if *b { "true" } else { "false" }.to_string(),
-            Numeric::Char(c) => escape_char(*c),
+            Numeric::Char(c) | Numeric::WChar(c) => escape_char(*c),
             Numeric::Int8(v) => v.to_string(),
             Numeric::UInt8(v) => v.to_string(),
             Numeric::Int16(v) => v.to_string(),
@@ -91,7 +91,7 @@ impl<'a> CSharpGen<'a> {
             Numeric::UInt64(v) => v.to_string(),
             Numeric::Float(v) => format!("{v}f"),
             Numeric::Double(v) => format!("{v}d"),
-            Numeric::String(s) => escape_str(s),
+            Numeric::String(s) | Numeric::WString(s) => escape_str(s),
             _ => String::new(),
         }
     }
@@ -100,7 +100,7 @@ impl<'a> CSharpGen<'a> {
         match value {
             Numeric::Null => "null".to_string(),
             Numeric::Bool(b) => if *b { "true" } else { "false" }.to_string(),
-            Numeric::Char(c) => escape_char(*c),
+            Numeric::Char(c) | Numeric::WChar(c) => escape_char(*c),
             Numeric::Int8(v) => v.to_string(),
             Numeric::UInt8(v) => v.to_string(),
             Numeric::Int16(v) => v.to_string(),
@@ -111,7 +111,7 @@ impl<'a> CSharpGen<'a> {
             Numeric::UInt64(v) => format!("{v}UL"),
             Numeric::Float(v) => format!("{v}f"),
             Numeric::Double(v) => format!("{v}d"),
-            Numeric::String(s) => escape_str(s),
+            Numeric::String(s) | Numeric::WString(s) => escape_str(s),
             Numeric::Const(def_id) => self.scoped_name(*def_id, relative_to_def_id),
             Numeric::Array { values, .. } => {
                 let formatted: Vec<_> = values

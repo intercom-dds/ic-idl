@@ -95,7 +95,8 @@ impl DefaultTypeMismatch<'_> {
 
         let resolved_ty = self.hir.context.resolve_ty(ty);
         match (&resolved_ty.kind, value) {
-            (_, Numeric::Null) | (TyKind::String { .. }, Numeric::String(_)) => true,
+            (_, Numeric::Null)
+            | (TyKind::String { .. }, Numeric::String(_) | Numeric::WString(_)) => true,
 
             (TyKind::Primitive(prim), _) => Self::is_primitive_compatible(value, *prim),
 
@@ -186,7 +187,7 @@ impl DefaultTypeMismatch<'_> {
 
     fn numeric_to_i64(value: &Numeric) -> Option<i64> {
         match value {
-            Numeric::Char(c) => Some(i64::from(u32::from(*c))),
+            Numeric::Char(value) | Numeric::WChar(value) => Some(i64::from(u32::from(*value))),
             Numeric::Int8(v) => Some(i64::from(*v)),
             Numeric::UInt8(v) => Some(i64::from(*v)),
             Numeric::Int16(v) => Some(i64::from(*v)),
@@ -206,6 +207,7 @@ impl DefaultTypeMismatch<'_> {
                 | (
                     PrimitiveTy::Char | PrimitiveTy::WChar,
                     Numeric::Char(_)
+                        | Numeric::WChar(_)
                         | Numeric::Int8(_)
                         | Numeric::UInt8(_)
                         | Numeric::Int16(_)

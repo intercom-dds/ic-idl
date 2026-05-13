@@ -1638,7 +1638,7 @@ impl<'a> JavaGen<'a> {
         let resolved_ty = self.hir.context.resolve_ty(ty);
         match value {
             Numeric::Bool(b) => b.to_string(),
-            Numeric::Char(c) => escape_char(*c),
+            Numeric::Char(c) | Numeric::WChar(c) => escape_char(*c),
             Numeric::Int8(i) => format_primitive_value(i64::from(*i), &resolved_ty),
             Numeric::UInt8(i) => {
                 if *i > i8::MAX as u8 {
@@ -1683,7 +1683,7 @@ impl<'a> JavaGen<'a> {
             }
             Numeric::Float(f) => format!("(float){f:e}"),
             Numeric::Double(f) => format!("(double){f:e}"),
-            Numeric::String(s) => escape_str(s),
+            Numeric::String(s) | Numeric::WString(s) => escape_str(s),
             Numeric::Const(const_def_id) => {
                 let const_def = self.hir.context.type_of(*const_def_id);
                 if let Some(parent_id) = const_def.parent

@@ -202,7 +202,7 @@ impl<'a> JsonSchemaGen<'a> {
     fn format_numeric(&self, value: &Numeric) -> Value {
         match value {
             Numeric::Bool(b) => Value::Bool(*b),
-            Numeric::Char(c) => Value::String(c.to_string()),
+            Numeric::Char(value) | Numeric::WChar(value) => Value::String(value.to_string()),
             Numeric::Int8(v) => Value::Number((*v).into()),
             Numeric::UInt8(v) => Value::Number((*v).into()),
             Numeric::Int16(v) => Value::Number((*v).into()),
@@ -213,7 +213,7 @@ impl<'a> JsonSchemaGen<'a> {
             Numeric::UInt64(v) => Value::Number((*v).into()),
             Numeric::Float(v) => Value::Number((*v).into()),
             Numeric::Double(v) => Value::Number((*v).into()),
-            Numeric::String(s) => Value::String(s.clone()),
+            Numeric::String(value) | Numeric::WString(value) => Value::String(value.clone()),
             Numeric::Const(def_id) => {
                 let def = self.hir.context.definitions.get(*def_id);
                 if let DefKind::Const(const_ty) = &def.kind {
@@ -238,8 +238,8 @@ impl<'a> JsonSchemaGen<'a> {
             .filter(|ann| ann.ident.name == "doc" || ann.ident.name == "documentation")
             .filter_map(|ann| {
                 ann.args.first().and_then(|arg| {
-                    if let Numeric::String(s) = &arg.value {
-                        Some(s.clone())
+                    if let Numeric::String(value) | Numeric::WString(value) = &arg.value {
+                        Some(value.clone())
                     } else {
                         None
                     }

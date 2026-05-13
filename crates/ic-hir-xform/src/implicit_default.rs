@@ -123,7 +123,7 @@ impl ImplicitDefault {
     fn numeric_to_i64(numeric: &Numeric) -> Option<i64> {
         match numeric {
             Numeric::Bool(b) => Some(i64::from(*b)),
-            Numeric::Char(c) => Some(*c as i64),
+            Numeric::Char(value) | Numeric::WChar(value) => Some(*value as i64),
             Numeric::Int8(v) => Some(i64::from(*v)),
             Numeric::UInt8(v) => Some(i64::from(*v)),
             Numeric::Int16(v) => Some(i64::from(*v)),
@@ -142,6 +142,7 @@ impl ImplicitDefault {
             | Numeric::Float(_)
             | Numeric::Double(_)
             | Numeric::String(_)
+            | Numeric::WString(_)
             | Numeric::Const(_)
             | Numeric::Array { .. }
             | Numeric::Sequence { .. }

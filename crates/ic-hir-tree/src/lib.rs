@@ -178,7 +178,7 @@ fn emit_numeric(val: &Numeric) -> String {
     match val {
         Numeric::Null => "null".to_string(),
         Numeric::Bool(b) => b.to_string().to_uppercase(),
-        Numeric::Char(c) => format!("'{c}'"),
+        Numeric::Char(value) | Numeric::WChar(value) => format!("'{value}'"),
         Numeric::Int8(i) => i.to_string(),
         Numeric::UInt8(o) => o.to_string(),
         Numeric::Int16(i) => i.to_string(),
@@ -189,7 +189,7 @@ fn emit_numeric(val: &Numeric) -> String {
         Numeric::UInt64(u) => u.to_string(),
         Numeric::Float(f) => f.to_string(),
         Numeric::Double(d) => d.to_string(),
-        Numeric::String(s) => format!("\"{s}\""),
+        Numeric::String(value) | Numeric::WString(value) => format!("\"{value}\""),
         Numeric::Const(def_id) => format!("<const {def_id:#02X?}>"),
         Numeric::Array { .. } => "<array>".to_string(),
         Numeric::Sequence { .. } => "<sequence>".to_string(),

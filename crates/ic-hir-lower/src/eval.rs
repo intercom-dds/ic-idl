@@ -657,7 +657,7 @@ fn value_from_numeric(num: &Numeric) -> Option<Value> {
     Some(match num {
         Numeric::Null => Value::Null,
         Numeric::Bool(b) => Value::Bool(*b),
-        Numeric::Char(c) => Value::Char(*c),
+        Numeric::Char(value) | Numeric::WChar(value) => Value::Char(*value),
         Numeric::Int8(v) => Value::Int(i128::from(*v), IntRank::I8),
         Numeric::UInt8(v) => Value::UInt(u128::from(*v), IntRank::U8),
         Numeric::Int16(v) => Value::Int(i128::from(*v), IntRank::I16),
@@ -668,7 +668,7 @@ fn value_from_numeric(num: &Numeric) -> Option<Value> {
         Numeric::UInt64(v) => Value::UInt(u128::from(*v), IntRank::U64),
         Numeric::Float(v) => Value::Float(f64::from(*v), FloatRank::F32),
         Numeric::Double(v) => Value::Float(*v, FloatRank::F64),
-        Numeric::String(s) => Value::String(s.clone()),
+        Numeric::String(value) | Numeric::WString(value) => Value::String(value.clone()),
         Numeric::Const(def_id) => Value::Ref(*def_id),
         Numeric::Array { .. }
         | Numeric::Sequence { .. }

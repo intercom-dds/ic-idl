@@ -553,7 +553,7 @@ impl<'a> JsonGen<'a> {
     fn format_numeric(&self, value: &Numeric) -> Value {
         match value {
             Numeric::Bool(b) => Value::Bool(*b),
-            Numeric::Char(c) => Value::String(c.to_string()),
+            Numeric::Char(value) | Numeric::WChar(value) => Value::String(value.to_string()),
             Numeric::Int8(v) => Value::Number((*v).into()),
             Numeric::UInt8(v) => Value::Number((*v).into()),
             Numeric::Int16(v) => Value::Number((*v).into()),
@@ -564,7 +564,7 @@ impl<'a> JsonGen<'a> {
             Numeric::UInt64(v) => Value::Number((*v).into()),
             Numeric::Float(v) => Value::Number((*v).into()),
             Numeric::Double(v) => Value::Number((*v).into()),
-            Numeric::String(s) => Value::String(s.clone()),
+            Numeric::String(value) | Numeric::WString(value) => Value::String(value.clone()),
             Numeric::Const(def_id) => Value::String(self.make_scoped_name(*def_id)),
             Numeric::Null
             | Numeric::Array { .. }

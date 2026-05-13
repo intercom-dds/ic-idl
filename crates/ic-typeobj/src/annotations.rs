@@ -67,8 +67,8 @@ fn get_annotation_string_value<'a>(ann: &'a Ann, param_name: &str) -> Option<&'a
         .iter()
         .find(|arg| arg.ident.name == param_name)
         .and_then(|arg| {
-            if let Numeric::String(s) = &arg.value {
-                Some(s.as_str())
+            if let Numeric::String(value) | Numeric::WString(value) = &arg.value {
+                Some(value.as_str())
             } else {
                 None
             }
@@ -82,11 +82,24 @@ fn get_annotation_numeric_value<'a>(ann: &'a Ann, param_name: &str) -> Option<&'
         .map(|arg| &arg.value)
 }
 
+fn truncate_annotation_string(mut s: String) -> String {
+    if s.len() > ANNOTATION_STR_VALUE_MAX_LEN as usize {
+        warn!(
+            original_len = s.len(),
+            max_len = ANNOTATION_STR_VALUE_MAX_LEN,
+            "annotation string value truncated"
+        );
+        s.truncate(ANNOTATION_STR_VALUE_MAX_LEN as usize);
+    }
+    s
+}
+
 #[allow(clippy::cast_sign_loss)]
 pub fn numeric_to_annotation_value(ctx: &Context, num: &Numeric) -> AnnotationParameterValue {
     match num {
         Numeric::Bool(b) => AnnotationParameterValue::BooleanValue(*b),
         Numeric::Char(c) => AnnotationParameterValue::CharValue(*c),
+        Numeric::WChar(c) => AnnotationParameterValue::WcharValue(*c),
         Numeric::Int8(v) => AnnotationParameterValue::TkInt8(*v as u8),
         Numeric::UInt8(v) => AnnotationParameterValue::TkUint8(*v),
         Numeric::Int16(v) => AnnotationParameterValue::Int16Value(*v),
@@ -98,16 +111,10 @@ pub fn numeric_to_annotation_value(ctx: &Context, num: &Numeric) -> AnnotationPa
         Numeric::Float(v) => AnnotationParameterValue::Float32Value(*v),
         Numeric::Double(v) => AnnotationParameterValue::Float64Value(*v),
         Numeric::String(s) => {
-            let mut s = s.clone();
-            if s.len() > ANNOTATION_STR_VALUE_MAX_LEN as usize {
-                warn!(
-                    original_len = s.len(),
-                    max_len = ANNOTATION_STR_VALUE_MAX_LEN,
-                    "annotation string value truncated"
-                );
-                s.truncate(ANNOTATION_STR_VALUE_MAX_LEN as usize);
-            }
-            AnnotationParameterValue::String8Value(s)
+            AnnotationParameterValue::String8Value(truncate_annotation_string(s.clone()))
+        }
+        Numeric::WString(s) => {
+            AnnotationParameterValue::String16Value(truncate_annotation_string(s.clone()))
         }
         Numeric::Const(def_id) => {
             let def = ctx.type_of(*def_id);

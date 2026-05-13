@@ -83,7 +83,7 @@ fn test_sequence_init() {
                 let expected = ["Alice", "Bob", "Charlie"];
                 for (i, value) in values.iter().enumerate() {
                     match value {
-                        Numeric::String(s) => assert_eq!(s, expected[i]),
+                        Numeric::String(s) | Numeric::WString(s) => assert_eq!(s, expected[i]),
                         _ => panic!("Expected string value"),
                     }
                 }
@@ -124,7 +124,7 @@ fn test_map_init() {
                 let expected = [("Alice", 30), ("Bob", 25), ("Charlie", 35)];
                 for (i, (key, value)) in values.iter().enumerate() {
                     match key {
-                        Numeric::String(k) => assert_eq!(k, expected[i].0),
+                        Numeric::String(k) | Numeric::WString(k) => assert_eq!(k, expected[i].0),
                         _ => panic!("Expected string key"),
                     }
                     match value {

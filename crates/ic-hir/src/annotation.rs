@@ -512,7 +512,7 @@ impl<'a> Deserializer<'a> for AnnDeserializer<'a> {
                 expected: "char",
             }),
             Self::Numeric(numeric) => match numeric {
-                Numeric::Char(c) => Ok(*c),
+                Numeric::Char(c) | Numeric::WChar(c) => Ok(*c),
                 _ => Err(CtsAnnotationError::TypeConversionError {
                     field: "value".to_string(),
                     expected: "char",
@@ -532,7 +532,7 @@ impl<'a> Deserializer<'a> for AnnDeserializer<'a> {
                 expected: "string",
             }),
             Self::Numeric(numeric) => match numeric {
-                Numeric::String(s) => Ok(s.clone()),
+                Numeric::String(s) | Numeric::WString(s) => Ok(s.clone()),
                 _ => Err(CtsAnnotationError::TypeConversionError {
                     field: "value".to_string(),
                     expected: "string",
@@ -577,7 +577,7 @@ impl<'a> Deserializer<'a> for AnnDeserializer<'a> {
                 expected: "enum",
             }),
             Self::Numeric(numeric) => match numeric {
-                Numeric::String(s) => Ok(StringEnumDeserializer::new(s)),
+                Numeric::String(s) | Numeric::WString(s) => Ok(StringEnumDeserializer::new(s)),
                 _ => Err(CtsAnnotationError::TypeConversionError {
                     field: "value".to_string(),
                     expected: "string (for enum)",

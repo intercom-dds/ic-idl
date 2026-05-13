@@ -304,7 +304,7 @@ impl Context {
     pub fn string_value(&self, numeric: &Numeric) -> Option<String> {
         match numeric {
             Numeric::Bool(v) => Some(v.to_string()),
-            Numeric::Char(v) => Some(v.to_string()),
+            Numeric::Char(v) | Numeric::WChar(v) => Some(v.to_string()),
             Numeric::UInt8(v) => Some(v.to_string()),
             Numeric::UInt16(v) => Some(v.to_string()),
             Numeric::UInt32(v) => Some(v.to_string()),
@@ -323,7 +323,7 @@ impl Context {
             }
             Numeric::Float(v) => Some(v.to_string()),
             Numeric::Double(v) => Some(v.to_string()),
-            Numeric::String(v) => Some(v.clone()),
+            Numeric::String(v) | Numeric::WString(v) => Some(v.clone()),
             _ => None,
         }
     }

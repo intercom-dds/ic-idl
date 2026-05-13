@@ -43,7 +43,7 @@ impl RustGen<'_> {
             Numeric::UInt32(v) => format_integer(i128::from(*v)),
             Numeric::Int64(v) => format_integer(i128::from(*v)),
             Numeric::UInt64(v) => format_integer(i128::from(*v)),
-            Numeric::String(v) => format!("\"{}\"", v.escape_default()),
+            Numeric::String(v) | Numeric::WString(v) => format!("\"{}\"", v.escape_default()),
             _ => "0".to_string(),
         }
     }
@@ -175,7 +175,7 @@ impl RustGen<'_> {
             Numeric::Bool(val) => {
                 w!(w, val);
             }
-            Numeric::Char(c) => {
+            Numeric::Char(c) | Numeric::WChar(c) => {
                 if *c >= ' ' && *c <= '~' {
                     w!(w, "'", c, "'");
                 } else {
@@ -192,7 +192,7 @@ impl RustGen<'_> {
             Numeric::UInt64(v) => w!(w, format_integer(i128::from(*v))),
             Numeric::Float(v) => w!(w, format!("{v:.7}_f32")),
             Numeric::Double(v) => w!(w, format!("{v:.16}_f64")),
-            Numeric::String(s) => {
+            Numeric::String(s) | Numeric::WString(s) => {
                 w!(w, "\"", s.escape_default(), "\"");
                 let base_ty = self.hir.context.base_type_of(ctx_id);
                 if !matches!(base_ty.kind, TyKind::String { .. }) {

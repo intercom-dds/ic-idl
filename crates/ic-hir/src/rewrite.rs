@@ -224,6 +224,7 @@ fn replace_def_ids_in_numeric<S: std::hash::BuildHasher>(
         Numeric::Null
         | Numeric::Bool(_)
         | Numeric::Char(_)
+        | Numeric::WChar(_)
         | Numeric::Int8(_)
         | Numeric::UInt8(_)
         | Numeric::Int16(_)
@@ -234,6 +235,7 @@ fn replace_def_ids_in_numeric<S: std::hash::BuildHasher>(
         | Numeric::UInt64(_)
         | Numeric::Float(_)
         | Numeric::Double(_)
-        | Numeric::String(_) => {}
+        | Numeric::String(_)
+        | Numeric::WString(_) => {}
     }
 }

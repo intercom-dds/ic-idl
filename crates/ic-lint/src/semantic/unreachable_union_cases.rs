@@ -118,7 +118,7 @@ impl UnreachableUnionCases<'_> {
     fn numeric_to_i64(num: &Numeric) -> Option<i64> {
         match num {
             Numeric::Bool(v) => Some(i64::from(*v)),
-            Numeric::Char(v) => Some(i64::from(*v as u32)),
+            Numeric::Char(value) | Numeric::WChar(value) => Some(i64::from(*value as u32)),
             Numeric::Int8(v) => Some(i64::from(*v)),
             Numeric::Int16(v) => Some(i64::from(*v)),
             Numeric::Int32(v) => Some(i64::from(*v)),

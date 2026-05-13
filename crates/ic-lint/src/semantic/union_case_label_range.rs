@@ -116,7 +116,7 @@ fn is_within_32_bits(value: &Numeric) -> bool {
         Numeric::Int8(_) | Numeric::Int16(_) | Numeric::Int32(_) => true,
         Numeric::UInt8(_) | Numeric::UInt16(_) | Numeric::UInt32(_) => true,
         Numeric::Bool(_) => true,
-        Numeric::Char(_) => true,
+        Numeric::Char(_) | Numeric::WChar(_) => true,
 
         Numeric::Int64(v) => *v >= i64::from(i32::MIN) && *v <= i64::from(u32::MAX),
         Numeric::UInt64(v) => u32::try_from(*v).is_ok(),
@@ -126,7 +126,7 @@ fn is_within_32_bits(value: &Numeric) -> bool {
 
         // Other types don't make sense for case labels
         Numeric::Float(_) | Numeric::Double(_) => true,
-        Numeric::String(_) => true,
+        Numeric::String(_) | Numeric::WString(_) => true,
         Numeric::Null => true,
         Numeric::Sequence { .. }
         | Numeric::Array { .. }

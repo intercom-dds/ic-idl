@@ -331,7 +331,7 @@ impl<'a> TsGen<'a> {
         match value {
             Numeric::Null | Numeric::Union { .. } => "null".to_string(),
             Numeric::Bool(b) => b.to_string(),
-            Numeric::Char(c) => escape_char(*c),
+            Numeric::Char(c) | Numeric::WChar(c) => escape_char(*c),
             Numeric::Int8(v) => v.to_string(),
             Numeric::UInt8(v) => v.to_string(),
             Numeric::Int16(v) => v.to_string(),
@@ -365,7 +365,7 @@ impl<'a> TsGen<'a> {
             }
             Numeric::Float(v) => v.to_string(),
             Numeric::Double(v) => v.to_string(),
-            Numeric::String(s) => escape_str(s),
+            Numeric::String(s) | Numeric::WString(s) => escape_str(s),
             Numeric::Const(const_def_id) => {
                 let const_def = self.hir.context.type_of(*const_def_id);
                 if let Some(parent_id) = const_def.parent {

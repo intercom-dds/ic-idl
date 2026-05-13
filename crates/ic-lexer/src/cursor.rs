@@ -27,7 +27,7 @@
 
 use std::rc::Rc;
 
-use ic_vfs::{FileId, Location, Span};
+use ic_vfs::{FileId, Location, Span, UTF8_BOM};
 
 use crate::fast_lookup::{get_single_char_token, is_ascii_whitespace, is_special_char};
 use crate::iter::{EOF, OwnedChars};
@@ -122,7 +122,13 @@ pub struct Cursor {
 impl Cursor {
     /// Creates a new cursor for the given source code.
     pub fn new(source: Rc<str>, file_id: FileId) -> Self {
-        let chars = OwnedChars::from(source);
+        let mut chars = OwnedChars::from(source);
+
+        // Skip a leading UTF-8 BOM (U+FEFF)
+        if chars.peek() == UTF8_BOM {
+            _ = chars.next();
+        }
+
         Cursor {
             chars,
             file_id,
@@ -767,6 +773,27 @@ mod tests {
                 .iter()
                 .all(|v| matches!(v.kind, Kind::Ident | Kind::Newline))
         );
+    }
+
+    #[test]
+    fn utf8_bom_is_skipped() {
+        let tokens = scan(&format!("{UTF8_BOM}struct"));
+        assert_eq!(tokens.len(), 1);
+        assert_eq!(tokens[0].kind, Kind::Keyword(Kw::Struct));
+        // Span starts after the 3-byte BOM.
+        assert_eq!(tokens[0].span.start.offset, 3);
+        assert_eq!(tokens[0].span.end.offset, 9);
+
+        // BOM only at start: a mid-file U+FEFF is still Unknown.
+        let tokens = scan(&format!("a{UTF8_BOM}b"));
+        assert_eq!(tokens.len(), 3);
+        assert_eq!(tokens[0].kind, Kind::Ident);
+        assert_eq!(tokens[1].kind, Kind::Unknown);
+        assert_eq!(tokens[2].kind, Kind::Ident);
+
+        // BOM on an empty file produces no tokens.
+        let tokens = scan(&format!("{UTF8_BOM}"));
+        assert!(tokens.is_empty());
     }
 
     #[test]

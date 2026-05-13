@@ -61,6 +61,9 @@ use tracing::{debug, trace};
 mod span;
 pub use span::{Location, Span};
 
+/// Unicode byte-order mark (U+FEFF).
+pub const UTF8_BOM: char = '\u{feff}';
+
 /// An ID of a file in the [`SourceMap`].
 pub type FileId = Id<FileInfo>;
 

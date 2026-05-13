@@ -27,7 +27,7 @@
 
 use ic_cli::color::ColorMode;
 use ic_diagnostic::{Color, Diag, Label};
-use ic_vfs::{FileId, Location, Span};
+use ic_vfs::{FileId, Location, SourceMap, Span, UTF8_BOM};
 
 fn make_span(start: u32, end: u32) -> Span {
     let file_id = FileId::_do_not_use(); // For testing only
@@ -79,6 +79,37 @@ fn test_single_char_span() {
         .emit_with_source(&mut buf, "test.idl", source, &diag)
         .unwrap();
     insta::assert_snapshot!(buf);
+}
+
+#[test]
+fn test_utf8_bom_is_not_rendered_or_counted_as_a_column() {
+    ic_cli::color::set_color_override(ColorMode::Never);
+    let source = format!("{UTF8_BOM}module Foo {{}}");
+    let mut vfs = SourceMap::default();
+    let file_id = vfs.embed_with_name("bom.idl", source.as_str());
+    let span = Span {
+        start: Location::new(3, file_id),
+        end: Location::new(9, file_id),
+    };
+    let diag = Diag::error("BOM test").label(
+        Label::new(span)
+            .message("starts at the first visible column")
+            .color(Color::Red),
+    );
+
+    let mut pretty = String::new();
+    ic_diagnostic::DiagnosticEmitter::new()
+        .emit(&mut pretty, &vfs, &diag)
+        .unwrap();
+    assert!(pretty.contains("@ bom.idl:1:1"));
+    assert!(pretty.contains("1 │ module Foo {}"));
+    assert!(!pretty.contains(UTF8_BOM));
+
+    let mut compact = String::new();
+    ic_diagnostic::DiagnosticEmitter::new()
+        .emit_compact(&mut compact, &vfs, &diag)
+        .unwrap();
+    assert!(compact.contains("bom.idl:1:1: error: BOM test"));
 }
 
 #[test]

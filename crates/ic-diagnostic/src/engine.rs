@@ -28,6 +28,7 @@
 #![allow(clippy::cast_possible_truncation)]
 
 use ic_cli::color::Colorize as _;
+use ic_vfs::UTF8_BOM;
 
 use crate::Label;
 
@@ -74,30 +75,51 @@ pub struct FrameLayout {
 #[derive(Debug, Clone)]
 pub struct LineIndex {
     line_starts: Vec<u32>,
+    bom_size: u32,
 }
 
 impl LineIndex {
     pub fn new(source: &str) -> Self {
+        let bom_size = if source.starts_with(UTF8_BOM) {
+            UTF8_BOM.len_utf8() as u32
+        } else {
+            0
+        };
+
         let mut line_starts = vec![0];
         for (i, b) in source.bytes().enumerate() {
             if b == b'\n' {
                 line_starts.push((i + 1) as u32);
             }
         }
-        Self { line_starts }
+        Self {
+            line_starts,
+            bom_size,
+        }
+    }
+
+    /// Returns the BOM-adjusted start offset for `line`. The BOM bytes on
+    /// line 1 are treated as if they did not exist.
+    fn content_start(&self, line: u32) -> u32 {
+        let raw = self
+            .line_starts
+            .get(line as usize - 1)
+            .copied()
+            .unwrap_or(0);
+        if line == 1 { raw + self.bom_size } else { raw }
     }
 
     pub fn line_col(&self, offset: u32) -> (u32, u32) {
         let line = self.line_starts.partition_point(|&start| start <= offset);
-        let line_start = self.line_starts[line - 1];
-        (line as u32, offset - line_start + 1)
+        let content_start = self.content_start(line as u32);
+        let col = offset.saturating_sub(content_start) + 1;
+        (line as u32, col)
     }
 
+    /// Returns the byte offset where line `line`'s visible content starts.
+    /// For line 1 this skips a leading UTF-8 BOM if present.
     pub fn line_start(&self, line: u32) -> u32 {
-        self.line_starts
-            .get(line as usize - 1)
-            .copied()
-            .unwrap_or(0)
+        self.content_start(line)
     }
 
     pub fn line_count(&self) -> u32 {
@@ -105,8 +127,10 @@ impl LineIndex {
     }
 
     pub fn visual_col(&self, source: &str, offset: u32) -> u32 {
-        let line_start = self.line_starts[self.line_starts.partition_point(|&s| s <= offset) - 1];
-        let line_slice = &source[line_start as usize..offset as usize];
+        let line = self.line_starts.partition_point(|&s| s <= offset);
+        let content_start = self.content_start(line as u32) as usize;
+        let slice_start = content_start.min(offset as usize);
+        let line_slice = &source[slice_start..offset as usize];
 
         let mut col = 0u32;
         for ch in line_slice.chars() {
@@ -588,6 +612,40 @@ mod tests {
         assert_eq!(idx.visual_col(source, 0), 1);
         assert_eq!(idx.visual_col(source, 1), 2);
         assert_eq!(idx.visual_col(source, 2), 5);
+    }
+
+    #[test]
+    fn test_line_index_skips_leading_bom() {
+        let source = format!("{UTF8_BOM}hello");
+        let idx = LineIndex::new(&source);
+        assert_eq!(idx.line_count(), 1);
+        // First visible byte is at offset 3 (post-BOM) but should be col 1.
+        assert_eq!(idx.line_col(3), (1, 1));
+        assert_eq!(idx.line_col(7), (1, 5));
+        assert_eq!(idx.line_start(1), 3);
+        assert_eq!(idx.visual_col(&source, 3), 1);
+        assert_eq!(idx.visual_col(&source, 7), 5);
+    }
+
+    #[test]
+    fn test_line_index_bom_multiline() {
+        let source = format!("{UTF8_BOM}ab\ncd");
+        let idx = LineIndex::new(&source);
+        assert_eq!(idx.line_count(), 2);
+        // "ab" occupies bytes 3..5, newline at 5, "cd" at 6..8.
+        assert_eq!(idx.line_col(3), (1, 1));
+        assert_eq!(idx.line_col(5), (1, 3));
+        assert_eq!(idx.line_col(6), (2, 1));
+        assert_eq!(idx.line_start(1), 3);
+        assert_eq!(idx.line_start(2), 6);
+    }
+
+    #[test]
+    fn test_visual_col_with_utf8_bom() {
+        let source = format!("{UTF8_BOM}module Foo {{}}");
+        let idx = LineIndex::new(&source);
+        assert_eq!(idx.visual_col(&source, 3), 1);
+        assert_eq!(idx.visual_col(&source, 9), 7);
     }
 
     #[test]

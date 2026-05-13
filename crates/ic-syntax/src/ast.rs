@@ -199,7 +199,9 @@ pub enum LitKind {
     Int,
     Float,
     Char,
+    WChar,
     String,
+    WString,
 }
 
 impl LitKind {
@@ -219,7 +221,9 @@ impl ::std::str::FromStr for LitKind {
             "LIT_INT" => Ok(Self::Int),
             "LIT_FLOAT" => Ok(Self::Float),
             "LIT_CHAR" => Ok(Self::Char),
+            "LIT_WCHAR" => Ok(Self::WChar),
             "LIT_STRING" => Ok(Self::String),
+            "LIT_WSTRING" => Ok(Self::WString),
             _ => Err(::intercom_cts::error::UnknownVariant),
         }
     }
@@ -233,7 +237,9 @@ impl ::std::fmt::Display for LitKind {
             Self::Int => f.write_str("LIT_INT"),
             Self::Float => f.write_str("LIT_FLOAT"),
             Self::Char => f.write_str("LIT_CHAR"),
+            Self::WChar => f.write_str("LIT_WCHAR"),
             Self::String => f.write_str("LIT_STRING"),
+            Self::WString => f.write_str("LIT_WSTRING"),
         }
     }
 }
@@ -289,8 +295,20 @@ const _: () = {
             type_info: ::intercom_cts::type_info::<crate::ast::LitKind>(),
         },
         ::intercom_cts::MemberInfo {
-            name: "LIT_STRING",
+            name: "LIT_WCHAR",
             member_id: 5,
+            flags: ::intercom_cts::MemberFlag::nil(),
+            type_info: ::intercom_cts::type_info::<crate::ast::LitKind>(),
+        },
+        ::intercom_cts::MemberInfo {
+            name: "LIT_STRING",
+            member_id: 6,
+            flags: ::intercom_cts::MemberFlag::nil(),
+            type_info: ::intercom_cts::type_info::<crate::ast::LitKind>(),
+        },
+        ::intercom_cts::MemberInfo {
+            name: "LIT_WSTRING",
+            member_id: 7,
             flags: ::intercom_cts::MemberFlag::nil(),
             type_info: ::intercom_cts::type_info::<crate::ast::LitKind>(),
         },
@@ -310,7 +328,9 @@ const _: () = {
                 Self::Int => state.encode_variant::<i32>("LIT_INT", 2),
                 Self::Float => state.encode_variant::<i32>("LIT_FLOAT", 3),
                 Self::Char => state.encode_variant::<i32>("LIT_CHAR", 4),
-                Self::String => state.encode_variant::<i32>("LIT_STRING", 5),
+                Self::WChar => state.encode_variant::<i32>("LIT_WCHAR", 5),
+                Self::String => state.encode_variant::<i32>("LIT_STRING", 6),
+                Self::WString => state.encode_variant::<i32>("LIT_WSTRING", 7),
             }
         }
     }
@@ -341,7 +361,9 @@ const _: () = {
                 2 => Self::Int,
                 3 => Self::Float,
                 4 => Self::Char,
-                5 => Self::String,
+                5 => Self::WChar,
+                6 => Self::String,
+                7 => Self::WString,
                 _ => return Err(D::Error::custom("invalid enum value for type ast::LitKind")),
             };
             Ok(value)
@@ -359,7 +381,9 @@ const _: () = {
                 "LIT_INT" => Self::Int,
                 "LIT_FLOAT" => Self::Float,
                 "LIT_CHAR" => Self::Char,
+                "LIT_WCHAR" => Self::WChar,
                 "LIT_STRING" => Self::String,
+                "LIT_WSTRING" => Self::WString,
                 _ => return Err(D::Error::custom("invalid enum value for type ast::LitKind")),
             };
             Ok(value)
@@ -373,7 +397,9 @@ pub enum LiteralValue {
     Int(u64),
     Float(f64),
     Char(char),
+    WChar(char),
     String(::std::string::String),
+    WString(::std::string::String),
     Null,
 }
 
@@ -390,7 +416,9 @@ impl LiteralValue {
             Self::Int(_) => crate::ast::LitKind::Int,
             Self::Float(_) => crate::ast::LitKind::Float,
             Self::Char(_) => crate::ast::LitKind::Char,
+            Self::WChar(_) => crate::ast::LitKind::WChar,
             Self::String(_) => crate::ast::LitKind::String,
+            Self::WString(_) => crate::ast::LitKind::WString,
             Self::Null => crate::ast::LitKind::Null,
         }
     }
@@ -403,7 +431,9 @@ impl From<crate::ast::LitKind> for LiteralValue {
             crate::ast::LitKind::Int => Self::Int(0),
             crate::ast::LitKind::Float => Self::Float(0_f64),
             crate::ast::LitKind::Char => Self::Char('\0'),
+            crate::ast::LitKind::WChar => Self::WChar('\0'),
             crate::ast::LitKind::String => Self::String(<::std::string::String>::default()),
+            crate::ast::LitKind::WString => Self::WString(<::std::string::String>::default()),
             crate::ast::LitKind::Null => Self::Null,
         }
     }
@@ -454,8 +484,20 @@ const _: () = {
             type_info: ::intercom_cts::type_info::<char>(),
         },
         ::intercom_cts::MemberInfo {
-            name: "_string",
+            name: "_wchar",
             member_id: 5,
+            flags: ::intercom_cts::MemberFlag::nil(),
+            type_info: ::intercom_cts::type_info::<char>(),
+        },
+        ::intercom_cts::MemberInfo {
+            name: "_string",
+            member_id: 6,
+            flags: ::intercom_cts::MemberFlag::nil(),
+            type_info: ::intercom_cts::type_info::<::std::string::String>(),
+        },
+        ::intercom_cts::MemberInfo {
+            name: "_wstring",
+            member_id: 7,
             flags: ::intercom_cts::MemberFlag::nil(),
             type_info: ::intercom_cts::type_info::<::std::string::String>(),
         },
@@ -475,7 +517,9 @@ const _: () = {
                 Self::Int(v) => state.encode_variant(&MEMBER_INFO[1], v),
                 Self::Float(v) => state.encode_variant(&MEMBER_INFO[2], v),
                 Self::Char(v) => state.encode_variant(&MEMBER_INFO[3], v),
-                Self::String(v) => state.encode_variant(&MEMBER_INFO[4], v),
+                Self::WChar(v) => state.encode_variant(&MEMBER_INFO[4], v),
+                Self::String(v) => state.encode_variant(&MEMBER_INFO[5], v),
+                Self::WString(v) => state.encode_variant(&MEMBER_INFO[6], v),
                 Self::Null => state.encode_null(),
             }
         }
@@ -512,10 +556,20 @@ const _: () = {
                     state.decode_variant(&MEMBER_INFO[3], &mut value)?;
                     Self::Char(value)
                 }
+                crate::ast::LitKind::WChar => {
+                    let mut value = '\0';
+                    state.decode_variant(&MEMBER_INFO[4], &mut value)?;
+                    Self::WChar(value)
+                }
                 crate::ast::LitKind::String => {
                     let mut value = <::std::string::String>::default();
-                    state.decode_variant(&MEMBER_INFO[4], &mut value)?;
+                    state.decode_variant(&MEMBER_INFO[5], &mut value)?;
                     Self::String(value)
+                }
+                crate::ast::LitKind::WString => {
+                    let mut value = <::std::string::String>::default();
+                    state.decode_variant(&MEMBER_INFO[6], &mut value)?;
+                    Self::WString(value)
                 }
                 crate::ast::LitKind::Null => Self::Null,
             };

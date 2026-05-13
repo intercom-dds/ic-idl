@@ -345,7 +345,9 @@ fn compare_values<R>(lhs: &Value<R>, rhs: &Value<R>, expected: std::cmp::Orderin
             (*a as f64).partial_cmp(b).is_some_and(|o| o == expected)
         }
         (Value::Bool(a), Value::Bool(b)) => a.cmp(b) == expected,
-        (Value::Char(a), Value::Char(b)) => a.cmp(b) == expected,
+        (Value::Char(a), Value::Char(b)) | (Value::WChar(a), Value::WChar(b)) => {
+            a.cmp(b) == expected
+        }
         _ => false,
     }
 }

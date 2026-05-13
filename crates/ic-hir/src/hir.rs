@@ -286,10 +286,10 @@ pub enum Numeric {
     /// A boolean literal.
     Bool(bool),
 
-    /// A narrow char literal (8-bit).
+    /// A narrow char literal.
     Char(char),
 
-    /// A wide char literal (16-bit, IDL's `wchar`).
+    /// A wide char literal.
     WChar(char),
 
     /// An i8 literal.
@@ -325,7 +325,7 @@ pub enum Numeric {
     /// A narrow string literal.
     String(String),
 
-    /// A wide string literal (IDL's `wstring`).
+    /// A wide string literal.
     WString(String),
 
     /// Value that points to another constant.

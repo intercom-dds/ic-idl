@@ -40,6 +40,7 @@ pub fn literal_to_numeric(lit: &ic_syntax::LiteralValue) -> Numeric {
     match lit {
         ic_syntax::LiteralValue::Bool(b) => Numeric::Bool(*b),
         ic_syntax::LiteralValue::Char(c) => Numeric::Char(*c),
+        ic_syntax::LiteralValue::WChar(c) => Numeric::WChar(*c),
         ic_syntax::LiteralValue::Int(i) => {
             // Choose appropriate type based on value range
             if i32::try_from(*i).is_ok() {
@@ -53,6 +54,7 @@ pub fn literal_to_numeric(lit: &ic_syntax::LiteralValue) -> Numeric {
         }
         ic_syntax::LiteralValue::Float(f) => Numeric::Double(*f),
         ic_syntax::LiteralValue::String(s) => Numeric::String(s.clone()),
+        ic_syntax::LiteralValue::WString(s) => Numeric::WString(s.clone()),
         ic_syntax::LiteralValue::Null => Numeric::Null,
     }
 }

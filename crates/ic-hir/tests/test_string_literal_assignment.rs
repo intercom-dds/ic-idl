@@ -51,7 +51,7 @@ fn test_string_literal_assigned_to_string() {
 #[test]
 fn test_wide_string_literal_assigned_to_wstring() {
     let input = r#"
-        const wstring myWStrValue = "wide string";
+        const wstring myWStrValue = L"wide string";
     "#;
 
     let result = common::parse_and_resolve_successfully(input);
@@ -59,11 +59,11 @@ fn test_wide_string_literal_assigned_to_wstring() {
 
     let def = result.context.definitions.get(result.order[0]);
     if let DefKind::Const(const_ty) = &def.kind
-        && let Numeric::String(s) | Numeric::WString(s) = &const_ty.value
+        && let Numeric::WString(s) = &const_ty.value
     {
         assert_eq!(s, "wide string");
     } else {
-        panic!("Expected const with string value");
+        panic!("Expected const with wstring value");
     }
 }
 

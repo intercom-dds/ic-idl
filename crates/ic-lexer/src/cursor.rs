@@ -124,7 +124,7 @@ impl Cursor {
     pub fn new(source: Rc<str>, file_id: FileId) -> Self {
         let mut chars = OwnedChars::from(source);
 
-        // Skip a leading UTF-8 BOM (U+FEFF)
+        // Skip a leading UTF-8 BOM.
         if chars.peek() == UTF8_BOM {
             _ = chars.next();
         }
@@ -250,12 +250,67 @@ impl Cursor {
         }
     }
 
+    /// Handles `/`-initiated tokens: line comments, block comments, and the
+    /// `Slash` operator. Returns `None` when a non-doc comment was consumed
+    /// and the caller should continue scanning.
     #[inline]
-    fn string_lit(&mut self) -> Kind {
+    fn slash_token(&mut self) -> Option<Kind> {
+        match self.chars.peek() {
+            '/' => {
+                let c = self.comment();
+                c.is_doc.then_some(Kind::Comment {
+                    trailing: c.trailing,
+                    terminated: c.terminated,
+                })
+            }
+            '*' => {
+                let c = self.block_comment();
+                (c.is_doc || !c.terminated).then_some(Kind::Comment {
+                    trailing: c.trailing,
+                    terminated: c.terminated,
+                })
+            }
+            _ => {
+                self.has_content_on_line = true;
+                Some(Kind::Slash)
+            }
+        }
+    }
+
+    /// `L"..."` and `L'x'` are wide string/char literals. Only fires when the
+    /// `L` is immediately followed by `"` or `'`; otherwise `L` is treated as
+    /// a normal identifier-start.
+    #[inline]
+    fn wide_literal_prefix(&mut self, c: char) -> Option<Kind> {
+        if c != 'L' {
+            return None;
+        }
+        match self.chars.peek() {
+            '"' => {
+                self.chars.next();
+                Some(self.string_lit(true))
+            }
+            '\'' => {
+                self.chars.next();
+                Some(self.char_lit(true))
+            }
+            _ => None,
+        }
+    }
+
+    #[inline]
+    fn string_lit(&mut self, wide: bool) -> Kind {
         let mut escape_seen = false;
+        let make = |terminated| {
+            if wide {
+                Kind::WString { terminated }
+            } else {
+                Kind::String { terminated }
+            }
+        };
         loop {
             let Some(c) = self.chars.next() else {
-                return Kind::String { terminated: false };
+                return make(false);
             };
 
             if escape_seen {
@@ -264,8 +319,8 @@ impl Cursor {
             }
 
             match c {
-                '"' => return Kind::String { terminated: true },
-                '\n' => return Kind::String { terminated: false },
+                '"' => return make(true),
+                '\n' => return make(false),
                 '\\' => escape_seen = true,
                 _ => {}
             }
@@ -273,10 +328,11 @@ impl Cursor {
     }
 
     #[inline]
-    fn char_lit(&mut self) -> Kind {
+    fn char_lit(&mut self, wide: bool) -> Kind {
+        let kind = if wide { Kind::WChar } else { Kind::Char };
         if let Some(v) = self.chars.next() {
             if v == '\'' {
-                return Kind::Char;
+                return kind;
             }
 
             if v == '\\' {
@@ -297,7 +353,7 @@ impl Cursor {
 
             if self.chars.peek() == '\'' {
                 self.chars.next();
-                return Kind::Char;
+                return kind;
             }
         }
         Kind::Unknown
@@ -489,6 +545,14 @@ impl Cursor {
                 });
             }
 
+            if let Some(kind) = self.wide_literal_prefix(c) {
+                self.has_content_on_line = true;
+                return Some(Token {
+                    kind,
+                    span: self.span_since(start),
+                });
+            }
+
             if is_ident(c) {
                 self.has_content_on_line = true;
                 let kind = self.ident(start);
@@ -519,36 +583,12 @@ impl Cursor {
                         }
                         _ => Kind::Lt,
                     },
-                    '"' => self.string_lit(),
-                    '\'' => self.char_lit(),
+                    '"' => self.string_lit(false),
+                    '\'' => self.char_lit(false),
                     '@' => self.annotation(),
-                    '/' => match self.chars.peek() {
-                        '/' => {
-                            let c = self.comment();
-                            if c.is_doc {
-                                Kind::Comment {
-                                    trailing: c.trailing,
-                                    terminated: c.terminated,
-                                }
-                            } else {
-                                continue;
-                            }
-                        }
-                        '*' => {
-                            let c = self.block_comment();
-                            if c.is_doc || !c.terminated {
-                                Kind::Comment {
-                                    trailing: c.trailing,
-                                    terminated: c.terminated,
-                                }
-                            } else {
-                                continue;
-                            }
-                        }
-                        _ => {
-                            self.has_content_on_line = true;
-                            Kind::Slash
-                        }
+                    '/' => match self.slash_token() {
+                        Some(kind) => kind,
+                        None => continue,
                     },
                     _ => Kind::Unknown,
                 }
@@ -794,6 +834,32 @@ mod tests {
         // BOM on an empty file produces no tokens.
         let tokens = scan(&format!("{UTF8_BOM}"));
         assert!(tokens.is_empty());
+    }
+
+    #[test]
+    fn wide_string_lit() {
+        assert_eq!(single(r#"L"foo""#), Kind::WString { terminated: true });
+        assert_eq!(single(r#""foo""#), Kind::String { terminated: true });
+
+        // `L` alone is just an identifier.
+        let tokens = scan("L foo");
+        assert_eq!(tokens.len(), 2);
+        assert_eq!(tokens[0].kind, Kind::Ident);
+        assert_eq!(tokens[1].kind, Kind::Ident);
+
+        // Identifier starting with L is unaffected.
+        assert_eq!(single("Lfoo"), Kind::Ident);
+
+        // Unterminated wide string still recognized as wide.
+        assert_eq!(single(r#"L"foo"#), Kind::WString { terminated: false });
+    }
+
+    #[test]
+    fn wide_char_lit() {
+        assert_eq!(single("L'a'"), Kind::WChar);
+        assert_eq!(single("'a'"), Kind::Char);
+        assert_eq!(single(r"L'\n'"), Kind::WChar);
+        assert_eq!(single(r"L'\x41'"), Kind::WChar);
     }
 
     #[test]

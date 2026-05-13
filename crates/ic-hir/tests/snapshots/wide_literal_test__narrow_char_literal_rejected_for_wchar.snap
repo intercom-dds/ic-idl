@@ -1,0 +1,9 @@
+---
+source: crates/ic-hir/tests/wide_literal_test.rs
+expression: diags
+---
+⨯: character value cannot be assigned to type wchar
+  @ test.idl:1:17
+
+ 1 │ const wchar c = 'a';
+   │                 ˆˆˆ incompatible types

@@ -149,7 +149,12 @@ impl Parser<'_> {
 
         match kind {
             // Literal (Rule 17)
-            Kind::Number { .. } | Kind::Float | Kind::String { .. } | Kind::Char => self.literal(),
+            Kind::Number { .. }
+            | Kind::Float
+            | Kind::String { .. }
+            | Kind::WString { .. }
+            | Kind::Char
+            | Kind::WChar => self.literal(),
             Kind::Keyword(Kw::True | Kw::False) => Ok(self.boolean_literal()),
             Kind::Keyword(Kw::Null) => {
                 let tok = self.advance();
@@ -189,8 +194,10 @@ impl Parser<'_> {
         match self.peek() {
             Kind::Number { base } => self.integer_literal(base),
             Kind::Float => self.floating_pt_literal(),
-            Kind::String { .. } => self.string_literal(),
-            Kind::Char => self.character_literal(),
+            Kind::String { .. } => self.string_literal(false),
+            Kind::WString { .. } => self.string_literal(true),
+            Kind::Char => self.character_literal(false),
+            Kind::WChar => self.character_literal(true),
             Kind::Keyword(Kw::True | Kw::False) => Ok(self.boolean_literal()),
             _ => Err(self.error_expected("literal")),
         }
@@ -231,12 +238,17 @@ impl Parser<'_> {
 
     // Rule 19
     // <string_literal> ::= <string_literal>+
-    fn string_literal(&mut self) -> Result<Expr> {
+    fn string_literal(&mut self, wide: bool) -> Result<Expr> {
         let start = self.span();
         let mut value = String::new();
 
-        // Collect all adjacent string literals
-        while let Kind::String { terminated } = self.peek() {
+        // Collect all adjacent string literals of the same width.
+        loop {
+            let terminated = match self.peek() {
+                Kind::String { terminated } if !wide => terminated,
+                Kind::WString { terminated } if wide => terminated,
+                _ => break,
+            };
             if !terminated {
                 // Consume the bad token
                 let tok = self.advance();
@@ -247,7 +259,12 @@ impl Parser<'_> {
 
             let tok = self.advance();
             let text = self.text(tok.span);
-            let Some(parsed) = parse_string_literal(text) else {
+            let body = if wide {
+                text.strip_prefix('L').unwrap_or(text)
+            } else {
+                text
+            };
+            let Some(parsed) = parse_string_literal(body) else {
                 return Err(self
                     .error_message(tok.span, "invalid escape sequence in string literal")
                     .with_label("invalid escape sequence"));
@@ -255,18 +272,28 @@ impl Parser<'_> {
             value.push_str(&parsed);
         }
 
+        let span = self.make_span(start, self.prev_span);
         Ok(Expr::Literal(Literal {
-            span: self.make_span(start, self.prev_span),
-            value: LiteralValue::String(value),
+            span,
+            value: if wide {
+                LiteralValue::WString(value)
+            } else {
+                LiteralValue::String(value)
+            },
         }))
     }
 
     // Rule 20
     // <character_literal> ::= "'" <char> "'"
-    fn character_literal(&mut self) -> Result<Expr> {
+    fn character_literal(&mut self, wide: bool) -> Result<Expr> {
         let tok = self.advance();
         let text = self.text(tok.span);
-        let Some(value) = parse_char_literal(text) else {
+        let body = if wide {
+            text.strip_prefix('L').unwrap_or(text)
+        } else {
+            text
+        };
+        let Some(value) = parse_char_literal(body) else {
             return Err(self
                 .error_message(tok.span, "invalid character literal")
                 .with_label("invalid character"));
@@ -274,7 +301,11 @@ impl Parser<'_> {
 
         Ok(Expr::Literal(Literal {
             span: tok.span,
-            value: LiteralValue::Char(value),
+            value: if wide {
+                LiteralValue::WChar(value)
+            } else {
+                LiteralValue::Char(value)
+            },
         }))
     }
 
@@ -357,7 +388,9 @@ impl Parser<'_> {
             Kind::Number { .. }
                 | Kind::Float
                 | Kind::String { .. }
+                | Kind::WString { .. }
                 | Kind::Char
+                | Kind::WChar
                 | Kind::Keyword(Kw::True | Kw::False | Kw::Null)
                 | Kind::Minus
                 | Kind::Plus

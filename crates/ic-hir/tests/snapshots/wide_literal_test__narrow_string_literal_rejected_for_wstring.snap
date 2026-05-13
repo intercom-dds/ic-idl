@@ -1,0 +1,9 @@
+---
+source: crates/ic-hir/tests/wide_literal_test.rs
+expression: diags
+---
+⨯: string value cannot be assigned to type wstring
+  @ test.idl:1:19
+
+ 1 │ const wstring s = "narrow";
+   │                   ˆˆˆˆˆˆˆˆ incompatible types

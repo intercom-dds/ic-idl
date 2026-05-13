@@ -590,28 +590,36 @@ fn cast_value_to_type(
     let resolved_ty = ctx.resolve_ty(ty);
     match &resolved_ty.kind {
         TyKind::Primitive(p) => match *p {
-            PrimitiveTy::Char => {
-                let vv = ops::cast_to(v, TyTag::Int(IntRank::U8, false))?;
-                match vv {
-                    Value::UInt(u, IntRank::U8) => Ok(Value::Char((u as u8) as char)),
-                    Value::Int(i, IntRank::I8) => Ok(Value::Char((i as u8) as char)),
-                    _ => Err(Error::TypeMismatch),
+            PrimitiveTy::Char => match v {
+                Value::Char(_) => Ok(v),
+                Value::WChar(_) => Err(Error::TypeMismatch),
+                _ => {
+                    let vv = ops::cast_to(v, TyTag::Int(IntRank::U8, false))?;
+                    match vv {
+                        Value::UInt(u, IntRank::U8) => Ok(Value::Char((u as u8) as char)),
+                        Value::Int(i, IntRank::I8) => Ok(Value::Char((i as u8) as char)),
+                        _ => Err(Error::TypeMismatch),
+                    }
                 }
-            }
+            },
 
-            PrimitiveTy::WChar => {
-                let vv = ops::cast_to(v, TyTag::Int(IntRank::U16, false))?;
-                let code = match vv {
-                    Value::UInt(u, IntRank::U16) => u as u32,
-                    Value::Int(i, IntRank::I16) => u32::from(i as u16),
-                    _ => return Err(Error::TypeMismatch),
-                };
+            PrimitiveTy::WChar => match v {
+                Value::WChar(_) => Ok(v),
+                Value::Char(_) => Err(Error::TypeMismatch),
+                _ => {
+                    let vv = ops::cast_to(v, TyTag::Int(IntRank::U16, false))?;
+                    let code = match vv {
+                        Value::UInt(u, IntRank::U16) => u as u32,
+                        Value::Int(i, IntRank::I16) => u32::from(i as u16),
+                        _ => return Err(Error::TypeMismatch),
+                    };
 
-                if (0xD800..=0xDFFF).contains(&code) {
-                    return Err(Error::InvalidChar);
+                    if (0xD800..=0xDFFF).contains(&code) {
+                        return Err(Error::InvalidChar);
+                    }
+                    Ok(Value::WChar(char::from_u32(code).unwrap()))
                 }
-                Ok(Value::Char(char::from_u32(code).unwrap()))
-            }
+            },
 
             PrimitiveTy::Bool => match v {
                 Value::Bool(_) => Ok(v),
@@ -629,8 +637,13 @@ fn cast_value_to_type(
             }
         },
 
-        TyKind::String { .. } => match v {
+        TyKind::String { wide: false, .. } => match v {
             Value::String(_) => Ok(v),
+            _ => Err(Error::TypeMismatch),
+        },
+
+        TyKind::String { wide: true, .. } => match v {
+            Value::WString(_) => Ok(v),
             _ => Err(Error::TypeMismatch),
         },
 
@@ -657,7 +670,8 @@ fn value_from_numeric(num: &Numeric) -> Option<Value> {
     Some(match num {
         Numeric::Null => Value::Null,
         Numeric::Bool(b) => Value::Bool(*b),
-        Numeric::Char(value) | Numeric::WChar(value) => Value::Char(*value),
+        Numeric::Char(c) => Value::Char(*c),
+        Numeric::WChar(c) => Value::WChar(*c),
         Numeric::Int8(v) => Value::Int(i128::from(*v), IntRank::I8),
         Numeric::UInt8(v) => Value::UInt(u128::from(*v), IntRank::U8),
         Numeric::Int16(v) => Value::Int(i128::from(*v), IntRank::I16),
@@ -668,7 +682,8 @@ fn value_from_numeric(num: &Numeric) -> Option<Value> {
         Numeric::UInt64(v) => Value::UInt(u128::from(*v), IntRank::U64),
         Numeric::Float(v) => Value::Float(f64::from(*v), FloatRank::F32),
         Numeric::Double(v) => Value::Float(*v, FloatRank::F64),
-        Numeric::String(value) | Numeric::WString(value) => Value::String(value.clone()),
+        Numeric::String(s) => Value::String(s.clone()),
+        Numeric::WString(s) => Value::WString(s.clone()),
         Numeric::Const(def_id) => Value::Ref(*def_id),
         Numeric::Array { .. }
         | Numeric::Sequence { .. }
@@ -683,6 +698,7 @@ fn numeric_from_value(v: &Value) -> Result<Numeric, Error> {
         Value::Null => Numeric::Null,
         Value::Bool(b) => Numeric::Bool(*b),
         Value::Char(c) => Numeric::Char(*c),
+        Value::WChar(c) => Numeric::WChar(*c),
         Value::Int(i, r) => {
             let (min, max) = int_bounds(*r);
             if *i < min || *i > max {
@@ -722,6 +738,7 @@ fn numeric_from_value(v: &Value) -> Result<Numeric, Error> {
             _ => Numeric::Double(*f),
         },
         Value::String(s) => Numeric::String(s.clone()),
+        Value::WString(s) => Numeric::WString(s.clone()),
         Value::Ref(def_id) => Numeric::Const(*def_id),
     })
 }

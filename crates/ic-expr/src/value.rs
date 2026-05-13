@@ -47,11 +47,17 @@ pub enum Value<R> {
     /// Boolean.
     Bool(bool),
 
-    /// Character.
+    /// Narrow character.
     Char(char),
 
-    /// String.
+    /// Wide character.
+    WChar(char),
+
+    /// Narrow string.
     String(String),
+
+    /// Wide string.
+    WString(String),
 
     /// Null value.
     Null,
@@ -158,8 +164,8 @@ impl<R> Value<R> {
             Self::UInt(v, _) => *v != 0,
             Self::Float(v, _) => *v != 0.0,
             Self::Bool(b) => *b,
-            Self::Char(c) => *c != '\0',
-            Self::String(s) => !s.is_empty(),
+            Self::Char(c) | Self::WChar(c) => *c != '\0',
+            Self::String(s) | Self::WString(s) => !s.is_empty(),
             Self::Null => false,
             Self::Ref(_) => true,
         }
@@ -174,7 +180,9 @@ impl<R> Value<R> {
             Self::Float(..) => "floating-point value",
             Self::Bool(_) => "boolean value",
             Self::Char(_) => "character value",
+            Self::WChar(_) => "wide character value",
             Self::String(_) => "string value",
+            Self::WString(_) => "wide string value",
             Self::Null => "null value",
             Self::Ref(_) => "constant reference",
         }
@@ -189,7 +197,9 @@ impl<R: fmt::Display> fmt::Display for Value<R> {
             Self::Float(v, _) => write!(f, "{v}"),
             Self::Bool(b) => write!(f, "{b}"),
             Self::Char(c) => write!(f, "'{c}'"),
+            Self::WChar(c) => write!(f, "L'{c}'"),
             Self::String(s) => write!(f, "\"{s}\""),
+            Self::WString(s) => write!(f, "L\"{s}\""),
             Self::Null => write!(f, "null"),
             Self::Ref(r) => write!(f, "{r}"),
         }

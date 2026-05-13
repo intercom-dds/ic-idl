@@ -96,7 +96,9 @@ enum LitKind {
     LIT_INT,
     LIT_FLOAT,
     LIT_CHAR,
-    LIT_STRING
+    LIT_WCHAR,
+    LIT_STRING,
+    LIT_WSTRING
 };
 
 @nested
@@ -111,8 +113,12 @@ case LIT_FLOAT:
      double _float;
 case LIT_CHAR:
      char _char;
+case LIT_WCHAR:
+     wchar _wchar;
 case LIT_STRING:
      string _string;
+case LIT_WSTRING:
+     wstring _wstring;
 };
 
 @nested

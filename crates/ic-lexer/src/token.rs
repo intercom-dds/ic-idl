@@ -124,8 +124,14 @@ pub enum Kind {
     /// String literal
     String { terminated: bool },
 
+    /// Wide string literal
+    WString { terminated: bool },
+
     /// Single UTF-8 character literal
     Char,
+
+    /// Wide character literal
+    WChar,
 
     /// `@`
     At,
@@ -286,8 +292,10 @@ impl Kind {
             | Kind::Comment { .. }
             | Kind::Number { .. }
             | Kind::String { .. }
+            | Kind::WString { .. }
             | Kind::Float
             | Kind::Char
+            | Kind::WChar
             | Kind::Unknown
             | Kind::Eoi => return None,
         })
@@ -333,11 +341,13 @@ impl fmt::Display for Kind {
             Kind::Backslash => write!(f, "`\\`"),
             Kind::Newline => write!(f, "newline"),
             Kind::Char => write!(f, "char"),
+            Kind::WChar => write!(f, "wide char"),
             Kind::Number { .. } => write!(f, "number"),
             Kind::Ident => write!(f, "identifier"),
             Kind::At => write!(f, "annotation"),
             Kind::Float => write!(f, "floating-point number"),
             Kind::String { .. } => write!(f, "string"),
+            Kind::WString { .. } => write!(f, "wide string"),
             Kind::Comment { .. } => write!(f, "comment"),
             Kind::Eoi => write!(f, "end of input"),
             Kind::Unknown => write!(f, "unknown"),

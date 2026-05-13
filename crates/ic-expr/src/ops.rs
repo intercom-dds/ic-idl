@@ -162,7 +162,7 @@ pub fn cast_to<R: Clone>(v: Value<R>, tag: TyTag) -> Result<Value<R>, ArithError
                 Ok(Value::UInt(u128::from(b), r))
             }
         }
-        (Value::Char(c), TyTag::Int(r, sign)) => {
+        (Value::Char(c) | Value::WChar(c), TyTag::Int(r, sign)) => {
             let val = i128::from(c as u32);
             if sign {
                 Ok(Value::Int(val, r))

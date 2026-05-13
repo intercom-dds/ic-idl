@@ -25,20 +25,15 @@
 # OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-FROM alpine:3.19
+FROM alpine:3.22
 
-ENV RUST_VERSION=1.80.0
+ENV RUST_VERSION=1.92.0
 
 RUN apk add --no-cache \
     rustup \
-    cmake \
-    mold \
     git \
     gcc \
-    g++ \
-    samurai \
-    musl-dev \
-    clang-extra-tools
+    musl-dev
 
 RUN rustup-init -y \
     --profile minimal \
@@ -48,3 +43,6 @@ RUN rustup-init -y \
 ENV PATH="$PATH:/root/.cargo/bin"
 
 RUN rustup toolchain install nightly -c rustfmt
+
+RUN cargo install --locked cargo-nextest cargo-deny && \
+    rm -rf /root/.cargo/registry /root/.cargo/git

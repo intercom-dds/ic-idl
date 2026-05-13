@@ -31,49 +31,73 @@ workflow:
     - if: $CI_COMMIT_BRANCH == "main"
     - if: $CI_PIPELINE_SOURCE == "schedule"
 
-default:
-  image: "alpine:3.22"
-  before_script:
-    - apk add --no-cache rustup mold git musl-dev cargo-deny cargo-nextest sed
-    - rustup-init --profile minimal --default-toolchain 1.88.0 -y
-    - source $HOME/.cargo/env
-
 stages:
+  - .pre
   - lint
   - test
 
+variables:
+  CI_IMAGE: $CI_REGISTRY_IMAGE/x86_64-unknown-linux-musl:latest
+
+build:ci-image:
+  stage: .pre
+  image: docker:27
+  services:
+    - docker:27-dind
+  variables:
+    DOCKER_TLS_CERTDIR: "/certs"
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+      changes: [ci/x86_64-unknown-linux-musl/Dockerfile]
+    - if: $CI_COMMIT_BRANCH == "main"
+      changes: [ci/x86_64-unknown-linux-musl/Dockerfile]
+  before_script:
+    - echo "$CI_REGISTRY_PASSWORD" | docker login -u "$CI_REGISTRY_USER" --password-stdin "$CI_REGISTRY"
+  script:
+    - docker build -t "$CI_IMAGE" ci/x86_64-unknown-linux-musl/
+    - docker push "$CI_IMAGE"
+
+default:
+  image: $CI_IMAGE
+
 lint:rustfmt:
   stage: lint
-  needs: []
+  needs:
+    - job: build:ci-image
+      optional: true
   script:
-    - rustup toolchain install nightly -c rustfmt
     - cargo +nightly fmt -- --check
 
 lint:clippy:
   stage: lint
-  needs: []
-  tags:
-    - saas-linux-medium-amd64
+  needs:
+    - job: build:ci-image
+      optional: true
+  tags: [saas-linux-medium-amd64]
   script:
-    - rustup component add clippy
     - cargo clippy --workspace --all-targets -- -Dwarnings
 
 lint:license:
   stage: lint
-  needs: []
+  needs:
+    - job: build:ci-image
+      optional: true
   script:
     - cargo xtask deny
 
 lint:ipr:
   stage: lint
-  needs: []
+  needs:
+    - job: build:ci-image
+      optional: true
   script:
     - cargo xtask ipr
 
 test:stable:
   stage: test
-  needs: []
-  tags:
-    - saas-linux-medium-amd64
+  needs:
+    - job: build:ci-image
+      optional: true
+  tags: [saas-linux-medium-amd64]
   script:
     - cargo nextest run --workspace --all-targets

@@ -41,7 +41,7 @@ ic-alloc = { path = "../ic-alloc" }
 ic-expr = { path = "../ic-expr" }
 ic-lexer = { path = "../ic-lexer" }
 ic-vfs = { path = "../ic-vfs" }
-rustc-hash = "2.1.1"
+rustc-hash = "2.1.2"
 tracing.workspace = true
 
 [dev-dependencies]

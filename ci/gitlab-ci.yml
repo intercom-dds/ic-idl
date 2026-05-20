@@ -100,4 +100,8 @@ test:stable:
       optional: true
   tags: [saas-linux-medium-amd64]
   script:
-    - cargo nextest run --workspace --all-targets
+    - cargo nextest run --workspace --all-targets --profile ci --config-file ci/nextest.toml
+  artifacts:
+    when: always
+    reports:
+      junit: target/nextest/ci/junit.xml

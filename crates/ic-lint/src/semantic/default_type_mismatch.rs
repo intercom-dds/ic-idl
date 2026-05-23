@@ -125,7 +125,9 @@ impl DefaultTypeMismatch<'_> {
             (TyKind::Adt(def_id), _) => {
                 let def = self.hir.context.type_of(*def_id);
                 match &def.kind {
-                    DefKind::Struct(_) => matches!(value, Numeric::Struct { .. }),
+                    DefKind::Struct(struct_ty) => {
+                        self.is_struct_compatible(value, *def_id, &struct_ty.members)
+                    }
                     DefKind::Enum(enum_ty) => self.is_valid_enum_value(value, enum_ty),
                     DefKind::Bitmask(bitmask_ty) => {
                         Self::is_primitive_compatible(value, bitmask_ty.ty)
@@ -136,6 +138,20 @@ impl DefaultTypeMismatch<'_> {
 
             _ => false,
         }
+    }
+
+    fn is_struct_compatible(&self, value: &Numeric, def_id: DefId, members: &[Member]) -> bool {
+        let fields = match value {
+            Numeric::Struct { ty, fields } if *ty == def_id => fields,
+            Numeric::Sequence { values, .. } | Numeric::Array { values, .. } => values,
+            _ => return false,
+        };
+
+        fields.len() == members.len()
+            && fields
+                .iter()
+                .zip(members)
+                .all(|(field, member)| self.is_compatible(field, &member.ty))
     }
 
     fn is_const_compatible(&self, const_id: DefId, ty: &Ty) -> bool {

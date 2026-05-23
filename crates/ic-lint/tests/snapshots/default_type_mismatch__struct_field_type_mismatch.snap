@@ -1,0 +1,13 @@
+---
+source: crates/ic-lint/tests/default_type_mismatch.rs
+assertion_line: 179
+expression: test_lint_hir(source)
+---
+⨯ default-type-mismatch: @default value is not compatible with member type `Duration`
+  @ test.idl:8:14
+
+  7 │ struct Bad {
+  8 │     @default({"ten", 30})
+    │              ˆˆˆˆˆˆˆˆˆˆˆ incompatible default value
+  9 │     Duration my_duration;
+ 10 │ };

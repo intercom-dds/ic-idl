@@ -217,6 +217,29 @@ fn sequence_stays_sequence() {
 }
 
 #[test]
+fn sequence_to_struct() {
+    let idl = r"
+        struct Duration {
+            long long sec;
+            unsigned long long nanosec;
+        };
+
+        struct Test {
+            @default({10, 30})
+            Duration my_duration;
+        };
+    ";
+
+    let hir = parse_and_transform(idl);
+    let default_val = get_member_default(&hir, "Test", "my_duration");
+
+    let Numeric::Struct { fields, .. } = default_val else {
+        panic!("Expected Struct, got {default_val:?}")
+    };
+    assert_eq!(fields.len(), 2);
+}
+
+#[test]
 fn no_coercion_for_invalid_enum_int() {
     let idl = r"
         enum Color { RED, GREEN };

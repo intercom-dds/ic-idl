@@ -145,6 +145,41 @@ struct Good {
 }
 
 #[test]
+fn valid_struct_default() {
+    let source = r"
+struct Duration {
+    long long sec;
+    unsigned long long nanosec;
+};
+
+struct Good {
+    @default({10, 30})
+    Duration my_duration;
+};
+";
+
+    let output = test_lint_hir(source);
+    assert!(output.is_empty(), "Expected no errors, but got: {output}");
+}
+
+#[test]
+fn struct_field_type_mismatch() {
+    let source = r#"
+struct Duration {
+    long long sec;
+    unsigned long long nanosec;
+};
+
+struct Bad {
+    @default({"ten", 30})
+    Duration my_duration;
+};
+"#;
+
+    assert_snapshot!(test_lint_hir(source));
+}
+
+#[test]
 fn valid_enum_default() {
     let source = r"
 enum Color { RED, GREEN, BLUE };

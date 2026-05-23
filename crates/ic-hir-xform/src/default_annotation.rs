@@ -42,6 +42,7 @@ struct DefaultAnnotation {
     enum_fields: HashMap<DefId, Vec<(i64, DefId)>>,
     typedef_targets: HashMap<DefId, TyKind>,
     const_values: HashMap<DefId, Numeric>,
+    struct_members: HashMap<DefId, Vec<Member>>,
 }
 
 impl DefaultAnnotation {
@@ -49,9 +50,13 @@ impl DefaultAnnotation {
         let mut enum_fields = HashMap::new();
         let mut typedef_targets = HashMap::new();
         let mut const_values = HashMap::new();
+        let mut struct_members = HashMap::new();
 
         for (def_id, def) in &context.definitions {
             match &def.kind {
+                DefKind::Struct(struct_ty) => {
+                    struct_members.insert(def_id, struct_ty.members.clone());
+                }
                 DefKind::Enum(enum_ty) => {
                     enum_fields.insert(def_id, Self::collect_enum_fields(context, enum_ty));
                 }
@@ -70,6 +75,7 @@ impl DefaultAnnotation {
             enum_fields,
             typedef_targets,
             const_values,
+            struct_members,
         }
     }
 
@@ -149,10 +155,35 @@ impl DefaultAnnotation {
                 })
             }
 
+            (TyKind::Adt(def_id), Numeric::Sequence { values, .. }) => self
+                .coerce_sequence_to_struct(values, *def_id)
+                .or_else(|| self.coerce_int_to_enum(value, *def_id)),
+
             (TyKind::Adt(def_id), _) => self.coerce_int_to_enum(value, *def_id),
 
             _ => None,
         }
+    }
+
+    fn coerce_sequence_to_struct(&self, values: &[Numeric], def_id: DefId) -> Option<Numeric> {
+        let members = self.struct_members.get(&def_id)?;
+        if values.len() != members.len() {
+            return None;
+        }
+
+        let coerced = values
+            .iter()
+            .zip(members)
+            .map(|(value, member)| {
+                self.coerce_numeric(value, &member.ty)
+                    .unwrap_or_else(|| value.clone())
+            })
+            .collect::<Vec<_>>();
+
+        Some(Numeric::Struct {
+            ty: def_id,
+            fields: coerced.into_boxed_slice(),
+        })
     }
 
     fn coerce_int_to_enum(&self, value: &Numeric, def_id: DefId) -> Option<Numeric> {

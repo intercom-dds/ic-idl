@@ -163,6 +163,32 @@ struct Good {
 }
 
 #[test]
+fn valid_derived_struct_default() {
+    let source = r#"
+struct Base {
+    long id;
+    string name;
+};
+
+struct Middle : Base {
+    long count;
+};
+
+struct Derived : Middle {
+    long total;
+};
+
+struct Good {
+    @default({10, "base", 30, 40})
+    Derived value;
+};
+"#;
+
+    let output = test_lint_hir(source);
+    assert!(output.is_empty(), "Expected no errors, but got: {output}");
+}
+
+#[test]
 fn struct_field_type_mismatch() {
     let source = r#"
 struct Duration {

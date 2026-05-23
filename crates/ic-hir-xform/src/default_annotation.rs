@@ -34,7 +34,7 @@
 use std::collections::HashMap;
 
 use ic_hir::fold::Fold;
-use ic_hir::hir::{DefId, DefKind, Member, Numeric, PrimitiveTy, Ty, TyKind};
+use ic_hir::hir::{DefId, DefKind, Member, Numeric, PrimitiveTy, StructTy, Ty, TyKind};
 use ic_hir::{Context, ResolvedGraph};
 use tracing::{debug, debug_span};
 
@@ -55,7 +55,7 @@ impl DefaultAnnotation {
         for (def_id, def) in &context.definitions {
             match &def.kind {
                 DefKind::Struct(struct_ty) => {
-                    struct_members.insert(def_id, struct_ty.members.clone());
+                    struct_members.insert(def_id, Self::collect_struct_members(context, struct_ty));
                 }
                 DefKind::Enum(enum_ty) => {
                     enum_fields.insert(def_id, Self::collect_enum_fields(context, enum_ty));
@@ -77,6 +77,30 @@ impl DefaultAnnotation {
             const_values,
             struct_members,
         }
+    }
+
+    fn collect_struct_members(context: &Context, struct_ty: &StructTy) -> Vec<Member> {
+        let mut parents = vec![];
+        let mut parent = struct_ty.parent;
+        while let Some(parent_ref) = parent {
+            let parent_def = context.type_of(parent_ref.def_id);
+            if let DefKind::Struct(parent_struct) = &parent_def.kind {
+                parents.push(parent_ref.def_id);
+                parent = parent_struct.parent;
+            } else {
+                parent = None;
+            }
+        }
+
+        let mut members = vec![];
+        for parent_id in parents.into_iter().rev() {
+            let parent_def = context.type_of(parent_id);
+            if let DefKind::Struct(parent_struct) = &parent_def.kind {
+                members.extend(parent_struct.members.clone());
+            }
+        }
+        members.extend(struct_ty.members.clone());
+        members
     }
 
     fn collect_enum_fields(context: &Context, enum_ty: &ic_hir::hir::EnumTy) -> Vec<(i64, DefId)> {

@@ -126,7 +126,8 @@ impl DefaultTypeMismatch<'_> {
                 let def = self.hir.context.type_of(*def_id);
                 match &def.kind {
                     DefKind::Struct(struct_ty) => {
-                        self.is_struct_compatible(value, *def_id, &struct_ty.members)
+                        let members = self.collect_struct_members(struct_ty);
+                        self.is_struct_compatible(value, *def_id, &members)
                     }
                     DefKind::Enum(enum_ty) => self.is_valid_enum_value(value, enum_ty),
                     DefKind::Bitmask(bitmask_ty) => {
@@ -138,6 +139,30 @@ impl DefaultTypeMismatch<'_> {
 
             _ => false,
         }
+    }
+
+    fn collect_struct_members(&self, struct_ty: &StructTy) -> Vec<Member> {
+        let mut parents = vec![];
+        let mut parent = struct_ty.parent;
+        while let Some(parent_ref) = parent {
+            let parent_def = self.hir.context.type_of(parent_ref.def_id);
+            if let DefKind::Struct(parent_struct) = &parent_def.kind {
+                parents.push(parent_ref.def_id);
+                parent = parent_struct.parent;
+            } else {
+                parent = None;
+            }
+        }
+
+        let mut members = vec![];
+        for parent_id in parents.into_iter().rev() {
+            let parent_def = self.hir.context.type_of(parent_id);
+            if let DefKind::Struct(parent_struct) = &parent_def.kind {
+                members.extend(parent_struct.members.clone());
+            }
+        }
+        members.extend(struct_ty.members.clone());
+        members
     }
 
     fn is_struct_compatible(&self, value: &Numeric, def_id: DefId, members: &[Member]) -> bool {

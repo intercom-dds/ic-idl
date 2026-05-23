@@ -240,6 +240,41 @@ fn sequence_to_struct() {
 }
 
 #[test]
+fn sequence_to_derived_struct() {
+    let idl = r#"
+        struct Base {
+            long id;
+            string name;
+        };
+
+        struct Middle : Base {
+            long count;
+        };
+
+        struct Derived : Middle {
+            long total;
+        };
+
+        struct Test {
+            @default({10, "base", 30, 40})
+            Derived value;
+        };
+    "#;
+
+    let hir = parse_and_transform(idl);
+    let default_val = get_member_default(&hir, "Test", "value");
+
+    let Numeric::Struct { fields, .. } = default_val else {
+        panic!("Expected Struct, got {default_val:?}")
+    };
+    assert_eq!(fields.len(), 4);
+    assert!(matches!(&fields[0], Numeric::Int32(10)));
+    assert!(matches!(&fields[1], Numeric::String(value) if value == "base"));
+    assert!(matches!(&fields[2], Numeric::Int32(30)));
+    assert!(matches!(&fields[3], Numeric::Int32(40)));
+}
+
+#[test]
 fn no_coercion_for_invalid_enum_int() {
     let idl = r"
         enum Color { RED, GREEN };

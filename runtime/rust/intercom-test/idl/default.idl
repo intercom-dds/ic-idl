@@ -89,16 +89,9 @@ enum MyDefaultEnum {
 
 const MyDefaultEnum MY_ENUM_CONST = MyDefaultEnum::NINE;
 
-union MyUnionDefaultNull switch(octet) {
-default:
-    null;
-};
-
 union UnionSharedDefault switch(@default(1) octet) {
 case 1:
     @default(5) @shared int32 my_int;
-default:
-    null;
 };
 
 struct Test {

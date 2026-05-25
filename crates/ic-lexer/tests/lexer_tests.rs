@@ -64,7 +64,6 @@ fn test_all_keywords() {
     assert_eq!(kinds("switch"), vec![Kind::Keyword(Kw::Switch)]);
     assert_eq!(kinds("case"), vec![Kind::Keyword(Kw::Case)]);
     assert_eq!(kinds("default"), vec![Kind::Keyword(Kw::Default)]);
-    assert_eq!(kinds("null"), vec![Kind::Keyword(Kw::Null)]);
     assert_eq!(kinds("valuetype"), vec![Kind::Keyword(Kw::Valuetype)]);
     assert_eq!(kinds("public"), vec![Kind::Keyword(Kw::Public)]);
     assert_eq!(kinds("private"), vec![Kind::Keyword(Kw::Private)]);

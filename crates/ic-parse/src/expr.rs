@@ -156,13 +156,6 @@ impl Parser<'_> {
             | Kind::Char
             | Kind::WChar => self.literal(),
             Kind::Keyword(Kw::True | Kw::False) => Ok(self.boolean_literal()),
-            Kind::Keyword(Kw::Null) => {
-                let tok = self.advance();
-                Ok(Expr::Literal(Literal {
-                    span: tok.span,
-                    value: LiteralValue::Null,
-                }))
-            }
 
             // Scoped name
             Kind::Ident | Kind::DColon => {
@@ -391,7 +384,7 @@ impl Parser<'_> {
                 | Kind::WString { .. }
                 | Kind::Char
                 | Kind::WChar
-                | Kind::Keyword(Kw::True | Kw::False | Kw::Null)
+                | Kind::Keyword(Kw::True | Kw::False)
                 | Kind::Minus
                 | Kind::Plus
                 | Kind::BitNot

@@ -38,8 +38,6 @@ const MyEnum ENUM_CONSTANT = MyEnum::MY_ENUM_ONE;
 union DefaultUnion switch (@default(ENUM_CONSTANT) MyEnum) {
 case MY_ENUM_ONE:
     @shared @default("test") string my_str;
-default:
-    null;
 };
 
 @bit_bound(32)
@@ -99,25 +97,9 @@ module label {
         TWO
     };
 
-    union MultipleNull switch(CaseLabel) {
-    case ZERO:
-    case ONE:
-        null;
-    default:
-        string var;
-    };
-
     union MultipleDefault switch(CaseLabel) {
     case ZERO:
     case ONE:
-    default:
-        string var;
-    };
-
-    union MultipleNullOctet switch(octet) {
-    case 0:
-    case 1:
-        null;
     default:
         string var;
     };
@@ -135,6 +117,6 @@ module label {
     case ONE:
         string my_str;
     case TWO:
-        null;
+        float my_float;
     };
 };

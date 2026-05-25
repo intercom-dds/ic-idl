@@ -194,7 +194,6 @@ const _: () = {
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
 #[repr(i32)]
 pub enum LitKind {
-    Null,
     Bool,
     Int,
     Float,
@@ -207,7 +206,7 @@ pub enum LitKind {
 impl LitKind {
     #[must_use]
     pub const fn new() -> Self {
-        Self::Null
+        Self::Bool
     }
 }
 
@@ -216,7 +215,6 @@ impl ::std::str::FromStr for LitKind {
 
     fn from_str(s: &str) -> ::std::result::Result<Self, Self::Err> {
         match s {
-            "LIT_NULL" => Ok(Self::Null),
             "LIT_BOOL" => Ok(Self::Bool),
             "LIT_INT" => Ok(Self::Int),
             "LIT_FLOAT" => Ok(Self::Float),
@@ -232,7 +230,6 @@ impl ::std::str::FromStr for LitKind {
 impl ::std::fmt::Display for LitKind {
     fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> ::std::fmt::Result {
         match self {
-            Self::Null => f.write_str("LIT_NULL"),
             Self::Bool => f.write_str("LIT_BOOL"),
             Self::Int => f.write_str("LIT_INT"),
             Self::Float => f.write_str("LIT_FLOAT"),
@@ -265,50 +262,44 @@ const _: () = {
 
     const MEMBER_INFO: &[::intercom_cts::MemberInfo<'static>] = &[
         ::intercom_cts::MemberInfo {
-            name: "LIT_NULL",
+            name: "LIT_BOOL",
             member_id: 0,
             flags: ::intercom_cts::MemberFlag::nil(),
             type_info: ::intercom_cts::type_info::<crate::ast::LitKind>(),
         },
         ::intercom_cts::MemberInfo {
-            name: "LIT_BOOL",
+            name: "LIT_INT",
             member_id: 1,
             flags: ::intercom_cts::MemberFlag::nil(),
             type_info: ::intercom_cts::type_info::<crate::ast::LitKind>(),
         },
         ::intercom_cts::MemberInfo {
-            name: "LIT_INT",
+            name: "LIT_FLOAT",
             member_id: 2,
             flags: ::intercom_cts::MemberFlag::nil(),
             type_info: ::intercom_cts::type_info::<crate::ast::LitKind>(),
         },
         ::intercom_cts::MemberInfo {
-            name: "LIT_FLOAT",
+            name: "LIT_CHAR",
             member_id: 3,
             flags: ::intercom_cts::MemberFlag::nil(),
             type_info: ::intercom_cts::type_info::<crate::ast::LitKind>(),
         },
         ::intercom_cts::MemberInfo {
-            name: "LIT_CHAR",
+            name: "LIT_WCHAR",
             member_id: 4,
             flags: ::intercom_cts::MemberFlag::nil(),
             type_info: ::intercom_cts::type_info::<crate::ast::LitKind>(),
         },
         ::intercom_cts::MemberInfo {
-            name: "LIT_WCHAR",
+            name: "LIT_STRING",
             member_id: 5,
             flags: ::intercom_cts::MemberFlag::nil(),
             type_info: ::intercom_cts::type_info::<crate::ast::LitKind>(),
         },
         ::intercom_cts::MemberInfo {
-            name: "LIT_STRING",
-            member_id: 6,
-            flags: ::intercom_cts::MemberFlag::nil(),
-            type_info: ::intercom_cts::type_info::<crate::ast::LitKind>(),
-        },
-        ::intercom_cts::MemberInfo {
             name: "LIT_WSTRING",
-            member_id: 7,
+            member_id: 6,
             flags: ::intercom_cts::MemberFlag::nil(),
             type_info: ::intercom_cts::type_info::<crate::ast::LitKind>(),
         },
@@ -323,14 +314,13 @@ const _: () = {
 
             let state = ar.encode_enum(TYPE_INFO.name)?;
             match self {
-                Self::Null => state.encode_variant::<i32>("LIT_NULL", 0),
-                Self::Bool => state.encode_variant::<i32>("LIT_BOOL", 1),
-                Self::Int => state.encode_variant::<i32>("LIT_INT", 2),
-                Self::Float => state.encode_variant::<i32>("LIT_FLOAT", 3),
-                Self::Char => state.encode_variant::<i32>("LIT_CHAR", 4),
-                Self::WChar => state.encode_variant::<i32>("LIT_WCHAR", 5),
-                Self::String => state.encode_variant::<i32>("LIT_STRING", 6),
-                Self::WString => state.encode_variant::<i32>("LIT_WSTRING", 7),
+                Self::Bool => state.encode_variant::<i32>("LIT_BOOL", 0),
+                Self::Int => state.encode_variant::<i32>("LIT_INT", 1),
+                Self::Float => state.encode_variant::<i32>("LIT_FLOAT", 2),
+                Self::Char => state.encode_variant::<i32>("LIT_CHAR", 3),
+                Self::WChar => state.encode_variant::<i32>("LIT_WCHAR", 4),
+                Self::String => state.encode_variant::<i32>("LIT_STRING", 5),
+                Self::WString => state.encode_variant::<i32>("LIT_WSTRING", 6),
             }
         }
     }
@@ -356,14 +346,13 @@ const _: () = {
             use ::intercom_cts::error::Error as _;
 
             let value = match de.decode_i32()? {
-                0 => Self::Null,
-                1 => Self::Bool,
-                2 => Self::Int,
-                3 => Self::Float,
-                4 => Self::Char,
-                5 => Self::WChar,
-                6 => Self::String,
-                7 => Self::WString,
+                0 => Self::Bool,
+                1 => Self::Int,
+                2 => Self::Float,
+                3 => Self::Char,
+                4 => Self::WChar,
+                5 => Self::String,
+                6 => Self::WString,
                 _ => return Err(D::Error::custom("invalid enum value for type ast::LitKind")),
             };
             Ok(value)
@@ -376,7 +365,6 @@ const _: () = {
             use ::intercom_cts::error::Error as _;
 
             let value = match name {
-                "LIT_NULL" => Self::Null,
                 "LIT_BOOL" => Self::Bool,
                 "LIT_INT" => Self::Int,
                 "LIT_FLOAT" => Self::Float,
@@ -400,7 +388,6 @@ pub enum LiteralValue {
     WChar(char),
     String(::std::string::String),
     WString(::std::string::String),
-    Null,
 }
 
 impl LiteralValue {
@@ -419,7 +406,6 @@ impl LiteralValue {
             Self::WChar(_) => crate::ast::LitKind::WChar,
             Self::String(_) => crate::ast::LitKind::String,
             Self::WString(_) => crate::ast::LitKind::WString,
-            Self::Null => crate::ast::LitKind::Null,
         }
     }
 }
@@ -434,7 +420,6 @@ impl From<crate::ast::LitKind> for LiteralValue {
             crate::ast::LitKind::WChar => Self::WChar('\0'),
             crate::ast::LitKind::String => Self::String(<::std::string::String>::default()),
             crate::ast::LitKind::WString => Self::WString(<::std::string::String>::default()),
-            crate::ast::LitKind::Null => Self::Null,
         }
     }
 }
@@ -461,43 +446,43 @@ const _: () = {
     const MEMBER_INFO: &[::intercom_cts::MemberInfo<'static>] = &[
         ::intercom_cts::MemberInfo {
             name: "bool",
-            member_id: 1,
+            member_id: 0,
             flags: ::intercom_cts::MemberFlag::nil(),
             type_info: ::intercom_cts::type_info::<bool>(),
         },
         ::intercom_cts::MemberInfo {
             name: "int",
-            member_id: 2,
+            member_id: 1,
             flags: ::intercom_cts::MemberFlag::nil(),
             type_info: ::intercom_cts::type_info::<u64>(),
         },
         ::intercom_cts::MemberInfo {
             name: "_float",
-            member_id: 3,
+            member_id: 2,
             flags: ::intercom_cts::MemberFlag::nil(),
             type_info: ::intercom_cts::type_info::<f64>(),
         },
         ::intercom_cts::MemberInfo {
             name: "_char",
-            member_id: 4,
+            member_id: 3,
             flags: ::intercom_cts::MemberFlag::nil(),
             type_info: ::intercom_cts::type_info::<char>(),
         },
         ::intercom_cts::MemberInfo {
             name: "_wchar",
-            member_id: 5,
+            member_id: 4,
             flags: ::intercom_cts::MemberFlag::nil(),
             type_info: ::intercom_cts::type_info::<char>(),
         },
         ::intercom_cts::MemberInfo {
             name: "_string",
-            member_id: 6,
+            member_id: 5,
             flags: ::intercom_cts::MemberFlag::nil(),
             type_info: ::intercom_cts::type_info::<::std::string::String>(),
         },
         ::intercom_cts::MemberInfo {
             name: "_wstring",
-            member_id: 7,
+            member_id: 6,
             flags: ::intercom_cts::MemberFlag::nil(),
             type_info: ::intercom_cts::type_info::<::std::string::String>(),
         },
@@ -520,7 +505,6 @@ const _: () = {
                 Self::WChar(v) => state.encode_variant(&MEMBER_INFO[4], v),
                 Self::String(v) => state.encode_variant(&MEMBER_INFO[5], v),
                 Self::WString(v) => state.encode_variant(&MEMBER_INFO[6], v),
-                Self::Null => state.encode_null(),
             }
         }
     }
@@ -571,7 +555,6 @@ const _: () = {
                     state.decode_variant(&MEMBER_INFO[6], &mut value)?;
                     Self::WString(value)
                 }
-                crate::ast::LitKind::Null => Self::Null,
             };
             Ok(())
         }

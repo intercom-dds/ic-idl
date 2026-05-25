@@ -41,12 +41,10 @@ enum MyEnum {
 };
 
 union MyUnion switch(MyEnum) {
-    case ONE:
-        int32 my_int;
-    case TWO:
-        float my_float;
-    default:
-        null;
+case ONE:
+    int32 my_int;
+case TWO:
+    float my_float;
 };
 
 };

@@ -111,5 +111,4 @@ pub const IDL_KEYWORDS: &[&str] = &[
     "uint16",
     "uint32",
     "uint64",
-    "null",
 ];

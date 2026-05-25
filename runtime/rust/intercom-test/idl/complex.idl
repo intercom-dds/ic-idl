@@ -44,8 +44,6 @@ case 1:
     string my_str;
 case 2:
     int32 my_int;
-case 3:
-    null;
 default:
     SomeOtherData my_other_data;
 };
@@ -63,8 +61,6 @@ struct WrapsRecursiveUnion {
 };
 
 union RecursiveUnion switch(octet) {
-case 0:
-    null;
 case 1:
     WrapsRecursiveUnion recursive_union;
 };

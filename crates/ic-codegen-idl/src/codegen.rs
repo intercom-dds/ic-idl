@@ -391,7 +391,9 @@ impl<'a> IdlGen<'a> {
             let ty_str = self.idl_type(&variant.ty, def.id);
             w.dedent();
             if variant.is_default {
-                w!(w, "\ndefault:");
+                if !matches!(variant.ty.kind, TyKind::Null) {
+                    w!(w, "\ndefault:");
+                }
             } else {
                 for label in &variant.labels {
                     let label_str = self.format_numeric(&label.value, def.id);
@@ -403,9 +405,7 @@ impl<'a> IdlGen<'a> {
             w!(w, "\n");
             self.emit_annotations(w, &variant.annotations, def.id);
 
-            if let TyKind::Null = variant.ty.kind {
-                w!(w, "null;");
-            } else {
+            if !matches!(variant.ty.kind, TyKind::Null) {
                 w!(w, ty_str, " ", variant.ident.name, ";");
             }
         }

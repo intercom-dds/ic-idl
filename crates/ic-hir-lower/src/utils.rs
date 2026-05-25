@@ -55,7 +55,6 @@ pub fn literal_to_numeric(lit: &ic_syntax::LiteralValue) -> Numeric {
         ic_syntax::LiteralValue::Float(f) => Numeric::Double(*f),
         ic_syntax::LiteralValue::String(s) => Numeric::String(s.clone()),
         ic_syntax::LiteralValue::WString(s) => Numeric::WString(s.clone()),
-        ic_syntax::LiteralValue::Null => Numeric::Null,
     }
 }
 

@@ -42,6 +42,8 @@ inline void hash_combine(std::size_t& seed, const T& x);
 template <typename T>
 inline void hash_combine(std::size_t& seed, const std::vector<T>& x);
 
+inline void hash_combine(std::size_t& seed, const std::vector<bool>& x);
+
 template <typename T, std::size_t N>
 inline void hash_combine(std::size_t& seed, const std::array<T, N>& x);
 
@@ -61,6 +63,13 @@ template <typename T>
 inline void hash_combine(std::size_t& seed, const std::vector<T>& x) {
     hash_combine(seed, x.size());
     for (const auto& elem : x) {
+        hash_combine(seed, elem);
+    }
+}
+
+inline void hash_combine(std::size_t& seed, const std::vector<bool>& x) {
+    hash_combine(seed, x.size());
+    for (bool elem : x) {
         hash_combine(seed, elem);
     }
 }

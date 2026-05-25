@@ -91,7 +91,6 @@ struct Path {
 };
 
 enum LitKind {
-    LIT_NULL,
     LIT_BOOL,
     LIT_INT,
     LIT_FLOAT,
@@ -103,8 +102,6 @@ enum LitKind {
 
 @nested
 union LiteralValue switch(LitKind) {
-case LIT_NULL:
-     null;
 case LIT_BOOL:
      boolean bool;
 case LIT_INT:

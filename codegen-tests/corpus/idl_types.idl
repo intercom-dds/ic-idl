@@ -215,8 +215,6 @@ module IdlTypes
          @optional long optionalLongType; //!< This is the optional long type
       case 2:
          boolean boolType;
-      case 133:
-          null;
       case 134:
           @optional string optionalString;
       default:
@@ -227,8 +225,6 @@ module IdlTypes
    {
       case true:
          @external boolean really_true;
-      default:
-         null;
    };
 
    @bit_bound(2)

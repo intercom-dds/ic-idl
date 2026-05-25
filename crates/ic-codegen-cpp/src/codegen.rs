@@ -231,6 +231,10 @@ impl<'a> CppGen<'a> {
                     | PrimitiveTy::WChar
             ),
             TyKind::Array { .. } => true,
+            TyKind::Adt(def_id) => {
+                let def = self.hir.context.definitions.get(*def_id);
+                matches!(def.kind, DefKind::Enum(_) | DefKind::Bitmask(_))
+            }
             _ => false,
         }
     }
@@ -474,9 +478,22 @@ impl<'a> CppGen<'a> {
     }
 
     pub fn emit_default_initializer(&self, w: &mut Twine, ty: &Ty) {
-        match &ty.kind {
+        let resolved = match &ty.kind {
+            TyKind::Adt(def_id) => self.hir.context.base_type_of(*def_id),
+            _ => ty.clone(),
+        };
+        match &resolved.kind {
             TyKind::Primitive(prim) => w!(w, Self::primitive_default(*prim)),
             TyKind::Array { .. } => w!(w, "{}"),
+            TyKind::Adt(def_id) => {
+                let def = self.hir.context.definitions.get(*def_id);
+                if let DefKind::Enum(enum_ty) = &def.kind
+                    && let Some(first) = enum_ty.fields.first()
+                {
+                    let name = self.scoped_name(*first, None);
+                    w!(w, name);
+                }
+            }
             _ => {}
         }
     }

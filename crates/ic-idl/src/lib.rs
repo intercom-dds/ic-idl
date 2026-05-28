@@ -346,9 +346,6 @@ impl Compiler {
             // Add implicit default cases to incomplete unions
             let hir = ic_hir_xform::implicit_default::transform(hir);
 
-            // Coalesce multiple null variants in unions
-            let hir = ic_hir_xform::coalesce_null_variants::transform(hir);
-
             // Verify that, after all transformations, the HIR is still consistent
             #[cfg(debug_assertions)]
             ic_hir_xform::normalize::normalize(&hir);

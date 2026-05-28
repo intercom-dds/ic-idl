@@ -328,6 +328,16 @@ fn test_simple_union() {
 }
 
 #[test]
+fn test_union_default_case() {
+    let input = UnionDefaultCase::Fallback("default value".to_string());
+    assert_eq!(
+        json::to_string(&input, false).unwrap(),
+        r#"{"$discriminator":0,"fallback":"default value"}"#,
+    );
+    assert_eq!(input, roundtrip(&input).unwrap());
+}
+
+#[test]
 fn test_enum() {
     let input = SimpleEnum::Zero;
     assert_eq!("\"ZERO\"", json::to_string(&input, false).unwrap());

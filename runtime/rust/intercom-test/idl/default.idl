@@ -94,6 +94,13 @@ case 1:
     @default(5) @shared int32 my_int;
 };
 
+union UnionDefaultCase switch(octet) {
+case 1:
+    int32 my_int;
+default:
+    string fallback;
+};
+
 struct Test {
     int32 my_int;
     string my_str;

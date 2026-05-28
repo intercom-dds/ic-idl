@@ -447,10 +447,6 @@ impl RustGen<'_> {
         w!(w, "match self {\n");
         let mut info_idx = 0;
         for variant in &union_ty.variants {
-            if variant.is_default {
-                continue;
-            }
-
             let is_null = matches!(variant.ty.kind, TyKind::Null);
             if variant.labels.is_empty() {
                 if is_null {
@@ -478,10 +474,6 @@ impl RustGen<'_> {
                     info_idx += 1;
                 }
             }
-        }
-
-        if union_ty.variants.iter().any(|v| v.is_default) {
-            w!(w, "_ => state.encode_null(),\n");
         }
         w!(w, "}\n");
         w!(w, "}\n");
@@ -540,15 +532,21 @@ impl RustGen<'_> {
 
         for variant in &union_ty.variants {
             if variant.is_default {
+                let variant_name = if variant.labels.is_empty() {
+                    variant.ident.name.clone()
+                } else {
+                    self.union_variant_name(variant, &variant.labels[0], union_ty)
+                };
+
                 if matches!(variant.ty.kind, TyKind::Null) {
-                    w!(w, "_ => Self::", variant.ident.name, ",\n");
+                    w!(w, "_ => Self::", variant_name, ",\n");
                 } else {
                     w!(w, "_ => {\n");
                     w!(w, "let mut value = ");
                     self.emit_default_value(&variant.ty, def.id, w);
                     w!(w, ";\n");
                     w!(w, "state.decode_variant(&MEMBER_INFO[", info_idx.to_string(), "], &mut value)?;\n");
-                    w!(w, "Self::", variant.ident.name, "(value)\n");
+                    w!(w, "Self::", variant_name, "(value)\n");
                     w!(w, "},\n");
                 }
                 break;

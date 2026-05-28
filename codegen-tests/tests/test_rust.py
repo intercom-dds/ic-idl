@@ -55,7 +55,7 @@ def cargo(request: pytest.FixtureRequest) -> str:
 
 @pytest.fixture(scope="session")
 def cts_path() -> Path:
-    root = Path(__file__).parent.parent
+    root = Path(__file__).parent.parent.parent
     return (root / "runtime" / "rust" / "intercom-cts").resolve()
 
 

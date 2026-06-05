@@ -380,16 +380,17 @@ pub fn should_colorize<W: std::io::IsTerminal>(mode: ColorMode, stream: W) -> bo
 #[allow(clippy::needless_pass_by_value)]
 fn is_terminal_impl<W: std::io::IsTerminal>(stream: W) -> bool {
     let is_dumb = if let Ok(v) = std::env::var("TERM") {
-        v == "dumb"
+        v.eq_ignore_ascii_case("dumb")
     } else {
         false
     };
 
+    let no_color = std::env::var_os("NO_COLOR").is_some();
     if !terminal::enable_ansi_colors() {
         return false;
     }
 
-    !is_dumb && stream.is_terminal()
+    !is_dumb && !no_color && stream.is_terminal()
 }
 
 #[cfg(test)]

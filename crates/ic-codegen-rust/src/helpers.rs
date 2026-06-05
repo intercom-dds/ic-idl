@@ -28,7 +28,9 @@
 use std::fmt::Write;
 
 use ic_hir::annotation::{Optional, find_annotation};
-use ic_hir::hir::{Def, DefFlags, DefId, DefKind, Member, Numeric, PrimitiveTy, Ty, TyKind};
+use ic_hir::hir::{
+    AliasTy, Def, DefFlags, DefId, DefKind, Member, Numeric, PrimitiveTy, Ty, TyKind,
+};
 
 use crate::codegen::RustGen;
 
@@ -163,6 +165,19 @@ impl RustGen<'_> {
             _ => false,
         }
     }
+
+    pub fn newtype_alias<'a>(&'a self, ty: &Ty) -> Option<(DefId, &'a AliasTy)> {
+        let TyKind::Adt(def_id) = ty.kind else {
+            return None;
+        };
+
+        let def = self.hir.context.definitions.get(def_id);
+        let DefKind::Alias(alias_ty) = &def.kind else {
+            return None;
+        };
+
+        is_newtype(def).then_some((def_id, alias_ty))
+    }
 }
 
 pub fn is_trivial(def: &Def) -> bool {
@@ -215,6 +230,15 @@ pub fn is_shared(member: &Member) -> bool {
         .annotations
         .iter()
         .any(|a| a.ident.name == "shared" || a.ident.name == "external")
+}
+
+pub fn is_newtype(def: &Def) -> bool {
+    def.annotations.iter().any(|a| {
+        (a.ident.name == "newtype" || a.ident.name == "ext::newtype")
+            && a.args
+                .first()
+                .is_none_or(|arg| !matches!(arg.value, Numeric::Bool(false)))
+    })
 }
 
 pub fn default_value(member: &Member) -> &Numeric {

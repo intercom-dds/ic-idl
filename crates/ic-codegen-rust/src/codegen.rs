@@ -35,7 +35,7 @@ use ic_hir::hir::{Def, DefFlags, DefId, DefKind, Numeric, ParamKind, PrimitiveTy
 
 use crate::RustOptions;
 use crate::helpers::{
-    default_value, is_copy, is_debug, is_eq, is_hash, is_optional, is_ord, is_trivial,
+    default_value, is_copy, is_debug, is_eq, is_hash, is_newtype, is_optional, is_ord, is_trivial,
     rust_primitive,
 };
 
@@ -588,6 +588,24 @@ impl<'a> RustGen<'a> {
 
     fn emit_alias(&self, def: &Def, alias: &ic_hir::hir::AliasTy, w: &mut Twine) {
         let ty = self.rust_type(&alias.ty, def.id);
+
+        if is_newtype(def) {
+            self.emit_derives(def, w);
+            w!(w, "pub struct ", def, "(pub ", ty, ");\n\n");
+
+            w!(w, "impl ", def, " {\n");
+            if !self.options.must_use {
+                w!(w, "#[must_use]\n");
+            }
+            w!(w, "pub fn new() -> Self {\n");
+            w!(w, "Self(");
+            self.emit_default_value(&alias.ty, def.id, w);
+            w!(w, ")\n");
+            w!(w, "}\n");
+            w!(w, "}\n\n");
+            return;
+        }
+
         // TODO: should be base_type_of, I think?
         if let TyKind::Adt(id) = alias.ty.kind
             && let DefKind::Interface(_) = self.hir.context.type_of(id).kind
@@ -752,6 +770,12 @@ impl<'a> RustGen<'a> {
             }
             DefKind::Alias(alias_ty) => {
                 self.emit_alias(def, alias_ty, w);
+                if is_newtype(def) {
+                    Self::emit_default_impl(def, w);
+                    self.emit_newtype_type_descriptor(def, alias_ty, w);
+                    Self::emit_newtype_marshal_impl(def, w);
+                    Self::emit_newtype_unmarshal_impl(def, w);
+                }
             }
             DefKind::Const(const_ty) => {
                 self.emit_const(def, const_ty, w);

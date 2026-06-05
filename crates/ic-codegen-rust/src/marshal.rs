@@ -27,7 +27,7 @@
 
 use ic_emit::printer::Twine;
 use ic_emit::w;
-use ic_hir::hir::{Def, DefKind, Member, TyKind};
+use ic_hir::hir::{AliasTy, Def, DefKind, Member, TyKind};
 
 use crate::codegen::RustGen;
 use crate::helpers::{
@@ -111,6 +111,36 @@ impl RustGen<'_> {
 
     pub(crate) fn emit_type_info_close(w: &mut Twine) {
         w!(w, "};\n\n");
+    }
+
+    pub(crate) fn emit_newtype_type_descriptor(&self, def: &Def, alias: &AliasTy, w: &mut Twine) {
+        let inner_ty = self.rust_type(&alias.ty, def.id);
+        w!(w, "impl ::intercom_cts::type_info::TypeDescriptor for ", def, " {\n");
+        w!(w, "const TYPE_INFO: &'static ::intercom_cts::TypeInfo<'static> =\n");
+        w!(w, "\t::intercom_cts::type_info::<", inner_ty, ">();\n");
+        w!(w, "}\n\n");
+    }
+
+    pub(crate) fn emit_newtype_marshal_impl(def: &Def, w: &mut Twine) {
+        w!(w, "impl ::intercom_cts::Marshal for ", def, " {\n");
+        w!(w, "fn marshal<'a, S>(&self, ar: S) -> ::std::result::Result<S::Ok, S::Error>\n");
+        w!(w, "where\n");
+        w!(w, "\tS: ::intercom_cts::encode::Serializer<'a>,\n");
+        w!(w, "{\n");
+        w!(w, "self.0.marshal(ar)\n");
+        w!(w, "}\n");
+        w!(w, "}\n\n");
+    }
+
+    pub(crate) fn emit_newtype_unmarshal_impl(def: &Def, w: &mut Twine) {
+        w!(w, "impl ::intercom_cts::Unmarshal for ", def, " {\n");
+        w!(w, "fn unmarshal_mut<'a, D>(&mut self, ar: D) -> ::std::result::Result<(), D::Error>\n");
+        w!(w, "where\n");
+        w!(w, "\tD: ::intercom_cts::decode::Deserializer<'a>,\n");
+        w!(w, "{\n");
+        w!(w, "self.0.unmarshal_mut(ar)\n");
+        w!(w, "}\n");
+        w!(w, "}\n\n");
     }
 
     pub(crate) fn emit_member_info(&self, def_id: ic_hir::hir::DefId, w: &mut Twine) {

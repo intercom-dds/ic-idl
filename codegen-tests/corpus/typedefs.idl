@@ -67,6 +67,7 @@ module typedef_tests {
         double y;
     };
     typedef Point Point2D;
+    @ext::newtype typedef Point WrappedPoint;
     typedef Point PointArray[10];
     typedef sequence<Point> PointSeq;
 
@@ -77,6 +78,11 @@ module typedef_tests {
         PENDING
     };
     typedef Status MyStatus;
+
+    // Rust newtype typedefs
+    @ext::newtype typedef string MyString;
+    @ext::newtype typedef long MyInteger;
+    const MyInteger MyIntegerConstant = 123;
 
     // Complex typedef
     typedef long LongArray5[5];

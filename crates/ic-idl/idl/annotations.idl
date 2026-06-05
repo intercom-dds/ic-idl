@@ -291,6 +291,10 @@ module ext {
         boolean value default TRUE;
     };
 
+    @annotation newtype {
+        boolean value default TRUE;
+    };
+
     @annotation listener {
         boolean value default TRUE;
     };

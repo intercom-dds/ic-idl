@@ -164,6 +164,14 @@ impl RustGen<'_> {
 
     #[allow(clippy::too_many_lines)]
     pub(crate) fn emit_const_value(&self, val: &Numeric, ty: &Ty, ctx_id: DefId, w: &mut Twine) {
+        if let Some((newtype_id, alias_ty)) = self.newtype_alias(ty) {
+            let newtype_ty = self.scoped_name(newtype_id, ctx_id);
+            w!(w, newtype_ty, "(");
+            self.emit_const_value(val, &alias_ty.ty, ctx_id, w);
+            w!(w, ")");
+            return;
+        }
+
         match val {
             Numeric::Null => {
                 if matches!(ty.kind, TyKind::Array { .. }) {

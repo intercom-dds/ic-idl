@@ -28,7 +28,7 @@
 use quote::quote;
 use syn::{Attribute, DataEnum, DataStruct, Ident};
 
-use crate::attrs::{extract_doc_comment, extract_string_attr};
+use crate::attrs::{extract_doc_comment, extract_string_attr, has_command_flag};
 use crate::parsing::{CliOption, OptionKind, parse_field, variant_to_kebab_case};
 
 /// Generate the Command trait implementation for a struct.
@@ -151,14 +151,18 @@ fn generate_struct_command(
 fn generate_enum_command(data: &DataEnum, attrs: &[Attribute]) -> proc_macro2::TokenStream {
     let doc = extract_doc_comment(attrs);
 
-    let subcommands = data.variants.iter().map(|variant| {
-        let name = variant_to_kebab_case(&variant.ident);
-        let field_type = &variant.fields.iter().next().unwrap().ty;
+    let subcommands = data
+        .variants
+        .iter()
+        .filter(|variant| !has_command_flag("external", &variant.attrs))
+        .map(|variant| {
+            let name = variant_to_kebab_case(&variant.ident);
+            let field_type = &variant.fields.iter().next().unwrap().ty;
 
-        quote! {
-            #field_type::command().name(#name)
-        }
-    });
+            quote! {
+                #field_type::command().name(#name)
+            }
+        });
 
     quote! {
         ::ic_cli::CommandLine::new(env!("CARGO_PKG_NAME"))
@@ -198,21 +202,37 @@ fn generate_struct_parse(
 
 /// Generate the parsing code for an enum.
 fn generate_enum_parse(data: &DataEnum) -> proc_macro2::TokenStream {
-    let match_arms = data.variants.iter().map(|variant| {
-        let variant_ident = &variant.ident;
-        let name = variant_to_kebab_case(&variant.ident);
-        let field_type = &variant.fields.iter().next().unwrap().ty;
+    let match_arms = data
+        .variants
+        .iter()
+        .filter(|variant| !has_command_flag("external", &variant.attrs))
+        .map(|variant| {
+            let variant_ident = &variant.ident;
+            let name = variant_to_kebab_case(&variant.ident);
+            let field_type = &variant.fields.iter().next().unwrap().ty;
 
-        quote! {
-            #name => Self::#variant_ident(#field_type::from_result(&cmd))
-        }
-    });
+            quote! {
+                #name => Self::#variant_ident(#field_type::from_result(&cmd))
+            }
+        });
+
+    let catch_all = data
+        .variants
+        .iter()
+        .find(|variant| has_command_flag("external", &variant.attrs))
+        .map_or_else(
+            || quote! { _ => unreachable!() },
+            |variant| {
+                let variant_ident = &variant.ident;
+                quote! { _ => Self::#variant_ident(cmd.clone()) }
+            },
+        );
 
     quote! {
         let cmd = result.subcommand().unwrap();
         match cmd.name() {
             #(#match_arms,)*
-            _ => unreachable!(),
+            #catch_all,
         }
     }
 }

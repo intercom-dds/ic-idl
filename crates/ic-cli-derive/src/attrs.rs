@@ -158,6 +158,24 @@ pub fn extract_doc_comment(attrs: &[Attribute]) -> String {
     lines.join("\n")
 }
 
+/// Whether a #[command(...)] attribute contains the given flag (e.g. #[command(external)]).
+pub fn has_command_flag(flag: &str, attrs: &[Attribute]) -> bool {
+    let mut found = false;
+    for attr in attrs {
+        if !attr.path().is_ident("command") || !matches!(attr.meta, Meta::List(_)) {
+            continue;
+        }
+
+        let _ = attr.parse_nested_meta(|meta| {
+            if meta.path.is_ident(flag) {
+                found = true;
+            }
+            Ok(())
+        });
+    }
+    found
+}
+
 /// Extract a string attribute value (e.g., #[command = "name"]).
 pub fn extract_string_attr(name: &str, attrs: &[Attribute]) -> Option<String> {
     for attr in attrs {

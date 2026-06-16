@@ -31,7 +31,7 @@ use crate::color::Colorize;
 use crate::{CommandLine, Opt, Value};
 
 #[must_use]
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct ParseResult {
     pub(crate) name: String,
     pub(crate) options: IndexMap<String, Opt>,

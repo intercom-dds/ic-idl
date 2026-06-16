@@ -159,3 +159,38 @@ fn test_enum() {
     let Command::FooBarBaz(parsed) = Command::from_args(args!["foo-bar-baz", "--value"]);
     assert!(parsed.value);
 }
+
+#[test]
+fn test_enum_external_fallback() {
+    #[derive(Default, Command)]
+    struct Foo {
+        #[option(long)]
+        value: bool,
+    }
+
+    #[derive(Command)]
+    enum App {
+        Foo(Foo),
+        #[command(external)]
+        External(ic_cli::ParseResult),
+    }
+
+    let mut cmd = App::command();
+    cmd = cmd.category(ic_cli::Category {
+        name: "plugins",
+        commands: vec![ic_cli::CommandLine::new("deploy").external(true)],
+    });
+
+    let result = cmd.parse_args(args!["deploy", "--foo", "bar", "-x"].into_iter());
+    let App::External(r) = App::from_result(&result) else {
+        panic!("expected external variant");
+    };
+    assert_eq!(r.name(), "deploy");
+    assert_eq!(r.positionals(), &args!["--foo", "bar", "-x"]);
+
+    let result = App::command().parse_args(args!["foo", "--value"].into_iter());
+    let App::Foo(parsed) = App::from_result(&result) else {
+        panic!("expected built-in variant");
+    };
+    assert!(parsed.value);
+}

@@ -194,3 +194,32 @@ fn test_enum_external_fallback() {
     };
     assert!(parsed.value);
 }
+
+#[test]
+fn test_enum_categories() {
+    #[derive(Default, Command)]
+    struct Empty {}
+
+    #[derive(Command)]
+    enum App {
+        Init(Empty),
+        #[command(category = "building")]
+        Bundle(Empty),
+        Clean(Empty),
+        #[command(category = "testing")]
+        Check(Empty),
+        Bench(Empty),
+    }
+
+    let help = App::command().help();
+    let commands = help.find("commands:").expect("default category");
+    let building = help.find("building:").expect("building category");
+    let testing = help.find("testing:").expect("testing category");
+    assert!(commands < building && building < testing);
+
+    let clean = help.find("clean").expect("clean command");
+    assert!(clean > building && clean < testing);
+
+    let result = App::command().parse_args(args!["bench"].into_iter());
+    assert!(matches!(App::from_result(&result), App::Bench(_)));
+}

@@ -166,7 +166,7 @@ pub fn has_command_flag(flag: &str, attrs: &[Attribute]) -> bool {
             continue;
         }
 
-        let _ = attr.parse_nested_meta(|meta| {
+        _ = attr.parse_nested_meta(|meta| {
             if meta.path.is_ident(flag) {
                 found = true;
             }
@@ -174,6 +174,24 @@ pub fn has_command_flag(flag: &str, attrs: &[Attribute]) -> bool {
         });
     }
     found
+}
+
+/// Extract a #[command(key = "value")] string from a command attribute.
+pub fn extract_command_value(key: &str, attrs: &[Attribute]) -> Option<String> {
+    let mut value = None;
+    for attr in attrs {
+        if !attr.path().is_ident("command") || !matches!(attr.meta, Meta::List(_)) {
+            continue;
+        }
+        _ = attr.parse_nested_meta(|meta| {
+            if meta.path.is_ident(key) {
+                let lit: syn::LitStr = meta.value()?.parse()?;
+                value = Some(lit.value());
+            }
+            Ok(())
+        });
+    }
+    value
 }
 
 /// Extract a string attribute value (e.g., #[command = "name"]).

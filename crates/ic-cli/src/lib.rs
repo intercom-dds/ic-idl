@@ -31,7 +31,6 @@
     clippy::print_stderr
 )]
 
-use std::collections::HashMap;
 use std::env;
 
 use color::Colorize;
@@ -80,7 +79,7 @@ pub struct CommandLine {
     positionals: bool,
     external: bool,
     parent: Option<String>,
-    subcommands: HashMap<String, Vec<CommandLine>>,
+    subcommands: IndexMap<String, Vec<CommandLine>>,
 }
 
 impl CommandLine {
@@ -99,7 +98,7 @@ impl CommandLine {
             external: false,
             positionals: false,
             parent: None,
-            subcommands: HashMap::new(),
+            subcommands: IndexMap::new(),
         }
     }
 

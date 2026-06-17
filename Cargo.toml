@@ -66,7 +66,7 @@ exclude = ["crates/ic-parse/fuzz"]
 default-members = ["crates/ic-idl"]
 
 [workspace.package]
-version = "0.5.7"
+version = "0.5.8"
 rust-version = "1.92"
 publish = false
 authors = ["KONGSBERG <DDS-InterCOM@kda.kongsberg.com>"]

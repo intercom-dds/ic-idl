@@ -47,6 +47,8 @@ build:ci-image:
   variables:
     DOCKER_TLS_CERTDIR: "/certs"
   rules:
+    - if: $CI_PIPELINE_SOURCE == "schedule"
+      when: never
     - if: $CI_PIPELINE_SOURCE == "merge_request_event"
       changes: [ci/x86_64-unknown-linux-musl/Dockerfile]
     - if: $CI_COMMIT_BRANCH == "main"

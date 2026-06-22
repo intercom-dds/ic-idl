@@ -852,7 +852,7 @@ impl<'a> CppGen<'a> {
             });
 
             self.emit_generated_header(&mut cpp_impls);
-            w!(cpp_impls, "#include \"", output_file_name, "\"\n\n");
+            w!(cpp_impls, "#include \"", header_path, "\"\n\n");
             w!(cpp_impls, "#include <ic_cts/dds_xtypes_constants.h>\n");
             w!(cpp_impls, "#include <ic_cts/hash.h>\n\n");
 
@@ -862,9 +862,8 @@ impl<'a> CppGen<'a> {
 
             let cpp_content = cpp_impls.finish();
             let cpp_file_name = self.output_filename(file_id, "cpp");
-            let cpp_path = self.build_path(&cpp_file_name);
             result.push(File::Generated {
-                path: PathBuf::from(cpp_path),
+                path: PathBuf::from(cpp_file_name),
                 source: cpp_content,
             });
         }

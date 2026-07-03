@@ -34,7 +34,7 @@
 use std::collections::HashMap;
 
 use crate::Context;
-use crate::hir::{DefId, DefKind, Numeric, Ty, TyKind};
+use crate::hir::{Ann, DefId, DefKind, Numeric, Ty, TyKind};
 
 /// Replaces all `DefId` references in the context according to the given mapping.
 ///
@@ -51,6 +51,113 @@ pub fn replace_def_ids<S: std::hash::BuildHasher>(
     let all_defs: Vec<DefId> = ctx.definitions.iter().map(|(id, _)| id).collect();
     for def_id in all_defs {
         replace_def_ids_in_def(ctx, def_id, mapping);
+    }
+}
+
+/// Replaces every `DefId` reference in a definition according to the mapping:
+/// type/inheritance references, child-definition lists, enum fields, bitmask
+/// flags, annotation parameters, and def-level annotations. Ids not present
+/// in the mapping are left untouched.
+pub fn replace_all_def_ids_in_def<S: std::hash::BuildHasher>(
+    ctx: &mut Context,
+    def_id: DefId,
+    mapping: &HashMap<DefId, DefId, S>,
+) {
+    replace_def_ids_in_def(ctx, def_id, mapping);
+
+    let def = ctx.definitions.get_mut(def_id);
+
+    for ann in &mut def.annotations {
+        replace_def_ids_in_ann(ann, mapping);
+    }
+
+    match &mut def.kind {
+        DefKind::Module(m) => replace_def_ids_in_list(&mut m.definitions, mapping),
+        DefKind::Interface(i) => replace_def_ids_in_list(&mut i.definitions, mapping),
+        DefKind::Enum(e) => replace_def_ids_in_list(&mut e.fields, mapping),
+        DefKind::Bitmask(b) => replace_def_ids_in_list(&mut b.flags, mapping),
+        DefKind::Annotation(a) => {
+            replace_def_ids_in_list(&mut a.types, mapping);
+            for param in &mut a.params {
+                replace_def_ids_in_ty(&mut param.ty, mapping);
+                if let Some(default) = &mut param.default {
+                    replace_def_ids_in_numeric(default, mapping);
+                }
+            }
+        }
+        DefKind::Bitset(b) => {
+            replace_def_ids_in_spanned(&mut b.parent, mapping);
+            for field in &mut b.fields {
+                for ann in &mut field.annotations {
+                    replace_def_ids_in_ann(ann, mapping);
+                }
+            }
+        }
+        DefKind::Struct(s) => {
+            for member in &mut s.members {
+                for ann in &mut member.annotations {
+                    replace_def_ids_in_ann(ann, mapping);
+                }
+            }
+        }
+        DefKind::Except(e) => {
+            for member in &mut e.members {
+                for ann in &mut member.annotations {
+                    replace_def_ids_in_ann(ann, mapping);
+                }
+            }
+        }
+        DefKind::Union(u) => {
+            for ann in &mut u.disc.annotations {
+                replace_def_ids_in_ann(ann, mapping);
+            }
+            for variant in &mut u.variants {
+                for ann in &mut variant.annotations {
+                    replace_def_ids_in_ann(ann, mapping);
+                }
+                for label in &mut variant.labels {
+                    replace_def_ids_in_numeric(&mut label.value, mapping);
+                }
+            }
+        }
+        DefKind::Valuetype(v) => {
+            replace_def_ids_in_list(&mut v.definitions, mapping);
+            for member in &mut v.members {
+                for ann in &mut member.annotations {
+                    replace_def_ids_in_ann(ann, mapping);
+                }
+            }
+        }
+        DefKind::Alias(_) | DefKind::Const(_) | DefKind::Decl(_) => {}
+    }
+}
+
+fn replace_def_ids_in_ann<S: std::hash::BuildHasher>(
+    ann: &mut Ann,
+    mapping: &HashMap<DefId, DefId, S>,
+) {
+    if let Some(def_id) = &mut ann.def_id
+        && let Some(new_id) = mapping.get(def_id)
+    {
+        *def_id = *new_id;
+    }
+
+    for arg in &mut ann.args {
+        replace_def_ids_in_numeric(&mut arg.value, mapping);
+        if let Some(ty) = &mut arg.ty {
+            replace_def_ids_in_ty(ty, mapping);
+        }
+    }
+}
+
+fn replace_def_ids_in_list<S: std::hash::BuildHasher>(
+    ids: &mut [DefId],
+    mapping: &HashMap<DefId, DefId, S>,
+) {
+    for id in ids {
+        if let Some(new_id) = mapping.get(id) {
+            *id = *new_id;
+        }
     }
 }
 

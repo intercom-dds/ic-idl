@@ -25,8 +25,6 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-//! Tests for HIR tree merging functionality.
-
 mod common;
 
 use ic_hir::hir::DefKind;
@@ -54,8 +52,6 @@ fn test_merge_single_graph() {
     assert!(graph.errors.is_empty());
 
     let merged = merge_hir_trees(&[graph]);
-
-    // Should have one definition (Point struct)
     assert_eq!(merged.order.len(), 1);
 }
 
@@ -83,11 +79,8 @@ fn test_merge_duplicate_definitions() {
     assert!(graph2.errors.is_empty());
 
     let merged = merge_hir_trees(&[graph1, graph2]);
-
-    // With deduplication, we should have only 1 Point definition
     assert_eq!(merged.order.len(), 1);
 
-    // Verify it's the Point struct
     let def = merged.context.definitions.get(merged.order[0]);
     assert_eq!(def.ident.name, "Point");
 }
@@ -111,19 +104,23 @@ fn test_merge_different_modules() {
         };
     ";
 
-    let (graph1, _, _) = common::parse_and_resolve(input1);
-    let (graph2, _, _) = common::parse_and_resolve(input2);
+    let mut source_map = SourceMap::default();
+    let file1 = source_map.embed_with_name("a.idl", input1);
+    let file2 = source_map.embed_with_name("b.idl", input2);
+
+    let parsed1 = ic_parse::from_file(file1, &source_map);
+    let parsed2 = ic_parse::from_file(file2, &source_map);
+
+    let graph1 = ic_hir_lower::from_ast(ic_hir_lower::AstInput::User(parsed1.tree));
+    let graph2 = ic_hir_lower::from_ast(ic_hir_lower::AstInput::User(parsed2.tree));
 
     assert!(graph1.errors.is_empty());
     assert!(graph2.errors.is_empty());
 
     let merged = merge_hir_trees(&[graph1, graph2]);
-
-    // Should have 2 module definitions (A and B)
     assert_eq!(merged.order.len(), 2);
 
-    // Verify we can access the definitions
-    let mut module_names = Vec::new();
+    let mut module_names = vec![];
     for &def_id in &merged.order {
         let def = merged.context.definitions.get(def_id);
         if let DefKind::Module(_) = &def.kind {
@@ -153,8 +150,6 @@ fn test_merge_with_references() {
     assert!(graph.errors.is_empty());
 
     let merged = merge_hir_trees(&[graph]);
-
-    // Should have 2 definitions (Point and Line)
     assert_eq!(merged.order.len(), 2);
 
     // Find Point and Line definitions
@@ -339,10 +334,9 @@ fn test_merge_conflicting_definitions() {
     ic_diagnostic::DiagnosticEmitter::new()
         .emit(&mut output, &source_map, &merged.errors[0])
         .unwrap();
-    insta::assert_snapshot!(output);
 
-    // Despite the error, we should still have the definition (mapped to one of them)
-    assert_eq!(merged.order.len(), 1);
+    insta::assert_snapshot!(output);
+    assert_eq!(merged.order.len(), 2);
 }
 
 #[test]
@@ -358,13 +352,8 @@ fn test_merge_same_definition_from_include() {
     // Parse the same input twice (simulating include)
     let (graph1, _, _) = common::parse_and_resolve(input);
     let (graph2, _, _) = common::parse_and_resolve(input);
-
     let merged = merge_hir_trees(&[graph1, graph2]);
-
-    // Should have no errors - same span means same definition
     assert!(merged.errors.is_empty());
-
-    // Should have only 1 definition due to deduplication
     assert_eq!(merged.order.len(), 1);
 }
 
@@ -440,8 +429,6 @@ module api {
     assert!(graph2.errors.is_empty());
 
     let merged = merge_hir_trees(&[graph1, graph2]);
-
-    // Should have no errors
     assert!(merged.errors.is_empty());
 
     // Should have 2 api modules (module reopening)
@@ -458,16 +445,8 @@ module api {
 
 #[test]
 fn test_merge_module_with_include_deduplication() {
-    // Test that module deduplication preserves children when the same module
-    // appears in multiple files (e.g., via includes)
-
-    // When the same module definition appears with the same span (from an include),
-    // it should be deduplicated but all children should be preserved
-
-    // Use a shared source map to simulate the same file being included in two places
     let mut source_map = SourceMap::default();
 
-    // Create a shared file that will be "included"
     let shared_content = r"
 module abc {
     struct bar {};
@@ -486,8 +465,6 @@ module abc {
     assert!(graph2.errors.is_empty());
 
     let merged = merge_hir_trees(&[graph1, graph2]);
-
-    // Should have no errors - same module with same span is deduplicated
     assert_eq!(merged.errors.len(), 0);
 
     // Should have only 1 module due to deduplication
@@ -541,10 +518,7 @@ struct Foo {
 };
 ";
 
-    // Parse it with built-in context
     let (graph, _, _) = common::parse_and_resolve(input);
-
-    // Should have no errors
     assert!(graph.errors.is_empty());
 
     // Verify we have both the forward declaration and the definition
@@ -574,13 +548,8 @@ struct Foo {
     assert_eq!(decl_count, 1, "Should have 1 forward declaration");
     assert_eq!(struct_count, 1, "Should have 1 struct definition");
 
-    // Now test merging - parse again for the second graph
     let (graph2, _, _) = common::parse_and_resolve(input);
-
-    // Merge them
     let merged = merge_hir_trees(&[graph, graph2]);
-
-    // After merge, we should still have both (deduplicated by span)
     let merged_foos: Vec<_> = merged
         .context
         .definitions
@@ -594,6 +563,7 @@ struct Foo {
         .iter()
         .filter(|(_, def)| matches!(def.kind, DefKind::Decl(_)))
         .count();
+
     let merged_struct_count = merged_foos
         .iter()
         .filter(|(_, def)| matches!(def.kind, DefKind::Struct(_)))
@@ -611,11 +581,7 @@ struct Foo {
 
 #[test]
 fn test_merge_forward_declaration_across_files() {
-    // Test the actual fix: when merging files where one has forward declarations
-    // and another has definitions, both should be preserved
     let mut source_map = SourceMap::default();
-
-    // Simulate the ast.idl case - file with forward declarations at top
     let input1 = r"
 module test {
     struct Foo;  // Forward declaration
@@ -630,7 +596,6 @@ module test {
 };
 ";
 
-    // Another file that references the same module
     let input2 = r"
 module test {
     struct Bar {
@@ -647,16 +612,12 @@ module test {
 
     let graph1 = ic_hir_lower::from_ast(ic_hir_lower::AstInput::User(parsed1.tree));
     let graph2 = ic_hir_lower::from_ast(ic_hir_lower::AstInput::User(parsed2.tree));
-
     assert!(graph1.errors.is_empty());
     assert!(graph2.errors.is_empty());
 
     let merged = merge_hir_trees(&[graph1, graph2]);
-
-    // Should have no errors
     assert!(merged.errors.is_empty());
 
-    // The key test: we should have BOTH the forward declaration AND the full definition
     let all_foos: Vec<_> = merged
         .context
         .definitions
@@ -670,11 +631,11 @@ module test {
         "Should have both forward declaration and full definition of Foo"
     );
 
-    // Check that we have one forward declaration and one struct definition
     let decl_count = all_foos
         .iter()
         .filter(|(_, def)| matches!(def.kind, DefKind::Decl(_)))
         .count();
+
     let struct_count = all_foos
         .iter()
         .filter(|(_, def)| matches!(def.kind, DefKind::Struct(_)))
@@ -686,19 +647,14 @@ module test {
 
 #[test]
 fn test_merge_preserves_parent_defid() {
-    // Test that parent DefId relationships are preserved during merge
-    // This was the bug where types lost their parent DefId, causing
-    // unqualified name lookups to fail
     let mut source_map = SourceMap::default();
 
-    // First file defines a module
     let input1 = r"
 module TestModule {
     // Empty module
 };
 ";
 
-    // Second file adds to the module
     let input2 = r"
 module TestModule {
     struct ChildStruct {
@@ -720,8 +676,6 @@ module TestModule {
     assert!(graph2.errors.is_empty());
 
     let merged = merge_hir_trees(&[graph1, graph2]);
-
-    // Should have no errors
     assert!(merged.errors.is_empty());
 
     // Find the ChildStruct definition
@@ -744,7 +698,6 @@ module TestModule {
     assert_eq!(parent_def.ident.name, "TestModule");
     assert!(matches!(parent_def.kind, DefKind::Module(_)));
 
-    // Verify we can get the qualified name (this would panic before the fix)
     let qualified_name = merged.context.qualified_name(child_struct.0);
     assert_eq!(qualified_name, "TestModule::ChildStruct");
 }
@@ -752,7 +705,6 @@ module TestModule {
 #[test]
 #[allow(clippy::similar_names)]
 fn test_merge_complex_parent_relationships() {
-    // Test more complex parent relationships with nested modules
     let mut source_map = SourceMap::default();
 
     let input1 = r"
@@ -837,9 +789,6 @@ module Outer {
 
 #[test]
 fn test_merge_preserves_builtin_annotations() {
-    // Test that built-in annotations are available in all merged files
-    // This was a bug where only the first file had access to built-in annotations
-
     // Create built-in annotations
     let builtins = r"
         @annotation optional {
@@ -861,21 +810,33 @@ fn test_merge_preserves_builtin_annotations() {
         };
     ";
 
-    // Parse and resolve with built-in context
-    let (graph1, _, _) = common::parse_with_custom_builtins(builtins, input1, false);
-    let (graph2, _, _) = common::parse_with_custom_builtins(builtins, input2, false);
+    let mut source_map = SourceMap::default();
+    let builtin_file = source_map.embed_with_name("<builtin>", builtins);
+    let file1 = source_map.embed_with_name("a.idl", input1);
+    let file2 = source_map.embed_with_name("b.idl", input2);
 
-    // Both should compile without errors
+    let builtin_parsed1 = ic_parse::from_file(builtin_file, &source_map);
+    let builtin_parsed2 = ic_parse::from_file(builtin_file, &source_map);
+    let parsed1 = ic_parse::from_file(file1, &source_map);
+    let parsed2 = ic_parse::from_file(file2, &source_map);
+
+    let graph1 = ic_hir_lower::from_ast(ic_hir_lower::AstInput::WithBuiltins {
+        builtins: builtin_parsed1.tree,
+        user: parsed1.tree,
+        include_in_output: false,
+    });
+    let graph2 = ic_hir_lower::from_ast(ic_hir_lower::AstInput::WithBuiltins {
+        builtins: builtin_parsed2.tree,
+        user: parsed2.tree,
+        include_in_output: false,
+    });
     assert!(graph1.errors.is_empty(), "First file should have no errors");
     assert!(
         graph2.errors.is_empty(),
         "Second file should have no errors"
     );
 
-    // Merge the graphs
     let merged = merge_hir_trees(&[graph1, graph2]);
-
-    // Should have no merge errors
     assert!(merged.errors.is_empty(), "Merge should have no errors");
 
     // Find both structs
@@ -975,4 +936,144 @@ module outer {
             }
         }
     }
+}
+
+#[test]
+fn test_merge_forward_decl_in_module_from_shared_include() {
+    // Simulates two translation units both including the same file that
+    // forward-declares interfaces before defining them inside a module.
+    // Identical input produces identical spans, like a shared `#include`.
+    let input = r"
+module DDS {
+    interface Entity;
+    interface Topic;
+
+    interface Entity {
+        readonly attribute string name;
+    };
+    interface Topic {};
+};
+";
+
+    let (graph1, _, _) = common::parse_and_resolve(input);
+    let (graph2, _, _) = common::parse_and_resolve(input);
+    assert!(graph1.errors.is_empty());
+    assert!(graph2.errors.is_empty());
+
+    let merged = merge_hir_trees(&[graph1, graph2]);
+    assert!(merged.errors.is_empty(), "Merge should have no errors");
+
+    let entity_decls = merged
+        .context
+        .definitions
+        .iter()
+        .filter(|(_, def)| def.ident.name == "Entity" && matches!(def.kind, DefKind::Decl(_)))
+        .count();
+    assert_eq!(
+        entity_decls, 1,
+        "Forward declaration should be deduplicated"
+    );
+
+    for (def_id, def) in &merged.context.definitions {
+        let Some(parent_id) = def.parent else {
+            continue;
+        };
+        let parent = merged.context.definitions.get(parent_id);
+        let contained = match &parent.kind {
+            DefKind::Module(m) => m.definitions.contains(&def_id),
+            DefKind::Interface(i) => i.definitions.contains(&def_id),
+            _ => true,
+        };
+        assert!(
+            contained,
+            "Definition '{}' claims parent '{}' but parent doesn't contain it",
+            def.ident.name, parent.ident.name
+        );
+    }
+}
+
+#[test]
+fn test_merge_preserves_repeated_decls_in_same_file() {
+    let input = r"
+struct Foo;
+struct Foo;
+struct Foo {
+    long x;
+};
+";
+
+    let (graph1, _, _) = common::parse_and_resolve(input);
+    let (graph2, _, _) = common::parse_and_resolve(input);
+    assert!(graph1.errors.is_empty());
+    assert!(graph2.errors.is_empty());
+
+    let merged = merge_hir_trees(&[graph1, graph2]);
+    assert!(merged.errors.is_empty());
+
+    let decls = merged
+        .context
+        .definitions
+        .iter()
+        .filter(|(_, def)| def.ident.name == "Foo" && matches!(def.kind, DefKind::Decl(_)))
+        .count();
+    let defs = merged
+        .context
+        .definitions
+        .iter()
+        .filter(|(_, def)| def.ident.name == "Foo" && matches!(def.kind, DefKind::Struct(_)))
+        .count();
+
+    assert_eq!(decls, 2, "distinct decls of the same type must all survive");
+    assert_eq!(defs, 1);
+}
+
+#[test]
+fn test_merge_preserves_decls_across_files() {
+    // Identical prefix (same spans, dedupes); input2 adds a second decl at
+    // a distinct location, which must survive the merge.
+    let input1 = "struct Foo;\nstruct Foo {\n    long x;\n};\n";
+    let input2 = "struct Foo;\nstruct Foo {\n    long x;\n};\n\nstruct Foo;\n";
+
+    let (graph1, _, _) = common::parse_and_resolve(input1);
+    let (graph2, _, _) = common::parse_and_resolve(input2);
+    assert!(graph1.errors.is_empty());
+    assert!(graph2.errors.is_empty());
+
+    let merged = merge_hir_trees(&[graph1, graph2]);
+    assert!(merged.errors.is_empty());
+
+    let decls = merged
+        .context
+        .definitions
+        .iter()
+        .filter(|(_, def)| def.ident.name == "Foo" && matches!(def.kind, DefKind::Decl(_)))
+        .count();
+
+    assert_eq!(
+        decls, 2,
+        "decls at different source locations must both survive"
+    );
+}
+
+#[test]
+fn test_merge_lenient_annotation_dedup_across_files() {
+    let input1 = "@annotation vendor {\n    long value default 0;\n};\n";
+    let input2 = "\n@annotation vendor {\n    long value default 0;\n};\n";
+
+    let (graph1, _, _) = common::parse_and_resolve(input1);
+    let (graph2, _, _) = common::parse_and_resolve(input2);
+    assert!(graph1.errors.is_empty());
+    assert!(graph2.errors.is_empty());
+
+    let merged = merge_hir_trees(&[graph1, graph2]);
+    assert!(merged.errors.is_empty());
+
+    let vendors = merged
+        .context
+        .definitions
+        .iter()
+        .filter(|(_, def)| def.ident.name == "vendor" && matches!(def.kind, DefKind::Annotation(_)))
+        .count();
+
+    assert_eq!(vendors, 1, "structurally identical annotations dedupe");
 }

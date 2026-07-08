@@ -226,25 +226,10 @@ impl<'a> Visitor<'a> for DuplicateName<'a> {
             return;
         }
 
-        // Check for duplicate field names
-        let field_defs: Vec<&Def> = enum_ty
-            .fields
-            .iter()
-            .map(|&id| self.context().definitions.get(id))
-            .collect();
-        self.check_names(&field_defs, |f| &f.ident, "field", &def.ident.name);
-
         ic_hir::visit::walk_enum(self, enum_ty);
     }
 
-    fn visit_bitmask(&mut self, def: &'a Def, bitmask_ty: &'a BitmaskTy) {
-        // Get flag definitions from DefIds
-        let flag_defs: Vec<&Def> = bitmask_ty
-            .flags
-            .iter()
-            .map(|&id| self.context().definitions.get(id))
-            .collect();
-        self.check_names(&flag_defs, |f| &f.ident, "flag", &def.ident.name);
+    fn visit_bitmask(&mut self, _def: &'a Def, bitmask_ty: &'a BitmaskTy) {
         ic_hir::visit::walk_bitmask(self, bitmask_ty);
     }
 

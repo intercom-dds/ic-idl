@@ -25,8 +25,6 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-//! Common annotation conversion logic shared between type and value contexts.
-
 use ic_hir::hir::{Ann, AnnArg, AnnParam, DefId, DefKind, Ident};
 use ic_hir::scope::ScopeId;
 use ic_syntax::util::{path_name, path_span};
@@ -34,6 +32,20 @@ use ic_syntax::{AnnotationAppl, AnnotationArg};
 
 use crate::LoweringContext;
 use crate::eval::ConstEvaluator;
+
+fn evaluator_for_scope(
+    ctx: &mut LoweringContext,
+    scope: ScopeId,
+    def_id: Option<DefId>,
+) -> ConstEvaluator<'_> {
+    if let Some(ann_def_id) = def_id
+        && let Some(ann_scope) = ctx.context.scopes.find_scope_for_def(ann_def_id)
+    {
+        ConstEvaluator::with_annotation_scope(ctx, scope, ann_scope)
+    } else {
+        ConstEvaluator::new(ctx, scope)
+    }
+}
 
 /// Convert AST annotations to HIR annotations.
 pub fn convert_annotations(
@@ -184,16 +196,7 @@ fn process_named_parameter(
     scope: ScopeId,
 ) -> Option<AnnArg> {
     if let Some(arg) = named_args.get(&param.ident.name) {
-        // Create evaluator with annotation scope if available
-        let mut evaluator = if let Some(ann_def_id) = def_id {
-            if let Some(ann_scope) = ctx.context.scopes.find_scope_for_def(ann_def_id) {
-                ConstEvaluator::with_annotation_scope(ctx, scope, ann_scope)
-            } else {
-                ConstEvaluator::new(ctx, scope)
-            }
-        } else {
-            ConstEvaluator::new(ctx, scope)
-        };
+        let mut evaluator = evaluator_for_scope(ctx, scope, def_id);
 
         evaluator
             .eval_for_type(&arg.value, &param.ty)
@@ -260,16 +263,7 @@ fn process_unvalidated_named_arguments(
 ) -> Vec<AnnArg> {
     let mut args = Vec::new();
     for arg in ast_args {
-        // Create evaluator with annotation scope if available
-        let mut evaluator = if let Some(ann_def_id) = def_id {
-            if let Some(ann_scope) = ctx.context.scopes.find_scope_for_def(ann_def_id) {
-                ConstEvaluator::with_annotation_scope(ctx, scope, ann_scope)
-            } else {
-                ConstEvaluator::new(ctx, scope)
-            }
-        } else {
-            ConstEvaluator::new(ctx, scope)
-        };
+        let mut evaluator = evaluator_for_scope(ctx, scope, def_id);
 
         if let Some(value) = evaluator.eval_annotation_arg(&arg.value) {
             let ident = arg.ident.clone().unwrap_or_else(|| Ident {
@@ -359,16 +353,7 @@ fn evaluate_argument(
     def_id: Option<DefId>,
     scope: ScopeId,
 ) -> Option<AnnArg> {
-    // Create evaluator with annotation scope if available
-    let mut evaluator = if let Some(ann_def_id) = def_id {
-        if let Some(ann_scope) = ctx.context.scopes.find_scope_for_def(ann_def_id) {
-            ConstEvaluator::with_annotation_scope(ctx, scope, ann_scope)
-        } else {
-            ConstEvaluator::new(ctx, scope)
-        }
-    } else {
-        ConstEvaluator::new(ctx, scope)
-    };
+    let mut evaluator = evaluator_for_scope(ctx, scope, def_id);
 
     evaluator
         .eval_for_type(&arg.value, &param.ty)
@@ -419,16 +404,7 @@ fn process_unvalidated_positional_arguments(
 ) -> Vec<AnnArg> {
     let mut args = Vec::new();
     for arg in ast_args {
-        // Create evaluator with annotation scope if available
-        let mut evaluator = if let Some(ann_def_id) = def_id {
-            if let Some(ann_scope) = ctx.context.scopes.find_scope_for_def(ann_def_id) {
-                ConstEvaluator::with_annotation_scope(ctx, scope, ann_scope)
-            } else {
-                ConstEvaluator::new(ctx, scope)
-            }
-        } else {
-            ConstEvaluator::new(ctx, scope)
-        };
+        let mut evaluator = evaluator_for_scope(ctx, scope, def_id);
 
         if let Some(value) = evaluator.eval_annotation_arg(&arg.value) {
             args.push(AnnArg {

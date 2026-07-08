@@ -38,7 +38,7 @@ use crate::LoweringContext;
 use crate::annotation::convert_annotations;
 use crate::eval::ConstEvaluator;
 use crate::registry::DefKindTag;
-use crate::type_resolver::TypeResolver;
+use crate::resolve::{TypeResolver, resolve_declarator};
 use crate::utils::TyExt;
 
 /// Processes value items (constants, enums, bitmasks).
@@ -79,37 +79,15 @@ impl<'ctx> ValueItemProcessor<'ctx> {
             value: value.unwrap_or(Numeric::Null),
         };
 
-        let annotations = convert_annotations(self.ctx, &c.annotations, self.current_scope);
-        let def_id = self.ctx.context.definitions.alloc_with_id(|id| Def {
-            id,
-            ident: ident.clone(),
-            parent: self.ctx.context.scopes.get_scope(self.current_scope).def_id,
-            annotations,
-            span: c.span,
-            kind: DefKind::Const(const_ty),
-            flags: DefFlags::nil(),
-        });
-
-        if self
-            .ctx
-            .registry
-            .register_definition(
-                self.current_scope,
-                &ident,
-                DefKindTag::Const,
-                def_id,
-                &mut self.ctx.diagnostics,
-                &self.ctx.context,
-            )
-            .is_some()
-        {
-            self.ctx
-                .context
-                .scopes
-                .add_definition(self.current_scope, ident.name.clone(), def_id);
-        }
-
-        def_id
+        crate::define::define(
+            self.ctx,
+            self.current_scope,
+            &ident,
+            c.span,
+            &c.annotations,
+            DefKindTag::Const,
+            |_| DefKind::Const(const_ty),
+        )
     }
 
     pub fn process_enum(&mut self, e: &EnumDef) -> DefId {
@@ -136,38 +114,15 @@ impl<'ctx> ValueItemProcessor<'ctx> {
             ty: PrimitiveTy::Int32,
         };
 
-        let annotations = convert_annotations(self.ctx, &e.annotations, self.current_scope);
-        let enum_id = self.ctx.context.definitions.alloc_with_id(|id| Def {
-            id,
-            ident: e.ident.clone(),
-            parent: self.ctx.context.scopes.get_scope(self.current_scope).def_id,
-            annotations,
-            span: e.span,
-            kind: DefKind::Enum(enum_ty),
-            flags: DefFlags::nil(),
-        });
-
-        if self
-            .ctx
-            .registry
-            .register_definition(
-                self.current_scope,
-                &e.ident,
-                DefKindTag::Enum,
-                enum_id,
-                &mut self.ctx.diagnostics,
-                &self.ctx.context,
-            )
-            .is_some()
-        {
-            self.ctx.context.scopes.add_definition(
-                self.current_scope,
-                e.ident.name.clone(),
-                enum_id,
-            );
-        }
-
-        enum_id
+        crate::define::define(
+            self.ctx,
+            self.current_scope,
+            &e.ident,
+            e.span,
+            &e.annotations,
+            DefKindTag::Enum,
+            |_| DefKind::Enum(enum_ty),
+        )
     }
 
     fn process_enumerators(
@@ -184,11 +139,13 @@ impl<'ctx> ValueItemProcessor<'ctx> {
             last_value = value;
             let is_explicit = enumerator.value.is_some();
 
-            if let Some(field_id) =
-                self.create_enumerator(enumerator, enum_id, value, enum_scope, is_explicit)
-            {
-                fields.push(field_id);
-            }
+            fields.push(self.create_enumerator(
+                enumerator,
+                enum_id,
+                value,
+                enum_scope,
+                is_explicit,
+            ));
         }
 
         fields.sort_by_key(|&field| enum_key(&self.ctx.context, field));
@@ -232,60 +189,30 @@ impl<'ctx> ValueItemProcessor<'ctx> {
         value: i64,
         enum_scope: ScopeId,
         is_explicit: bool,
-    ) -> Option<DefId> {
-        let annotations =
-            convert_annotations(self.ctx, &enumerator.annotations, self.current_scope);
-
-        let field_id = self.ctx.context.definitions.alloc_with_id(|id| Def {
-            id,
-            ident: enumerator.ident.clone(),
-            parent: Some(enum_id),
-            annotations,
-            span: (enumerator.ident.span),
-            kind: DefKind::Const(ConstTy {
-                ty: Ty {
-                    span: (enumerator.ident.span),
-                    kind: TyKind::Adt(enum_id),
-                },
-                value: Numeric::Int32(value as i32),
-            }),
-            flags: if is_explicit {
-                DefFlags::IS_ENUMERATED
-            } else {
-                DefFlags::nil()
-            },
-        });
-
-        if self
-            .ctx
-            .registry
-            .register_definition(
-                self.current_scope,
-                &enumerator.ident,
-                DefKindTag::Const,
-                field_id,
-                &mut self.ctx.diagnostics,
-                &self.ctx.context,
-            )
-            .is_some()
-        {
-            // Add to parent scope for unscoped access (e.g. TWO)
-            self.ctx.context.scopes.add_definition(
-                self.current_scope,
-                enumerator.ident.name.clone(),
-                field_id,
-            );
-            // Add to enum's scope for scoped access (e.g. MyEnum::TWO)
-            self.ctx.context.scopes.add_definition(
-                enum_scope,
-                enumerator.ident.name.clone(),
-                field_id,
-            );
-
-            Some(field_id)
+    ) -> DefId {
+        let flags = if is_explicit {
+            DefFlags::IS_ENUMERATED
         } else {
-            None
-        }
+            DefFlags::nil()
+        };
+        crate::define::define_scoped_const(
+            self.ctx,
+            self.current_scope,
+            enum_scope,
+            &enumerator.ident,
+            enumerator.ident.span,
+            &enumerator.annotations,
+            flags,
+            |_| {
+                DefKind::Const(ConstTy {
+                    ty: Ty {
+                        span: enumerator.ident.span,
+                        kind: TyKind::Adt(enum_id),
+                    },
+                    value: Numeric::Int32(value as i32),
+                })
+            },
+        )
     }
 
     fn process_bitmask_flag(
@@ -320,56 +247,31 @@ impl<'ctx> ValueItemProcessor<'ctx> {
         };
 
         let flag_ty = Ty {
-            span: (flag.ident.span),
+            span: flag.ident.span,
             kind: TyKind::Adt(bitmask_id),
         };
-
-        let flag_annotations = convert_annotations(self.ctx, &flag.annotations, self.current_scope);
-
-        let flag_id = self.ctx.context.definitions.alloc_with_id(|id| Def {
-            id,
-            ident: flag.ident.clone(),
-            parent: Some(bitmask_id),
-            annotations: flag_annotations,
-            span: flag.span,
-            kind: DefKind::Const(ConstTy {
-                ty: flag_ty,
-                value: Numeric::UInt64(value),
-            }),
-            flags: if is_explicit {
-                DefFlags::IS_ENUMERATED
-            } else {
-                DefFlags::nil()
-            },
-        });
-
-        if self
-            .ctx
-            .registry
-            .register_definition(
-                self.current_scope,
-                &flag.ident,
-                DefKindTag::Const,
-                flag_id,
-                &mut self.ctx.diagnostics,
-                &self.ctx.context,
-            )
-            .is_some()
-        {
-            self.ctx.context.scopes.add_definition(
-                self.current_scope,
-                flag.ident.name.clone(),
-                flag_id,
-            );
-            self.ctx
-                .context
-                .scopes
-                .add_definition(bitmask_scope, flag.ident.name.clone(), flag_id);
-
-            Some(flag_id)
+        let flags = if is_explicit {
+            DefFlags::IS_ENUMERATED
         } else {
-            None
-        }
+            DefFlags::nil()
+        };
+
+        let flag_id = crate::define::define_scoped_const(
+            self.ctx,
+            self.current_scope,
+            bitmask_scope,
+            &flag.ident,
+            flag.span,
+            &flag.annotations,
+            flags,
+            |_| {
+                DefKind::Const(ConstTy {
+                    ty: flag_ty,
+                    value: Numeric::UInt64(value),
+                })
+            },
+        );
+        Some(flag_id)
     }
 
     pub fn process_bitmask(&mut self, b: &BitmaskDef) -> DefId {
@@ -378,36 +280,15 @@ impl<'ctx> ValueItemProcessor<'ctx> {
             flags: Vec::new(),
         };
 
-        let annotations = convert_annotations(self.ctx, &b.annotations, self.current_scope);
-        let bitmask_id = self.ctx.context.definitions.alloc_with_id(|id| Def {
-            id,
-            ident: b.ident.clone(),
-            parent: self.ctx.context.scopes.get_scope(self.current_scope).def_id,
-            annotations,
-            span: b.span,
-            kind: DefKind::Bitmask(bitmask_ty),
-            flags: DefFlags::nil(),
-        });
-
-        if self
-            .ctx
-            .registry
-            .register_definition(
-                self.current_scope,
-                &b.ident,
-                DefKindTag::Bitmask,
-                bitmask_id,
-                &mut self.ctx.diagnostics,
-                &self.ctx.context,
-            )
-            .is_some()
-        {
-            self.ctx.context.scopes.add_definition(
-                self.current_scope,
-                b.ident.name.clone(),
-                bitmask_id,
-            );
-        }
+        let bitmask_id = crate::define::define(
+            self.ctx,
+            self.current_scope,
+            &b.ident,
+            b.span,
+            &b.annotations,
+            DefKindTag::Bitmask,
+            |_| DefKind::Bitmask(bitmask_ty),
+        );
 
         let bitmask_scope = self.ctx.context.scopes.create_child_scope(
             self.current_scope,
@@ -452,8 +333,16 @@ impl<'ctx> ValueItemProcessor<'ctx> {
             let mut resolver = TypeResolver::new(self.ctx, self.current_scope);
             resolver.resolve_path_type(parent_path).and_then(|ty| {
                 if let Some(parent_id) = ty.as_adt() {
-                    Some(ic_hir::hir::Spanned {
-                        def_id: parent_id,
+                    crate::type_items::validate_parent_inheritance(
+                        self.ctx,
+                        parent_id,
+                        "bitset",
+                        &b.ident.name,
+                        "inherit from",
+                        path_span,
+                    )
+                    .map(|value| ic_hir::hir::Spanned {
+                        def_id: value,
                         span: path_span,
                     })
                 } else {
@@ -523,39 +412,16 @@ impl<'ctx> ValueItemProcessor<'ctx> {
         }
 
         let bitset_ty = BitsetTy { parent, fields };
-        let annotations = convert_annotations(self.ctx, &b.annotations, self.current_scope);
 
-        let def_id = self.ctx.context.definitions.alloc_with_id(|id| Def {
-            id,
-            ident: b.ident.clone(),
-            parent: self.ctx.context.scopes.get_scope(self.current_scope).def_id,
-            annotations,
-            span: b.span,
-            kind: DefKind::Bitset(bitset_ty),
-            flags: DefFlags::nil(),
-        });
-
-        if self
-            .ctx
-            .registry
-            .register_definition(
-                self.current_scope,
-                &b.ident,
-                DefKindTag::Bitset,
-                def_id,
-                &mut self.ctx.diagnostics,
-                &self.ctx.context,
-            )
-            .is_some()
-        {
-            self.ctx.context.scopes.add_definition(
-                self.current_scope,
-                b.ident.name.clone(),
-                def_id,
-            );
-        }
-
-        def_id
+        crate::define::define(
+            self.ctx,
+            self.current_scope,
+            &b.ident,
+            b.span,
+            &b.annotations,
+            DefKindTag::Bitset,
+            |_| DefKind::Bitset(bitset_ty),
+        )
     }
 
     pub fn process_annotation(&mut self, a: &AnnotationDef) -> DefId {
@@ -605,12 +471,7 @@ impl<'ctx> ValueItemProcessor<'ctx> {
                     params.push(AnnParam { ident, ty, default });
                 }
                 ic_syntax::AnnotationField::Item(item) => {
-                    let mut builder = crate::builder::HirBuilder::new(self.ctx);
-                    let prev_scope = builder.current_scope;
-                    builder.current_scope = scope;
-                    let item_defs = builder.process_item(item);
-                    builder.current_scope = prev_scope;
-                    types.extend(item_defs);
+                    types.extend(crate::builder::process_nested_item(self.ctx, scope, item));
                 }
             }
         }
@@ -622,79 +483,15 @@ impl<'ctx> ValueItemProcessor<'ctx> {
             annotation_ty.types = types;
         }
 
-        self.ctx
-            .context
-            .scopes
-            .add_annotation(self.current_scope, &a.ident.name, def_id);
-
-        // Check for consistent redefinition (annotations are stored with @ prefix)
-        let ann_key = format!("@{}", a.ident.name);
-        if let Some(existing_def_ids) = self
-            .ctx
-            .context
-            .scopes
-            .get_scope(self.current_scope)
-            .definitions
-            .get(&ann_key)
-            && existing_def_ids.len() > 1
-        {
-            let prev_def_id = existing_def_ids[existing_def_ids.len() - 2];
-            let existing_def = self.ctx.context.definitions.get(prev_def_id);
-            let new_def = self.ctx.context.definitions.get(def_id);
-
-            if !are_annotations_consistent(&existing_def.kind, &new_def.kind, &self.ctx.context) {
-                self.ctx.diagnostics.errors.push(
-                    error_span(
-                        format!(
-                            "inconsistent redefinition of annotation `@{}`",
-                            a.ident.name
-                        ),
-                        Label::new(existing_def.ident.span).message("originally defined here"),
-                    )
-                    .label(Label::new(a.ident.span).message("redefined inconsistently here"))
-                    .note(
-                        "annotation redefinitions must have the same parameters, types, and \
-                         defaults",
-                    ),
-                );
-            }
-        }
+        crate::define::define_annotation(
+            self.ctx,
+            self.current_scope,
+            &a.ident,
+            def_id,
+            |old, new, ctx| are_annotations_consistent(&old.kind, &new.kind, ctx),
+        );
 
         def_id
-    }
-}
-
-/// Resolves a declarator to produce an identifier and type.
-/// Handles array declarators by building array types from the base type.
-pub(super) fn resolve_declarator(
-    decl: &ic_syntax::Declarator,
-    base_ty: Ty,
-    ctx: &mut LoweringContext,
-    scope: ScopeId,
-) -> (ic_syntax::Ident, Ty) {
-    match decl {
-        ic_syntax::Declarator::Simple(ident) => (ident.clone(), base_ty),
-        ic_syntax::Declarator::Array(arr) => {
-            // Build array type from rightmost to leftmost bound
-            // For int[2][3], we want Array<Array<int, 3>, 2>
-            let mut ty = base_ty;
-
-            // Process bounds in reverse order
-            for bound_expr in arr.bounds.iter().rev() {
-                let mut evaluator = ConstEvaluator::new(ctx, scope);
-                let len = evaluator.eval_nonneg_bound(bound_expr).unwrap_or(1);
-
-                ty = Ty {
-                    span: ty.span,
-                    kind: TyKind::Array {
-                        ty: Box::new(ty.clone()),
-                        len,
-                        len_span: ic_syntax::util::expr_span(bound_expr),
-                    },
-                };
-            }
-            (arr.ident.clone(), ty)
-        }
     }
 }
 

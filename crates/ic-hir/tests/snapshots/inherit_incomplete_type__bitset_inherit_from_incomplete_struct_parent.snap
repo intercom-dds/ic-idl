@@ -1,0 +1,21 @@
+---
+source: crates/ic-hir/tests/inherit_incomplete_type.rs
+assertion_line: 99
+expression: diagnostics
+---
+⨯: bitset `Derived` cannot inherit from incomplete type `Base`
+  @ test.idl:3:26
+
+ 2 │ struct Base;
+   │        ˆˆˆˆ parent type is only forward declared
+ 3 │ bitset Derived : Base {
+   │                  ˆˆˆˆ invalid inheritance
+ 4 │     bitfield<4> value;
+ 5 │ };
+⨯: type `Base` is declared but not defined
+  @ test.idl:2:16
+
+ 2 │ struct Base;
+   │        ˆˆˆˆ declared here
+ 3 │ bitset Derived : Base {
+ 4 │     bitfield<4> value;

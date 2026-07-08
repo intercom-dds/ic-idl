@@ -87,6 +87,31 @@ fn test_struct_forward_decl_then_inherit() {
 }
 
 #[test]
+fn test_bitset_inherit_from_incomplete_struct_parent() {
+    let input = r"
+        struct Base;
+        bitset Derived : Base {
+            bitfield<4> value;
+        };
+    ";
+
+    let diagnostics = common::parse_and_expect_errors(input);
+    insta::assert_snapshot!(diagnostics);
+}
+
+#[test]
+fn test_valuetype_supports_incomplete_interface() {
+    let input = r"
+        interface IBase;
+        valuetype V supports IBase {
+        };
+    ";
+
+    let diagnostics = common::parse_and_expect_errors(input);
+    insta::assert_snapshot!(diagnostics);
+}
+
+#[test]
 fn test_inherit_from_later_defined_type() {
     // This should fail - inheriting from a type that's defined later in the file
     let input = r"

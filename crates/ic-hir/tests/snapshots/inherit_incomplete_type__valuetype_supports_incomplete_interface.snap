@@ -1,0 +1,20 @@
+---
+source: crates/ic-hir/tests/inherit_incomplete_type.rs
+assertion_line: 111
+expression: diagnostics
+---
+⨯: valuetype `V` cannot support incomplete type `IBase`
+  @ test.idl:3:30
+
+ 2 │ interface IBase;
+   │           ˆˆˆˆˆ parent type is only forward declared
+ 3 │ valuetype V supports IBase {
+   │                      ˆˆˆˆˆ invalid inheritance
+ 4 │ };
+⨯: type `IBase` is declared but not defined
+  @ test.idl:2:19
+
+ 2 │ interface IBase;
+   │           ˆˆˆˆˆ declared here
+ 3 │ valuetype V supports IBase {
+ 4 │ };

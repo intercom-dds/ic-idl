@@ -68,12 +68,12 @@ use tracing::{debug, debug_span, info_span};
 
 mod annotation;
 mod builder;
+mod define;
 mod eval;
 mod initializers;
 mod registry;
 mod resolve;
 mod type_items;
-mod type_resolver;
 mod utils;
 mod value_items;
 

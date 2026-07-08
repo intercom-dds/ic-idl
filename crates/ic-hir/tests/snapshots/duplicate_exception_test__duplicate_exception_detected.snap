@@ -1,0 +1,12 @@
+---
+source: crates/ic-hir/tests/duplicate_exception_test.rs
+assertion_line: 39
+expression: diagnostics
+---
+⨯: duplicate definition of `Foo`
+  @ test.idl:2:19
+
+ 2 │ exception Foo { long x; };
+   │           ˆˆˆ originally defined here
+ 3 │ exception Foo { long y; };
+   │           ˆˆˆ redefined here

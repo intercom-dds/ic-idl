@@ -26,19 +26,18 @@
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use ic_hir::hir::{
-    AliasTy, Attribute, Decl, Def, DefFlags, DefId, DefKind, ExceptTy, InterfaceTy, Label, Member,
+    AliasTy, Attribute, Decl, DefFlags, DefId, DefKind, ExceptTy, InterfaceTy, Label, Member,
     Parameter, PrimitiveTy, ProtoTy, Spanned, StructTy, Ty, TyKind, UnionTy, ValueTy, Variant,
 };
 use ic_hir::scope::ScopeId;
 use ic_syntax::{AliasDef, ExceptDef, InterfaceDef, StructDef, UnionDef, ValuetypeDef};
 
-use crate::LoweringContext;
 use crate::annotation::convert_annotations;
 use crate::eval::ConstEvaluator;
 use crate::registry::DefKindTag;
-use crate::type_resolver::TypeResolver;
+use crate::resolve::{TypeResolver, resolve_declarator};
 use crate::utils::TyExt;
-use crate::value_items::resolve_declarator;
+use crate::{LoweringContext, define};
 
 /// Processes type items (struct, union, interface, valuetype, native).
 pub struct TypeItemProcessor<'ctx> {
@@ -46,75 +45,62 @@ pub struct TypeItemProcessor<'ctx> {
     pub(super) current_scope: ScopeId,
 }
 
+/// Validates that `parent_id` is complete, not a forward declaration, for
+/// an inheritance-like relationship, and marks it `HAS_CHILDREN` on
+/// success. `relationship` is a verb phrase for the diagnostic message,
+/// e.g. `"inherit from"` or `"support"`.
+pub(super) fn validate_parent_inheritance(
+    ctx: &mut LoweringContext,
+    parent_id: DefId,
+    child_kind: &str,
+    child_name: &str,
+    relationship: &str,
+    inheritance_span: ic_syntax::Span,
+) -> Option<DefId> {
+    let parent_def = ctx.context.definitions.get(parent_id);
+    if matches!(&parent_def.kind, DefKind::Decl(_)) {
+        use ic_diagnostic::{Label, error_span};
+        ctx.diagnostics.errors.push(
+            error_span(
+                format!(
+                    "{child_kind} `{child_name}` cannot {relationship} incomplete type `{}`",
+                    parent_def.ident.name
+                ),
+                Label::new(inheritance_span).message("invalid inheritance"),
+            )
+            .label(
+                Label::new(parent_def.ident.span).message("parent type is only forward declared"),
+            ),
+        );
+        None
+    } else {
+        // Mark parent as having children
+        let parent_def = ctx.context.definitions.get_mut(parent_id);
+        parent_def.flags |= DefFlags::HAS_CHILDREN;
+        Some(parent_id)
+    }
+}
+
 impl<'ctx> TypeItemProcessor<'ctx> {
     pub fn new(ctx: &'ctx mut LoweringContext, current_scope: ScopeId) -> Self {
         Self { ctx, current_scope }
     }
 
-    /// Check if a parent type is valid for inheritance (not a forward declaration).
-    /// Returns `Some(parent_id)` if valid, None if invalid (error already reported).
-    /// If valid, marks the parent as having children.
-    fn validate_parent_inheritance(
-        &mut self,
-        parent_id: DefId,
-        child_kind: &str,
-        child_name: &str,
-        inheritance_span: ic_syntax::Span,
-    ) -> Option<DefId> {
-        let parent_def = self.ctx.context.definitions.get(parent_id);
-        if matches!(&parent_def.kind, DefKind::Decl(_)) {
-            use ic_diagnostic::{Label, error_span};
-            self.ctx.diagnostics.errors.push(
-                error_span(
-                    format!(
-                        "{child_kind} `{child_name}` cannot inherit from incomplete type `{}`",
-                        parent_def.ident.name
-                    ),
-                    Label::new(inheritance_span).message("invalid inheritance"),
-                )
-                .label(
-                    Label::new(parent_def.ident.span)
-                        .message("parent type is only forward declared"),
-                ),
-            );
-            None
-        } else {
-            // Mark parent as having children
-            let parent_def = self.ctx.context.definitions.get_mut(parent_id);
-            parent_def.flags |= DefFlags::HAS_CHILDREN;
-            Some(parent_id)
-        }
-    }
-
     /// Process a struct definition.
     pub fn process_struct(&mut self, s: &StructDef) -> DefId {
-        let annotations = convert_annotations(self.ctx, &s.annotations, self.current_scope);
-
-        let def_id = self.ctx.context.definitions.alloc_with_id(|id| Def {
-            id,
-            ident: s.ident.clone(),
-            parent: self.ctx.context.scopes.get_scope(self.current_scope).def_id,
-            annotations,
-            span: s.span,
-            kind: DefKind::Struct(StructTy {
-                parent: None,
-                members: Vec::new(),
-            }),
-            flags: DefFlags::nil(),
-        });
-
-        self.ctx
-            .context
-            .scopes
-            .add_definition(self.current_scope, s.ident.name.clone(), def_id);
-
-        _ = self.ctx.registry.register_definition(
+        let def_id = define::define(
+            self.ctx,
             self.current_scope,
             &s.ident,
+            s.span,
+            &s.annotations,
             DefKindTag::Struct,
-            def_id,
-            &mut self.ctx.diagnostics,
-            &self.ctx.context,
+            |_| {
+                DefKind::Struct(StructTy {
+                    parent: None,
+                    members: Vec::new(),
+                })
+            },
         );
 
         let parent = if let Some(ref parent_type) = s.parent {
@@ -122,11 +108,18 @@ impl<'ctx> TypeItemProcessor<'ctx> {
             let mut resolver = TypeResolver::new(self.ctx, self.current_scope);
             resolver.resolve_path_type(parent_type).and_then(|ty| {
                 if let Some(parent_id) = ty.as_adt() {
-                    self.validate_parent_inheritance(parent_id, "struct", &s.ident.name, path_span)
-                        .map(|value| Spanned {
-                            def_id: value,
-                            span: path_span,
-                        })
+                    validate_parent_inheritance(
+                        self.ctx,
+                        parent_id,
+                        "struct",
+                        &s.ident.name,
+                        "inherit from",
+                        path_span,
+                    )
+                    .map(|value| Spanned {
+                        def_id: value,
+                        span: path_span,
+                    })
                 } else {
                     self.ctx.diagnostics.error(
                         "parent must be a struct type".to_string(),
@@ -140,7 +133,6 @@ impl<'ctx> TypeItemProcessor<'ctx> {
         };
 
         let members = self.process_members(&s.members);
-
         let def = self.ctx.context.definitions.get_mut(def_id);
         if let DefKind::Struct(struct_ty) = &mut def.kind {
             struct_ty.parent = parent;
@@ -154,17 +146,18 @@ impl<'ctx> TypeItemProcessor<'ctx> {
     pub fn process_interface(&mut self, i: &InterfaceDef) -> DefId {
         let mut parents = Vec::new();
         let mut definitions = Vec::new();
-        let annotations = convert_annotations(self.ctx, &i.annotations, self.current_scope);
 
         for parent_path in &i.inherits {
             let path_span = crate::utils::path_span(parent_path);
             let mut resolver = TypeResolver::new(self.ctx, self.current_scope);
             if let Some(ty) = resolver.resolve_path_type(parent_path) {
                 if let Some(parent_id) = ty.as_adt() {
-                    if let Some(value) = self.validate_parent_inheritance(
+                    if let Some(value) = validate_parent_inheritance(
+                        self.ctx,
                         parent_id,
                         "interface",
                         &i.ident.name,
+                        "inherit from",
                         path_span,
                     ) {
                         parents.push(Spanned {
@@ -187,43 +180,25 @@ impl<'ctx> TypeItemProcessor<'ctx> {
             None,
         );
 
-        let def_id = self.ctx.context.definitions.alloc_with_id(|id| Def {
-            id,
-            ident: i.ident.clone(),
-            parent: self.ctx.context.scopes.get_scope(self.current_scope).def_id,
-            annotations,
-            span: i.span,
-            kind: DefKind::Interface(InterfaceTy {
-                parents,
-                prototypes: Vec::new(),
-                attributes: Vec::new(),
-                is_local: i.local.is_some(),
-                definitions: Vec::new(),
-            }),
-            flags: DefFlags::nil(),
-        });
+        let def_id = define::define(
+            self.ctx,
+            self.current_scope,
+            &i.ident,
+            i.span,
+            &i.annotations,
+            DefKindTag::Interface,
+            |_| {
+                DefKind::Interface(InterfaceTy {
+                    parents,
+                    prototypes: Vec::new(),
+                    attributes: Vec::new(),
+                    is_local: i.local.is_some(),
+                    definitions: Vec::new(),
+                })
+            },
+        );
 
         self.ctx.context.scopes.set_scope_def_id(scope, def_id);
-
-        if self
-            .ctx
-            .registry
-            .register_definition(
-                self.current_scope,
-                &i.ident,
-                DefKindTag::Interface,
-                def_id,
-                &mut self.ctx.diagnostics,
-                &self.ctx.context,
-            )
-            .is_some()
-        {
-            self.ctx.context.scopes.add_definition(
-                self.current_scope,
-                i.ident.name.clone(),
-                def_id,
-            );
-        }
 
         let mut prototypes = Vec::new();
         let mut attributes = Vec::new();
@@ -239,10 +214,7 @@ impl<'ctx> TypeItemProcessor<'ctx> {
                     attributes.extend(self.process_attributes(attr));
                 }
                 ic_syntax::InterfaceMember::Item(item) => {
-                    let mut builder = crate::builder::HirBuilder::new(self.ctx);
-                    builder.current_scope = scope;
-                    let item_defs = builder.process_item(item);
-                    definitions.extend(item_defs);
+                    definitions.extend(crate::builder::process_nested_item(self.ctx, scope, item));
                 }
             }
         }
@@ -261,31 +233,15 @@ impl<'ctx> TypeItemProcessor<'ctx> {
 
     /// Process a union definition.
     pub fn process_union(&mut self, u: &UnionDef) -> DefId {
-        let annotations = convert_annotations(self.ctx, &u.annotations, self.current_scope);
-
         // Create as a forward declaration first so self-references work
-        let def_id = self.ctx.context.definitions.alloc_with_id(|id| Def {
-            id,
-            ident: u.ident.clone(),
-            parent: self.ctx.context.scopes.get_scope(self.current_scope).def_id,
-            annotations,
-            span: u.span,
-            kind: DefKind::Decl(Decl::Union),
-            flags: DefFlags::nil(),
-        });
-
-        self.ctx
-            .context
-            .scopes
-            .add_definition(self.current_scope, u.ident.name.clone(), def_id);
-
-        self.ctx.registry.register_definition(
+        let def_id = define::define(
+            self.ctx,
             self.current_scope,
             &u.ident,
+            u.span,
+            &u.annotations,
             DefKindTag::Union,
-            def_id,
-            &mut self.ctx.diagnostics,
-            &self.ctx.context,
+            |_| DefKind::Decl(Decl::Union),
         );
 
         let mut resolver = TypeResolver::new(self.ctx, self.current_scope);
@@ -352,7 +308,6 @@ impl<'ctx> TypeItemProcessor<'ctx> {
     pub fn process_valuetype(&mut self, v: &ValuetypeDef) -> DefId {
         let parent = self.resolve_valuetype_parent(v);
         let supports = self.resolve_valuetype_supports(v);
-        let annotations = convert_annotations(self.ctx, &v.annotations, self.current_scope);
 
         let scope = self.ctx.context.scopes.create_child_scope(
             self.current_scope,
@@ -360,44 +315,26 @@ impl<'ctx> TypeItemProcessor<'ctx> {
             None,
         );
 
-        let def_id = self.ctx.context.definitions.alloc_with_id(|id| Def {
-            id,
-            ident: v.ident.clone(),
-            parent: self.ctx.context.scopes.get_scope(self.current_scope).def_id,
-            annotations,
-            span: v.span,
-            kind: DefKind::Valuetype(ValueTy {
-                parent,
-                supports,
-                prototypes: Vec::new(),
-                attributes: Vec::new(),
-                members: Vec::new(),
-                definitions: Vec::new(),
-            }),
-            flags: DefFlags::nil(),
-        });
+        let def_id = define::define(
+            self.ctx,
+            self.current_scope,
+            &v.ident,
+            v.span,
+            &v.annotations,
+            DefKindTag::Valuetype,
+            |_| {
+                DefKind::Valuetype(ValueTy {
+                    parent,
+                    supports,
+                    prototypes: Vec::new(),
+                    attributes: Vec::new(),
+                    members: Vec::new(),
+                    definitions: Vec::new(),
+                })
+            },
+        );
 
         self.ctx.context.scopes.set_scope_def_id(scope, def_id);
-
-        if self
-            .ctx
-            .registry
-            .register_definition(
-                self.current_scope,
-                &v.ident,
-                DefKindTag::Valuetype,
-                def_id,
-                &mut self.ctx.diagnostics,
-                &self.ctx.context,
-            )
-            .is_some()
-        {
-            self.ctx.context.scopes.add_definition(
-                self.current_scope,
-                v.ident.name.clone(),
-                def_id,
-            );
-        }
 
         let (members, prototypes, attributes, definitions) =
             self.process_valuetype_elements(v, scope);
@@ -423,7 +360,14 @@ impl<'ctx> TypeItemProcessor<'ctx> {
             .resolve_path_type(parent_type)
             .and_then(|ty| ty.as_adt())
             .and_then(|parent_id| {
-                self.validate_parent_inheritance(parent_id, "valuetype", &v.ident.name, path_span)
+                validate_parent_inheritance(
+                    self.ctx,
+                    parent_id,
+                    "valuetype",
+                    &v.ident.name,
+                    "inherit from",
+                    path_span,
+                )
             })
             .map(|value| Spanned {
                 def_id: value,
@@ -439,14 +383,25 @@ impl<'ctx> TypeItemProcessor<'ctx> {
         let mut resolver = TypeResolver::new(self.ctx, self.current_scope);
         resolver.resolve_path_type(supports_type).and_then(|ty| {
             if let Some(supports_id) = ty.as_adt() {
-                // Verify it's an interface type
+                // Accept both a complete interface and a forward-declared
+                // one, validate_parent_inheritance rejects the latter
+                // with a clear "incomplete type" diagnostic.
                 let def = self.ctx.context.definitions.get(supports_id);
-                if matches!(&def.kind, DefKind::Interface(_)) {
-                    // Mark the supported interface as having children
-                    let def = self.ctx.context.definitions.get_mut(supports_id);
-                    def.flags |= DefFlags::HAS_CHILDREN;
-                    Some(Spanned {
-                        def_id: supports_id,
+                let is_interface_shaped = matches!(
+                    &def.kind,
+                    DefKind::Interface(_) | DefKind::Decl(Decl::Interface)
+                );
+                if is_interface_shaped {
+                    validate_parent_inheritance(
+                        self.ctx,
+                        supports_id,
+                        "valuetype",
+                        &v.ident.name,
+                        "support",
+                        path_span,
+                    )
+                    .map(|value| Spanned {
+                        def_id: value,
                         span: path_span,
                     })
                 } else {
@@ -487,10 +442,7 @@ impl<'ctx> TypeItemProcessor<'ctx> {
                     attributes.extend(self.process_attributes(attr));
                 }
                 ic_syntax::ValueElement::Item(item) => {
-                    let mut builder = crate::builder::HirBuilder::new(self.ctx);
-                    builder.current_scope = scope;
-                    let item_defs = builder.process_item(item);
-                    definitions.extend(item_defs);
+                    definitions.extend(crate::builder::process_nested_item(self.ctx, scope, item));
                 }
             }
         }
@@ -513,34 +465,7 @@ impl<'ctx> TypeItemProcessor<'ctx> {
     }
 
     fn create_forward_declaration(&mut self, ident: &ic_syntax::Ident, kind: Decl) -> DefId {
-        let def_id = self.ctx.context.definitions.alloc_with_id(|id| Def {
-            id,
-            ident: ident.clone(),
-            parent: self.ctx.context.scopes.get_scope(self.current_scope).def_id,
-            annotations: Vec::new(),
-            span: (ident.span),
-            kind: DefKind::Decl(kind),
-            flags: DefFlags::IS_INCOMPLETE,
-        });
-
-        if let Some(existing_id) = self.ctx.registry.register_forward_decl(
-            self.current_scope,
-            ident,
-            kind,
-            def_id,
-            &mut self.ctx.diagnostics,
-            &self.ctx.context,
-        ) && existing_id != def_id
-        {
-            return existing_id;
-        }
-
-        self.ctx
-            .context
-            .scopes
-            .add_definition(self.current_scope, ident.name.clone(), def_id);
-
-        def_id
+        define::declare_forward(self.ctx, self.current_scope, ident, kind)
     }
 
     /// Process members.
@@ -715,7 +640,6 @@ impl<'ctx> TypeItemProcessor<'ctx> {
 
     pub fn process_alias(&mut self, a: &AliasDef) -> Vec<DefId> {
         let mut def_ids = Vec::new();
-        let annotations = convert_annotations(self.ctx, &a.annotations, self.current_scope);
 
         for decl in &a.decl {
             let mut resolver = TypeResolver::new(self.ctx, self.current_scope);
@@ -725,65 +649,36 @@ impl<'ctx> TypeItemProcessor<'ctx> {
 
             let (ident, ty) = resolve_declarator(decl, base_ty, self.ctx, self.current_scope);
             let alias_ty = AliasTy { ty };
+            let span = ic_syntax::util::decl_span(decl);
 
-            let def_id = self.ctx.context.definitions.alloc_with_id(|id| Def {
-                id,
-                ident: ident.clone(),
-                parent: self.ctx.context.scopes.get_scope(self.current_scope).def_id,
-                annotations: annotations.clone(),
-                span: ic_syntax::util::decl_span(decl),
-                kind: DefKind::Alias(alias_ty),
-                flags: DefFlags::nil(),
-            });
-
-            if self
-                .ctx
-                .registry
-                .register_definition(
-                    self.current_scope,
-                    &ident,
-                    DefKindTag::Alias,
-                    def_id,
-                    &mut self.ctx.diagnostics,
-                    &self.ctx.context,
-                )
-                .is_some()
-            {
-                self.ctx.context.scopes.add_definition(
-                    self.current_scope,
-                    ident.name.clone(),
-                    def_id,
-                );
-
-                def_ids.push(def_id);
-            }
+            let def_id = define::define(
+                self.ctx,
+                self.current_scope,
+                &ident,
+                span,
+                &a.annotations,
+                DefKindTag::Alias,
+                |_| DefKind::Alias(alias_ty),
+            );
+            def_ids.push(def_id);
         }
 
         def_ids
     }
 
     pub fn process_exception(&mut self, e: &ExceptDef) -> DefId {
-        let annotations = convert_annotations(self.ctx, &e.annotations, self.current_scope);
         let members = self.process_members(&e.members);
         let except_ty = ExceptTy { members };
 
-        let def_id = self.ctx.context.definitions.alloc_with_id(|id| Def {
-            id,
-            ident: e.ident.clone(),
-            parent: self.ctx.context.scopes.get_scope(self.current_scope).def_id,
-            annotations,
-            span: e.span,
-            kind: DefKind::Except(except_ty),
-            flags: DefFlags::nil(),
-        });
-
-        // Register in scope so self-references work
-        self.ctx
-            .context
-            .scopes
-            .add_definition(self.current_scope, e.ident.name.clone(), def_id);
-
-        def_id
+        define::define(
+            self.ctx,
+            self.current_scope,
+            &e.ident,
+            e.span,
+            &e.annotations,
+            DefKindTag::Struct,
+            |_| DefKind::Except(except_ty),
+        )
     }
 
     fn process_value_members(&mut self, members: &ic_syntax::ValueMember) -> Vec<Member> {

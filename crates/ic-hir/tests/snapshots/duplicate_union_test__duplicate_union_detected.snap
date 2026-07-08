@@ -1,0 +1,16 @@
+---
+source: crates/ic-hir/tests/duplicate_union_test.rs
+assertion_line: 45
+expression: diagnostics
+---
+⨯: duplicate definition of `Foo`
+  @ test.idl:2:15
+
+ 2 │ union Foo switch (long) {
+   │       ˆˆˆ originally defined here
+ 3 │ case 0: long x;
+ 4 │ };
+ 5 │ union Foo switch (long) {
+   │       ˆˆˆ redefined here
+ 6 │ case 0: long y;
+ 7 │ };

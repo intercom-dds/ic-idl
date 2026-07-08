@@ -214,12 +214,12 @@ impl<'a> ConstEvaluator<'a> {
         &self,
         path: &'p ic_syntax::Path,
     ) -> Result<DefId, crate::resolve::PathResolutionError<'p>> {
-        if let Some(ann) = self.annotation_scope {
-            crate::resolve::resolve_path(&self.ctx.context, ann, path)
-                .or_else(|_| crate::resolve::resolve_path(&self.ctx.context, self.scope, path))
-        } else {
-            crate::resolve::resolve_path(&self.ctx.context, self.scope, path)
-        }
+        crate::resolve::resolve_with_fallback(
+            &self.ctx.context,
+            self.scope,
+            self.annotation_scope,
+            path,
+        )
     }
 
     fn try_const_path_assignment(
@@ -496,12 +496,7 @@ impl HirEvalCtx<'_> {
         &self,
         path: &'p ic_syntax::Path,
     ) -> Result<DefId, crate::resolve::PathResolutionError<'p>> {
-        if let Some(ann) = self.ann_scope {
-            crate::resolve::resolve_path(self.hir, ann, path)
-                .or_else(|_| crate::resolve::resolve_path(self.hir, self.scope, path))
-        } else {
-            crate::resolve::resolve_path(self.hir, self.scope, path)
-        }
+        crate::resolve::resolve_with_fallback(self.hir, self.scope, self.ann_scope, path)
     }
 }
 

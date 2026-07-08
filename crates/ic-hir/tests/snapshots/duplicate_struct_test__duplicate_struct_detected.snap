@@ -1,0 +1,12 @@
+---
+source: crates/ic-hir/tests/duplicate_struct_test.rs
+assertion_line: 41
+expression: diagnostics
+---
+⨯: duplicate definition of `Foo`
+  @ test.idl:2:16
+
+ 2 │ struct Foo { long x; };
+   │        ˆˆˆ originally defined here
+ 3 │ struct Foo { long y; };
+   │        ˆˆˆ redefined here

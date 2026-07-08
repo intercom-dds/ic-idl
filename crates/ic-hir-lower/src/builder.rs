@@ -33,9 +33,9 @@ use ic_syntax::Item;
 use ic_syntax::util::{item_ident_name, item_variant_name};
 use tracing::{trace, trace_span};
 
-use crate::LoweringContext;
 use crate::type_items::TypeItemProcessor;
 use crate::value_items::ValueItemProcessor;
+use crate::{LoweringContext, resolve};
 
 /// Main HIR builder that orchestrates the lowering process.
 pub struct HirBuilder<'ctx> {
@@ -166,8 +166,7 @@ impl<'ctx> HirBuilder<'ctx> {
     }
 
     fn process_module(&mut self, m: &ic_syntax::ModuleDef) -> DefId {
-        // Handles module reopening (same name in same scope)
-        let module_scope = crate::resolve::find_or_create_module(
+        let module_scope = resolve::find_or_create_module(
             &mut self.ctx.context.scopes,
             self.current_scope,
             &m.ident.name,
@@ -177,26 +176,19 @@ impl<'ctx> HirBuilder<'ctx> {
         );
 
         let prev_scope = self.current_scope;
-        let annotations =
-            crate::annotation::convert_annotations(self.ctx, &m.annotations, self.current_scope);
-
-        let def_id = self
-            .ctx
-            .context
-            .definitions
-            .alloc_with_id(|id| ic_hir::hir::Def {
-                id,
-                ident: m.ident.clone(),
-                parent: self.ctx.context.scopes.get_scope(prev_scope).def_id,
-                annotations,
-                span: m.span,
-                kind: DefKind::Module(ic_hir::hir::ModuleTy {
+        let def_id = crate::define::define(
+            self.ctx,
+            prev_scope,
+            &m.ident,
+            m.span,
+            &m.annotations,
+            crate::registry::DefKindTag::Module,
+            |_| {
+                DefKind::Module(ic_hir::hir::ModuleTy {
                     definitions: Vec::new(), // Will be updated later
-                }),
-                flags: ic_hir::hir::DefFlags::nil(),
-            });
-
-        // Must set before processing contents so nested items can find their parent
+                })
+            },
+        );
         self.ctx
             .context
             .scopes
@@ -211,30 +203,24 @@ impl<'ctx> HirBuilder<'ctx> {
             module_ty.definitions = module_block_definitions;
         }
 
-        _ = self.ctx.registry.register_definition(
-            prev_scope,
-            &m.ident,
-            crate::registry::DefKindTag::Module,
-            def_id,
-            &mut self.ctx.diagnostics,
-            &self.ctx.context,
-        );
-
-        // Only register the first block (reopened modules share the same scope)
-        let parent_scope = self.ctx.context.scopes.get_scope(prev_scope);
-        if !parent_scope.definitions.contains_key(&m.ident.name) {
-            self.ctx
-                .context
-                .scopes
-                .add_definition(prev_scope, m.ident.name.clone(), def_id);
-        }
-
         if prev_scope == self.ctx.context.root_scope() {
             self.ctx.order.push(def_id);
         }
 
         self.current_scope = prev_scope;
-
         def_id
     }
+}
+
+/// Processes a single AST item nested inside another definition's body
+/// (an interface member, valuetype element, or annotation parameter that's
+/// itself an item), using `scope` as the nested item's enclosing scope.
+pub(super) fn process_nested_item(
+    ctx: &mut LoweringContext,
+    scope: ScopeId,
+    item: &Item,
+) -> Vec<DefId> {
+    let mut builder = HirBuilder::new(ctx);
+    builder.current_scope = scope;
+    builder.process_item(item)
 }

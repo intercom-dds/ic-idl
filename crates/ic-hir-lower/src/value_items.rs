@@ -427,7 +427,7 @@ impl<'ctx> ValueItemProcessor<'ctx> {
     pub fn process_annotation(&mut self, a: &AnnotationDef) -> DefId {
         let scope = self.ctx.context.scopes.create_child_scope(
             self.current_scope,
-            a.ident.name.clone(),
+            format!("@{}", a.ident.name),
             None,
         );
 

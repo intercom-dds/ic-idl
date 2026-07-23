@@ -30,6 +30,7 @@ mod deps;
 
 use ic_cli::Command;
 use ic_emit::File;
+use ic_hir::hir::DefId;
 use ic_hir::keywords::IDL_KEYWORDS;
 use ic_hir_xform::rename::{self, Target};
 
@@ -70,4 +71,21 @@ pub fn codegen_idl(
     let hir = rename::transform(hir.clone(), &target);
     let generator = codegen::IdlGen::new(&hir, source_map, options);
     generator.generate()
+}
+
+#[must_use]
+pub fn generate_def(
+    hir: &ic_hir::ResolvedGraph,
+    source_map: &ic_vfs::SourceMap,
+    options: IdlOptions,
+    def_id: DefId,
+) -> String {
+    let target = Target {
+        keyword_escape: Some(escape_idl_keyword),
+        ..Target::default()
+    };
+
+    let hir = rename::transform(hir.clone(), &target);
+    let generator = codegen::IdlGen::new(&hir, source_map, options);
+    generator.generate_type(def_id)
 }

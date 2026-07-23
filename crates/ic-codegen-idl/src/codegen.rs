@@ -319,7 +319,7 @@ impl<'a> IdlGen<'a> {
             w!(w, "\n");
             self.emit_definition(w, nested_id);
         }
-        w!(w, "}; // module ", def.ident.name, "\n");
+        w!(w, "}; // module ", def.ident.name, "\n\n");
     }
 
     fn emit_annotations(&self, w: &mut Twine, annotations: &[Ann], relative_to_def_id: DefId) {
@@ -584,13 +584,13 @@ impl<'a> IdlGen<'a> {
     fn emit_alias(&self, w: &mut Twine, def: &Def, alias: &AliasTy) {
         let ty_str = self.idl_type(&alias.ty, def.id);
         let array_bounds = format_member_name(&alias.ty);
-        w!(w, "typedef ", ty_str, " ", def.ident.name, array_bounds, ";\n\n");
+        w!(w, "typedef ", ty_str, " ", def.ident.name, array_bounds, ";\n");
     }
 
     fn emit_const(&self, w: &mut Twine, def: &Def, const_ty: &ConstTy) {
         let ty_str = self.idl_type(&const_ty.ty, def.id);
         let value_str = self.format_numeric(&const_ty.value, def.id);
-        w!(w, "const ", ty_str, " ", def.ident.name, " = ", value_str, ";\n\n");
+        w!(w, "const ", ty_str, " ", def.ident.name, " = ", value_str, ";\n");
     }
 
     fn emit_bitmask(&self, w: &mut Twine, def: &Def, bitmask: &BitmaskTy) {
@@ -672,6 +672,12 @@ impl<'a> IdlGen<'a> {
             DefKind::Annotation(annotation) => self.emit_annotation(w, def, annotation),
             DefKind::Decl(decl) => Self::emit_decl(w, def, *decl),
         }
+    }
+
+    pub fn generate_type(&self, def_id: DefId) -> String {
+        let mut w = Twine::new();
+        self.emit_definition(&mut w, def_id);
+        w.finish()
     }
 
     pub fn generate(&self) -> Vec<File> {

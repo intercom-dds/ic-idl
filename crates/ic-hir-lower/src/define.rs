@@ -85,7 +85,7 @@ pub fn define_scoped_const(
     let def_id = ctx.context.definitions.alloc_with_id(|id| Def {
         id,
         ident: ident.clone(),
-        parent: ctx.context.scopes.get_scope(scope).def_id,
+        parent: ctx.context.scopes.get_scope(extra_scope).def_id,
         annotations,
         span,
         kind: build_kind(id),

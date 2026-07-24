@@ -41,3 +41,6 @@ ic-emit = { path = "../ic-emit" }
 ic-hir = { path = "../ic-hir" }
 ic-vfs = { path = "../ic-vfs" }
 intercom-cts.workspace = true
+
+[dev-dependencies]
+ic-idl = { path = "../ic-idl" }

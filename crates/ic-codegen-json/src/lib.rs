@@ -28,8 +28,14 @@
 mod codegen;
 
 use ic_emit::File;
+use ic_hir::hir::DefId;
 
 #[must_use]
 pub fn codegen_json(hir: &ic_hir::ResolvedGraph, source_map: &ic_vfs::SourceMap) -> Vec<File> {
-    codegen::JsonGen::new(hir, source_map).generate()
+    codegen::JsonGen::new(hir).generate(source_map)
+}
+
+#[must_use]
+pub fn generate_def(hir: &ic_hir::ResolvedGraph, def: DefId) -> String {
+    codegen::JsonGen::new(hir).generate_def(def)
 }

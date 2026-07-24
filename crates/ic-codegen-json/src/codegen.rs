@@ -601,8 +601,8 @@ impl<'a> JsonGen<'a> {
 fn type_name(prim: PrimitiveTy) -> &'static str {
     match prim {
         PrimitiveTy::Bool => "boolean",
-        PrimitiveTy::Char => "char",
-        PrimitiveTy::WChar => "wchar",
+        PrimitiveTy::Char => "char8",
+        PrimitiveTy::WChar => "char16",
         PrimitiveTy::Int8 => "int8",
         PrimitiveTy::UInt8 => "uint8",
         PrimitiveTy::Int16 => "int16",

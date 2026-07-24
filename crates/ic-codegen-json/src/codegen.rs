@@ -447,6 +447,11 @@ impl<'a> JsonGen<'a> {
 
         let mut ann_obj = BTreeMap::new();
         for ann in annotations {
+            if let Some(kind) = self.extensibility_kind(ann) {
+                ann_obj.insert("extensibility".to_string(), Value::String(kind.to_string()));
+                continue;
+            }
+
             let scoped_name = if let Some(def_id) = ann.def_id {
                 self.make_scoped_name(def_id)
             } else {
@@ -465,7 +470,10 @@ impl<'a> JsonGen<'a> {
                 ann_obj.insert(scoped_name, Value::Object(args_obj));
             }
         }
-        obj.insert("annotations".to_string(), Value::Object(ann_obj));
+
+        if !ann_obj.is_empty() {
+            obj.insert("annotations".to_string(), Value::Object(ann_obj));
+        }
     }
 
     fn emit_type_ref(&self, ty: &Ty, obj: &mut BTreeMap<String, Value>) {
@@ -594,6 +602,22 @@ impl<'a> JsonGen<'a> {
             | Numeric::Map { .. }
             | Numeric::Struct { .. }
             | Numeric::Union { .. } => Value::Null,
+        }
+    }
+
+    fn extensibility_kind(&self, ann: &Ann) -> Option<&'static str> {
+        if let Some(def_id) = ann.def_id
+            && let def = self.hir.context.type_of(def_id)
+            && def.flags.contains(DefFlags::IS_BUILTIN)
+        {
+            match ann.ident.name.to_lowercase().as_str() {
+                "final" => Some("final"),
+                "mutable" => Some("mutable"),
+                "appendable" => Some("appendable"),
+                _ => None,
+            }
+        } else {
+            None
         }
     }
 }

@@ -139,3 +139,31 @@ fn extensibility_is_hoisted_out_of_annotations() {
     );
     assert_eq!(extensibility("Plain"), None);
 }
+
+#[test]
+fn base_type_is_a_type_name_string() {
+    let graph = compile(
+        r"
+        struct Base { long a; };
+        struct Derived : Base { long b; };
+        ",
+    );
+
+    let root = graph
+        .context
+        .definitions
+        .iter()
+        .find_map(|(id, _)| (graph.context.qualified_name(id) == "Derived").then_some(id))
+        .expect("Derived not found");
+
+    let defs = definitions_of(&generate_def(&graph, root));
+
+    let Some(Value::Object(derived)) = defs.get("Derived") else {
+        panic!("Derived definition missing");
+    };
+
+    assert_eq!(
+        derived.get("base_type"),
+        Some(&Value::String("Base".to_string()))
+    );
+}

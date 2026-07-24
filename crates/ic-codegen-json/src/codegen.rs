@@ -146,12 +146,8 @@ impl<'a> JsonGen<'a> {
         self.emit_annotations(&def.annotations, &mut struct_obj);
 
         if let Some(parent) = struct_ty.parent {
-            let mut base_obj = BTreeMap::new();
-            Self::emit_type_info(
-                self.hir.context.definitions.get(parent.def_id),
-                &mut base_obj,
-            );
-            struct_obj.insert("base_type".to_string(), Value::Object(base_obj));
+            let name = self.make_scoped_name(parent.def_id);
+            struct_obj.insert("base_type".to_string(), Value::String(name));
         }
 
         let members: Vec<Value> = struct_ty
@@ -315,26 +311,12 @@ impl<'a> JsonGen<'a> {
                 let parents: Vec<Value> = interface
                     .parents
                     .iter()
-                    .map(|parent| {
-                        let mut parent_obj = BTreeMap::new();
-                        Self::emit_type_info(
-                            self.hir.context.definitions.get(parent.def_id),
-                            &mut parent_obj,
-                        );
-                        Value::Object(parent_obj)
-                    })
+                    .map(|parent| Value::String(self.make_scoped_name(parent.def_id)))
                     .collect();
                 interface_obj.insert("base_type".to_string(), Value::Array(parents));
             } else {
-                let mut parent_obj = BTreeMap::new();
-                Self::emit_type_info(
-                    self.hir
-                        .context
-                        .definitions
-                        .get(interface.parents[0].def_id),
-                    &mut parent_obj,
-                );
-                interface_obj.insert("base_type".to_string(), Value::Object(parent_obj));
+                let name = self.make_scoped_name(interface.parents[0].def_id);
+                interface_obj.insert("base_type".to_string(), Value::String(name));
             }
         }
 
@@ -362,12 +344,8 @@ impl<'a> JsonGen<'a> {
         self.emit_annotations(&def.annotations, &mut valuetype_obj);
 
         if let Some(parent) = valuetype.parent {
-            let mut base_obj = BTreeMap::new();
-            Self::emit_type_info(
-                self.hir.context.definitions.get(parent.def_id),
-                &mut base_obj,
-            );
-            valuetype_obj.insert("base_type".to_string(), Value::Object(base_obj));
+            let name = self.make_scoped_name(parent.def_id);
+            valuetype_obj.insert("base_type".to_string(), Value::String(name));
         }
 
         if let Some(supports) = valuetype.supports {

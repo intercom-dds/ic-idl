@@ -85,3 +85,57 @@ fn generate_def_marks_root_and_includes_dependencies() {
         "definitions missing dependency Animal"
     );
 }
+
+fn definitions_of(json: &str) -> std::collections::BTreeMap<String, Value> {
+    let value: Value = intercom_cts::json::from_str(json).expect("valid json");
+    let Value::Object(top) = value else {
+        panic!("expected object at top level");
+    };
+    let Some(Value::Object(definitions)) = top.get("definitions") else {
+        panic!("expected definitions object");
+    };
+    definitions.clone()
+}
+
+#[test]
+fn extensibility_is_hoisted_out_of_annotations() {
+    let graph = compile(
+        r"
+        @final struct F { long a; };
+        @mutable struct M { long a; };
+        @appendable struct A { long a; };
+        struct Plain { long a; };
+        ",
+    );
+
+    let root = graph
+        .context
+        .definitions
+        .iter()
+        .find_map(|(id, _)| (graph.context.qualified_name(id) == "F").then_some(id))
+        .expect("F not found");
+
+    let defs = definitions_of(&generate_def(&graph, root));
+
+    let extensibility = |name: &str| {
+        let Some(Value::Object(def)) = defs.get(name) else {
+            panic!("definition {name} missing");
+        };
+        assert!(
+            !def.contains_key("annotations"),
+            "{name} should not carry an annotations object"
+        );
+        def.get("extensibilityKind").cloned()
+    };
+
+    assert_eq!(extensibility("F"), Some(Value::String("final".to_string())));
+    assert_eq!(
+        extensibility("M"),
+        Some(Value::String("mutable".to_string()))
+    );
+    assert_eq!(
+        extensibility("A"),
+        Some(Value::String("appendable".to_string()))
+    );
+    assert_eq!(extensibility("Plain"), None);
+}

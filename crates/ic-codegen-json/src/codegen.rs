@@ -38,15 +38,14 @@ use intercom_cts::json::{self, Value};
 
 pub struct JsonGen<'a> {
     hir: &'a ResolvedGraph,
-    source_map: &'a SourceMap,
 }
 
 impl<'a> JsonGen<'a> {
-    pub fn new(hir: &'a ResolvedGraph, source_map: &'a SourceMap) -> Self {
-        Self { hir, source_map }
+    pub fn new(hir: &'a ResolvedGraph) -> Self {
+        Self { hir }
     }
 
-    pub fn generate(&self) -> Vec<File> {
+    pub fn generate(&self, source_map: &SourceMap) -> Vec<File> {
         let mut files = Vec::new();
         let mut file_map: BTreeMap<FileId, Vec<DefId>> = BTreeMap::new();
 
@@ -57,7 +56,7 @@ impl<'a> JsonGen<'a> {
         }
 
         for (file_id, def_ids) in file_map {
-            if let Some(file) = self.generate_file(file_id, &def_ids) {
+            if let Some(file) = self.generate_file(source_map, file_id, &def_ids) {
                 files.push(file);
             }
         }
@@ -65,7 +64,30 @@ impl<'a> JsonGen<'a> {
         files
     }
 
-    fn generate_file(&self, file_id: FileId, def_ids: &[DefId]) -> Option<File> {
+    pub fn generate_def(&self, root: DefId) -> String {
+        let mut definitions = BTreeMap::new();
+
+        for &def_id in &self.hir.order {
+            self.emit_def(def_id, &mut definitions);
+        }
+
+        let mut top = BTreeMap::new();
+        top.insert(
+            "root_type".to_string(),
+            Value::String(self.hir.context.qualified_name(root)),
+        );
+        top.insert("definitions".to_string(), Value::Object(definitions));
+
+        json::to_string(&Value::Object(top), false)
+            .expect("serializing an in-memory json value cannot fail")
+    }
+
+    fn generate_file(
+        &self,
+        source_map: &SourceMap,
+        file_id: FileId,
+        def_ids: &[DefId],
+    ) -> Option<File> {
         let mut obj = BTreeMap::new();
 
         for &def_id in def_ids {
@@ -77,7 +99,7 @@ impl<'a> JsonGen<'a> {
         }
 
         let source = json::to_string(&Value::Object(obj), true).ok()?;
-        let file_path = self.source_map.name(file_id);
+        let file_path = source_map.name(file_id);
         let file_name = file_path.file_name()?.to_str()?.replace(".idl", ".json");
 
         Some(File::Generated {

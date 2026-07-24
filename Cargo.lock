@@ -397,6 +397,7 @@ version = "0.5.9"
 dependencies = [
  "ic-emit",
  "ic-hir",
+ "ic-idl",
  "ic-vfs",
  "intercom-cts",
 ]

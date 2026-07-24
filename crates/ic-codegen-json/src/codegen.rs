@@ -183,8 +183,16 @@ impl<'a> JsonGen<'a> {
     fn emit_union_case(&self, variant: &Variant) -> Value {
         let mut case_obj = BTreeMap::new();
 
-        if variant.labels.is_empty() && variant.is_default {
+        if variant.is_default && variant.labels.is_empty() {
             case_obj.insert("case".to_string(), Value::String("default".to_string()));
+        } else if variant.is_default {
+            let mut labels: Vec<Value> = variant
+                .labels
+                .iter()
+                .map(|l| self.format_numeric(&l.value))
+                .collect();
+            labels.push(Value::String("default".to_string()));
+            case_obj.insert("case".to_string(), Value::Array(labels));
         } else if variant.labels.len() == 1 {
             case_obj.insert(
                 "case".to_string(),

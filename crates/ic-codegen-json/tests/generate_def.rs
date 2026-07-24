@@ -167,3 +167,86 @@ fn base_type_is_a_type_name_string() {
         Some(&Value::String("Base".to_string()))
     );
 }
+
+#[test]
+fn union_default_case_is_preserved() {
+    let graph = compile(
+        r"
+        union U switch (long) {
+            case 1: long a;
+            case 2: default: long b;
+            case 3: long c;
+        };
+        ",
+    );
+
+    let root = graph
+        .context
+        .definitions
+        .iter()
+        .find_map(|(id, _)| (graph.context.qualified_name(id) == "U").then_some(id))
+        .expect("U not found");
+
+    let defs = definitions_of(&generate_def(&graph, root));
+
+    let Some(Value::Object(u)) = defs.get("U") else {
+        panic!("U definition missing");
+    };
+    let Some(Value::Array(cases)) = u.get("cases") else {
+        panic!("cases missing");
+    };
+
+    let case_of = |name: &str| {
+        cases
+            .iter()
+            .find_map(|c| {
+                let Value::Object(obj) = c else { return None };
+                (obj.get("name") == Some(&Value::String(name.to_string())))
+                    .then(|| obj.get("case").cloned())
+                    .flatten()
+            })
+            .unwrap_or_else(|| panic!("case {name} not found"))
+    };
+
+    let json_value = |s: &str| -> Value { intercom_cts::json::from_str(s).expect("valid json") };
+
+    assert_eq!(case_of("a"), json_value("1"));
+    assert_eq!(case_of("b"), json_value(r#"[2, "default"]"#));
+    assert_eq!(case_of("c"), json_value("3"));
+}
+
+#[test]
+fn union_plain_default_is_a_string() {
+    let graph = compile(
+        r"
+        union U switch (long) {
+            case 1: long a;
+            default: long b;
+        };
+        ",
+    );
+
+    let root = graph
+        .context
+        .definitions
+        .iter()
+        .find_map(|(id, _)| (graph.context.qualified_name(id) == "U").then_some(id))
+        .expect("U not found");
+
+    let defs = definitions_of(&generate_def(&graph, root));
+
+    let Some(Value::Object(u)) = defs.get("U") else {
+        panic!("U definition missing");
+    };
+    let Some(Value::Array(cases)) = u.get("cases") else {
+        panic!("cases missing");
+    };
+
+    let default_case = cases.iter().find_map(|c| {
+        let Value::Object(obj) = c else { return None };
+        (obj.get("name") == Some(&Value::String("b".to_string())))
+            .then(|| obj.get("case").cloned())?
+    });
+
+    assert_eq!(default_case, Some(Value::String("default".to_string())));
+}

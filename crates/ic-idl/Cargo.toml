@@ -68,7 +68,6 @@ ic-codegen-json-schema = { path = "../ic-codegen-json-schema" }
 ic-codegen-protobuf = { path = "../ic-codegen-protobuf" }
 ic-codegen-python = { path = "../ic-codegen-python" }
 ic-codegen-rust = { path = "../ic-codegen-rust" }
-ic-codegen-typeobj = { path = "../ic-codegen-typeobj" }
 ic-codegen-typescript = { path = "../ic-codegen-typescript" }
 ic-codegen-xml = { path = "../ic-codegen-xml" }
 

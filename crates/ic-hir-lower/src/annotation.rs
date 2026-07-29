@@ -28,7 +28,7 @@
 use ic_hir::hir::{Ann, AnnArg, AnnParam, DefId, DefKind, Ident};
 use ic_hir::scope::ScopeId;
 use ic_syntax::util::{path_name, path_span};
-use ic_syntax::{AnnotationAppl, AnnotationArg};
+use ic_syntax::{Annotation, AnnotationArg};
 
 use crate::LoweringContext;
 use crate::eval::ConstEvaluator;
@@ -50,7 +50,7 @@ fn evaluator_for_scope(
 /// Convert AST annotations to HIR annotations.
 pub fn convert_annotations(
     ctx: &mut LoweringContext,
-    ast_annotations: &[AnnotationAppl],
+    ast_annotations: &[Annotation],
     scope: ScopeId,
 ) -> Vec<Ann> {
     ast_annotations
@@ -60,16 +60,16 @@ pub fn convert_annotations(
 }
 
 /// Convert a single AST annotation to HIR annotation.
-fn convert_annotation(ctx: &mut LoweringContext, ann_appl: &AnnotationAppl, scope: ScopeId) -> Ann {
-    let start = if ann_appl.ident.leading_colons.is_some() {
+fn convert_annotation(ctx: &mut LoweringContext, ann_appl: &Annotation, scope: ScopeId) -> Ann {
+    let start = if ann_appl.path.leading_colons.is_some() {
         ctx.context.root_scope()
     } else {
         scope
     };
 
     // Try to resolve the annotation path
-    let def_id = crate::resolve::resolve_annotation(&ctx.context, start, &ann_appl.ident);
-    let name = path_name(&ann_appl.ident);
+    let def_id = crate::resolve::resolve_annotation(&ctx.context, start, &ann_appl.path);
+    let name = path_name(&ann_appl.path);
 
     // If we found something, verify it's an annotation
     let def_id = if let Some(id) = def_id {
@@ -78,7 +78,7 @@ fn convert_annotation(ctx: &mut LoweringContext, ann_appl: &AnnotationAppl, scop
             Some(id)
         } else {
             ctx.diagnostics.error(
-                format!("`{}` is not an annotation", path_name(&ann_appl.ident)),
+                format!("`{}` is not an annotation", path_name(&ann_appl.path)),
                 ic_diagnostic::Label::new(ann_appl.span)
                     .message("expected an annotation definition"),
             );
@@ -89,8 +89,8 @@ fn convert_annotation(ctx: &mut LoweringContext, ann_appl: &AnnotationAppl, scop
     };
 
     // Convert annotation arguments
-    let span = path_span(&ann_appl.ident);
-    let args = convert_annotation_args(ctx, &ann_appl.args, def_id, scope, span);
+    let span = path_span(&ann_appl.path);
+    let args = convert_annotation_args(ctx, &ann_appl.arguments, def_id, scope, span);
 
     Ann {
         ident: Ident { name, span },
@@ -111,7 +111,7 @@ fn convert_annotation_args(
     let ann_params = get_annotation_params(ctx, def_id);
 
     // Process arguments based on whether we have named or positional args
-    let has_named_args = ast_args.iter().any(|arg| arg.ident.is_some());
+    let has_named_args = ast_args.iter().any(|arg| arg.name.is_some());
 
     if has_named_args {
         process_named_arguments(ctx, ast_args, ann_params.as_ref(), def_id, scope, ann_span)
@@ -175,7 +175,7 @@ fn collect_named_arguments<'a>(
 ) -> std::collections::HashMap<String, &'a AnnotationArg> {
     let mut named_args = std::collections::HashMap::new();
     for arg in ast_args {
-        if let Some(ref name) = arg.ident {
+        if let Some(ref name) = arg.name {
             named_args.insert(name.name.clone(), arg);
         } else {
             ctx.diagnostics.error(
@@ -266,7 +266,7 @@ fn process_unvalidated_named_arguments(
         let mut evaluator = evaluator_for_scope(ctx, scope, def_id);
 
         if let Some(value) = evaluator.eval_annotation_arg(&arg.value) {
-            let ident = arg.ident.clone().unwrap_or_else(|| Ident {
+            let ident = arg.name.clone().unwrap_or_else(|| Ident {
                 name: String::new(),
                 span: arg.span,
             });

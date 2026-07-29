@@ -92,7 +92,7 @@ pub use error::{Error, Expected, Reason};
 use ic_lexer::cursor::Cursor;
 use ic_lexer::stream::Stream;
 use ic_lexer::token::{Kind, Token};
-use ic_syntax::{AnnotationAppl, Item};
+use ic_syntax::{Annotation, Item};
 use ic_vfs::FileId;
 pub use ic_vfs::SourceMap;
 use parser::Parser;
@@ -103,7 +103,7 @@ use tracing::debug;
 pub struct ParseResult {
     pub tree: Vec<Item>,
     pub errors: Vec<Error>,
-    pub orphaned_annotations: Vec<AnnotationAppl>,
+    pub orphaned_annotations: Vec<Annotation>,
 }
 
 /// Parses source code from a string.

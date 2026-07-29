@@ -56,26 +56,26 @@ impl EmptyTypes<'_> {
 
 impl<'a> Visitor<'a> for EmptyTypes<'a> {
     fn visit_enum(&mut self, def: &'a ic_syntax::EnumDef) {
-        if def.fields.is_empty() {
-            self.diagnose(def.ident.span, def, "enumerator");
+        if def.enumerators.is_empty() {
+            self.diagnose(def.name.span, def, "enumerator");
         }
     }
 
     fn visit_union(&mut self, def: &'a ic_syntax::UnionDef) {
-        if def.fields.is_empty() {
-            self.diagnose(def.ident.span, def, "variant");
+        if def.cases.is_empty() {
+            self.diagnose(def.name.span, def, "variant");
         }
     }
 
     fn visit_bitmask(&mut self, def: &'a ic_syntax::BitmaskDef) {
         if def.bits.is_empty() {
-            self.diagnose(def.ident.span, def, "flag");
+            self.diagnose(def.name.span, def, "flag");
         }
     }
 
     fn visit_bitset(&mut self, def: &'a ic_syntax::BitsetDef) {
         if def.fields.is_empty() {
-            self.diagnose(def.ident.span, def, "bitfield");
+            self.diagnose(def.name.span, def, "bitfield");
         }
     }
 }

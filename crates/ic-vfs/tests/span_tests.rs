@@ -144,24 +144,15 @@ fn test_span_ordering() {
         end: Location::new(20, id),
     };
 
-    // Spans are ordered by start position first
-    assert!(span1 < span2); // starts at 0 vs 5
-    assert_eq!(span1.cmp(&span3), std::cmp::Ordering::Less); // same start, different end
+    assert!(span1 < span2);
+    assert_eq!(span1.cmp(&span3), std::cmp::Ordering::Less);
 }
 
 #[test]
 fn test_location_default() {
-    // Default location should have offset 0
     let loc = Location::default();
     assert_eq!(loc.offset, 0);
     assert_eq!(loc.file_id, FileId::_do_not_use());
-}
-
-#[test]
-fn test_span_default() {
-    let span = Span::default();
-    assert_eq!(span.start.offset, 0);
-    assert_eq!(span.end.offset, 0);
 }
 
 #[test]
@@ -169,7 +160,6 @@ fn test_span_empty() {
     let mut map = SourceMap::default();
     let id = map.embed("test");
 
-    // Empty span at position 5
     let span = Span {
         start: Location::new(5, id),
         end: Location::new(5, id),

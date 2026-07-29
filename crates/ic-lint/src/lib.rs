@@ -120,7 +120,7 @@ use std::collections::HashMap;
 
 pub use ic_diagnostic::Level;
 use ic_diagnostic::{Color, Diag, Label};
-use ic_syntax::{AnnotationAppl, Item, Span};
+use ic_syntax::{Annotation, Item, Span};
 use ic_vfs::SourceMap;
 use tracing::{debug, debug_span, trace};
 
@@ -140,7 +140,7 @@ pub struct SyntaxInput<'a> {
     pub tree: &'a [Item],
 
     /// Annotations that weren't attached to any declaration
-    pub orphaned_annotations: &'a [AnnotationAppl],
+    pub orphaned_annotations: &'a [Annotation],
 
     /// Warnings from the preprocessor
     pub preproc_warnings: &'a [ic_preproc::Error],

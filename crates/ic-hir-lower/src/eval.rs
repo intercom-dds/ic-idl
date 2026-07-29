@@ -74,11 +74,11 @@ impl<'a> ConstEvaluator<'a> {
 
     /// Evaluate expression with target type.
     pub fn eval_for_type(&mut self, expr: &ic_syntax::Expr, ty: &Ty) -> Option<Numeric> {
-        if let ic_syntax::Expr::InitList(init) = expr {
-            return self.eval_init_list(init, ty, expr.span());
+        if let ic_syntax::ExprKind::InitList(init) = &expr.value {
+            return self.eval_init_list(init, ty, expr.span);
         }
-        if let ic_syntax::Expr::Path(path) = expr {
-            match self.try_const_path_assignment(path, ty, expr.span()) {
+        if let ic_syntax::ExprKind::Path(path) = &expr.value {
+            match self.try_const_path_assignment(path, ty, expr.span) {
                 ConstPathOutcome::Accepted(n) => return Some(*n),
                 ConstPathOutcome::Rejected => return None,
                 ConstPathOutcome::NotApplicable => {}
@@ -86,13 +86,13 @@ impl<'a> ConstEvaluator<'a> {
         } else if let Some(target_enum) = enum_def_id_for_type(&self.ctx.context, ty)
             && let Some((const_id, src_enum)) = self.find_foreign_enum_ref(expr, target_enum)
         {
-            self.emit_enum_mismatch(const_id, src_enum, target_enum, expr.span(), ty);
+            self.emit_enum_mismatch(const_id, src_enum, target_enum, expr.span, ty);
             return None;
         }
         check_precision_loss(expr, ty, &mut self.ctx.diagnostics);
         let v = self.eval_expr(expr)?;
-        let is_literal = matches!(expr, ic_syntax::Expr::Literal(_));
-        self.cast_value(v, ty, expr.span(), is_literal)
+        let is_literal = matches!(expr.value, ic_syntax::ExprKind::Literal(_));
+        self.cast_value(v, ty, expr.span, is_literal)
     }
 
     /// Walks an expression looking for a path that resolves to a constant
@@ -103,8 +103,8 @@ impl<'a> ConstEvaluator<'a> {
         expr: &ic_syntax::Expr,
         target_enum: DefId,
     ) -> Option<(DefId, DefId)> {
-        match expr {
-            ic_syntax::Expr::Path(path) => {
+        match &expr.value {
+            ic_syntax::ExprKind::Path(path) => {
                 let id = self.resolve_path(path).ok()?;
                 let DefKind::Const(c) = &self.ctx.context.definitions.get(id).kind else {
                     return None;
@@ -112,12 +112,12 @@ impl<'a> ConstEvaluator<'a> {
                 let src_enum = enum_def_id_for_type(&self.ctx.context, &c.ty)?;
                 (src_enum != target_enum).then_some((id, src_enum))
             }
-            ic_syntax::Expr::Unary(u) => self.find_foreign_enum_ref(&u.expr, target_enum),
-            ic_syntax::Expr::Binary(b) => self
+            ic_syntax::ExprKind::Unary(u) => self.find_foreign_enum_ref(&u.operand, target_enum),
+            ic_syntax::ExprKind::Binary(b) => self
                 .find_foreign_enum_ref(&b.lhs, target_enum)
                 .or_else(|| self.find_foreign_enum_ref(&b.rhs, target_enum)),
-            ic_syntax::Expr::Group(g) => self.find_foreign_enum_ref(&g.expr, target_enum),
-            ic_syntax::Expr::Literal(_) | ic_syntax::Expr::InitList(_) => None,
+            ic_syntax::ExprKind::Group(g) => self.find_foreign_enum_ref(g, target_enum),
+            ic_syntax::ExprKind::Literal(_) | ic_syntax::ExprKind::InitList(_) => None,
         }
     }
 
@@ -147,7 +147,7 @@ impl<'a> ConstEvaluator<'a> {
     /// Evaluate expression without target type.
     pub fn eval_numeric(&mut self, expr: &ic_syntax::Expr) -> Option<Numeric> {
         numeric_from_value(&self.eval_expr(expr)?)
-            .map_err(|e| self.emit_error(&e, expr.span()))
+            .map_err(|e| self.emit_error(&e, expr.span))
             .ok()
     }
 
@@ -159,7 +159,7 @@ impl<'a> ConstEvaluator<'a> {
             _ => {
                 self.ctx.diagnostics.error(
                     "bound must be a non-negative integer",
-                    Label::new(expr.span()).message("expected non-negative integer"),
+                    Label::new(expr.span).message("expected non-negative integer"),
                 );
                 None
             }
@@ -173,7 +173,7 @@ impl<'a> ConstEvaluator<'a> {
 
     /// Evaluate annotation argument (preserves const refs).
     pub fn eval_annotation_arg(&mut self, expr: &ic_syntax::Expr) -> Option<Numeric> {
-        if let ic_syntax::Expr::Path(path) = expr
+        if let ic_syntax::ExprKind::Path(path) = &expr.value
             && let Ok(id) = self.resolve_path(path)
             && matches!(self.ctx.context.definitions.get(id).kind, DefKind::Const(_))
         {
@@ -322,28 +322,28 @@ impl<'a> ConstEvaluator<'a> {
 
     fn eval_init_list(
         &mut self,
-        init: &ic_syntax::InitList,
+        init: &[ic_syntax::NamedExpr],
         ty: &Ty,
         span: ic_syntax::Span,
     ) -> Option<Numeric> {
         use super::initializers::InitializerEvaluator;
         let rt = self.ctx.context.resolve_ty(ty);
         match &rt.kind {
-            TyKind::Any => InitializerEvaluator::new(self).eval_sequence(init, ty),
+            TyKind::Any => InitializerEvaluator::new(self).eval_sequence(init, ty, span),
             TyKind::Sequence { ty: et, .. } => {
-                InitializerEvaluator::new(self).eval_sequence(init, et)
+                InitializerEvaluator::new(self).eval_sequence(init, et, span)
             }
             TyKind::Array { ty: et, len, .. } => {
-                InitializerEvaluator::new(self).eval_array(init, et, *len)
+                InitializerEvaluator::new(self).eval_array(init, et, *len, span)
             }
             TyKind::Map { key, elem, .. } => {
-                InitializerEvaluator::new(self).eval_map(init, key, elem)
+                InitializerEvaluator::new(self).eval_map(init, key, elem, span)
             }
             TyKind::Adt(id) => {
                 let def = self.ctx.context.definitions.get(*id);
                 match &def.kind {
                     DefKind::Struct(_) => {
-                        InitializerEvaluator::new(self).eval_struct(init, *id, ty)
+                        InitializerEvaluator::new(self).eval_struct(init, *id, ty, span)
                     }
                     DefKind::Decl(_) => {
                         self.ctx.diagnostics.error(
@@ -456,7 +456,7 @@ impl EvalContext<ExprLeaf, DefId, ic_syntax::Span> for HirEvalCtx<'_> {
         span: ic_syntax::Span,
     ) -> Result<Value, SpannedError<DefId, ic_syntax::Span>> {
         match leaf {
-            ExprLeaf::Literal(lit) => value_from_numeric(&literal_to_numeric(&lit.value))
+            ExprLeaf::Literal(lit) => value_from_numeric(&literal_to_numeric(lit))
                 .ok_or_else(|| (ArithError::Custom("unsupported literal".into()), span)),
             ExprLeaf::Path(path) => {
                 let id = self.resolve(path).map_err(|_| {
@@ -520,59 +520,61 @@ enum ExprLeaf {
 }
 
 fn convert_expr(expr: &ic_syntax::Expr) -> Result<Expr, ConvertError> {
-    match expr {
-        ic_syntax::Expr::Literal(lit) => Ok(Expr::Lit(ExprLeaf::Literal(lit.clone()), lit.span)),
-        ic_syntax::Expr::Path(path) => Ok(Expr::Lit(
+    match &expr.value {
+        ic_syntax::ExprKind::Literal(lit) => {
+            Ok(Expr::Lit(ExprLeaf::Literal(lit.clone()), expr.span))
+        }
+        ic_syntax::ExprKind::Path(path) => Ok(Expr::Lit(
             ExprLeaf::Path(path.clone()),
             ic_syntax::util::path_span(path),
         )),
-        ic_syntax::Expr::Unary(u) => {
+        ic_syntax::ExprKind::Unary(u) => {
             let op =
-                convert_unary_op(u.op.kind).ok_or(("unsupported unary operator", u.op.span))?;
+                convert_unary_op(u.op.value).ok_or(("unsupported unary operator", u.op.span))?;
             Ok(Expr::Unary(Box::new(ic_expr::Unary {
                 op,
-                expr: convert_expr(&u.expr)?,
+                expr: convert_expr(&u.operand)?,
             })))
         }
-        ic_syntax::Expr::Binary(b) => {
+        ic_syntax::ExprKind::Binary(b) => {
             let op =
-                convert_binary_op(b.op.kind).ok_or(("unsupported binary operator", b.op.span))?;
+                convert_binary_op(b.op.value).ok_or(("unsupported binary operator", b.op.span))?;
             Ok(Expr::Binary(Box::new(ic_expr::Binary {
                 lhs: convert_expr(&b.lhs)?,
                 op,
                 rhs: convert_expr(&b.rhs)?,
             })))
         }
-        ic_syntax::Expr::Group(g) => convert_expr(&g.expr),
-        ic_syntax::Expr::InitList(_) => Err((
+        ic_syntax::ExprKind::Group(g) => convert_expr(g),
+        ic_syntax::ExprKind::InitList(_) => Err((
             "initializer lists cannot be used in arithmetic expressions",
-            expr.span(),
+            expr.span,
         )),
     }
 }
 
-fn convert_unary_op(op: ic_syntax::OpKind) -> Option<ic_expr::Op> {
+fn convert_unary_op(op: ic_syntax::Op) -> Option<ic_expr::Op> {
     match op {
-        ic_syntax::OpKind::Add => Some(ic_expr::Op::Add),
-        ic_syntax::OpKind::Sub => Some(ic_expr::Op::Sub),
-        ic_syntax::OpKind::Not => Some(ic_expr::Op::BitNot),
+        ic_syntax::Op::Add => Some(ic_expr::Op::Add),
+        ic_syntax::Op::Sub => Some(ic_expr::Op::Sub),
+        ic_syntax::Op::Not => Some(ic_expr::Op::BitNot),
         _ => None,
     }
 }
 
-fn convert_binary_op(op: ic_syntax::OpKind) -> Option<ic_expr::Op> {
+fn convert_binary_op(op: ic_syntax::Op) -> Option<ic_expr::Op> {
     Some(match op {
-        ic_syntax::OpKind::Add => ic_expr::Op::Add,
-        ic_syntax::OpKind::Sub => ic_expr::Op::Sub,
-        ic_syntax::OpKind::Multiply => ic_expr::Op::Mul,
-        ic_syntax::OpKind::Divide => ic_expr::Op::Div,
-        ic_syntax::OpKind::Modulo => ic_expr::Op::Mod,
-        ic_syntax::OpKind::And => ic_expr::Op::BitAnd,
-        ic_syntax::OpKind::Or => ic_expr::Op::BitOr,
-        ic_syntax::OpKind::Xor => ic_expr::Op::BitXor,
-        ic_syntax::OpKind::Lshift => ic_expr::Op::LShift,
-        ic_syntax::OpKind::Rshift => ic_expr::Op::RShift,
-        ic_syntax::OpKind::Not => return None,
+        ic_syntax::Op::Add => ic_expr::Op::Add,
+        ic_syntax::Op::Sub => ic_expr::Op::Sub,
+        ic_syntax::Op::Multiply => ic_expr::Op::Mul,
+        ic_syntax::Op::Divide => ic_expr::Op::Div,
+        ic_syntax::Op::Modulo => ic_expr::Op::Mod,
+        ic_syntax::Op::And => ic_expr::Op::BitAnd,
+        ic_syntax::Op::Or => ic_expr::Op::BitOr,
+        ic_syntax::Op::Xor => ic_expr::Op::BitXor,
+        ic_syntax::Op::LShift => ic_expr::Op::LShift,
+        ic_syntax::Op::RShift => ic_expr::Op::RShift,
+        ic_syntax::Op::Not => return None,
     })
 }
 
@@ -766,8 +768,7 @@ fn check_precision_loss(
     ty: &Ty,
     diag: &mut ic_hir::diagnostics::Diagnostics,
 ) {
-    if let ic_syntax::Expr::Literal(lit) = expr
-        && let ic_syntax::LiteralValue::Float(f) = &lit.value
+    if let ic_syntax::ExprKind::Literal(ic_syntax::Literal::Float(f)) = &expr.value
         && let TyKind::Primitive(p) = &ty.kind
         && matches!(
             p,
@@ -790,7 +791,7 @@ fn check_precision_loss(
                     f,
                     t as i64
                 ),
-                Label::new(expr.span()).message("precision loss here"),
+                Label::new(expr.span).message("precision loss here"),
             ));
         }
     }

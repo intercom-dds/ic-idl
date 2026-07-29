@@ -87,9 +87,7 @@ pub trait Visitor<'a> {
         walk_valuetype(self, def, data);
     }
 
-    fn visit_decl(&mut self, _def: &'a Def, data: &'a Decl) {
-        walk_decl(self, data);
-    }
+    fn visit_decl(&mut self, _def: &'a Def, _data: &'a Decl) {}
 
     fn visit_ty(&mut self, ty: &'a Ty) {
         walk_ty(self, ty);
@@ -142,12 +140,10 @@ pub fn walk_def<'a, V>(visitor: &mut V, def: &'a Def)
 where
     V: Visitor<'a> + ?Sized,
 {
-    // First visit annotations on the definition itself
     for ann in &def.annotations {
         visitor.visit_annotation(ann);
     }
 
-    // Then visit the specific definition kind
     match &def.kind {
         DefKind::Annotation(v) => visitor.visit_annotation_def(def, v),
         DefKind::Module(v) => visitor.visit_module(def, v),
@@ -251,7 +247,6 @@ where
     V: Visitor<'a> + ?Sized,
 {
     for field in &data.fields {
-        // Visit the field's type and annotations directly
         visitor.visit_ty(&field.ty);
         for ann in &field.annotations {
             visitor.visit_annotation(ann);
@@ -309,13 +304,6 @@ where
     }
 }
 
-pub fn walk_decl<'a, V>(_visitor: &mut V, _data: &'a Decl)
-where
-    V: Visitor<'a> + ?Sized,
-{
-    // Forward declarations have no content to visit
-}
-
 pub fn walk_ty<'a, V>(visitor: &mut V, ty: &'a Ty)
 where
     V: Visitor<'a> + ?Sized,
@@ -331,9 +319,7 @@ where
         | TyKind::Any
         | TyKind::Fixed
         | TyKind::Null
-        | TyKind::Adt(_) => {
-            // No nested types to visit
-        }
+        | TyKind::Adt(_) => {}
     }
 }
 
@@ -368,9 +354,7 @@ where
             visitor.visit_numeric(discriminant);
             visitor.visit_numeric(value);
         }
-        _ => {
-            // Primitive numeric values have nothing to visit
-        }
+        _ => {}
     }
 }
 
@@ -428,7 +412,6 @@ pub fn walk_annotation<'a, V>(visitor: &mut V, ann: &'a Ann)
 where
     V: Visitor<'a> + ?Sized,
 {
-    // Ann no longer has a ty field
     for arg in &ann.args {
         visitor.visit_numeric(&arg.value);
     }

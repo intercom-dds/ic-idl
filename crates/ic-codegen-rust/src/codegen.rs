@@ -292,9 +292,9 @@ impl<'a> RustGen<'a> {
         // TODO: should be is_trivial(def)
         let is_trivial = matches!(param.ty.kind, TyKind::Primitive(_));
 
-        if !is_trivial || matches!(param.kind, ParamKind::Out | ParamKind::Inout) {
+        if !is_trivial || matches!(param.kind, ParamKind::Out | ParamKind::InOut) {
             w!(w, "&");
-            if matches!(param.kind, ParamKind::Out | ParamKind::Inout) {
+            if matches!(param.kind, ParamKind::Out | ParamKind::InOut) {
                 w!(w, "mut ");
             } else {
                 if let TyKind::String { .. } = param.ty.kind {

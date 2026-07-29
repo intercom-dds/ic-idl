@@ -39,10 +39,13 @@ fn interface_operation_annotations_preserved() {
     assert!(result.errors.is_empty(), "errors: {:?}", result.errors);
 
     match &result.tree[0] {
-        Item::InterfaceValue(def) => match &def.members[0] {
+        Item::Interface(def) => match &def.members[0] {
             InterfaceMember::Proto(proto) => {
-                assert_eq!(proto.annotations.len(), 1);
-                assert_eq!(proto.annotations[0].ident.segments[0].name, "deprecated");
+                assert_eq!(proto.meta.annotations.len(), 1);
+                assert_eq!(
+                    proto.meta.annotations[0].path.segments[0].name,
+                    "deprecated"
+                );
             }
             _ => panic!("expected prototype"),
         },
@@ -61,10 +64,10 @@ fn interface_operation_doc_comment_preserved() {
     assert!(result.errors.is_empty(), "errors: {:?}", result.errors);
 
     match &result.tree[0] {
-        Item::InterfaceValue(def) => match &def.members[0] {
+        Item::Interface(def) => match &def.members[0] {
             InterfaceMember::Proto(proto) => {
                 assert!(
-                    !proto.annotations.is_empty(),
+                    !proto.meta.annotations.is_empty(),
                     "expected doc comment to be captured as annotation"
                 );
             }
@@ -85,10 +88,10 @@ fn interface_attribute_annotations_preserved() {
     assert!(result.errors.is_empty(), "errors: {:?}", result.errors);
 
     match &result.tree[0] {
-        Item::InterfaceValue(def) => match &def.members[0] {
-            InterfaceMember::Attr(attr) => {
-                assert_eq!(attr.annotations.len(), 1);
-                assert_eq!(attr.annotations[0].ident.segments[0].name, "key");
+        Item::Interface(def) => match &def.members[0] {
+            InterfaceMember::Attribute(attr) => {
+                assert_eq!(attr.meta.annotations.len(), 1);
+                assert_eq!(attr.meta.annotations[0].path.segments[0].name, "key");
             }
             _ => panic!("expected attribute"),
         },
@@ -107,10 +110,10 @@ fn interface_readonly_attribute_annotations_preserved() {
     assert!(result.errors.is_empty(), "errors: {:?}", result.errors);
 
     match &result.tree[0] {
-        Item::InterfaceValue(def) => match &def.members[0] {
-            InterfaceMember::Attr(attr) => {
-                assert_eq!(attr.annotations.len(), 1);
-                assert_eq!(attr.annotations[0].ident.segments[0].name, "optional");
+        Item::Interface(def) => match &def.members[0] {
+            InterfaceMember::Attribute(attr) => {
+                assert_eq!(attr.meta.annotations.len(), 1);
+                assert_eq!(attr.meta.annotations[0].path.segments[0].name, "optional");
             }
             _ => panic!("expected attribute"),
         },
@@ -129,11 +132,11 @@ fn interface_oneway_operation_annotations_preserved() {
     assert!(result.errors.is_empty(), "errors: {:?}", result.errors);
 
     match &result.tree[0] {
-        Item::InterfaceValue(def) => match &def.members[0] {
+        Item::Interface(def) => match &def.members[0] {
             InterfaceMember::Proto(proto) => {
                 assert!(proto.oneway.is_some());
-                assert_eq!(proto.annotations.len(), 1);
-                assert_eq!(proto.annotations[0].ident.segments[0].name, "custom");
+                assert_eq!(proto.meta.annotations.len(), 1);
+                assert_eq!(proto.meta.annotations[0].path.segments[0].name, "custom");
             }
             _ => panic!("expected prototype"),
         },
@@ -152,10 +155,10 @@ fn interface_nested_struct_annotations_preserved() {
     assert!(result.errors.is_empty(), "errors: {:?}", result.errors);
 
     match &result.tree[0] {
-        Item::InterfaceValue(def) => match &def.members[0] {
-            InterfaceMember::Item(Item::StructValue(s)) => {
-                assert_eq!(s.annotations.len(), 1);
-                assert_eq!(s.annotations[0].ident.segments[0].name, "nested");
+        Item::Interface(def) => match &def.members[0] {
+            InterfaceMember::Item(Item::Struct(s)) => {
+                assert_eq!(s.meta.annotations.len(), 1);
+                assert_eq!(s.meta.annotations[0].path.segments[0].name, "nested");
             }
             _ => panic!("expected nested struct"),
         },
@@ -169,10 +172,10 @@ fn native_declaration_trailing_comment() {
     assert!(result.errors.is_empty(), "errors: {:?}", result.errors);
 
     match &result.tree[0] {
-        Item::DeclValue(decl) => {
+        Item::Decl(decl) => {
             assert_eq!(decl.kind, DeclKind::Native);
             assert!(
-                !decl.annotations.is_empty(),
+                !decl.meta.annotations.is_empty(),
                 "expected trailing comment to be captured"
             );
         }
@@ -186,10 +189,10 @@ fn interface_forward_declaration_trailing_comment() {
     assert!(result.errors.is_empty(), "errors: {:?}", result.errors);
 
     match &result.tree[0] {
-        Item::DeclValue(decl) => {
+        Item::Decl(decl) => {
             assert_eq!(decl.kind, DeclKind::Interface);
             assert!(
-                !decl.annotations.is_empty(),
+                !decl.meta.annotations.is_empty(),
                 "expected trailing comment to be captured"
             );
         }
@@ -203,10 +206,10 @@ fn valuetype_forward_declaration_trailing_comment() {
     assert!(result.errors.is_empty(), "errors: {:?}", result.errors);
 
     match &result.tree[0] {
-        Item::DeclValue(decl) => {
+        Item::Decl(decl) => {
             assert_eq!(decl.kind, DeclKind::Valuetype);
             assert!(
-                !decl.annotations.is_empty(),
+                !decl.meta.annotations.is_empty(),
                 "expected trailing comment to be captured"
             );
         }
@@ -270,19 +273,23 @@ fn annotation_on_sequence_member_not_element() {
     let result = from_str("struct Foo { @optional sequence<string> value; };");
     assert!(result.errors.is_empty(), "errors: {:?}", result.errors);
 
-    let Item::StructValue(s) = &result.tree[0] else {
+    let Item::Struct(s) = &result.tree[0] else {
         panic!("expected struct");
     };
-    let field = &s.members[0];
+    let field = &s.fields[0];
 
-    assert_eq!(field.annotations.len(), 1, "annotation should be on field");
-    assert_eq!(field.annotations[0].ident.segments[0].name, "optional");
+    assert_eq!(
+        field.meta.annotations.len(),
+        1,
+        "annotation should be on field"
+    );
+    assert_eq!(field.meta.annotations[0].path.segments[0].name, "optional");
 
     let Type::Sequence(seq) = &field.ty else {
         panic!("expected sequence type");
     };
     assert!(
-        seq.annotations.is_empty(),
+        seq.element_annotations.is_empty(),
         "sequence element should have no annotations"
     );
 }
@@ -292,13 +299,13 @@ fn annotation_inside_sequence_on_element() {
     let result = from_str("struct Foo { sequence<@key string> value; };");
     assert!(result.errors.is_empty(), "errors: {:?}", result.errors);
 
-    let Item::StructValue(s) = &result.tree[0] else {
+    let Item::Struct(s) = &result.tree[0] else {
         panic!("expected struct");
     };
-    let field = &s.members[0];
+    let field = &s.fields[0];
 
     assert!(
-        field.annotations.is_empty(),
+        field.meta.annotations.is_empty(),
         "field should have no annotations"
     );
 
@@ -306,11 +313,11 @@ fn annotation_inside_sequence_on_element() {
         panic!("expected sequence type");
     };
     assert_eq!(
-        seq.annotations.len(),
+        seq.element_annotations.len(),
         1,
         "annotation should be on sequence element"
     );
-    assert_eq!(seq.annotations[0].ident.segments[0].name, "key");
+    assert_eq!(seq.element_annotations[0].path.segments[0].name, "key");
 }
 
 #[test]
@@ -318,13 +325,17 @@ fn annotation_after_type_on_member() {
     let result = from_str("struct Foo { sequence<string> @optional value; };");
     assert!(result.errors.is_empty(), "errors: {:?}", result.errors);
 
-    let Item::StructValue(s) = &result.tree[0] else {
+    let Item::Struct(s) = &result.tree[0] else {
         panic!("expected struct");
     };
-    let field = &s.members[0];
+    let field = &s.fields[0];
 
-    assert_eq!(field.annotations.len(), 1, "annotation should be on field");
-    assert_eq!(field.annotations[0].ident.segments[0].name, "optional");
+    assert_eq!(
+        field.meta.annotations.len(),
+        1,
+        "annotation should be on field"
+    );
+    assert_eq!(field.meta.annotations[0].path.segments[0].name, "optional");
 }
 
 #[test]
@@ -332,13 +343,17 @@ fn annotation_after_declarator_on_member() {
     let result = from_str("struct Foo { sequence<string> value @optional; };");
     assert!(result.errors.is_empty(), "errors: {:?}", result.errors);
 
-    let Item::StructValue(s) = &result.tree[0] else {
+    let Item::Struct(s) = &result.tree[0] else {
         panic!("expected struct");
     };
-    let field = &s.members[0];
+    let field = &s.fields[0];
 
-    assert_eq!(field.annotations.len(), 1, "annotation should be on field");
-    assert_eq!(field.annotations[0].ident.segments[0].name, "optional");
+    assert_eq!(
+        field.meta.annotations.len(),
+        1,
+        "annotation should be on field"
+    );
+    assert_eq!(field.meta.annotations[0].path.segments[0].name, "optional");
 }
 
 #[test]
@@ -347,11 +362,11 @@ fn annotation_between_long_and_double() {
     let result = from_str("const long @optional double my82 = 1;");
     assert!(result.errors.is_empty(), "errors: {:?}", result.errors);
 
-    let Item::ConstValue(c) = &result.tree[0] else {
+    let Item::Const(c) = &result.tree[0] else {
         panic!("expected const");
     };
     // The type should be "long double", not "long"
-    let Type::Path(p) = &c.ty else {
+    let Type::Named(p) = &c.ty else {
         panic!("expected path type");
     };
     assert_eq!(p.segments[0].name, "long double");
@@ -363,10 +378,10 @@ fn annotation_between_long_and_long() {
     let result = from_str("const long @foo long x = 1;");
     assert!(result.errors.is_empty(), "errors: {:?}", result.errors);
 
-    let Item::ConstValue(c) = &result.tree[0] else {
+    let Item::Const(c) = &result.tree[0] else {
         panic!("expected const");
     };
-    let Type::Path(p) = &c.ty else {
+    let Type::Named(p) = &c.ty else {
         panic!("expected path type");
     };
     assert_eq!(p.segments[0].name, "int64"); // long long is represented as int64
@@ -378,10 +393,10 @@ fn annotation_between_unsigned_and_long() {
     let result = from_str("const unsigned @foo long x = 1;");
     assert!(result.errors.is_empty(), "errors: {:?}", result.errors);
 
-    let Item::ConstValue(c) = &result.tree[0] else {
+    let Item::Const(c) = &result.tree[0] else {
         panic!("expected const");
     };
-    let Type::Path(p) = &c.ty else {
+    let Type::Named(p) = &c.ty else {
         panic!("expected path type");
     };
     assert_eq!(p.segments[0].name, "uint32");
@@ -393,10 +408,10 @@ fn annotation_between_unsigned_long_and_long() {
     let result = from_str("const unsigned long @foo long x = 1;");
     assert!(result.errors.is_empty(), "errors: {:?}", result.errors);
 
-    let Item::ConstValue(c) = &result.tree[0] else {
+    let Item::Const(c) = &result.tree[0] else {
         panic!("expected const");
     };
-    let Type::Path(p) = &c.ty else {
+    let Type::Named(p) = &c.ty else {
         panic!("expected path type");
     };
     assert_eq!(p.segments[0].name, "uint64"); // unsigned long long
@@ -409,7 +424,7 @@ fn annotation_before_closing_template_bracket_with_rshift() {
     let result = from_str("typedef wstring<1 >> 2 @foo> MyString;");
     assert!(result.errors.is_empty(), "errors: {:?}", result.errors);
 
-    let Item::AliasValue(a) = &result.tree[0] else {
+    let Item::Alias(a) = &result.tree[0] else {
         panic!("expected typedef");
     };
     let Type::String(s) = &a.ty else {
@@ -432,7 +447,7 @@ fn annotation_before_rhs_in_rshift_expression() {
     let result = from_str("typedef wstring<1 >> @foo 2> MyString;");
     assert!(result.errors.is_empty(), "errors: {:?}", result.errors);
 
-    let Item::AliasValue(a) = &result.tree[0] else {
+    let Item::Alias(a) = &result.tree[0] else {
         panic!("expected typedef");
     };
     let Type::String(s) = &a.ty else {
@@ -469,13 +484,13 @@ fn string_literal_escape_sequences() {
     let result = from_str(r#"const string x = "hello\nworld";"#);
     assert!(result.errors.is_empty(), "errors: {:?}", result.errors);
 
-    let Item::ConstValue(c) = &result.tree[0] else {
+    let Item::Const(c) = &result.tree[0] else {
         panic!("expected const");
     };
     // The value should contain an actual newline, not backslash-n
-    match &c.value {
-        ic_syntax::Expr::Literal(lit) => match &lit.value {
-            ic_syntax::LiteralValue::String(s) => {
+    match &c.value.value {
+        ic_syntax::ExprKind::Literal(lit) => match &lit {
+            ic_syntax::Literal::String(s) => {
                 assert_eq!(s, "hello\nworld", "expected unescaped newline");
             }
             _ => panic!("expected string literal"),
@@ -489,12 +504,12 @@ fn string_literal_hex_escape() {
     let result = from_str(r#"const string x = "\x41\x42\x43";"#);
     assert!(result.errors.is_empty(), "errors: {:?}", result.errors);
 
-    let Item::ConstValue(c) = &result.tree[0] else {
+    let Item::Const(c) = &result.tree[0] else {
         panic!("expected const");
     };
-    match &c.value {
-        ic_syntax::Expr::Literal(lit) => match &lit.value {
-            ic_syntax::LiteralValue::String(s) => {
+    match &c.value.value {
+        ic_syntax::ExprKind::Literal(lit) => match &lit {
+            ic_syntax::Literal::String(s) => {
                 assert_eq!(s, "ABC", "expected hex-escaped ABC");
             }
             _ => panic!("expected string literal"),
@@ -518,12 +533,12 @@ fn string_literal_escaped_quotes() {
     let result = from_str(r#"const string x = "say \"hello\"";"#);
     assert!(result.errors.is_empty(), "errors: {:?}", result.errors);
 
-    let Item::ConstValue(c) = &result.tree[0] else {
+    let Item::Const(c) = &result.tree[0] else {
         panic!("expected const");
     };
-    match &c.value {
-        ic_syntax::Expr::Literal(lit) => match &lit.value {
-            ic_syntax::LiteralValue::String(s) => {
+    match &c.value.value {
+        ic_syntax::ExprKind::Literal(lit) => match &lit {
+            ic_syntax::Literal::String(s) => {
                 assert_eq!(s, r#"say "hello""#);
             }
             _ => panic!("expected string literal"),

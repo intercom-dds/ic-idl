@@ -82,7 +82,7 @@ fn emit_param_kind(kind: ParamKind) -> &'static str {
     match kind {
         ParamKind::In => "in",
         ParamKind::Out => "out",
-        ParamKind::Inout => "inout",
+        ParamKind::InOut => "inout",
     }
 }
 

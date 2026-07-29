@@ -632,7 +632,7 @@ impl<'a> PyGen<'a> {
         let params: Vec<_> = proto
             .params
             .iter()
-            .filter(|p| p.kind == ParamKind::In || p.kind == ParamKind::Inout)
+            .filter(|p| p.kind == ParamKind::In || p.kind == ParamKind::InOut)
             .map(|p| format!("{}: {}", p.ident.name, self.py_type(w, &p.ty)))
             .collect();
 

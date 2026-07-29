@@ -27,7 +27,7 @@
 
 use ic_diagnostic::{Color, Diag, Label};
 use ic_syntax::visit::{Visitor, walk_tree};
-use ic_syntax::{Item, ParamKind, Prototype, util};
+use ic_syntax::{Item, ParamKind, Proto, util};
 
 use crate::{Category, Lint, LintCtx};
 
@@ -40,11 +40,11 @@ pub struct NonVoidOneway<'a> {
 }
 
 impl NonVoidOneway<'_> {
-    fn chk_return_ty(&mut self, proto: &Prototype) {
-        if util::type_name(&proto.ret) != "void" {
+    fn chk_return_ty(&mut self, proto: &Proto) {
+        if util::type_name(&proto.return_type) != "void" {
             let diag = Diag::error("oneway operations must have a `void` return type")
                 .label(
-                    Label::new(util::ty_span(&proto.ret))
+                    Label::new(util::ty_span(&proto.return_type))
                         .message("non-void return type")
                         .color(Color::Blue),
                 )
@@ -59,7 +59,7 @@ impl NonVoidOneway<'_> {
         }
     }
 
-    fn chk_exception(&mut self, proto: &Prototype) {
+    fn chk_exception(&mut self, proto: &Proto) {
         if let Some(raises) = proto.raises.first() {
             let diag = Diag::error("oneway operations cannot have exception specifiers")
                 .label(
@@ -77,12 +77,12 @@ impl NonVoidOneway<'_> {
         }
     }
 
-    fn chk_out_params(&mut self, proto: &Prototype) {
-        for param in &proto.params {
-            if let Some(ParamKind::Out | ParamKind::Inout) = param.kind {
+    fn chk_out_params(&mut self, proto: &Proto) {
+        for param in &proto.parameters {
+            if let Some(ParamKind::Out | ParamKind::InOut) = param.kind {
                 let diag = Diag::error("oneway operations cannot have `out` parameters")
                     .label(
-                        Label::new(util::decl_span(&param.decl))
+                        Label::new(util::decl_span(&param.declarator))
                             .message("`out` parameter")
                             .color(Color::Blue),
                     )
@@ -99,7 +99,7 @@ impl NonVoidOneway<'_> {
 }
 
 impl<'a> Visitor<'a> for NonVoidOneway<'a> {
-    fn visit_prototype(&mut self, def: &'a ic_syntax::Prototype) {
+    fn visit_prototype(&mut self, def: &'a Proto) {
         if let Some(_oneway) = def.oneway {
             self.chk_return_ty(def);
             self.chk_exception(def);

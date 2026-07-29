@@ -27,8 +27,7 @@
 
 use ic_vfs::Location;
 
-use crate::ast::Item;
-use crate::{Declarator, Expr, OpKind, Path, Span, Type};
+use crate::{Declarator, Item, Op, Path, Span, Type};
 
 #[must_use]
 pub fn path_name(path: &Path) -> String {
@@ -49,19 +48,19 @@ pub fn path_name(path: &Path) -> String {
 #[must_use]
 pub fn type_name(path: &Type) -> String {
     match path {
-        Type::String(..) => "string".to_string(),
-        Type::Map(..) => "map".to_string(),
-        Type::Fixed(..) => "fixed".to_string(),
-        Type::Sequence(seq) => format!("sequence<{}>", type_name(seq.ty.as_ref())),
-        Type::Path(ty) => path_name(ty),
+        Type::String(_) => "string".to_string(),
+        Type::Map(_) => "map".to_string(),
+        Type::Fixed(_) => "fixed".to_string(),
+        Type::Sequence(seq) => format!("sequence<{}>", type_name(&seq.element)),
+        Type::Named(ty) => path_name(ty),
     }
 }
 
 #[must_use]
 pub fn element_type(path: &Type) -> String {
     match path {
-        Type::Map(v) => element_type(v.value.as_ref()),
-        Type::Sequence(seq) => element_type(seq.ty.as_ref()),
+        Type::Map(v) => element_type(&v.value),
+        Type::Sequence(seq) => element_type(&seq.element),
         _ => type_name(path),
     }
 }
@@ -86,48 +85,21 @@ pub fn path_span(path: &Path) -> Span {
 }
 
 #[must_use]
-pub fn expr_span(expr: &Expr) -> Span {
-    match expr {
-        Expr::Literal(v) => v.span,
-        Expr::Path(v) => path_span(v),
-        Expr::Unary(v) => {
-            let start = v.op.span.start;
-            let end = expr_span(&v.expr).end;
-            Span { start, end }
-        }
-        Expr::Binary(v) => {
-            let start = expr_span(&v.lhs).start;
-            let end = expr_span(&v.rhs).end;
-            Span { start, end }
-        }
-        Expr::InitList(v) => v.span,
-        Expr::Group(v) => v.span,
-    }
-}
-
-#[must_use]
 pub fn ty_span(ty: &Type) -> Span {
     match ty {
         Type::Sequence(v) => v.span,
         Type::String(v) => v.span,
         Type::Map(v) => v.span,
         Type::Fixed(v) => v.span,
-        Type::Path(v) => path_span(v),
+        Type::Named(v) => path_span(v),
     }
 }
 
 #[must_use]
 pub fn decl_name(decl: &Declarator) -> &str {
     match decl {
-        Declarator::Simple(v) => &v.name,
-        Declarator::Array(v) => &v.ident.name,
-    }
-}
-
-impl Expr {
-    #[must_use]
-    pub fn span(&self) -> Span {
-        expr_span(self)
+        Declarator::Name(v) => &v.name,
+        Declarator::Array(v) => &v.name.name,
     }
 }
 
@@ -169,41 +141,42 @@ pub fn item_name<T: ItemTraits>(_: &T) -> &'static str {
 #[must_use]
 pub fn item_span(item: &Item) -> Span {
     match item {
-        Item::AnnotationValue(v) => v.span,
-        Item::ModuleValue(v) => v.span,
-        Item::StructValue(v) => v.span,
-        Item::UnionValue(v) => v.span,
-        Item::EnumValue(v) => v.span,
-        Item::ExceptionValue(v) => v.span,
-        Item::BitmaskValue(v) => v.span,
-        Item::BitsetValue(v) => v.span,
-        Item::ConstValue(v) => v.span,
-        Item::AliasValue(v) => v.span,
-        Item::InterfaceValue(v) => v.span,
-        Item::ValuetypeValue(v) => v.span,
-        Item::DeclValue(v) => v.span,
+        Item::Annotation(v) => v.meta.span,
+        Item::Module(v) => v.meta.span,
+        Item::Struct(v) => v.meta.span,
+        Item::Union(v) => v.meta.span,
+        Item::Enum(v) => v.meta.span,
+        Item::Exception(v) => v.meta.span,
+        Item::Bitmask(v) => v.meta.span,
+        Item::Bitset(v) => v.meta.span,
+        Item::Const(v) => v.meta.span,
+        Item::Alias(v) => v.meta.span,
+        Item::Interface(v) => v.meta.span,
+        Item::Valuetype(v) => v.meta.span,
+        Item::Decl(v) => v.meta.span,
     }
 }
 
 #[must_use]
 pub fn item_ident_span(item: &Item) -> Span {
     match item {
-        Item::AnnotationValue(v) => v.ident.span,
-        Item::ModuleValue(v) => v.ident.span,
-        Item::StructValue(v) => v.ident.span,
-        Item::UnionValue(v) => v.ident.span,
-        Item::EnumValue(v) => v.ident.span,
-        Item::ExceptionValue(v) => v.ident.span,
-        Item::BitmaskValue(v) => v.ident.span,
-        Item::BitsetValue(v) => v.ident.span,
-        Item::ConstValue(v) => decl_span(&v.decl),
-        Item::InterfaceValue(v) => v.ident.span,
-        Item::ValuetypeValue(v) => v.ident.span,
-        Item::DeclValue(v) => v.ident.span,
-        Item::AliasValue(v) => {
-            if let (Some(first), Some(last)) =
-                (v.decl.first().map(decl_span), v.decl.last().map(decl_span))
-            {
+        Item::Annotation(v) => v.name.span,
+        Item::Module(v) => v.name.span,
+        Item::Struct(v) => v.name.span,
+        Item::Union(v) => v.name.span,
+        Item::Enum(v) => v.name.span,
+        Item::Exception(v) => v.name.span,
+        Item::Bitmask(v) => v.name.span,
+        Item::Bitset(v) => v.name.span,
+        Item::Const(v) => decl_span(&v.declarator),
+        Item::Interface(v) => v.name.span,
+        Item::Valuetype(v) => v.name.span,
+        Item::Decl(v) => v.name.span,
+        Item::Alias(v) => {
+            if let (Some(first), Some(last)) = (
+                v.declarators.first().map(decl_span),
+                v.declarators.last().map(decl_span),
+            ) {
                 Span {
                     start: first.start,
                     end: last.end,
@@ -221,45 +194,45 @@ pub fn item_ident_span(item: &Item) -> Span {
 #[must_use]
 pub fn decl_span(decl: &Declarator) -> Span {
     match decl {
-        Declarator::Simple(v) => v.span,
-        Declarator::Array(v) => v.ident.span,
+        Declarator::Name(v) => v.span,
+        Declarator::Array(v) => v.name.span,
     }
 }
 
 #[must_use]
 pub fn item_variant_name(item: &Item) -> &'static str {
     match item {
-        Item::AnnotationValue(_) => "annotation",
-        Item::ModuleValue(_) => "module",
-        Item::StructValue(_) => "struct",
-        Item::UnionValue(_) => "union",
-        Item::EnumValue(_) => "enum",
-        Item::ExceptionValue(_) => "exception",
-        Item::BitmaskValue(_) => "bitmask",
-        Item::BitsetValue(_) => "bitset",
-        Item::ConstValue(_) => "const",
-        Item::AliasValue(_) => "alias",
-        Item::InterfaceValue(_) => "interface",
-        Item::ValuetypeValue(_) => "valuetype",
-        Item::DeclValue(_) => "forward declaration",
+        Item::Annotation(_) => "annotation",
+        Item::Module(_) => "module",
+        Item::Struct(_) => "struct",
+        Item::Union(_) => "union",
+        Item::Enum(_) => "enum",
+        Item::Exception(_) => "exception",
+        Item::Bitmask(_) => "bitmask",
+        Item::Bitset(_) => "bitset",
+        Item::Const(_) => "const",
+        Item::Alias(_) => "alias",
+        Item::Interface(_) => "interface",
+        Item::Valuetype(_) => "valuetype",
+        Item::Decl(_) => "forward declaration",
     }
 }
 
 /// Get a human-readable name for an operator
 #[must_use]
-pub fn op_name(op: OpKind) -> &'static str {
+pub fn op_name(op: Op) -> &'static str {
     match op {
-        OpKind::Add => "+",
-        OpKind::Sub => "-",
-        OpKind::Multiply => "*",
-        OpKind::Divide => "/",
-        OpKind::Modulo => "%",
-        OpKind::And => "&",
-        OpKind::Or => "|",
-        OpKind::Xor => "^",
-        OpKind::Lshift => "<<",
-        OpKind::Rshift => ">>",
-        OpKind::Not => "~",
+        Op::Add => "+",
+        Op::Sub => "-",
+        Op::Multiply => "*",
+        Op::Divide => "/",
+        Op::Modulo => "%",
+        Op::And => "&",
+        Op::Or => "|",
+        Op::Xor => "^",
+        Op::LShift => "<<",
+        Op::RShift => ">>",
+        Op::Not => "~",
     }
 }
 
@@ -267,18 +240,18 @@ pub fn op_name(op: OpKind) -> &'static str {
 #[must_use]
 pub fn item_ident_name(item: &Item) -> Option<&str> {
     match item {
-        Item::ModuleValue(v) => Some(&v.ident.name),
-        Item::StructValue(v) => Some(&v.ident.name),
-        Item::UnionValue(v) => Some(&v.ident.name),
-        Item::EnumValue(v) => Some(&v.ident.name),
-        Item::InterfaceValue(v) => Some(&v.ident.name),
-        Item::ValuetypeValue(v) => Some(&v.ident.name),
-        Item::ExceptionValue(v) => Some(&v.ident.name),
-        Item::BitmaskValue(v) => Some(&v.ident.name),
-        Item::BitsetValue(v) => Some(&v.ident.name),
-        Item::AnnotationValue(v) => Some(&v.ident.name),
-        Item::DeclValue(v) => Some(&v.ident.name),
-        Item::ConstValue(v) => Some(decl_name(&v.decl)),
-        Item::AliasValue(v) => v.decl.first().map(decl_name),
+        Item::Module(v) => Some(&v.name.name),
+        Item::Struct(v) => Some(&v.name.name),
+        Item::Union(v) => Some(&v.name.name),
+        Item::Enum(v) => Some(&v.name.name),
+        Item::Interface(v) => Some(&v.name.name),
+        Item::Valuetype(v) => Some(&v.name.name),
+        Item::Exception(v) => Some(&v.name.name),
+        Item::Bitmask(v) => Some(&v.name.name),
+        Item::Bitset(v) => Some(&v.name.name),
+        Item::Annotation(v) => Some(&v.name.name),
+        Item::Decl(v) => Some(&v.name.name),
+        Item::Const(v) => Some(decl_name(&v.declarator)),
+        Item::Alias(v) => v.declarators.first().map(decl_name),
     }
 }

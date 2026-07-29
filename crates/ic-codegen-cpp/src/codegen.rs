@@ -686,7 +686,7 @@ impl<'a> CppGen<'a> {
 
             let param_mode = match param.kind {
                 ParamKind::In => "",
-                ParamKind::Out | ParamKind::Inout => "&",
+                ParamKind::Out | ParamKind::InOut => "&",
             };
 
             w!(w, ty_str, param_mode, " a_", param_name);

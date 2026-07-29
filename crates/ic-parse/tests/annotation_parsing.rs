@@ -37,14 +37,14 @@ fn annotation_qualified_name_no_spaces() {
     let result = from_str("struct S { @foo::bar long x; };");
     assert!(result.errors.is_empty(), "errors: {:?}", result.errors);
 
-    let Item::StructValue(def) = &result.tree[0] else {
+    let Item::Struct(def) = &result.tree[0] else {
         panic!("expected struct")
     };
-    assert_eq!(def.members.len(), 1);
-    let ann = &def.members[0].annotations[0];
-    assert_eq!(ann.ident.segments.len(), 2);
-    assert_eq!(ann.ident.segments[0].name, "foo");
-    assert_eq!(ann.ident.segments[1].name, "bar");
+    assert_eq!(def.fields.len(), 1);
+    let ann = &def.fields[0].meta.annotations[0];
+    assert_eq!(ann.path.segments.len(), 2);
+    assert_eq!(ann.path.segments[0].name, "foo");
+    assert_eq!(ann.path.segments[1].name, "bar");
 }
 
 #[test]
@@ -53,14 +53,14 @@ fn annotation_qualified_name_space_after_colons() {
     let result = from_str("struct S { @foo:: bar long x; };");
     assert!(result.errors.is_empty(), "errors: {:?}", result.errors);
 
-    let Item::StructValue(def) = &result.tree[0] else {
+    let Item::Struct(def) = &result.tree[0] else {
         panic!("expected struct")
     };
-    assert_eq!(def.members.len(), 1);
-    let ann = &def.members[0].annotations[0];
-    assert_eq!(ann.ident.segments.len(), 2);
-    assert_eq!(ann.ident.segments[0].name, "foo");
-    assert_eq!(ann.ident.segments[1].name, "bar");
+    assert_eq!(def.fields.len(), 1);
+    let ann = &def.fields[0].meta.annotations[0];
+    assert_eq!(ann.path.segments.len(), 2);
+    assert_eq!(ann.path.segments[0].name, "foo");
+    assert_eq!(ann.path.segments[1].name, "bar");
 }
 
 #[test]
@@ -69,18 +69,18 @@ fn annotation_space_before_colons_breaks_name() {
     let result = from_str("struct S { @foo ::bar x; };");
     assert!(result.errors.is_empty(), "errors: {:?}", result.errors);
 
-    let Item::StructValue(def) = &result.tree[0] else {
+    let Item::Struct(def) = &result.tree[0] else {
         panic!("expected struct")
     };
-    assert_eq!(def.members.len(), 1);
+    assert_eq!(def.fields.len(), 1);
 
     // Annotation should just be @foo (1 segment)
-    let ann = &def.members[0].annotations[0];
-    assert_eq!(ann.ident.segments.len(), 1);
-    assert_eq!(ann.ident.segments[0].name, "foo");
+    let ann = &def.fields[0].meta.annotations[0];
+    assert_eq!(ann.path.segments.len(), 1);
+    assert_eq!(ann.path.segments[0].name, "foo");
 
     // Type should be ::bar (qualified with leading ::)
-    let ic_syntax::Type::Path(path) = &def.members[0].ty else {
+    let ic_syntax::Type::Named(path) = &def.fields[0].ty else {
         panic!("expected path type")
     };
     assert!(path.leading_colons.is_some());
@@ -93,19 +93,19 @@ fn annotation_multi_segment_space_before_last() {
     let result = from_str("struct S { @foo::bar ::baz x; };");
     assert!(result.errors.is_empty(), "errors: {:?}", result.errors);
 
-    let Item::StructValue(def) = &result.tree[0] else {
+    let Item::Struct(def) = &result.tree[0] else {
         panic!("expected struct")
     };
-    assert_eq!(def.members.len(), 1);
+    assert_eq!(def.fields.len(), 1);
 
     // Annotation should be @foo::bar (2 segments)
-    let ann = &def.members[0].annotations[0];
-    assert_eq!(ann.ident.segments.len(), 2);
-    assert_eq!(ann.ident.segments[0].name, "foo");
-    assert_eq!(ann.ident.segments[1].name, "bar");
+    let ann = &def.fields[0].meta.annotations[0];
+    assert_eq!(ann.path.segments.len(), 2);
+    assert_eq!(ann.path.segments[0].name, "foo");
+    assert_eq!(ann.path.segments[1].name, "bar");
 
     // Type should be ::baz
-    let ic_syntax::Type::Path(path) = &def.members[0].ty else {
+    let ic_syntax::Type::Named(path) = &def.fields[0].ty else {
         panic!("expected path type")
     };
     assert!(path.leading_colons.is_some());

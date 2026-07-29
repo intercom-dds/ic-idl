@@ -26,19 +26,15 @@
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use ic_parse::from_str;
-use ic_syntax::{AnnotationAppl, Expr, Item, Literal, LiteralValue};
+use ic_syntax::{Annotation, ExprKind, Item, Literal};
 
-fn get_doc_strings(annotations: &[AnnotationAppl]) -> Vec<String> {
+fn get_doc_strings(annotations: &[Annotation]) -> Vec<String> {
     annotations
         .iter()
-        .filter(|a| a.ident.segments[0].name == "doc")
+        .filter(|a| a.path.segments[0].name == "doc")
         .map(|a| {
-            if let Some(arg) = a.args.first() {
-                if let Expr::Literal(Literal {
-                    value: LiteralValue::String(s),
-                    ..
-                }) = &arg.value
-                {
+            if let Some(arg) = a.arguments.first() {
+                if let ExprKind::Literal(Literal::String(s)) = &arg.value.value {
                     s.clone()
                 } else {
                     String::new()
@@ -73,8 +69,8 @@ struct MyStruct /** inline comment */ {
     assert!(content.contains("/// Should be dropped"));
     assert!(content.contains("///< Trailing after struct"));
 
-    if let Item::StructValue(s) = &parse_result.tree[0] {
-        let docs = get_doc_strings(&s.annotations);
+    if let Item::Struct(s) = &parse_result.tree[0] {
+        let docs = get_doc_strings(&s.meta.annotations);
         assert!(!docs.is_empty(), "Struct should have doc comments");
         assert_eq!(
             docs.len(),
@@ -220,9 +216,9 @@ const float PI = 3.14159; ///< Trailing for PI
     let mut item_idx = 0;
 
     // Test MyStruct
-    if let Item::StructValue(s) = &parse_result.tree[item_idx] {
-        assert_eq!(s.ident.name, "MyStruct");
-        let docs = get_doc_strings(&s.annotations);
+    if let Item::Struct(s) = &parse_result.tree[item_idx] {
+        assert_eq!(s.name.name, "MyStruct");
+        let docs = get_doc_strings(&s.meta.annotations);
         // Verify MyStruct has expected doc comments
         assert_eq!(docs.len(), 4, "MyStruct should have 4 doc comments");
         assert!(docs.contains(&"Leading comment for MyStruct".to_string()));
@@ -231,8 +227,8 @@ const float PI = 3.14159; ///< Trailing for PI
         assert!(docs.contains(&"Trailing after struct".to_string()));
 
         // Check field1
-        assert_eq!(s.members.len(), 1, "MyStruct should have 1 field");
-        let field1_docs = get_doc_strings(&s.members[0].annotations);
+        assert_eq!(s.fields.len(), 1, "MyStruct should have 1 field");
+        let field1_docs = get_doc_strings(&s.fields[0].meta.annotations);
         assert_eq!(field1_docs.len(), 2, "field1 should have 2 doc comments");
         assert!(field1_docs.contains(&"Doc for field1".to_string()));
         assert!(field1_docs.contains(&"Trailing for field1".to_string()));
@@ -242,9 +238,9 @@ const float PI = 3.14159; ///< Trailing for PI
     item_idx += 1;
 
     // Test MyUnion
-    if let Item::UnionValue(u) = &parse_result.tree[item_idx] {
-        assert_eq!(u.ident.name, "MyUnion");
-        let docs = get_doc_strings(&u.annotations);
+    if let Item::Union(u) = &parse_result.tree[item_idx] {
+        assert_eq!(u.name.name, "MyUnion");
+        let docs = get_doc_strings(&u.meta.annotations);
         assert_eq!(docs.len(), 4, "MyUnion should have 4 doc comments");
         assert!(docs.contains(&"Leading comment for MyUnion".to_string()));
         assert!(docs.contains(&"inline union".to_string()));
@@ -252,8 +248,8 @@ const float PI = 3.14159; ///< Trailing for PI
         assert!(docs.contains(&"Trailing after union".to_string()));
 
         // Check union fields
-        assert_eq!(u.fields.len(), 2);
-        let field1_docs = get_doc_strings(&u.fields[0].annotations);
+        assert_eq!(u.cases.len(), 2);
+        let field1_docs = get_doc_strings(&u.cases[0].meta.annotations);
         assert_eq!(
             field1_docs.len(),
             2,
@@ -267,9 +263,9 @@ const float PI = 3.14159; ///< Trailing for PI
     item_idx += 1;
 
     // Test MyEnum
-    if let Item::EnumValue(e) = &parse_result.tree[item_idx] {
-        assert_eq!(e.ident.name, "MyEnum");
-        let docs = get_doc_strings(&e.annotations);
+    if let Item::Enum(e) = &parse_result.tree[item_idx] {
+        assert_eq!(e.name.name, "MyEnum");
+        let docs = get_doc_strings(&e.meta.annotations);
         assert_eq!(docs.len(), 4, "MyEnum should have 4 doc comments");
         assert!(docs.contains(&"Leading comment for MyEnum".to_string()));
         assert!(docs.contains(&"inline enum".to_string()));
@@ -277,8 +273,8 @@ const float PI = 3.14159; ///< Trailing for PI
         assert!(docs.contains(&"Trailing after enum".to_string()));
 
         // Check enum values
-        assert_eq!(e.fields.len(), 2);
-        let value1_docs = get_doc_strings(&e.fields[0].annotations);
+        assert_eq!(e.enumerators.len(), 2);
+        let value1_docs = get_doc_strings(&e.enumerators[0].meta.annotations);
         assert_eq!(value1_docs.len(), 2, "VALUE1 should have 2 doc comments");
         assert!(value1_docs.contains(&"Doc for VALUE1".to_string()));
         assert!(value1_docs.contains(&"Trailing for VALUE1".to_string()));
@@ -288,9 +284,9 @@ const float PI = 3.14159; ///< Trailing for PI
     item_idx += 1;
 
     // Test MyException
-    if let Item::ExceptionValue(e) = &parse_result.tree[item_idx] {
-        assert_eq!(e.ident.name, "MyException");
-        let docs = get_doc_strings(&e.annotations);
+    if let Item::Exception(e) = &parse_result.tree[item_idx] {
+        assert_eq!(e.name.name, "MyException");
+        let docs = get_doc_strings(&e.meta.annotations);
         assert_eq!(docs.len(), 4, "MyException should have 4 doc comments");
         assert!(docs.contains(&"Leading comment for MyException".to_string()));
         assert!(docs.contains(&"inline exception".to_string()));
@@ -298,8 +294,8 @@ const float PI = 3.14159; ///< Trailing for PI
         assert!(docs.contains(&"Trailing after exception".to_string()));
 
         // Check exception fields
-        assert_eq!(e.members.len(), 2);
-        let msg_docs = get_doc_strings(&e.members[0].annotations);
+        assert_eq!(e.fields.len(), 2);
+        let msg_docs = get_doc_strings(&e.fields[0].meta.annotations);
         assert_eq!(
             msg_docs.len(),
             2,
@@ -313,9 +309,9 @@ const float PI = 3.14159; ///< Trailing for PI
     item_idx += 1;
 
     // Test MyInterface
-    if let Item::InterfaceValue(i) = &parse_result.tree[item_idx] {
-        assert_eq!(i.ident.name, "MyInterface");
-        let docs = get_doc_strings(&i.annotations);
+    if let Item::Interface(i) = &parse_result.tree[item_idx] {
+        assert_eq!(i.name.name, "MyInterface");
+        let docs = get_doc_strings(&i.meta.annotations);
         assert_eq!(docs.len(), 4, "MyInterface should have 4 doc comments");
         assert!(docs.contains(&"Leading comment for MyInterface".to_string()));
         assert!(docs.contains(&"inline interface".to_string()));
@@ -327,9 +323,9 @@ const float PI = 3.14159; ///< Trailing for PI
     item_idx += 1;
 
     // Test MyBitmask
-    if let Item::BitmaskValue(b) = &parse_result.tree[item_idx] {
-        assert_eq!(b.ident.name, "MyBitmask");
-        let docs = get_doc_strings(&b.annotations);
+    if let Item::Bitmask(b) = &parse_result.tree[item_idx] {
+        assert_eq!(b.name.name, "MyBitmask");
+        let docs = get_doc_strings(&b.meta.annotations);
         assert_eq!(docs.len(), 4, "MyBitmask should have 4 doc comments");
         assert!(docs.contains(&"Leading comment for MyBitmask".to_string()));
         assert!(docs.contains(&"inline bitmask".to_string()));
@@ -338,7 +334,7 @@ const float PI = 3.14159; ///< Trailing for PI
 
         // Check bits
         assert_eq!(b.bits.len(), 2);
-        let bit1_docs = get_doc_strings(&b.bits[0].annotations);
+        let bit1_docs = get_doc_strings(&b.bits[0].meta.annotations);
         assert_eq!(bit1_docs.len(), 2, "BIT1 should have 2 doc comments");
         assert!(bit1_docs.contains(&"Doc for BIT1".to_string()));
         assert!(bit1_docs.contains(&"Trailing for BIT1".to_string()));
@@ -348,9 +344,9 @@ const float PI = 3.14159; ///< Trailing for PI
     item_idx += 1;
 
     // Test MyBitset
-    if let Item::BitsetValue(b) = &parse_result.tree[item_idx] {
-        assert_eq!(b.ident.name, "MyBitset");
-        let docs = get_doc_strings(&b.annotations);
+    if let Item::Bitset(b) = &parse_result.tree[item_idx] {
+        assert_eq!(b.name.name, "MyBitset");
+        let docs = get_doc_strings(&b.meta.annotations);
         assert_eq!(docs.len(), 4, "MyBitset should have 4 doc comments");
         assert!(docs.contains(&"Leading comment for MyBitset".to_string()));
         assert!(docs.contains(&"inline bitset".to_string()));
@@ -359,7 +355,7 @@ const float PI = 3.14159; ///< Trailing for PI
 
         // Check fields
         assert_eq!(b.fields.len(), 2);
-        let field1_docs = get_doc_strings(&b.fields[0].annotations);
+        let field1_docs = get_doc_strings(&b.fields[0].meta.annotations);
         assert_eq!(field1_docs.len(), 2, "bitfield1 should have 2 doc comments");
         assert!(field1_docs.contains(&"Doc for field1".to_string()));
         assert!(field1_docs.contains(&"Trailing for field1".to_string()));
@@ -369,9 +365,9 @@ const float PI = 3.14159; ///< Trailing for PI
     item_idx += 1;
 
     // Test MyValueType
-    if let Item::ValuetypeValue(v) = &parse_result.tree[item_idx] {
-        assert_eq!(v.ident.name, "MyValueType");
-        let docs = get_doc_strings(&v.annotations);
+    if let Item::Valuetype(v) = &parse_result.tree[item_idx] {
+        assert_eq!(v.name.name, "MyValueType");
+        let docs = get_doc_strings(&v.meta.annotations);
         assert_eq!(docs.len(), 4, "MyValueType should have 4 doc comments");
         assert!(docs.contains(&"Leading comment for MyValueType".to_string()));
         assert!(docs.contains(&"inline valuetype".to_string()));
@@ -383,9 +379,9 @@ const float PI = 3.14159; ///< Trailing for PI
     item_idx += 1;
 
     // Test MyAnnotation
-    if let Item::AnnotationValue(a) = &parse_result.tree[item_idx] {
-        assert_eq!(a.ident.name, "MyAnnotation");
-        let docs = get_doc_strings(&a.annotations);
+    if let Item::Annotation(a) = &parse_result.tree[item_idx] {
+        assert_eq!(a.name.name, "MyAnnotation");
+        let docs = get_doc_strings(&a.meta.annotations);
         assert_eq!(docs.len(), 4, "MyAnnotation should have 4 doc comments");
         assert!(docs.contains(&"Leading comment for MyAnnotation".to_string()));
         assert!(docs.contains(&"inline annotation".to_string()));
@@ -393,9 +389,9 @@ const float PI = 3.14159; ///< Trailing for PI
         assert!(docs.contains(&"Trailing after annotation".to_string()));
 
         // Check annotation params
-        assert_eq!(a.params.len(), 2);
-        if let ic_syntax::AnnotationField::Member(m) = &a.params[0] {
-            let param1_docs = get_doc_strings(&m.annotations);
+        assert_eq!(a.members.len(), 2);
+        if let ic_syntax::AnnotationMember::Value(m) = &a.members[0] {
+            let param1_docs = get_doc_strings(&m.meta.annotations);
             assert_eq!(param1_docs.len(), 2, "param1 should have 2 doc comments");
             assert!(param1_docs.contains(&"Doc for param1".to_string()));
             assert!(param1_docs.contains(&"Trailing for param1".to_string()));
@@ -408,9 +404,9 @@ const float PI = 3.14159; ///< Trailing for PI
     item_idx += 1;
 
     // Test MyModule
-    if let Item::ModuleValue(m) = &parse_result.tree[item_idx] {
-        assert_eq!(m.ident.name, "MyModule");
-        let docs = get_doc_strings(&m.annotations);
+    if let Item::Module(m) = &parse_result.tree[item_idx] {
+        assert_eq!(m.name.name, "MyModule");
+        let docs = get_doc_strings(&m.meta.annotations);
         assert_eq!(docs.len(), 4, "MyModule should have 4 doc comments");
         assert!(docs.contains(&"Leading comment for MyModule".to_string()));
         assert!(docs.contains(&"inline module".to_string()));
@@ -418,11 +414,11 @@ const float PI = 3.14159; ///< Trailing for PI
         assert!(docs.contains(&"Trailing after module".to_string()));
 
         // Check module contents
-        assert_eq!(m.definitions.len(), 3, "Module should have 3 definitions");
+        assert_eq!(m.items.len(), 3, "Module should have 3 definitions");
 
         // Check const
-        if let Item::ConstValue(c) = &m.definitions[0] {
-            let const_docs = get_doc_strings(&c.annotations);
+        if let Item::Const(c) = &m.items[0] {
+            let const_docs = get_doc_strings(&c.meta.annotations);
             assert_eq!(const_docs.len(), 2, "MY_CONST should have 2 doc comments");
             assert!(const_docs.contains(&"Doc for const".to_string()));
             assert!(const_docs.contains(&"Trailing for const".to_string()));
@@ -431,8 +427,8 @@ const float PI = 3.14159; ///< Trailing for PI
         }
 
         // Check alias
-        if let Item::AliasValue(a) = &m.definitions[1] {
-            let alias_docs = get_doc_strings(&a.annotations);
+        if let Item::Alias(a) = &m.items[1] {
+            let alias_docs = get_doc_strings(&a.meta.annotations);
             assert_eq!(alias_docs.len(), 2, "MyAlias should have 2 doc comments");
             assert!(alias_docs.contains(&"Doc for alias".to_string()));
             assert!(alias_docs.contains(&"Trailing for alias".to_string()));
@@ -441,8 +437,8 @@ const float PI = 3.14159; ///< Trailing for PI
         }
 
         // Check nested struct
-        if let Item::StructValue(s) = &m.definitions[2] {
-            let struct_docs = get_doc_strings(&s.annotations);
+        if let Item::Struct(s) = &m.items[2] {
+            let struct_docs = get_doc_strings(&s.meta.annotations);
             assert_eq!(
                 struct_docs.len(),
                 2,
@@ -480,8 +476,8 @@ struct Struct2 {
     assert_eq!(parse_result.tree.len(), 2);
 
     // Check Struct1
-    if let Item::StructValue(s1) = &parse_result.tree[0] {
-        let docs = get_doc_strings(&s1.annotations);
+    if let Item::Struct(s1) = &parse_result.tree[0] {
+        let docs = get_doc_strings(&s1.meta.annotations);
         // Verify Struct1 has expected doc comments
         assert_eq!(
             docs.len(),
@@ -495,8 +491,8 @@ struct Struct2 {
     }
 
     // Check Struct2 - should only have its own comment
-    if let Item::StructValue(s2) = &parse_result.tree[1] {
-        let docs = get_doc_strings(&s2.annotations);
+    if let Item::Struct(s2) = &parse_result.tree[1] {
+        let docs = get_doc_strings(&s2.meta.annotations);
         assert_eq!(docs.len(), 1);
         assert!(docs.contains(&"This should ONLY attach to Struct2".to_string()));
     }
@@ -521,8 +517,8 @@ enum EmptyEnum /** inline enum */ {
     assert!(parse_result.errors.is_empty());
 
     // Check empty struct
-    if let Item::StructValue(s) = &parse_result.tree[0] {
-        let docs = get_doc_strings(&s.annotations);
+    if let Item::Struct(s) = &parse_result.tree[0] {
+        let docs = get_doc_strings(&s.meta.annotations);
         // Verify empty struct has expected doc comments
         assert_eq!(
             docs.len(),
@@ -538,8 +534,8 @@ enum EmptyEnum /** inline enum */ {
     }
 
     // Check empty enum
-    if let Item::EnumValue(e) = &parse_result.tree[1] {
-        let docs = get_doc_strings(&e.annotations);
+    if let Item::Enum(e) = &parse_result.tree[1] {
+        let docs = get_doc_strings(&e.meta.annotations);
         assert_eq!(docs.len(), 4);
         assert!(docs.contains(&"Empty enum".to_string()));
         assert!(docs.contains(&"inline enum".to_string()));

@@ -33,17 +33,13 @@
 //! parser. The syntax tree closely resembles the source code, but some things
 //! -- such as whitespace and `//` comments -- are omitted.
 
-/// Rust-native, parallel representation of the IDL syntax tree.
-pub mod tree;
-
-/// Defines visitors for all AST nodes.
+/// Defines visitors for the syntax tree.
 pub mod visit;
 
 /// Helper functions for handling the AST.
 pub mod util;
 
-mod ast;
-pub use ast::*;
 pub use ic_vfs::Span;
 
-mod impls;
+mod ast;
+pub use ast::*;

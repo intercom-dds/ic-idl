@@ -26,7 +26,7 @@
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use ic_parse::from_str;
-use ic_syntax::{Expr, Item, OpKind};
+use ic_syntax::{ExprKind, Item, Op};
 
 #[test]
 fn test_shift_operators_in_constants() {
@@ -45,14 +45,14 @@ fn test_shift_operators_in_constants() {
 
     // Check that shift operators are present in the AST
     for item in &items {
-        if let Item::ConstValue(c) = item
-            && let Expr::Binary(b) = &c.value
+        if let Item::Const(c) = item
+            && let ExprKind::Binary(b) = &c.value.value
         {
             // Get the constant name from the declarator
-            if let ic_syntax::Declarator::Simple(ident) = &c.decl {
+            if let ic_syntax::Declarator::Name(ident) = &c.declarator {
                 match &ident.name[..] {
-                    "LEFT_SHIFT" => assert_eq!(b.op.kind, OpKind::Lshift),
-                    "RIGHT_SHIFT" => assert_eq!(b.op.kind, OpKind::Rshift),
+                    "LEFT_SHIFT" => assert_eq!(b.op.value, Op::LShift),
+                    "RIGHT_SHIFT" => assert_eq!(b.op.value, Op::RShift),
                     _ => {}
                 }
             }
@@ -75,7 +75,7 @@ fn test_nested_templates() {
     assert_eq!(result.tree.len(), 3);
 
     for item in &result.tree {
-        assert!(matches!(item, Item::AliasValue(_)));
+        assert!(matches!(item, Item::Alias(_)));
     }
 }
 
@@ -138,7 +138,7 @@ fn test_shift_operators_in_template_bounds_without_parens() {
 
     // Verify each typedef was parsed
     for item in &result.tree {
-        assert!(matches!(item, Item::AliasValue(_)));
+        assert!(matches!(item, Item::Alias(_)));
     }
 }
 

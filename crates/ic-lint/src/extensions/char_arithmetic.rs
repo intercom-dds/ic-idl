@@ -26,7 +26,7 @@
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use ic_diagnostic::Label;
-use ic_syntax::{Expr, Item, LiteralValue, OpKind};
+use ic_syntax::{Expr, ExprKind, Item, Literal, Op};
 
 use crate::{Category, Lint, LintCtx};
 
@@ -56,56 +56,51 @@ impl<'a> Lint<'a> for CharArithmetic<'a> {
 
 impl<'a> ic_syntax::visit::Visitor<'a> for CharArithmetic<'a> {
     fn visit_expr(&mut self, expr: &'a Expr) {
-        match expr {
-            Expr::Binary(binary) => {
+        match &expr.value {
+            ExprKind::Binary(binary) => {
                 if matches!(
-                    binary.op.kind,
-                    OpKind::Add
-                        | OpKind::Sub
-                        | OpKind::Multiply
-                        | OpKind::Divide
-                        | OpKind::Modulo
-                        | OpKind::And
-                        | OpKind::Or
-                        | OpKind::Xor
-                        | OpKind::Lshift
-                        | OpKind::Rshift
+                    binary.op.value,
+                    Op::Add
+                        | Op::Sub
+                        | Op::Multiply
+                        | Op::Divide
+                        | Op::Modulo
+                        | Op::And
+                        | Op::Or
+                        | Op::Xor
+                        | Op::LShift
+                        | Op::RShift
                 ) {
-                    if let Expr::Literal(lit) = &binary.lhs
-                        && let LiteralValue::Char(_) = lit.value
-                    {
+                    if let ExprKind::Literal(Literal::Char(_)) = &binary.lhs.value {
                         let diag = self
                             .ctx
                             .diag_span(
                                 Self::name(),
                                 Self::category(),
                                 "char literal used in arithmetic expression",
-                                Label::new(lit.span).message("char literal"),
+                                Label::new(binary.lhs.span).message("char literal"),
                             )
                             .help("consider converting to an integer value");
                         Self::report(self.ctx, diag);
                     }
 
-                    if let Expr::Literal(lit) = &binary.rhs
-                        && let LiteralValue::Char(_) = lit.value
-                    {
+                    if let ExprKind::Literal(Literal::Char(_)) = &binary.rhs.value {
                         let diag = self
                             .ctx
                             .diag_span(
                                 Self::name(),
                                 Self::category(),
                                 "char literal used in arithmetic expression",
-                                Label::new(lit.span).message("char literal"),
+                                Label::new(binary.rhs.span).message("char literal"),
                             )
                             .help("consider converting to an integer value");
                         Self::report(self.ctx, diag);
                     }
                 }
             }
-            Expr::Unary(unary) => {
-                if matches!(unary.op.kind, OpKind::Not | OpKind::Sub | OpKind::Add)
-                    && let Expr::Literal(lit) = &unary.expr
-                    && let LiteralValue::Char(_) = lit.value
+            ExprKind::Unary(unary) => {
+                if matches!(unary.op.value, Op::Not | Op::Sub | Op::Add)
+                    && let ExprKind::Literal(Literal::Char(_)) = &unary.operand.value
                 {
                     let diag = self
                         .ctx
@@ -113,7 +108,7 @@ impl<'a> ic_syntax::visit::Visitor<'a> for CharArithmetic<'a> {
                             Self::name(),
                             Self::category(),
                             "char literal used in arithmetic expression",
-                            Label::new(lit.span).message("char literal"),
+                            Label::new(unary.operand.span).message("char literal"),
                         )
                         .help("consider converting to an integer value");
                     Self::report(self.ctx, diag);

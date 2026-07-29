@@ -39,9 +39,9 @@ fn parse_simple_union() {
     assert_eq!(result.tree.len(), 1);
 
     match &result.tree[0] {
-        Item::UnionValue(def) => {
-            assert_eq!(def.ident.name, "MyUnion");
-            assert_eq!(def.fields.len(), 1);
+        Item::Union(def) => {
+            assert_eq!(def.name.name, "MyUnion");
+            assert_eq!(def.cases.len(), 1);
         }
         _ => panic!("expected union"),
     }
@@ -59,8 +59,8 @@ fn parse_union_with_multiple_cases() {
     assert!(result.errors.is_empty(), "errors: {:?}", result.errors);
 
     match &result.tree[0] {
-        Item::UnionValue(def) => {
-            assert_eq!(def.fields.len(), 3);
+        Item::Union(def) => {
+            assert_eq!(def.cases.len(), 3);
         }
         _ => panic!("expected union"),
     }
@@ -78,9 +78,9 @@ fn parse_union_with_fallthrough_cases() {
     assert!(result.errors.is_empty(), "errors: {:?}", result.errors);
 
     match &result.tree[0] {
-        Item::UnionValue(def) => {
-            assert_eq!(def.fields.len(), 1);
-            let field = &def.fields[0];
+        Item::Union(def) => {
+            assert_eq!(def.cases.len(), 1);
+            let field = &def.cases[0];
             assert_eq!(field.labels.len(), 3);
         }
         _ => panic!("expected union"),
@@ -97,11 +97,11 @@ fn parse_union_with_default() {
     );
     assert!(result.errors.is_empty(), "errors: {:?}", result.errors);
 
-    let Item::UnionValue(def) = &result.tree[0] else {
+    let Item::Union(def) = &result.tree[0] else {
         panic!("expected union")
     };
-    assert_eq!(def.fields.len(), 2);
-    let Label::Default(_) = &def.fields[1].labels[0] else {
+    assert_eq!(def.cases.len(), 2);
+    let Label::Default(_) = &def.cases[1].labels[0] else {
         panic!("expected default label")
     };
 }
@@ -115,11 +115,11 @@ fn parse_union_default_only() {
     );
     assert!(result.errors.is_empty(), "errors: {:?}", result.errors);
 
-    let Item::UnionValue(def) = &result.tree[0] else {
+    let Item::Union(def) = &result.tree[0] else {
         panic!("expected union")
     };
-    assert_eq!(def.fields.len(), 1);
-    let Label::Default(_) = &def.fields[0].labels[0] else {
+    assert_eq!(def.cases.len(), 1);
+    let Label::Default(_) = &def.cases[0].labels[0] else {
         panic!("expected default label")
     };
 }
@@ -134,8 +134,8 @@ fn parse_union_with_short_discriminator() {
     assert!(result.errors.is_empty(), "errors: {:?}", result.errors);
 
     match &result.tree[0] {
-        Item::UnionValue(def) => match &def.disc.ty {
-            ic_syntax::Type::Path(path) => {
+        Item::Union(def) => match &def.disc.ty {
+            ic_syntax::Type::Named(path) => {
                 assert_eq!(path.segments[0].name, "int16");
             }
             _ => panic!("expected path type"),
@@ -155,8 +155,8 @@ fn parse_union_with_boolean_discriminator() {
     assert!(result.errors.is_empty(), "errors: {:?}", result.errors);
 
     match &result.tree[0] {
-        Item::UnionValue(def) => match &def.disc.ty {
-            ic_syntax::Type::Path(path) => {
+        Item::Union(def) => match &def.disc.ty {
+            ic_syntax::Type::Named(path) => {
                 assert_eq!(path.segments[0].name, "boolean");
             }
             _ => panic!("expected path type"),
@@ -176,8 +176,8 @@ fn parse_union_with_enum_discriminator() {
     assert!(result.errors.is_empty(), "errors: {:?}", result.errors);
 
     match &result.tree[0] {
-        Item::UnionValue(def) => match &def.disc.ty {
-            ic_syntax::Type::Path(path) => {
+        Item::Union(def) => match &def.disc.ty {
+            ic_syntax::Type::Named(path) => {
                 assert_eq!(path.segments[0].name, "MyEnum");
             }
             _ => panic!("expected path type"),
@@ -192,8 +192,8 @@ fn parse_union_forward_declaration() {
     assert!(result.errors.is_empty(), "errors: {:?}", result.errors);
 
     match &result.tree[0] {
-        Item::DeclValue(decl) => {
-            assert_eq!(decl.ident.name, "Forward");
+        Item::Decl(decl) => {
+            assert_eq!(decl.name.name, "Forward");
         }
         _ => panic!("expected forward declaration"),
     }
@@ -208,11 +208,11 @@ fn parse_union_with_sequence_member() {
     );
     assert!(result.errors.is_empty(), "errors: {:?}", result.errors);
 
-    let Item::UnionValue(def) = &result.tree[0] else {
+    let Item::Union(def) = &result.tree[0] else {
         panic!("expected union")
     };
-    let field = &def.fields[0];
-    assert!(matches!(field.ty.as_ref(), ic_syntax::Type::Sequence(_)));
+    let field = &def.cases[0];
+    assert!(matches!(field.ty, ic_syntax::Type::Sequence(_)));
 }
 
 #[test]
@@ -224,13 +224,13 @@ fn parse_union_with_array_member() {
     );
     assert!(result.errors.is_empty(), "errors: {:?}", result.errors);
 
-    let Item::UnionValue(def) = &result.tree[0] else {
+    let Item::Union(def) = &result.tree[0] else {
         panic!("expected union")
     };
-    let ic_syntax::Declarator::Array(arr) = &def.fields[0].decl else {
+    let ic_syntax::Declarator::Array(arr) = &def.cases[0].declarator else {
         panic!("expected array declarator")
     };
-    assert_eq!(arr.ident.name, "arrVal");
+    assert_eq!(arr.name.name, "arrVal");
     assert_eq!(arr.bounds.len(), 1);
 }
 
@@ -244,9 +244,9 @@ fn parse_union_with_annotation() {
     assert!(result.errors.is_empty(), "errors: {:?}", result.errors);
 
     match &result.tree[0] {
-        Item::UnionValue(def) => {
-            assert_eq!(def.annotations.len(), 1);
-            assert_eq!(def.annotations[0].ident.segments[0].name, "custom");
+        Item::Union(def) => {
+            assert_eq!(def.meta.annotations.len(), 1);
+            assert_eq!(def.meta.annotations[0].path.segments[0].name, "custom");
         }
         _ => panic!("expected union"),
     }
@@ -262,9 +262,9 @@ fn parse_union_with_annotated_discriminator() {
     assert!(result.errors.is_empty(), "errors: {:?}", result.errors);
 
     match &result.tree[0] {
-        Item::UnionValue(def) => {
-            assert_eq!(def.disc.annotations.len(), 1);
-            assert_eq!(def.disc.annotations[0].ident.segments[0].name, "key");
+        Item::Union(def) => {
+            assert_eq!(def.disc.meta.annotations.len(), 1);
+            assert_eq!(def.disc.meta.annotations[0].path.segments[0].name, "key");
         }
         _ => panic!("expected union"),
     }
@@ -281,8 +281,8 @@ fn parse_union_with_negative_case() {
     assert!(result.errors.is_empty(), "errors: {:?}", result.errors);
 
     match &result.tree[0] {
-        Item::UnionValue(def) => {
-            assert_eq!(def.fields.len(), 2);
+        Item::Union(def) => {
+            assert_eq!(def.cases.len(), 2);
         }
         _ => panic!("expected union"),
     }
@@ -298,8 +298,8 @@ fn parse_union_with_expression_case() {
     assert!(result.errors.is_empty(), "errors: {:?}", result.errors);
 
     match &result.tree[0] {
-        Item::UnionValue(def) => {
-            assert_eq!(def.fields.len(), 1);
+        Item::Union(def) => {
+            assert_eq!(def.cases.len(), 1);
         }
         _ => panic!("expected union"),
     }
@@ -317,9 +317,9 @@ fn parse_union_in_module() {
     assert!(result.errors.is_empty(), "errors: {:?}", result.errors);
 
     match &result.tree[0] {
-        Item::ModuleValue(module) => {
-            assert_eq!(module.definitions.len(), 1);
-            assert!(matches!(&module.definitions[0], Item::UnionValue(_)));
+        Item::Module(module) => {
+            assert_eq!(module.items.len(), 1);
+            assert!(matches!(&module.items[0], Item::Union(_)));
         }
         _ => panic!("expected module"),
     }

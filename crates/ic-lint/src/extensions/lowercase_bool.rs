@@ -27,7 +27,7 @@
 
 use ic_diagnostic::Label;
 use ic_syntax::visit::{Visitor, walk_tree};
-use ic_syntax::{Item, Literal, LiteralValue};
+use ic_syntax::{Expr, ExprKind, Item, Literal};
 
 use crate::{Category, Lint, LintCtx};
 
@@ -57,9 +57,9 @@ impl<'a> Lint<'a> for LowercaseBool<'a> {
 }
 
 impl<'a> Visitor<'a> for LowercaseBool<'a> {
-    fn visit_literal(&mut self, num: &'a Literal) {
-        if let LiteralValue::Bool(_lit) = num.value {
-            let slice = self.ctx.slice(num.span);
+    fn visit_expr(&mut self, expr: &'a Expr) {
+        if let ExprKind::Literal(Literal::Bool(_)) = expr.value {
+            let slice = self.ctx.slice(expr.span);
             if slice.chars().any(char::is_lowercase) {
                 let fixed = slice.to_uppercase();
                 let diag = self
@@ -68,11 +68,12 @@ impl<'a> Visitor<'a> for LowercaseBool<'a> {
                         Self::name(),
                         Self::category(),
                         "lowercase boolean literals are non-standard",
-                        Label::new(num.span).message("lowercase boolean literal"),
+                        Label::new(expr.span).message("lowercase boolean literal"),
                     )
                     .help(format!("use `{fixed}` instead"));
                 Self::report(self.ctx, diag);
             }
         }
+        ic_syntax::visit::walk_expr(self, expr);
     }
 }

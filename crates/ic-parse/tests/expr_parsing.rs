@@ -26,7 +26,7 @@
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use ic_parse::from_str;
-use ic_syntax::{Expr, Item, LiteralValue, OpKind};
+use ic_syntax::{Expr, ExprKind, Item, Literal, Op};
 
 /// Helper to extract the expression from a const with a given value expression.
 fn parse_const_expr(input: &str) -> Expr {
@@ -35,11 +35,11 @@ fn parse_const_expr(input: &str) -> Expr {
     let result = from_str(&full);
     assert!(result.errors.is_empty(), "errors: {:?}", result.errors);
 
-    let Item::StructValue(def) = &result.tree[0] else {
+    let Item::Struct(def) = &result.tree[0] else {
         panic!("expected struct")
     };
-    let field = &def.members[0];
-    let ic_syntax::Declarator::Array(arr) = &field.names[0] else {
+    let field = &def.fields[0];
+    let ic_syntax::Declarator::Array(arr) = &field.declarators[0] else {
         panic!("expected array declarator")
     };
     arr.bounds[0].clone()
@@ -48,9 +48,9 @@ fn parse_const_expr(input: &str) -> Expr {
 #[test]
 fn parse_integer_literal() {
     let expr = parse_const_expr("42");
-    match expr {
-        Expr::Literal(lit) => {
-            assert_eq!(lit.value, LiteralValue::Int(42));
+    match expr.value {
+        ExprKind::Literal(lit) => {
+            assert_eq!(lit, Literal::Int(42));
         }
         _ => panic!("expected literal, got {expr:?}"),
     }
@@ -59,9 +59,9 @@ fn parse_integer_literal() {
 #[test]
 fn parse_hex_literal() {
     let expr = parse_const_expr("0xFF");
-    match expr {
-        Expr::Literal(lit) => {
-            assert_eq!(lit.value, LiteralValue::Int(255));
+    match expr.value {
+        ExprKind::Literal(lit) => {
+            assert_eq!(lit, Literal::Int(255));
         }
         _ => panic!("expected literal"),
     }
@@ -70,9 +70,9 @@ fn parse_hex_literal() {
 #[test]
 fn parse_octal_literal() {
     let expr = parse_const_expr("0777");
-    match expr {
-        Expr::Literal(lit) => {
-            assert_eq!(lit.value, LiteralValue::Int(511));
+    match expr.value {
+        ExprKind::Literal(lit) => {
+            assert_eq!(lit, Literal::Int(511));
         }
         _ => panic!("expected literal"),
     }
@@ -81,12 +81,12 @@ fn parse_octal_literal() {
 #[test]
 fn parse_unary_minus() {
     let expr = parse_const_expr("-42");
-    match expr {
-        Expr::Unary(unary) => {
-            assert_eq!(unary.op.kind, OpKind::Sub);
-            match &unary.expr {
-                Expr::Literal(lit) => {
-                    assert_eq!(lit.value, LiteralValue::Int(42));
+    match expr.value {
+        ExprKind::Unary(unary) => {
+            assert_eq!(unary.op.value, Op::Sub);
+            match &unary.operand.value {
+                ExprKind::Literal(lit) => {
+                    assert_eq!(lit, &Literal::Int(42));
                 }
                 _ => panic!("expected literal"),
             }
@@ -98,9 +98,9 @@ fn parse_unary_minus() {
 #[test]
 fn parse_unary_plus() {
     let expr = parse_const_expr("+42");
-    match expr {
-        Expr::Unary(unary) => {
-            assert_eq!(unary.op.kind, OpKind::Add);
+    match expr.value {
+        ExprKind::Unary(unary) => {
+            assert_eq!(unary.op.value, Op::Add);
         }
         _ => panic!("expected unary expression"),
     }
@@ -109,9 +109,9 @@ fn parse_unary_plus() {
 #[test]
 fn parse_unary_not() {
     let expr = parse_const_expr("~0xFF");
-    match expr {
-        Expr::Unary(unary) => {
-            assert_eq!(unary.op.kind, OpKind::Not);
+    match expr.value {
+        ExprKind::Unary(unary) => {
+            assert_eq!(unary.op.value, Op::Not);
         }
         _ => panic!("expected unary expression"),
     }
@@ -120,9 +120,9 @@ fn parse_unary_not() {
 #[test]
 fn parse_binary_add() {
     let expr = parse_const_expr("1 + 2");
-    match expr {
-        Expr::Binary(binary) => {
-            assert_eq!(binary.op.kind, OpKind::Add);
+    match expr.value {
+        ExprKind::Binary(binary) => {
+            assert_eq!(binary.op.value, Op::Add);
         }
         _ => panic!("expected binary expression"),
     }
@@ -131,9 +131,9 @@ fn parse_binary_add() {
 #[test]
 fn parse_binary_sub() {
     let expr = parse_const_expr("5 - 3");
-    match expr {
-        Expr::Binary(binary) => {
-            assert_eq!(binary.op.kind, OpKind::Sub);
+    match expr.value {
+        ExprKind::Binary(binary) => {
+            assert_eq!(binary.op.value, Op::Sub);
         }
         _ => panic!("expected binary expression"),
     }
@@ -142,9 +142,9 @@ fn parse_binary_sub() {
 #[test]
 fn parse_binary_mul() {
     let expr = parse_const_expr("4 * 5");
-    match expr {
-        Expr::Binary(binary) => {
-            assert_eq!(binary.op.kind, OpKind::Multiply);
+    match expr.value {
+        ExprKind::Binary(binary) => {
+            assert_eq!(binary.op.value, Op::Multiply);
         }
         _ => panic!("expected binary expression"),
     }
@@ -153,9 +153,9 @@ fn parse_binary_mul() {
 #[test]
 fn parse_binary_div() {
     let expr = parse_const_expr("10 / 2");
-    match expr {
-        Expr::Binary(binary) => {
-            assert_eq!(binary.op.kind, OpKind::Divide);
+    match expr.value {
+        ExprKind::Binary(binary) => {
+            assert_eq!(binary.op.value, Op::Divide);
         }
         _ => panic!("expected binary expression"),
     }
@@ -164,9 +164,9 @@ fn parse_binary_div() {
 #[test]
 fn parse_binary_mod() {
     let expr = parse_const_expr("10 % 3");
-    match expr {
-        Expr::Binary(binary) => {
-            assert_eq!(binary.op.kind, OpKind::Modulo);
+    match expr.value {
+        ExprKind::Binary(binary) => {
+            assert_eq!(binary.op.value, Op::Modulo);
         }
         _ => panic!("expected binary expression"),
     }
@@ -175,9 +175,9 @@ fn parse_binary_mod() {
 #[test]
 fn parse_binary_or() {
     let expr = parse_const_expr("1 | 2");
-    match expr {
-        Expr::Binary(binary) => {
-            assert_eq!(binary.op.kind, OpKind::Or);
+    match expr.value {
+        ExprKind::Binary(binary) => {
+            assert_eq!(binary.op.value, Op::Or);
         }
         _ => panic!("expected binary expression"),
     }
@@ -186,9 +186,9 @@ fn parse_binary_or() {
 #[test]
 fn parse_binary_xor() {
     let expr = parse_const_expr("1 ^ 2");
-    match expr {
-        Expr::Binary(binary) => {
-            assert_eq!(binary.op.kind, OpKind::Xor);
+    match expr.value {
+        ExprKind::Binary(binary) => {
+            assert_eq!(binary.op.value, Op::Xor);
         }
         _ => panic!("expected binary expression"),
     }
@@ -197,9 +197,9 @@ fn parse_binary_xor() {
 #[test]
 fn parse_binary_and() {
     let expr = parse_const_expr("3 & 1");
-    match expr {
-        Expr::Binary(binary) => {
-            assert_eq!(binary.op.kind, OpKind::And);
+    match expr.value {
+        ExprKind::Binary(binary) => {
+            assert_eq!(binary.op.value, Op::And);
         }
         _ => panic!("expected binary expression"),
     }
@@ -208,9 +208,9 @@ fn parse_binary_and() {
 #[test]
 fn parse_binary_lshift() {
     let expr = parse_const_expr("1 << 4");
-    match expr {
-        Expr::Binary(binary) => {
-            assert_eq!(binary.op.kind, OpKind::Lshift);
+    match expr.value {
+        ExprKind::Binary(binary) => {
+            assert_eq!(binary.op.value, Op::LShift);
         }
         _ => panic!("expected binary expression"),
     }
@@ -219,9 +219,9 @@ fn parse_binary_lshift() {
 #[test]
 fn parse_binary_rshift() {
     let expr = parse_const_expr("16 >> 2");
-    match expr {
-        Expr::Binary(binary) => {
-            assert_eq!(binary.op.kind, OpKind::Rshift);
+    match expr.value {
+        ExprKind::Binary(binary) => {
+            assert_eq!(binary.op.value, Op::RShift);
         }
         _ => panic!("expected binary expression"),
     }
@@ -231,20 +231,20 @@ fn parse_binary_rshift() {
 fn parse_precedence_mul_over_add() {
     // 1 + 2 * 3 should parse as 1 + (2 * 3)
     let expr = parse_const_expr("1 + 2 * 3");
-    match expr {
-        Expr::Binary(binary) => {
-            assert_eq!(binary.op.kind, OpKind::Add);
+    match expr.value {
+        ExprKind::Binary(binary) => {
+            assert_eq!(binary.op.value, Op::Add);
             // LHS should be 1
-            match &binary.lhs {
-                Expr::Literal(lit) => {
-                    assert_eq!(lit.value, LiteralValue::Int(1));
+            match &binary.lhs.value {
+                ExprKind::Literal(lit) => {
+                    assert_eq!(lit, &Literal::Int(1));
                 }
                 _ => panic!("expected literal on lhs"),
             }
             // RHS should be 2 * 3
-            match &binary.rhs {
-                Expr::Binary(inner) => {
-                    assert_eq!(inner.op.kind, OpKind::Multiply);
+            match &binary.rhs.value {
+                ExprKind::Binary(inner) => {
+                    assert_eq!(inner.op.value, Op::Multiply);
                 }
                 _ => panic!("expected binary on rhs"),
             }
@@ -257,12 +257,12 @@ fn parse_precedence_mul_over_add() {
 fn parse_precedence_shift_over_or() {
     // 1 | 2 << 3 should parse as 1 | (2 << 3)
     let expr = parse_const_expr("1 | 2 << 3");
-    match expr {
-        Expr::Binary(binary) => {
-            assert_eq!(binary.op.kind, OpKind::Or);
-            match &binary.rhs {
-                Expr::Binary(inner) => {
-                    assert_eq!(inner.op.kind, OpKind::Lshift);
+    match expr.value {
+        ExprKind::Binary(binary) => {
+            assert_eq!(binary.op.value, Op::Or);
+            match &binary.rhs.value {
+                ExprKind::Binary(inner) => {
+                    assert_eq!(inner.op.value, Op::LShift);
                 }
                 _ => panic!("expected binary on rhs"),
             }
@@ -275,12 +275,12 @@ fn parse_precedence_shift_over_or() {
 fn parse_precedence_and_over_xor() {
     // 1 ^ 2 & 3 should parse as 1 ^ (2 & 3)
     let expr = parse_const_expr("1 ^ 2 & 3");
-    match expr {
-        Expr::Binary(binary) => {
-            assert_eq!(binary.op.kind, OpKind::Xor);
-            match &binary.rhs {
-                Expr::Binary(inner) => {
-                    assert_eq!(inner.op.kind, OpKind::And);
+    match expr.value {
+        ExprKind::Binary(binary) => {
+            assert_eq!(binary.op.value, Op::Xor);
+            match &binary.rhs.value {
+                ExprKind::Binary(inner) => {
+                    assert_eq!(inner.op.value, Op::And);
                 }
                 _ => panic!("expected binary on rhs"),
             }
@@ -293,12 +293,12 @@ fn parse_precedence_and_over_xor() {
 fn parse_precedence_xor_over_or() {
     // 1 | 2 ^ 3 should parse as 1 | (2 ^ 3)
     let expr = parse_const_expr("1 | 2 ^ 3");
-    match expr {
-        Expr::Binary(binary) => {
-            assert_eq!(binary.op.kind, OpKind::Or, "outer should be OR");
-            match &binary.rhs {
-                Expr::Binary(inner) => {
-                    assert_eq!(inner.op.kind, OpKind::Xor, "inner should be XOR");
+    match expr.value {
+        ExprKind::Binary(binary) => {
+            assert_eq!(binary.op.value, Op::Or, "outer should be OR");
+            match &binary.rhs.value {
+                ExprKind::Binary(inner) => {
+                    assert_eq!(inner.op.value, Op::Xor, "inner should be XOR");
                 }
                 _ => panic!("expected binary on rhs"),
             }
@@ -311,12 +311,12 @@ fn parse_precedence_xor_over_or() {
 fn parse_precedence_shift_over_and() {
     // 1 & 2 << 3 should parse as 1 & (2 << 3)
     let expr = parse_const_expr("1 & 2 << 3");
-    match expr {
-        Expr::Binary(binary) => {
-            assert_eq!(binary.op.kind, OpKind::And, "outer should be AND");
-            match &binary.rhs {
-                Expr::Binary(inner) => {
-                    assert_eq!(inner.op.kind, OpKind::Lshift, "inner should be LSHIFT");
+    match expr.value {
+        ExprKind::Binary(binary) => {
+            assert_eq!(binary.op.value, Op::And, "outer should be AND");
+            match &binary.rhs.value {
+                ExprKind::Binary(inner) => {
+                    assert_eq!(inner.op.value, Op::LShift, "inner should be LSHIFT");
                 }
                 _ => panic!("expected binary on rhs"),
             }
@@ -329,12 +329,12 @@ fn parse_precedence_shift_over_and() {
 fn parse_precedence_add_over_shift() {
     // 1 << 2 + 3 should parse as 1 << (2 + 3)
     let expr = parse_const_expr("1 << 2 + 3");
-    match expr {
-        Expr::Binary(binary) => {
-            assert_eq!(binary.op.kind, OpKind::Lshift, "outer should be LSHIFT");
-            match &binary.rhs {
-                Expr::Binary(inner) => {
-                    assert_eq!(inner.op.kind, OpKind::Add, "inner should be ADD");
+    match expr.value {
+        ExprKind::Binary(binary) => {
+            assert_eq!(binary.op.value, Op::LShift, "outer should be LSHIFT");
+            match &binary.rhs.value {
+                ExprKind::Binary(inner) => {
+                    assert_eq!(inner.op.value, Op::Add, "inner should be ADD");
                 }
                 _ => panic!("expected binary on rhs"),
             }
@@ -347,16 +347,16 @@ fn parse_precedence_add_over_shift() {
 fn parse_left_associativity() {
     // 1 - 2 - 3 should parse as (1 - 2) - 3
     let expr = parse_const_expr("1 - 2 - 3");
-    match expr {
-        Expr::Binary(binary) => {
-            assert_eq!(binary.op.kind, OpKind::Sub);
+    match expr.value {
+        ExprKind::Binary(binary) => {
+            assert_eq!(binary.op.value, Op::Sub);
             // LHS should be (1 - 2)
-            match &binary.lhs {
-                Expr::Binary(inner) => {
-                    assert_eq!(inner.op.kind, OpKind::Sub);
-                    match &inner.lhs {
-                        Expr::Literal(lit) => {
-                            assert_eq!(lit.value, LiteralValue::Int(1));
+            match &binary.lhs.value {
+                ExprKind::Binary(inner) => {
+                    assert_eq!(inner.op.value, Op::Sub);
+                    match &inner.lhs.value {
+                        ExprKind::Literal(lit) => {
+                            assert_eq!(lit, &Literal::Int(1));
                         }
                         _ => panic!("expected literal"),
                     }
@@ -364,9 +364,9 @@ fn parse_left_associativity() {
                 _ => panic!("expected binary on lhs"),
             }
             // RHS should be 3
-            match &binary.rhs {
-                Expr::Literal(lit) => {
-                    assert_eq!(lit.value, LiteralValue::Int(3));
+            match &binary.rhs.value {
+                ExprKind::Literal(lit) => {
+                    assert_eq!(lit, &Literal::Int(3));
                 }
                 _ => panic!("expected literal on rhs"),
             }
@@ -378,14 +378,14 @@ fn parse_left_associativity() {
 #[test]
 fn parse_parenthesized() {
     let expr = parse_const_expr("(1 + 2) * 3");
-    match expr {
-        Expr::Binary(binary) => {
-            assert_eq!(binary.op.kind, OpKind::Multiply);
+    match expr.value {
+        ExprKind::Binary(binary) => {
+            assert_eq!(binary.op.value, Op::Multiply);
             // LHS should be grouped (1 + 2)
-            match &binary.lhs {
-                Expr::Group(group) => match &group.expr {
-                    Expr::Binary(inner) => {
-                        assert_eq!(inner.op.kind, OpKind::Add);
+            match &binary.lhs.value {
+                ExprKind::Group(group) => match &group.value {
+                    ExprKind::Binary(inner) => {
+                        assert_eq!(inner.op.value, Op::Add);
                     }
                     _ => panic!("expected binary inside group"),
                 },
@@ -400,9 +400,9 @@ fn parse_parenthesized() {
 fn parse_complex_expression() {
     // (1 << 8) | (2 << 4) | 3
     let expr = parse_const_expr("(1 << 8) | (2 << 4) | 3");
-    match expr {
-        Expr::Binary(binary) => {
-            assert_eq!(binary.op.kind, OpKind::Or);
+    match expr.value {
+        ExprKind::Binary(binary) => {
+            assert_eq!(binary.op.value, Op::Or);
         }
         _ => panic!("expected binary expression"),
     }
@@ -412,12 +412,12 @@ fn parse_complex_expression() {
 fn parse_unary_in_binary() {
     // -1 + 2 should parse as (-1) + 2
     let expr = parse_const_expr("-1 + 2");
-    match expr {
-        Expr::Binary(binary) => {
-            assert_eq!(binary.op.kind, OpKind::Add);
-            match &binary.lhs {
-                Expr::Unary(unary) => {
-                    assert_eq!(unary.op.kind, OpKind::Sub);
+    match expr.value {
+        ExprKind::Binary(binary) => {
+            assert_eq!(binary.op.value, Op::Add);
+            match &binary.lhs.value {
+                ExprKind::Unary(unary) => {
+                    assert_eq!(unary.op.value, Op::Sub);
                 }
                 _ => panic!("expected unary on lhs"),
             }
@@ -429,11 +429,11 @@ fn parse_unary_in_binary() {
 #[test]
 fn parse_path_in_expression() {
     let expr = parse_const_expr("FOO + 1");
-    match expr {
-        Expr::Binary(binary) => {
-            assert_eq!(binary.op.kind, OpKind::Add);
-            match &binary.lhs {
-                Expr::Path(path) => {
+    match expr.value {
+        ExprKind::Binary(binary) => {
+            assert_eq!(binary.op.value, Op::Add);
+            match &binary.lhs.value {
+                ExprKind::Path(path) => {
                     assert_eq!(path.segments[0].name, "FOO");
                 }
                 _ => panic!("expected path on lhs"),
@@ -446,9 +446,9 @@ fn parse_path_in_expression() {
 #[test]
 fn parse_scoped_path_in_expression() {
     let expr = parse_const_expr("Mod::CONST * 2");
-    match expr {
-        Expr::Binary(binary) => match &binary.lhs {
-            Expr::Path(path) => {
+    match expr.value {
+        ExprKind::Binary(binary) => match &binary.lhs.value {
+            ExprKind::Path(path) => {
                 assert_eq!(path.segments.len(), 2);
                 assert_eq!(path.segments[0].name, "Mod");
                 assert_eq!(path.segments[1].name, "CONST");

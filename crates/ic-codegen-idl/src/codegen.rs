@@ -483,7 +483,7 @@ impl<'a> IdlGen<'a> {
             match param.kind {
                 ParamKind::In => w!(w, "in "),
                 ParamKind::Out => w!(w, "out "),
-                ParamKind::Inout => w!(w, "inout "),
+                ParamKind::InOut => w!(w, "inout "),
             }
             let param_ty = self.idl_type(&param.ty, relative_to_def_id);
             w!(w, param_ty, " ", param.ident.name);

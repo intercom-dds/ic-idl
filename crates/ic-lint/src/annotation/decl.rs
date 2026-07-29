@@ -38,8 +38,8 @@ pub struct AnnotatedDecl<'a> {
 
 impl<'a> Visitor<'a> for AnnotatedDecl<'a> {
     fn visit_forward_decl(&mut self, decl: &'a ic_syntax::Decl) {
-        if let Some(ann) = decl.annotations.iter().find(|v| !is_doc(&v.ident)) {
-            let span = util::path_span(&ann.ident);
+        if let Some(ann) = decl.meta.annotations.iter().find(|v| !is_doc(&v.path)) {
+            let span = util::path_span(&ann.path);
             let diag = self
                 .ctx
                 .diag_span(
@@ -49,7 +49,7 @@ impl<'a> Visitor<'a> for AnnotatedDecl<'a> {
                     Label::new(span).message("defined here"),
                 )
                 .label(
-                    Label::new(decl.ident.span)
+                    Label::new(decl.name.span)
                         .message("applied to this declaration")
                         .color(Color::Cyan),
                 )

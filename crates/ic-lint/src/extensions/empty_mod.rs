@@ -38,14 +38,14 @@ pub struct EmptyMod<'a> {
 
 impl<'a> Visitor<'a> for EmptyMod<'a> {
     fn visit_module(&mut self, def: &'a ic_syntax::ModuleDef) {
-        if def.definitions.is_empty() {
+        if def.items.is_empty() {
             let diag = self
                 .ctx
                 .diag_span(
                     Self::name(),
                     Self::category(),
                     "empty module declarations are not standard",
-                    Label::new(def.span),
+                    Label::new(def.meta.span),
                 )
                 .help("either remove the declaration or add an item to it");
             Self::report(self.ctx, diag);

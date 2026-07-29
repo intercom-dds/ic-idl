@@ -27,7 +27,7 @@
 
 use ic_diagnostic::Label;
 use ic_syntax::visit::{Visitor, walk_tree};
-use ic_syntax::{Expr, OpKind, Type};
+use ic_syntax::{Expr, Op, Type};
 
 use crate::{Category, Lint, LintCtx};
 
@@ -65,7 +65,7 @@ impl<'a> Visitor<'a> for ShiftBound<'a> {
                 if let Some(bound) = &seq.bound {
                     self.check_expr(bound);
                 }
-                self.visit_type(&seq.ty);
+                self.visit_type(&seq.element);
             }
             Type::String(s) => {
                 if let Some(bound) = &s.bound {
@@ -85,7 +85,7 @@ impl<'a> Visitor<'a> for ShiftBound<'a> {
                     self.check_expr(&bounds.fractional);
                 }
             }
-            Type::Path(_) => ic_syntax::visit::walk_type(self, ty),
+            Type::Named(_) => ic_syntax::visit::walk_type(self, ty),
         }
     }
 }
@@ -109,16 +109,16 @@ impl<'a> Lint<'a> for ShiftBound<'a> {
     }
 }
 
-fn find_shift_op(expr: &Expr) -> Option<&ic_syntax::Op> {
-    match expr {
-        Expr::Binary(binary) => {
-            if matches!(binary.op.kind, OpKind::Lshift | OpKind::Rshift) {
+fn find_shift_op(expr: &Expr) -> Option<&ic_syntax::Spanned<Op>> {
+    match &expr.value {
+        ic_syntax::ExprKind::Binary(binary) => {
+            if matches!(binary.op.value, Op::LShift | Op::RShift) {
                 return Some(&binary.op);
             }
             find_shift_op(&binary.lhs).or_else(|| find_shift_op(&binary.rhs))
         }
-        Expr::Unary(unary) => find_shift_op(&unary.expr),
-        Expr::Group(group) => find_shift_op(&group.expr),
+        ic_syntax::ExprKind::Unary(unary) => find_shift_op(&unary.operand),
+        ic_syntax::ExprKind::Group(group) => find_shift_op(group),
         _ => None,
     }
 }

@@ -25,7 +25,7 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use ic_syntax::{Expr, Item, LiteralValue};
+use ic_syntax::{ExprKind, Item, Literal};
 
 fn parse_char_literal(input: &str) -> Option<char> {
     let full_input = format!("const char c = {input};");
@@ -37,9 +37,9 @@ fn parse_char_literal(input: &str) -> Option<char> {
 
     // Extract the character value from the parsed AST
     for item in &result.tree {
-        if let Item::ConstValue(c) = item
-            && let Expr::Literal(lit) = &c.value
-            && let LiteralValue::Char(ch) = &lit.value
+        if let Item::Const(c) = item
+            && let ExprKind::Literal(lit) = &c.value.value
+            && let Literal::Char(ch) = &lit
         {
             return Some(*ch);
         }

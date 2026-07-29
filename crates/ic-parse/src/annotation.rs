@@ -27,7 +27,7 @@
 
 use ic_lexer::token::{Kind, Kw};
 use ic_syntax::{
-    AnnotationAppl, AnnotationArg, AnnotationDef, AnnotationField, AnnotationMember, Ident, Item,
+    Annotation, AnnotationArg, AnnotationDef, AnnotationMember, AnnotationValue, Ident, Item, Meta,
     Path,
 };
 
@@ -40,7 +40,7 @@ impl Parser<'_> {
     //
     /// This method uses raw token access to avoid re-entering annotation skimming.
     #[allow(clippy::result_large_err)]
-    pub(super) fn annotation_appl(&mut self) -> Result<AnnotationAppl> {
+    pub(super) fn annotation_appl(&mut self) -> Result<Annotation> {
         let start = self.span();
 
         debug_assert!(self.at_raw(Kind::At));
@@ -68,10 +68,10 @@ impl Parser<'_> {
             Vec::new()
         };
 
-        Ok(AnnotationAppl {
-            ident: path,
+        Ok(Annotation {
+            path,
             span: self.make_span(start, self.prev_span),
-            args,
+            arguments: args,
         })
     }
 
@@ -165,7 +165,7 @@ impl Parser<'_> {
 
         if let Some((ident, value)) = self.try_named_arg()? {
             return Ok(AnnotationArg {
-                ident: Some(ident),
+                name: Some(ident),
                 span: self.make_span(start, self.prev_span),
                 value,
             });
@@ -173,7 +173,7 @@ impl Parser<'_> {
 
         let value = self.const_expr()?;
         Ok(AnnotationArg {
-            ident: None,
+            name: None,
             span: self.make_span(start, self.prev_span),
             value,
         })
@@ -216,26 +216,28 @@ impl Parser<'_> {
         let (params, mut annotations) = self.braced(Parser::annotation_body)?;
         annotations.extend(self.expect_semi()?);
 
-        Ok(Item::AnnotationValue(AnnotationDef {
-            span: self.make_span(start, self.prev_span),
-            annotations,
-            ident,
-            params,
+        Ok(Item::Annotation(AnnotationDef {
+            meta: Meta {
+                span: self.make_span(start, self.prev_span),
+                annotations,
+            },
+            name: ident,
+            members: params,
         }))
     }
 
     // Rule 221
-    fn annotation_body(&mut self) -> Result<Vec<AnnotationField>> {
+    fn annotation_body(&mut self) -> Result<Vec<AnnotationMember>> {
         let mut fields = Vec::new();
         while !self.at(Kind::RBrace) && !self.at(Kind::Eoi) {
             let field = match self.peek() {
-                Kind::Keyword(Kw::Typedef) => AnnotationField::Item(Box::new(self.typedef_dcl()?)),
-                Kind::Keyword(Kw::Const) => AnnotationField::Item(Box::new(self.const_dcl()?)),
-                Kind::Keyword(Kw::Enum) => AnnotationField::Item(Box::new(self.enum_dcl()?)),
-                Kind::Keyword(Kw::Struct) => AnnotationField::Item(Box::new(self.struct_dcl()?)),
-                Kind::Keyword(Kw::Bitmask) => AnnotationField::Item(Box::new(self.bitmask_dcl()?)),
-                Kind::Keyword(Kw::Union) => AnnotationField::Item(Box::new(self.union_dcl()?)),
-                _ => AnnotationField::Member(Box::new(self.annotation_member()?)),
+                Kind::Keyword(Kw::Typedef) => AnnotationMember::Item(self.typedef_dcl()?),
+                Kind::Keyword(Kw::Const) => AnnotationMember::Item(self.const_dcl()?),
+                Kind::Keyword(Kw::Enum) => AnnotationMember::Item(self.enum_dcl()?),
+                Kind::Keyword(Kw::Struct) => AnnotationMember::Item(self.struct_dcl()?),
+                Kind::Keyword(Kw::Bitmask) => AnnotationMember::Item(self.bitmask_dcl()?),
+                Kind::Keyword(Kw::Union) => AnnotationMember::Item(self.union_dcl()?),
+                _ => AnnotationMember::Value(self.annotation_member()?),
             };
             fields.push(field);
         }
@@ -243,7 +245,7 @@ impl Parser<'_> {
     }
 
     // Rule 222
-    fn annotation_member(&mut self) -> Result<AnnotationMember> {
+    fn annotation_member(&mut self) -> Result<AnnotationValue> {
         let start = self.span();
         let mut annotations = self.take_annotations();
 
@@ -258,10 +260,12 @@ impl Parser<'_> {
 
         annotations.extend(self.expect_semi()?);
 
-        Ok(AnnotationMember {
-            span: self.make_span(start, self.prev_span),
-            annotations,
-            decl,
+        Ok(AnnotationValue {
+            meta: Meta {
+                span: self.make_span(start, self.prev_span),
+                annotations,
+            },
+            declarator: decl,
             ty,
             default,
         })

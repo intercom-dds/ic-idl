@@ -168,10 +168,7 @@ impl Parser<'_> {
             Kind::Ident | Kind::DColon => {
                 let path = self.scoped_name()?;
                 Ok(Spanned {
-                    span: self.make_span(
-                        path.segments.first().expect("path has a segment").span,
-                        path.segments.last().expect("path has a segment").span,
-                    ),
+                    span: ic_syntax::util::path_span(&path),
                     value: ExprKind::Path(path),
                 })
             }

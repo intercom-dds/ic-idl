@@ -1,4 +1,4 @@
-// Copyright 2026 KONGSBERG
+// Copyright 2023 KONGSBERG
 //
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions are met:
@@ -31,7 +31,7 @@ mod ser;
 
 pub use de::{from_be_bytes, from_bytes, from_bytes_mut, from_le_bytes};
 pub use error::Error;
-pub use ser::{to_be_bytes, to_le_bytes};
+pub use ser::{to_be_bytes, to_bytes, to_le_bytes};
 
 /// Alias for a `Result` with the error type [`cdr::Error`].
 ///

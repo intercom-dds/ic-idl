@@ -693,6 +693,9 @@ impl<'ctx> TypeItemProcessor<'ctx> {
             return result;
         };
 
+        let annotations =
+            convert_annotations(self.ctx, &members.meta.annotations, self.current_scope);
+
         for decl in &members.declarators {
             let (ident, member_ty) =
                 resolve_declarator(decl, ty.clone(), self.ctx, self.current_scope);
@@ -700,7 +703,7 @@ impl<'ctx> TypeItemProcessor<'ctx> {
             result.push(Member {
                 ident,
                 ty: member_ty,
-                annotations: Vec::new(), // TODO: Convert annotations
+                annotations: annotations.clone(),
             });
         }
 

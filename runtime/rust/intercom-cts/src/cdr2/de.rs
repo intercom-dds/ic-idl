@@ -1,4 +1,4 @@
-// Copyright 2026 KONGSBERG
+// Copyright 2024 KONGSBERG
 //
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions are met:
@@ -31,8 +31,9 @@ use crate::buf::Cursor;
 use crate::buf::endian::{Endian, Little};
 use crate::cdr::Error;
 use crate::decode::{
-    ArrayDeserializer, Deserializer, EnumDeserializer, EnumVisitor, MapDeserializer,
-    OptionDeserializer, SeqDeserializer, StructDeserializer, UnionDeserializer, Unmarshal,
+    ArrayDeserializer, BitmaskDeserializer, Deserializer, EnumDeserializer, EnumVisitor,
+    MapDeserializer, OptionDeserializer, SeqDeserializer, StructDeserializer, UnionDeserializer,
+    Unmarshal,
 };
 use crate::{MemberInfo, TypeInfo};
 
@@ -106,6 +107,7 @@ impl<'r, 'de, E: Endian> Deserializer<'de> for &'r mut Xcdr2Reader<'de, E> {
     type Struct = Xcdr2StructDeserializer<'r, 'de, E>;
     type Union = Xcdr2UnionDeserializer<'r, 'de, E>;
     type Enum = Xcdr2EnumDeserializer<'r, 'de, E>;
+    type Bitmask = Self;
     type Sequence = Xcdr2CollectionDeserializer<'r, 'de, E>;
     type Array = Xcdr2CollectionDeserializer<'r, 'de, E>;
     type Map = Xcdr2MapDeserializer<'r, 'de, E>;
@@ -129,7 +131,7 @@ impl<'r, 'de, E: Endian> Deserializer<'de> for &'r mut Xcdr2Reader<'de, E> {
 
     #[inline]
     fn decode_i8(self) -> Result<i8, Self::Error> {
-        self.decode_u8().map(|v| v as i8)
+        self.decode_u8().map(u8::cast_signed)
     }
 
     #[inline]
@@ -139,7 +141,7 @@ impl<'r, 'de, E: Endian> Deserializer<'de> for &'r mut Xcdr2Reader<'de, E> {
 
     #[inline]
     fn decode_i16(self) -> Result<i16, Self::Error> {
-        self.decode_u16().map(|v| v as i16)
+        self.decode_u16().map(u16::cast_signed)
     }
 
     #[inline]
@@ -149,7 +151,7 @@ impl<'r, 'de, E: Endian> Deserializer<'de> for &'r mut Xcdr2Reader<'de, E> {
 
     #[inline]
     fn decode_i32(self) -> Result<i32, Self::Error> {
-        self.decode_u32().map(|v| v as i32)
+        self.decode_u32().map(u32::cast_signed)
     }
 
     #[inline]
@@ -159,7 +161,7 @@ impl<'r, 'de, E: Endian> Deserializer<'de> for &'r mut Xcdr2Reader<'de, E> {
 
     #[inline]
     fn decode_i64(self) -> Result<i64, Self::Error> {
-        self.decode_u64().map(|v| v as i64)
+        self.decode_u64().map(u64::cast_signed)
     }
 
     #[inline]
@@ -273,8 +275,12 @@ impl<'r, 'de, E: Endian> Deserializer<'de> for &'r mut Xcdr2Reader<'de, E> {
         })
     }
 
-    fn decode_enum(self, _name: &str) -> Result<Self::Enum, Self::Error> {
+    fn decode_enum(self, _: &TypeInfo<'_>) -> Result<Self::Enum, Self::Error> {
         Ok(Xcdr2EnumDeserializer { reader: self })
+    }
+
+    fn decode_bitmask(self, _: &TypeInfo<'_>) -> Result<Self::Bitmask, Self::Error> {
+        Ok(self)
     }
 
     fn decode_sequence(self) -> Result<Self::Sequence, Self::Error> {
@@ -710,6 +716,17 @@ impl<E: Endian> EnumDeserializer for Xcdr2EnumDeserializer<'_, '_, E> {
         T: EnumVisitor + Unmarshal,
     {
         visitor.member_id(&mut *self.reader)
+    }
+}
+
+impl<'a, E: Endian> BitmaskDeserializer<'a> for &mut Xcdr2Reader<'_, E> {
+    type Error = Error;
+
+    fn decode_flags<T>(self, _: &[MemberInfo<'a>]) -> Result<T, Self::Error>
+    where
+        T: Unmarshal + Default,
+    {
+        T::unmarshal(self)
     }
 }
 

@@ -78,6 +78,7 @@ impl From<Span> for Range<usize> {
 const _: () = {
     impl ::intercom_cts::type_info::TypeDescriptor for Location {
         const TYPE_INFO: &'static ::intercom_cts::TypeInfo<'static> = &TYPE_INFO;
+        const MEMBER_INFO: &'static [::intercom_cts::MemberInfo<'static>] = &MEMBER_INFO;
     }
 
     const TYPE_INFO: ::intercom_cts::TypeInfo<'static> = ::intercom_cts::TypeInfo {
@@ -138,6 +139,7 @@ const _: () = {
 const _: () = {
     impl ::intercom_cts::type_info::TypeDescriptor for Span {
         const TYPE_INFO: &'static ::intercom_cts::TypeInfo<'static> = &TYPE_INFO;
+        const MEMBER_INFO: &'static [::intercom_cts::MemberInfo<'static>] = &MEMBER_INFO;
     }
 
     const TYPE_INFO: ::intercom_cts::TypeInfo<'static> = ::intercom_cts::TypeInfo {

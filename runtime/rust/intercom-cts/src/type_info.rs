@@ -1,4 +1,4 @@
-// Copyright 2026 KONGSBERG
+// Copyright 2023 KONGSBERG
 //
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions are met:
@@ -77,8 +77,6 @@ pub struct MemberInfo<'a> {
     pub type_info: &'a TypeInfo<'a>,
 }
 
-// FIXME: This is complete fucking garbage and has to be reworked.
-// Discriminators can be different types, not just i32.
 const DISC_TYPE_INFO: TypeInfo<'static> = TypeInfo {
     name: "discriminator",
     flags: TypeFlag::IS_FINAL,
@@ -132,10 +130,18 @@ pub enum TypeKind {
 pub trait TypeDescriptor {
     /// Type information for this type.
     const TYPE_INFO: &'static TypeInfo<'static>;
+
+    /// Member information for this type.
+    const MEMBER_INFO: &'static [MemberInfo<'static>];
 }
 
 pub const fn type_info<T: TypeDescriptor>() -> &'static TypeInfo<'static> {
     T::TYPE_INFO
+}
+
+#[must_use]
+pub const fn member_info<T: TypeDescriptor>() -> &'static [MemberInfo<'static>] {
+    T::MEMBER_INFO
 }
 
 impl TypeDescriptor for () {
@@ -146,6 +152,7 @@ impl TypeDescriptor for () {
         key_info: None,
         element_info: None,
     };
+    const MEMBER_INFO: &'static [MemberInfo<'static>] = &[];
 }
 
 impl TypeDescriptor for bool {
@@ -156,6 +163,7 @@ impl TypeDescriptor for bool {
         key_info: None,
         element_info: None,
     };
+    const MEMBER_INFO: &'static [MemberInfo<'static>] = &[];
 }
 
 impl TypeDescriptor for u8 {
@@ -166,6 +174,7 @@ impl TypeDescriptor for u8 {
         key_info: None,
         element_info: None,
     };
+    const MEMBER_INFO: &'static [MemberInfo<'static>] = &[];
 }
 
 impl TypeDescriptor for u16 {
@@ -176,6 +185,7 @@ impl TypeDescriptor for u16 {
         key_info: None,
         element_info: None,
     };
+    const MEMBER_INFO: &'static [MemberInfo<'static>] = &[];
 }
 
 impl TypeDescriptor for u32 {
@@ -186,6 +196,7 @@ impl TypeDescriptor for u32 {
         key_info: None,
         element_info: None,
     };
+    const MEMBER_INFO: &'static [MemberInfo<'static>] = &[];
 }
 
 impl TypeDescriptor for u64 {
@@ -196,6 +207,7 @@ impl TypeDescriptor for u64 {
         key_info: None,
         element_info: None,
     };
+    const MEMBER_INFO: &'static [MemberInfo<'static>] = &[];
 }
 
 impl TypeDescriptor for i8 {
@@ -206,6 +218,7 @@ impl TypeDescriptor for i8 {
         key_info: None,
         element_info: None,
     };
+    const MEMBER_INFO: &'static [MemberInfo<'static>] = &[];
 }
 
 impl TypeDescriptor for i16 {
@@ -216,6 +229,7 @@ impl TypeDescriptor for i16 {
         key_info: None,
         element_info: None,
     };
+    const MEMBER_INFO: &'static [MemberInfo<'static>] = &[];
 }
 
 impl TypeDescriptor for i32 {
@@ -226,6 +240,7 @@ impl TypeDescriptor for i32 {
         key_info: None,
         element_info: None,
     };
+    const MEMBER_INFO: &'static [MemberInfo<'static>] = &[];
 }
 
 impl TypeDescriptor for i64 {
@@ -236,6 +251,7 @@ impl TypeDescriptor for i64 {
         key_info: None,
         element_info: None,
     };
+    const MEMBER_INFO: &'static [MemberInfo<'static>] = &[];
 }
 
 impl TypeDescriptor for f32 {
@@ -246,6 +262,7 @@ impl TypeDescriptor for f32 {
         key_info: None,
         element_info: None,
     };
+    const MEMBER_INFO: &'static [MemberInfo<'static>] = &[];
 }
 
 impl TypeDescriptor for f64 {
@@ -256,6 +273,7 @@ impl TypeDescriptor for f64 {
         key_info: None,
         element_info: None,
     };
+    const MEMBER_INFO: &'static [MemberInfo<'static>] = &[];
 }
 
 impl TypeDescriptor for String {
@@ -266,10 +284,12 @@ impl TypeDescriptor for String {
         key_info: None,
         element_info: None,
     };
+    const MEMBER_INFO: &'static [MemberInfo<'static>] = &[];
 }
 
 impl TypeDescriptor for str {
     const TYPE_INFO: &'static TypeInfo<'static> = String::TYPE_INFO;
+    const MEMBER_INFO: &'static [MemberInfo<'static>] = &[];
 }
 
 impl<T: TypeDescriptor> TypeDescriptor for Vec<T> {
@@ -280,6 +300,7 @@ impl<T: TypeDescriptor> TypeDescriptor for Vec<T> {
         key_info: None,
         element_info: Some(T::TYPE_INFO),
     };
+    const MEMBER_INFO: &'static [MemberInfo<'static>] = &[];
 }
 
 impl<K: TypeDescriptor, V: TypeDescriptor> TypeDescriptor for BTreeMap<K, V> {
@@ -290,10 +311,12 @@ impl<K: TypeDescriptor, V: TypeDescriptor> TypeDescriptor for BTreeMap<K, V> {
         key_info: Some(K::TYPE_INFO),
         element_info: Some(V::TYPE_INFO),
     };
+    const MEMBER_INFO: &'static [MemberInfo<'static>] = &[];
 }
 
 impl<T: TypeDescriptor> TypeDescriptor for Option<T> {
     const TYPE_INFO: &'static TypeInfo<'static> = T::TYPE_INFO;
+    const MEMBER_INFO: &'static [MemberInfo<'static>] = &[];
 }
 
 impl<T: TypeDescriptor, const N: usize> TypeDescriptor for [T; N] {
@@ -304,6 +327,7 @@ impl<T: TypeDescriptor, const N: usize> TypeDescriptor for [T; N] {
         key_info: None,
         element_info: Some(T::TYPE_INFO),
     };
+    const MEMBER_INFO: &'static [MemberInfo<'static>] = &[];
 }
 
 impl TypeDescriptor for char {
@@ -314,36 +338,45 @@ impl TypeDescriptor for char {
         key_info: None,
         element_info: None,
     };
+    const MEMBER_INFO: &'static [MemberInfo<'static>] = &[];
 }
 
 impl TypeDescriptor for isize {
     const TYPE_INFO: &'static TypeInfo<'static> = i64::TYPE_INFO;
+    const MEMBER_INFO: &'static [MemberInfo<'static>] = &[];
 }
 
 impl TypeDescriptor for usize {
     const TYPE_INFO: &'static TypeInfo<'static> = u64::TYPE_INFO;
+    const MEMBER_INFO: &'static [MemberInfo<'static>] = &[];
 }
 
 impl<T: TypeDescriptor> TypeDescriptor for Box<T> {
     const TYPE_INFO: &'static TypeInfo<'static> = T::TYPE_INFO;
+    const MEMBER_INFO: &'static [MemberInfo<'static>] = &[];
 }
 
 impl<T: TypeDescriptor> TypeDescriptor for &T {
     const TYPE_INFO: &'static TypeInfo<'static> = T::TYPE_INFO;
+    const MEMBER_INFO: &'static [MemberInfo<'static>] = &[];
 }
 
 impl<T: TypeDescriptor> TypeDescriptor for [T] {
     const TYPE_INFO: &'static TypeInfo<'static> = <Vec<T>>::TYPE_INFO;
+    const MEMBER_INFO: &'static [MemberInfo<'static>] = &[];
 }
 
 impl<T: TypeDescriptor> TypeDescriptor for BTreeSet<T> {
     const TYPE_INFO: &'static TypeInfo<'static> = <Vec<T>>::TYPE_INFO;
+    const MEMBER_INFO: &'static [MemberInfo<'static>] = &[];
 }
 
 impl<T: TypeDescriptor, H> TypeDescriptor for HashSet<T, H> {
     const TYPE_INFO: &'static TypeInfo<'static> = <Vec<T>>::TYPE_INFO;
+    const MEMBER_INFO: &'static [MemberInfo<'static>] = &[];
 }
 
 impl<K: TypeDescriptor, V: TypeDescriptor, H> TypeDescriptor for HashMap<K, V, H> {
     const TYPE_INFO: &'static TypeInfo<'static> = <BTreeMap<K, V>>::TYPE_INFO;
+    const MEMBER_INFO: &'static [MemberInfo<'static>] = &[];
 }

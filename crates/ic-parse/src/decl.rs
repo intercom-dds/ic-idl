@@ -256,7 +256,7 @@ impl Parser<'_> {
             name: ident,
             disc: Disc {
                 meta: Meta {
-                    span: self.make_span(start, self.prev_span),
+                    span: ic_syntax::util::ty_span(&disc_ty),
                     annotations: disc_annotations,
                 },
                 ty: disc_ty,
@@ -314,9 +314,9 @@ impl Parser<'_> {
             let expr = self.const_expr()?;
             self.expect(Kind::Colon)?;
             Ok(Label::Value(expr))
-        } else if self.eat_keyword(Kw::Default).is_some() {
+        } else if let Some(kw_span) = self.eat_keyword(Kw::Default) {
             self.expect(Kind::Colon)?;
-            Ok(Label::Default(self.prev_span))
+            Ok(Label::Default(kw_span))
         } else {
             Err(self.error_expected("case or default"))
         }
@@ -688,6 +688,8 @@ impl Parser<'_> {
     // Rule 85
     fn param_dcl(&mut self) -> Result<Param> {
         let start = self.span();
+        let annotations = self.take_annotations();
+
         // Rule 86: param_attribute
         let kind = match self.peek() {
             Kind::Keyword(Kw::In) => {
@@ -711,7 +713,7 @@ impl Parser<'_> {
         Ok(Param {
             meta: Meta {
                 span: self.make_span(start, self.prev_span),
-                annotations: Vec::new(),
+                annotations,
             },
             declarator: decl,
             ty,
@@ -912,7 +914,9 @@ impl Parser<'_> {
 
         match self.peek() {
             // Rule 106: state_member
-            Kind::Keyword(Kw::Public | Kw::Private) => Ok(ValueMember::State(self.state_member()?)),
+            Kind::Keyword(Kw::Public | Kw::Private) => {
+                Ok(ValueMember::State(self.state_member(annotations)?))
+            }
             Kind::Keyword(Kw::Oneway) => {
                 let start = self.span();
                 self.advance();
@@ -948,7 +952,7 @@ impl Parser<'_> {
     }
 
     // Rule 106
-    fn state_member(&mut self) -> Result<StateMember> {
+    fn state_member(&mut self, mut annotations: Vec<ic_syntax::Annotation>) -> Result<StateMember> {
         let visibility_span = self.span();
         let is_public = if self.eat_keyword(Kw::Public).is_some() {
             true
@@ -968,13 +972,13 @@ impl Parser<'_> {
 
         let ty = self.type_spec()?;
         let decl = self.declarators()?;
-        self.expect(Kind::Semi)?;
-        let _ = self.take_trailing_comments();
+        annotations.extend(self.take_annotations());
+        annotations.extend(self.expect_semi()?);
 
         Ok(StateMember {
             meta: Meta {
                 span: self.make_span(visibility_span, self.prev_span),
-                annotations: Vec::new(),
+                annotations,
             },
             declarators: decl,
             ty,

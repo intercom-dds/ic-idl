@@ -58,7 +58,7 @@ fn make_arg(name: Option<&str>, value: Numeric) -> AnnArg {
 
 #[test]
 fn test_cts_annotation_error_display() {
-    let err = CtsAnnotationError::WrongAnnotationType {
+    let err = Error::WrongAnnotationType {
         expected: "range",
         actual: "optional".to_string(),
     };
@@ -67,13 +67,13 @@ fn test_cts_annotation_error_display() {
         "Expected annotation @range but found @optional"
     );
 
-    let err = CtsAnnotationError::DeserializationError("test error".to_string());
+    let err = Error::DeserializationError("test error".to_string());
     assert_eq!(err.to_string(), "Deserialization error: test error");
 
-    let err = CtsAnnotationError::FieldNotFound("value".to_string());
+    let err = Error::FieldNotFound("value".to_string());
     assert_eq!(err.to_string(), "Field 'value' not found");
 
-    let err = CtsAnnotationError::TypeConversionError {
+    let err = Error::TypeConversionError {
         field: "value".to_string(),
         expected: "i32",
     };
@@ -85,8 +85,8 @@ fn test_cts_annotation_error_display() {
 
 #[test]
 fn test_cts_annotation_error_custom() {
-    let err: CtsAnnotationError = intercom_cts::error::Error::custom("custom error");
-    assert!(matches!(err, CtsAnnotationError::DeserializationError(_)));
+    let err: Error = intercom_cts::error::Error::custom("custom error");
+    assert!(matches!(err, Error::DeserializationError(_)));
 }
 
 #[test]
@@ -596,7 +596,7 @@ fn test_error_propagation() {
     );
     let result: Result<Optional, _> = ann.unmarshal("optional");
     match result {
-        Err(CtsAnnotationError::TypeConversionError { field, expected }) => {
+        Err(Error::TypeConversionError { field, expected }) => {
             assert_eq!(field, "value");
             assert_eq!(expected, "bool");
         }
@@ -607,7 +607,7 @@ fn test_error_propagation() {
     let ann = make_ann("wrong", vec![]);
     let result: Result<Optional, _> = ann.unmarshal("optional");
     match result {
-        Err(CtsAnnotationError::WrongAnnotationType { expected, actual }) => {
+        Err(Error::WrongAnnotationType { expected, actual }) => {
             assert_eq!(expected, "optional");
             assert_eq!(actual, "wrong");
         }

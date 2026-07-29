@@ -1,4 +1,4 @@
-// Copyright 2026 KONGSBERG
+// Copyright 2025 KONGSBERG
 //
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions are met:
@@ -79,7 +79,12 @@ impl<'a> Cursor<'a> {
     pub const fn pos(&self) -> usize {
         // SAFETY: `read` and `start` are guaranteed to be valid and part of
         // the same allocation.
-        unsafe { self.read.as_ptr().offset_from(self.start.as_ptr()) as usize }
+        unsafe {
+            self.read
+                .as_ptr()
+                .offset_from(self.start.as_ptr())
+                .cast_unsigned()
+        }
     }
 
     /// Sets the current read position to a new offset from the beginning of
@@ -114,6 +119,8 @@ impl<'a> Cursor<'a> {
             pos <= self.total_len(),
             "attempted to advance past end of buffer",
         );
+        // SAFETY: caller guarantees pos <= total_len(), so the result stays
+        // within the allocation.
         self.read = unsafe { self.start.add(pos) };
     }
 
@@ -123,7 +130,12 @@ impl<'a> Cursor<'a> {
     pub const fn total_len(&self) -> usize {
         // SAFETY: `end` and `start` are guaranteed to be valid and part of the
         // same allocation.
-        unsafe { self.end.as_ptr().offset_from(self.start.as_ptr()) as usize }
+        unsafe {
+            self.end
+                .as_ptr()
+                .offset_from(self.start.as_ptr())
+                .cast_unsigned()
+        }
     }
 
     /// Returns the number of bytes that have not yet been read.
@@ -132,7 +144,12 @@ impl<'a> Cursor<'a> {
     pub const fn unread_bytes(&self) -> usize {
         // SAFETY: `end` and `read` are guaranteed to be valid and part of the
         // same allocation.
-        unsafe { self.end.as_ptr().offset_from(self.read.as_ptr()) as usize }
+        unsafe {
+            self.end
+                .as_ptr()
+                .offset_from(self.read.as_ptr())
+                .cast_unsigned()
+        }
     }
 
     /// Checks if all bytes in the cursor have been read.
@@ -161,6 +178,7 @@ impl<'a> Cursor<'a> {
     /// read position beyond the end of the buffer.
     #[inline]
     pub const unsafe fn advance_unchecked(&mut self, n: usize) {
+        // SAFETY: caller guarantees pos() + n does not exceed total_len().
         unsafe {
             self.set_pos_unchecked(self.pos() + n);
         }
@@ -175,7 +193,7 @@ impl<'a> Cursor<'a> {
     /// Reads an `i8` from the current position and advances the cursor.
     #[inline]
     pub fn read_i8(&mut self) -> Result<i8> {
-        self.read_u8().map(|v| v as i8)
+        self.read_u8().map(u8::cast_signed)
     }
 
     /// Reads a `u16` from the current position using the specified endianness
@@ -189,7 +207,7 @@ impl<'a> Cursor<'a> {
     /// and advances the cursor.
     #[inline]
     pub fn read_i16<E: Endian>(&mut self) -> Result<i16> {
-        self.read_u16::<E>().map(|v| v as i16)
+        self.read_u16::<E>().map(u16::cast_signed)
     }
 
     /// Reads a `u32` from the current position using the specified endianness
@@ -203,7 +221,7 @@ impl<'a> Cursor<'a> {
     /// and advances the cursor.
     #[inline]
     pub fn read_i32<E: Endian>(&mut self) -> Result<i32> {
-        self.read_u32::<E>().map(|v| v as i32)
+        self.read_u32::<E>().map(u32::cast_signed)
     }
 
     /// Reads a `u64` from the current position using the specified endianness
@@ -217,7 +235,7 @@ impl<'a> Cursor<'a> {
     /// and advances the cursor.
     #[inline]
     pub fn read_i64<E: Endian>(&mut self) -> Result<i64> {
-        self.read_u64::<E>().map(|v| v as i64)
+        self.read_u64::<E>().map(u64::cast_signed)
     }
 
     /// Advances the read position to ensure it meets the specified alignment.
@@ -263,7 +281,8 @@ impl<'a> Cursor<'a> {
 
         let dt = index.end - index.start;
         if index.end <= self.total_len() {
-            // SAFETY: bounds checked
+            // SAFETY: index.end <= total_len() and index.start <= index.end,
+            // so the resulting slice lies within the allocation.
             Ok(unsafe { std::slice::from_raw_parts(self.start.as_ptr().add(index.start), dt) })
         } else {
             Err(Error::InvalidLen)
@@ -279,6 +298,8 @@ impl<'a> Cursor<'a> {
     #[must_use]
     pub const unsafe fn slice(&self, len: usize) -> &'a [u8] {
         debug_assert!(len <= self.unread_bytes());
+        // SAFETY: caller guarantees len <= unread_bytes(), so the slice
+        // stays within the allocation.
         unsafe { std::slice::from_raw_parts(self.read.as_ptr(), len) }
     }
 
@@ -403,6 +424,7 @@ mod tests {
     #[test]
     fn cursor_set_pos() {
         let mut buf = Cursor::new(&[0, 1, 2]);
+        // SAFETY: all positions used below are <= the buffer's total length (3).
         unsafe {
             buf.set_pos_unchecked(0);
             assert_eq!(buf.unread_bytes(), 3);
@@ -430,6 +452,9 @@ mod tests {
     #[cfg(debug_assertions)]
     fn cursor_advance_past_end() {
         let mut buf = Cursor::new(&[0]);
+        // SAFETY: deliberately violates the contract to exercise the
+        // debug_assert; only run under cfg(debug_assertions), where the
+        // assertion panics before any out-of-bounds pointer arithmetic occurs.
         unsafe { buf.advance_unchecked(2) };
     }
 
@@ -438,6 +463,9 @@ mod tests {
     #[cfg(debug_assertions)]
     fn cursor_set_pos_oob() {
         let mut buf = Cursor::new(&[]);
+        // SAFETY: deliberately violates the contract to exercise the
+        // debug_assert; only run under cfg(debug_assertions), where the
+        // assertion panics before any out-of-bounds pointer arithmetic occurs.
         unsafe { buf.set_pos_unchecked(1) };
     }
 
@@ -445,6 +473,7 @@ mod tests {
     fn cursor_as_ref() {
         let slice = &[0, 1, 2];
         let mut buf = Cursor::new(slice);
+        // SAFETY: cumulative advances stay within the 3-byte slice.
         unsafe {
             assert_eq!(buf.as_ref(), &slice[0..]);
             buf.advance_unchecked(1);

@@ -1,4 +1,4 @@
-// Copyright 2026 KONGSBERG
+// Copyright 2025 KONGSBERG
 //
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions are met:
@@ -25,19 +25,52 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#pragma once
+use quote::quote;
 
-module repo {
-    struct DepA {};
+use crate::attrs::{FieldAttrs, VariantAttrs};
 
-    struct DepB {};
+pub enum TypeKind {
+    Enum,
+    Union,
+}
 
-    struct HasDeps {
-        DepA a;
-        DepB b;
-    };
+pub fn determine_type_kind(variants: &[VariantAttrs]) -> TypeKind {
+    if variants.iter().any(VariantAttrs::has_fields) {
+        TypeKind::Union
+    } else {
+        TypeKind::Enum
+    }
+}
 
-    /// Do not use this type for anything. One of the TypeRepository tests rely
-    /// on this type being unregistered prior to its execution.
-    struct FreshType {};
-};
+pub fn assign_member_ids(fields: &[FieldAttrs]) -> Vec<u32> {
+    let mut next_id = 0u32;
+    fields
+        .iter()
+        .map(|field| {
+            if let Some(id) = field.id {
+                next_id = id + 1;
+                id
+            } else {
+                let id = next_id;
+                next_id += 1;
+                id
+            }
+        })
+        .collect()
+}
+
+pub fn assign_variant_discriminants(variants: &[VariantAttrs]) -> Vec<proc_macro2::TokenStream> {
+    let mut next_disc = 0i32;
+    variants
+        .iter()
+        .map(|variant| {
+            if let Some(disc) = &variant.disc {
+                quote!(#disc)
+            } else {
+                let disc = next_disc;
+                next_disc += 1;
+                quote!(#disc)
+            }
+        })
+        .collect()
+}

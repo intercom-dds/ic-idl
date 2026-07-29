@@ -30,5 +30,6 @@ resolver = "2"
 members = [
     "intercom-build",
     "intercom-cts",
+    "intercom-derive",
     "intercom-test",
 ]

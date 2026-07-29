@@ -1,4 +1,4 @@
-# Copyright 2026 KONGSBERG
+# Copyright 2024 KONGSBERG
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions are met:
@@ -26,24 +26,20 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 [package]
-name = "intercom-test"
-version = "0.0.0"
-authors = ["InterCOM DDS team <InterCOM.DDSteam@kongsberg.com>"]
+name = "intercom-derive"
+version = "0.5.0"
+authors = ["InterCOM DDS team <IDS-InterCOM_DDS@kda.kongsberg.com>"]
 edition = "2024"
+rust-version = "1.90"
 publish = false
 
 [lib]
-doc = false
-
-[[bench]]
-name = "cdr2_bench"
-harness = false
+proc-macro = true
 
 [dependencies]
-intercom-cts = { path = "../intercom-cts", features = ["derive"] }
+syn = { version = "2.0", features = ["full"] }
+quote = "1.0"
+proc-macro2 = "1.0"
 
 [dev-dependencies]
-criterion = "0.8.1"
-
-[build-dependencies]
-intercom-build = { path = "../intercom-build" }
+intercom-cts = { path = "../intercom-cts", features = ["derive"] }

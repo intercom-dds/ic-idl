@@ -1,4 +1,4 @@
-// Copyright 2026 KONGSBERG
+// Copyright 2023 KONGSBERG
 //
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions are met:
@@ -63,6 +63,9 @@ pub trait Deserializer<'a> {
 
     /// Deserializer used to deserialize plain, C-like `enums`s.
     type Enum: EnumDeserializer<Error = Self::Error>;
+
+    /// Deserializer used to deserialize bitmasks.
+    type Bitmask: BitmaskDeserializer<'a, Error = Self::Error>;
 
     /// Deserializer used to deserialize sequences.
     type Sequence: SeqDeserializer<Error = Self::Error>;
@@ -443,7 +446,10 @@ pub trait Deserializer<'a> {
     fn decode_union(self, info: &TypeInfo<'a>) -> Result<Self::Union, Self::Error>;
 
     /// Deserialize a plain, C-like enum.
-    fn decode_enum(self, name: &str) -> Result<Self::Enum, Self::Error>;
+    fn decode_enum(self, info: &TypeInfo<'a>) -> Result<Self::Enum, Self::Error>;
+
+    /// Deserialize a bitmask.
+    fn decode_bitmask(self, info: &TypeInfo<'a>) -> Result<Self::Bitmask, Self::Error>;
 
     /// Begin deserializing an optional value.
     ///
@@ -607,6 +613,14 @@ pub trait EnumDeserializer {
     fn decode_enumerator<T>(self, visitor: T) -> Result<T, Self::Error>
     where
         T: Unmarshal + EnumVisitor;
+}
+
+pub trait BitmaskDeserializer<'a> {
+    type Error: Error;
+
+    fn decode_flags<T>(self, members: &[MemberInfo<'a>]) -> Result<T, Self::Error>
+    where
+        T: Unmarshal + Default;
 }
 
 pub trait OptionDeserializer {

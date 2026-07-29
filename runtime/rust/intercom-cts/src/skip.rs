@@ -1,4 +1,4 @@
-// Copyright 2026 KONGSBERG
+// Copyright 2025 KONGSBERG
 //
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions are met:
@@ -93,11 +93,11 @@ impl<Ok, Err: Error> UnionSerializer for Skip<Ok, Err> {
     }
 }
 
-impl<Ok, Err: Error> EnumSerializer for Skip<Ok, Err> {
+impl<'a, Ok, Err: Error> EnumSerializer<'a> for Skip<Ok, Err> {
     type Ok = Ok;
     type Error = Err;
 
-    fn encode_variant<T>(self, _: &str, _: T) -> Result<Self::Ok, Self::Error>
+    fn encode_variant<T>(self, _: &MemberInfo<'a>, _: T) -> Result<Self::Ok, Self::Error>
     where
         T: Marshal,
     {

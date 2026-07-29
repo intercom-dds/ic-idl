@@ -1,4 +1,4 @@
-// Copyright 2026 KONGSBERG
+// Copyright 2023 KONGSBERG
 //
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions are met:
@@ -32,8 +32,8 @@ use super::error::Error;
 use super::key::KeySerializer;
 use crate::decode::{Deserializer, Type};
 use crate::encode::{
-    ArraySerializer, EnumSerializer, MapSerializer, SeqSerializer, Serializer, StructSerializer,
-    UnionSerializer,
+    ArraySerializer, BitmaskSerializer, EnumSerializer, MapSerializer, SeqSerializer, Serializer,
+    StructSerializer, UnionSerializer,
 };
 use crate::error::Error as _;
 use crate::json::to_string;
@@ -83,34 +83,42 @@ pub enum Value {
 }
 
 impl Value {
+    #[must_use]
     pub fn is_null(&self) -> bool {
         matches!(self, Value::Null)
     }
 
+    #[must_use]
     pub fn is_bool(&self) -> bool {
         matches!(self, Value::Bool(_))
     }
 
+    #[must_use]
     pub fn is_integer(&self) -> bool {
         matches!(self, Value::Number(Number::Signed(_) | Number::Unsigned(_)))
     }
 
+    #[must_use]
     pub fn is_float(&self) -> bool {
         matches!(self, Value::Number(Number::Float(_)))
     }
 
+    #[must_use]
     pub fn is_string(&self) -> bool {
         matches!(self, Value::String(_))
     }
 
+    #[must_use]
     pub fn is_array(&self) -> bool {
         matches!(self, Value::Array(_))
     }
 
+    #[must_use]
     pub fn is_object(&self) -> bool {
         matches!(self, Value::Object(_))
     }
 
+    #[must_use]
     pub fn as_bool(&self) -> Option<bool> {
         if let Self::Bool(v) = self {
             Some(*v)
@@ -119,6 +127,7 @@ impl Value {
         }
     }
 
+    #[must_use]
     pub fn as_u64(&self) -> Option<u64> {
         if let Self::Number(Number::Unsigned(v)) = self {
             Some(*v)
@@ -127,6 +136,7 @@ impl Value {
         }
     }
 
+    #[must_use]
     pub fn as_i64(&self) -> Option<i64> {
         if let Self::Number(Number::Signed(v)) = self {
             Some(*v)
@@ -135,6 +145,7 @@ impl Value {
         }
     }
 
+    #[must_use]
     pub fn as_f64(&self) -> Option<f64> {
         if let Self::Number(Number::Float(v)) = self {
             Some(*v)
@@ -143,6 +154,7 @@ impl Value {
         }
     }
 
+    #[must_use]
     pub fn as_str(&self) -> Option<&str> {
         if let Self::String(v) = self {
             Some(v)
@@ -151,6 +163,7 @@ impl Value {
         }
     }
 
+    #[must_use]
     pub fn as_array(&self) -> Option<&Vec<Self>> {
         if let Self::Array(v) = self {
             Some(v)
@@ -159,6 +172,7 @@ impl Value {
         }
     }
 
+    #[must_use]
     pub fn as_object(&self) -> Option<&BTreeMap<String, Self>> {
         if let Self::Object(v) = self {
             Some(v)
@@ -360,6 +374,7 @@ impl Serializer<'_> for S {
     type Struct = Self;
     type Union = Self;
     type Enum = Self;
+    type Bitmask = Self;
     type Sequence = Self;
     type Array = Self;
     type Map = Self;
@@ -447,7 +462,11 @@ impl Serializer<'_> for S {
         self.encode_struct(info)
     }
 
-    fn encode_enum(self, _: &str) -> Result<Self::Enum, Self::Error> {
+    fn encode_enum(self, _: &TypeInfo<'_>) -> Result<Self::Enum, Self::Error> {
+        Ok(self)
+    }
+
+    fn encode_bitmask(self, _: &TypeInfo<'_>) -> Result<Self::Bitmask, Self::Error> {
         Ok(self)
     }
 
@@ -533,15 +552,27 @@ impl MapSerializer for S {
     }
 }
 
-impl EnumSerializer for S {
+impl<'a> EnumSerializer<'a> for S {
     type Ok = Value;
     type Error = Error;
 
-    fn encode_variant<T>(self, name: &str, _: T) -> Result<Self::Ok, Self::Error>
+    fn encode_variant<T>(self, info: &MemberInfo<'a>, _: T) -> Result<Self::Ok, Self::Error>
     where
         T: Marshal,
     {
-        name.marshal(self)
+        info.name.marshal(self)
+    }
+}
+
+impl<'a> BitmaskSerializer<'a> for S {
+    type Ok = Value;
+    type Error = Error;
+
+    fn encode_flag<T>(self, value: T, _: &[MemberInfo<'a>]) -> Result<Self::Ok, Self::Error>
+    where
+        T: Marshal + Into<u64>,
+    {
+        value.marshal(self)
     }
 }
 

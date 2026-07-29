@@ -1,4 +1,4 @@
-// Copyright 2026 KONGSBERG
+// Copyright 2023 KONGSBERG
 //
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions are met:
@@ -45,24 +45,24 @@ pub type Native = Big;
 
 impl Little {
     #[must_use]
-    pub fn is_le(&self) -> bool {
+    pub const fn is_le() -> bool {
         true
     }
 
     #[must_use]
-    pub fn is_be(&self) -> bool {
+    pub const fn is_be() -> bool {
         false
     }
 }
 
 impl Big {
     #[must_use]
-    pub fn is_le(&self) -> bool {
+    pub const fn is_le() -> bool {
         false
     }
 
     #[must_use]
-    pub fn is_be(&self) -> bool {
+    pub const fn is_be() -> bool {
         true
     }
 }
@@ -70,9 +70,10 @@ impl Big {
 macro_rules! read_order {
     ($slice:expr, $type:ty, $order:ident) => {{
         const SIZE: usize = std::mem::size_of::<$type>();
-        let mut bytes = [0; SIZE];
-        bytes.copy_from_slice(&$slice[0..SIZE]);
-        <$type>::$order(bytes)
+        let bytes = &$slice[..SIZE];
+        // SAFETY: bytes has exactly SIZE bytes, so reading an unaligned $type
+        // is valid.
+        unsafe { bytes.as_ptr().cast::<$type>().read_unaligned().$order() }
     }};
 }
 
@@ -158,6 +159,7 @@ pub trait Endian: 'static {
     #[inline(always)]
     #[must_use]
     unsafe fn read_u16x2_raw(ptr: *const u8) -> [u16; 2] {
+        // SAFETY: caller guarantees ptr is valid for 4 bytes.
         let val = unsafe { ptr.cast::<u32>().read_unaligned() };
         Self::u32_to_u16x2(val)
     }
@@ -172,6 +174,7 @@ pub trait Endian: 'static {
     #[inline(always)]
     #[must_use]
     unsafe fn read_u16x4_raw(ptr: *const u8) -> [u16; 4] {
+        // SAFETY: caller guarantees ptr is valid for 8 bytes.
         let val = unsafe { ptr.cast::<u64>().read_unaligned() };
         Self::u64_to_u16x4(val)
     }
@@ -186,6 +189,7 @@ pub trait Endian: 'static {
     #[inline(always)]
     #[must_use]
     unsafe fn read_u32x2_raw(ptr: *const u8) -> [u32; 2] {
+        // SAFETY: caller guarantees ptr is valid for 8 bytes.
         let val = unsafe { ptr.cast::<u64>().read_unaligned() };
         Self::u64_to_u32x2(val)
     }
@@ -200,6 +204,7 @@ pub trait Endian: 'static {
     #[inline(always)]
     #[must_use]
     unsafe fn read_u32x4_raw(ptr: *const u8) -> [u32; 4] {
+        // SAFETY: caller guarantees ptr is valid for 16 bytes.
         let val = unsafe { ptr.cast::<u128>().read_unaligned() };
         Self::u128_to_u32x4(val)
     }
@@ -232,17 +237,17 @@ pub trait Endian: 'static {
 impl Endian for Big {
     #[inline(always)]
     fn read_u16(slice: &[u8]) -> u16 {
-        read_order!(slice, u16, from_be_bytes)
+        read_order!(slice, u16, to_be)
     }
 
     #[inline(always)]
     fn read_u32(slice: &[u8]) -> u32 {
-        read_order!(slice, u32, from_be_bytes)
+        read_order!(slice, u32, to_be)
     }
 
     #[inline(always)]
     fn read_u64(slice: &[u8]) -> u64 {
-        read_order!(slice, u64, from_be_bytes)
+        read_order!(slice, u64, to_be)
     }
 
     #[inline(always)]
@@ -262,16 +267,19 @@ impl Endian for Big {
 
     #[inline(always)]
     unsafe fn read_u16_raw(ptr: *const u8) -> u16 {
+        // SAFETY: Caller guarantees ptr is valid for 2 bytes
         unsafe { ptr.cast::<u16>().read_unaligned().to_be() }
     }
 
     #[inline(always)]
     unsafe fn read_u32_raw(ptr: *const u8) -> u32 {
+        // SAFETY: Caller guarantees ptr is valid for 4 bytes
         unsafe { ptr.cast::<u32>().read_unaligned().to_be() }
     }
 
     #[inline(always)]
     unsafe fn read_u64_raw(ptr: *const u8) -> u64 {
+        // SAFETY: Caller guarantees ptr is valid for 8 bytes
         unsafe { ptr.cast::<u64>().read_unaligned().to_be() }
     }
 
@@ -284,7 +292,10 @@ impl Endian for Big {
         }
 
         #[cfg(target_endian = "little")]
-        [(val >> 16) as u16, (val & 0xFFFF) as u16]
+        [
+            ((val & 0xFFFF) as u16).swap_bytes(),
+            ((val >> 16) as u16).swap_bytes(),
+        ]
     }
 
     #[inline(always)]
@@ -297,10 +308,10 @@ impl Endian for Big {
 
         #[cfg(target_endian = "little")]
         [
-            (val >> 48) as u16,
-            ((val >> 32) & 0xFFFF) as u16,
-            ((val >> 16) & 0xFFFF) as u16,
-            (val & 0xFFFF) as u16,
+            ((val & 0xFFFF) as u16).swap_bytes(),
+            (((val >> 16) & 0xFFFF) as u16).swap_bytes(),
+            (((val >> 32) & 0xFFFF) as u16).swap_bytes(),
+            ((val >> 48) as u16).swap_bytes(),
         ]
     }
 
@@ -313,7 +324,10 @@ impl Endian for Big {
         }
 
         #[cfg(target_endian = "little")]
-        [(val >> 32) as u32, (val & 0xFFFF_FFFF) as u32]
+        [
+            ((val & 0xFFFF_FFFF) as u32).swap_bytes(),
+            ((val >> 32) as u32).swap_bytes(),
+        ]
     }
 
     #[inline(always)]
@@ -326,55 +340,55 @@ impl Endian for Big {
 
         #[cfg(target_endian = "little")]
         [
-            (val >> 96) as u32,
-            ((val >> 64) & 0xFFFF_FFFF) as u32,
-            ((val >> 32) & 0xFFFF_FFFF) as u32,
-            (val & 0xFFFF_FFFF) as u32,
+            ((val & 0xFFFF_FFFF) as u32).swap_bytes(),
+            (((val >> 32) & 0xFFFF_FFFF) as u32).swap_bytes(),
+            (((val >> 64) & 0xFFFF_FFFF) as u32).swap_bytes(),
+            ((val >> 96) as u32).swap_bytes(),
         ]
     }
 
     #[inline(always)]
     fn u16x2_to_u32(arr: [u16; 2]) -> u32 {
-        #[cfg(target_endian = "little")]
+        #[cfg(target_endian = "big")]
         {
             // SAFETY: transmute from [u16; 2] to u32 is safe as they have the same size
             unsafe { std::mem::transmute(arr) }
         }
 
-        #[cfg(target_endian = "big")]
+        #[cfg(target_endian = "little")]
         {
-            ((arr[1] as u32) << 16) | (arr[0] as u32)
+            u32::from(arr[0].swap_bytes()) | (u32::from(arr[1].swap_bytes()) << 16)
         }
     }
 
     #[inline(always)]
     fn u16x4_to_u64(arr: [u16; 4]) -> u64 {
-        #[cfg(target_endian = "little")]
+        #[cfg(target_endian = "big")]
         {
             // SAFETY: transmute from [u16; 4] to u64 is safe as they have the same size
             unsafe { std::mem::transmute(arr) }
         }
 
-        #[cfg(target_endian = "big")]
+        #[cfg(target_endian = "little")]
         {
-            ((arr[3] as u64) << 48)
-                | ((arr[2] as u64) << 32)
-                | ((arr[1] as u64) << 16)
-                | (arr[0] as u64)
+            u64::from(arr[0].swap_bytes())
+                | (u64::from(arr[1].swap_bytes()) << 16)
+                | (u64::from(arr[2].swap_bytes()) << 32)
+                | (u64::from(arr[3].swap_bytes()) << 48)
         }
     }
 
     #[inline(always)]
     fn u32x2_to_u64(arr: [u32; 2]) -> u64 {
-        #[cfg(target_endian = "little")]
+        #[cfg(target_endian = "big")]
         {
             // SAFETY: transmute from [u32; 2] to u64 is safe as they have the same size
             unsafe { std::mem::transmute(arr) }
         }
 
-        #[cfg(target_endian = "big")]
+        #[cfg(target_endian = "little")]
         {
-            ((arr[1] as u64) << 32) | (arr[0] as u64)
+            u64::from(arr[0].swap_bytes()) | (u64::from(arr[1].swap_bytes()) << 32)
         }
     }
 
@@ -388,10 +402,10 @@ impl Endian for Big {
 
         #[cfg(target_endian = "little")]
         {
-            (u128::from(arr[0]) << 96)
-                | (u128::from(arr[1]) << 64)
-                | (u128::from(arr[2]) << 32)
-                | u128::from(arr[3])
+            u128::from(arr[0].swap_bytes())
+                | (u128::from(arr[1].swap_bytes()) << 32)
+                | (u128::from(arr[2].swap_bytes()) << 64)
+                | (u128::from(arr[3].swap_bytes()) << 96)
         }
     }
 }
@@ -399,17 +413,17 @@ impl Endian for Big {
 impl Endian for Little {
     #[inline(always)]
     fn read_u16(slice: &[u8]) -> u16 {
-        read_order!(slice, u16, from_le_bytes)
+        read_order!(slice, u16, to_le)
     }
 
     #[inline(always)]
     fn read_u32(slice: &[u8]) -> u32 {
-        read_order!(slice, u32, from_le_bytes)
+        read_order!(slice, u32, to_le)
     }
 
     #[inline(always)]
     fn read_u64(slice: &[u8]) -> u64 {
-        read_order!(slice, u64, from_le_bytes)
+        read_order!(slice, u64, to_le)
     }
 
     #[inline(always)]
@@ -454,7 +468,10 @@ impl Endian for Little {
         }
 
         #[cfg(target_endian = "big")]
-        [(val & 0xFFFF) as u16, (val >> 16) as u16]
+        [
+            ((val >> 16) as u16).swap_bytes(),
+            ((val & 0xFFFF) as u16).swap_bytes(),
+        ]
     }
 
     #[inline(always)]
@@ -467,10 +484,10 @@ impl Endian for Little {
 
         #[cfg(target_endian = "big")]
         [
-            (val & 0xFFFF) as u16,
-            ((val >> 16) & 0xFFFF) as u16,
-            ((val >> 32) & 0xFFFF) as u16,
-            (val >> 48) as u16,
+            ((val >> 48) as u16).swap_bytes(),
+            (((val >> 32) & 0xFFFF) as u16).swap_bytes(),
+            (((val >> 16) & 0xFFFF) as u16).swap_bytes(),
+            ((val & 0xFFFF) as u16).swap_bytes(),
         ]
     }
 
@@ -483,7 +500,10 @@ impl Endian for Little {
         }
 
         #[cfg(target_endian = "big")]
-        [(val & 0xFFFF_FFFF) as u32, (val >> 32) as u32]
+        [
+            ((val >> 32) as u32).swap_bytes(),
+            ((val & 0xFFFF_FFFF) as u32).swap_bytes(),
+        ]
     }
 
     #[inline(always)]
@@ -496,55 +516,55 @@ impl Endian for Little {
 
         #[cfg(target_endian = "big")]
         [
-            (val & 0xFFFF_FFFF) as u32,
-            ((val >> 32) & 0xFFFF_FFFF) as u32,
-            ((val >> 64) & 0xFFFF_FFFF) as u32,
-            (val >> 96) as u32,
+            ((val >> 96) as u32).swap_bytes(),
+            (((val >> 64) & 0xFFFF_FFFF) as u32).swap_bytes(),
+            (((val >> 32) & 0xFFFF_FFFF) as u32).swap_bytes(),
+            ((val & 0xFFFF_FFFF) as u32).swap_bytes(),
         ]
     }
 
     #[inline(always)]
     fn u16x2_to_u32(arr: [u16; 2]) -> u32 {
-        #[cfg(target_endian = "big")]
+        #[cfg(target_endian = "little")]
         {
             // SAFETY: transmute from [u16; 2] to u32 is safe as they have the same size
             unsafe { std::mem::transmute(arr) }
         }
 
-        #[cfg(target_endian = "little")]
+        #[cfg(target_endian = "big")]
         {
-            (u32::from(arr[0]) << 16) | u32::from(arr[1])
+            (u32::from(arr[0].swap_bytes()) << 16) | u32::from(arr[1].swap_bytes())
         }
     }
 
     #[inline(always)]
     fn u16x4_to_u64(arr: [u16; 4]) -> u64 {
-        #[cfg(target_endian = "big")]
+        #[cfg(target_endian = "little")]
         {
             // SAFETY: transmute from [u16; 4] to u64 is safe as they have the same size
             unsafe { std::mem::transmute(arr) }
         }
 
-        #[cfg(target_endian = "little")]
+        #[cfg(target_endian = "big")]
         {
-            (u64::from(arr[0]) << 48)
-                | (u64::from(arr[1]) << 32)
-                | (u64::from(arr[2]) << 16)
-                | u64::from(arr[3])
+            (u64::from(arr[0].swap_bytes()) << 48)
+                | (u64::from(arr[1].swap_bytes()) << 32)
+                | (u64::from(arr[2].swap_bytes()) << 16)
+                | u64::from(arr[3].swap_bytes())
         }
     }
 
     #[inline(always)]
     fn u32x2_to_u64(arr: [u32; 2]) -> u64 {
-        #[cfg(target_endian = "big")]
+        #[cfg(target_endian = "little")]
         {
             // SAFETY: transmute from [u32; 2] to u64 is safe as they have the same size
             unsafe { std::mem::transmute(arr) }
         }
 
-        #[cfg(target_endian = "little")]
+        #[cfg(target_endian = "big")]
         {
-            (u64::from(arr[0]) << 32) | u64::from(arr[1])
+            (u64::from(arr[0].swap_bytes()) << 32) | u64::from(arr[1].swap_bytes())
         }
     }
 
@@ -558,10 +578,10 @@ impl Endian for Little {
 
         #[cfg(target_endian = "big")]
         {
-            ((arr[3] as u128) << 96)
-                | ((arr[2] as u128) << 64)
-                | ((arr[1] as u128) << 32)
-                | (arr[0] as u128)
+            (u128::from(arr[0].swap_bytes()) << 96)
+                | (u128::from(arr[1].swap_bytes()) << 64)
+                | (u128::from(arr[2].swap_bytes()) << 32)
+                | u128::from(arr[3].swap_bytes())
         }
     }
 }

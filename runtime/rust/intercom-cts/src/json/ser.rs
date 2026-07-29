@@ -1,4 +1,4 @@
-// Copyright 2026 KONGSBERG
+// Copyright 2023 KONGSBERG
 //
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions are met:
@@ -31,21 +31,98 @@ use std::ops::{Deref, DerefMut};
 use super::error::Error;
 use super::key::KeySerializer;
 use crate::encode::{
-    ArraySerializer, EnumSerializer, MapSerializer, Marshal, SeqSerializer, Serializer,
-    StructSerializer, UnionSerializer,
+    ArraySerializer, BitmaskSerializer, EnumSerializer, MapSerializer, Marshal, SeqSerializer,
+    Serializer, StructSerializer, UnionSerializer,
 };
 use crate::error::Error as _;
 use crate::type_info::{DISC_INFO, MemberInfo, TypeInfo};
 
+/// Options controlling how a value is serialized to JSON.
+#[derive(Copy, Clone, Debug)]
+pub struct Options {
+    /// Pretty-print the output with indentation and newlines.
+    pub pretty: bool,
+
+    /// Serialize integers that fall outside the range of integers that can be
+    /// represented exactly by an IEEE-754 double (`[-(2^53 - 1), 2^53 - 1]`) as
+    /// JSON strings instead of numbers.
+    ///
+    /// This is a common convention in JavaScript, where numbers are backed by
+    /// doubles and integers beyond `Number.MAX_SAFE_INTEGER` lose precision.
+    /// When disabled (the default), all integers are serialized as JSON
+    /// numbers, retaining the historical behavior.
+    pub large_integers_as_strings: bool,
+}
+
+impl Options {
+    /// Create a new set of options with all features disabled, matching the
+    /// historical serialization behavior.
+    #[must_use]
+    pub const fn new() -> Self {
+        Self {
+            pretty: false,
+            large_integers_as_strings: false,
+        }
+    }
+
+    /// Enable or disable pretty-printing.
+    #[must_use]
+    pub const fn pretty(mut self, pretty: bool) -> Self {
+        self.pretty = pretty;
+        self
+    }
+
+    /// Enable or disable serializing large integers as strings.
+    #[must_use]
+    pub const fn large_integers_as_strings(mut self, enabled: bool) -> Self {
+        self.large_integers_as_strings = enabled;
+        self
+    }
+}
+
+impl Default for Options {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 struct JsonWriter<W: Write> {
     w: W,
     indent: usize,
-    pretty: bool,
+    options: Options,
 }
 
 impl<W: Write> JsonWriter<W> {
+    /// The largest magnitude an integer can have while still being exactly
+    /// representable as an IEEE-754 double, matching JavaScript's
+    /// `Number.MAX_SAFE_INTEGER` (`2^53 - 1`).
+    const MAX_SAFE_INTEGER: i64 = (1 << 53) - 1;
+
     fn write<S: AsRef<[u8]>>(&mut self, value: S) -> Result<(), Error> {
         self.w.write_all(value.as_ref()).map_err(Error::custom)
+    }
+
+    /// Write a signed integer, encoding it as a JSON string when it falls
+    /// outside the safe range and the corresponding option is enabled.
+    fn write_i64(&mut self, value: i64) -> Result<(), Error> {
+        if self.options.large_integers_as_strings
+            && !(-Self::MAX_SAFE_INTEGER..=Self::MAX_SAFE_INTEGER).contains(&value)
+        {
+            self.write_str(&value.to_string())
+        } else {
+            self.write(value.to_string())
+        }
+    }
+
+    /// Write an unsigned integer, encoding it as a JSON string when it falls
+    /// outside the safe range and the corresponding option is enabled.
+    fn write_u64(&mut self, value: u64) -> Result<(), Error> {
+        #[allow(clippy::cast_sign_loss)]
+        if self.options.large_integers_as_strings && value > Self::MAX_SAFE_INTEGER as u64 {
+            self.write_str(&value.to_string())
+        } else {
+            self.write(value.to_string())
+        }
     }
 
     fn null(&mut self) -> Result<(), Error> {
@@ -72,7 +149,7 @@ impl<W: Write> JsonWriter<W> {
     }
 
     fn newl(&mut self) -> Result<(), Error> {
-        if self.pretty {
+        if self.options.pretty {
             self.write("\n")?;
             self.indent()?;
         }
@@ -81,25 +158,7 @@ impl<W: Write> JsonWriter<W> {
 
     fn write_str(&mut self, value: &str) -> Result<(), Error> {
         self.write("\"")?;
-        for c in value.chars() {
-            match c {
-                '"' => self.write("\\\"")?,
-                '\\' => self.write("\\\\")?,
-                '\x08' => self.write("\\b")?,
-                '\x0c' => self.write("\\f")?,
-                '\n' => self.write("\\n")?,
-                '\r' => self.write("\\r")?,
-                '\t' => self.write("\\t")?,
-                c if c.is_control() => {
-                    write!(self.w, "\\u{:04x}", c as u32).map_err(Error::custom)?;
-                }
-                c => {
-                    let mut buf = [0; 4];
-                    let s = c.encode_utf8(&mut buf);
-                    self.write(s)?;
-                }
-            }
-        }
+        self.write(value.escape_default().to_string())?;
         self.write("\"")
     }
 
@@ -115,6 +174,7 @@ impl<'a, W: Write> Serializer<'a> for &'a mut JsonWriter<W> {
     type Struct = JsonObject<'a, W>;
     type Union = JsonObject<'a, W>;
     type Enum = Self;
+    type Bitmask = Self;
     type Sequence = JsonArray<'a, W>;
     type Array = JsonArray<'a, W>;
     type Map = JsonObject<'a, W>;
@@ -157,11 +217,11 @@ impl<'a, W: Write> Serializer<'a> for &'a mut JsonWriter<W> {
     }
 
     fn encode_i64(self, value: i64) -> Result<Self::Ok, Self::Error> {
-        self.write(value.to_string())
+        self.write_i64(value)
     }
 
     fn encode_u64(self, value: u64) -> Result<Self::Ok, Self::Error> {
-        self.write(value.to_string())
+        self.write_u64(value)
     }
 
     fn encode_f32(self, value: f32) -> Result<Self::Ok, Self::Error> {
@@ -207,7 +267,11 @@ impl<'a, W: Write> Serializer<'a> for &'a mut JsonWriter<W> {
         JsonObject::new(self)
     }
 
-    fn encode_enum(self, _: &str) -> Result<Self::Enum, Self::Error> {
+    fn encode_enum(self, _: &TypeInfo<'_>) -> Result<Self::Enum, Self::Error> {
+        Ok(self)
+    }
+
+    fn encode_bitmask(self, _: &TypeInfo<'_>) -> Result<Self::Bitmask, Self::Error> {
         Ok(self)
     }
 
@@ -249,7 +313,7 @@ impl<'a, W: Write> JsonObject<'a, W> {
         self.newl()?;
         self.write_str(key)?;
         self.write(":")?;
-        if self.pretty {
+        if self.options.pretty {
             self.write(" ")?;
         }
         value.marshal(&mut **self)
@@ -348,15 +412,38 @@ impl<W: Write> MapSerializer for JsonObject<'_, W> {
     }
 }
 
-impl<W: Write> EnumSerializer for &mut JsonWriter<W> {
+impl<'a, W: Write> EnumSerializer<'a> for &mut JsonWriter<W> {
     type Ok = ();
     type Error = Error;
 
-    fn encode_variant<T>(self, name: &str, _: T) -> Result<Self::Ok, Self::Error>
+    fn encode_variant<T>(self, info: &MemberInfo<'a>, _: T) -> Result<Self::Ok, Self::Error>
     where
         T: Marshal,
     {
-        name.marshal(self)
+        info.name.marshal(self)
+    }
+}
+
+impl<'a, W: Write> BitmaskSerializer<'a> for &mut JsonWriter<W> {
+    type Ok = ();
+    type Error = Error;
+
+    fn encode_flag<T>(self, value: T, members: &[MemberInfo<'a>]) -> Result<Self::Ok, Self::Error>
+    where
+        T: Marshal + Into<u64>,
+    {
+        let bits = value.into();
+
+        let mut flags = Vec::new();
+        for member in members {
+            let bit = 1 << u64::from(member.member_id);
+            if (bits & bit) != 0 {
+                flags.push(member.name);
+            }
+        }
+
+        let flags_str = flags.join("|");
+        self.write_str(&flags_str)
     }
 }
 
@@ -411,7 +498,30 @@ impl<W: Write> ArraySerializer for JsonArray<'_, W> {
 }
 
 /// Serialize the given data structore to a sequence of bytes of JSON data.
+///
+/// Integers are always serialized as JSON numbers. Use [`to_bytes_with`] to
+/// enable additional behavior such as serializing large integers as strings.
 pub fn to_bytes<T>(value: &T, pretty: bool) -> Result<Vec<u8>, Error>
+where
+    T: ?Sized + Marshal,
+{
+    to_bytes_with(value, Options::new().pretty(pretty))
+}
+
+/// Serialize the given data structore to string of JSON data.
+///
+/// Integers are always serialized as JSON numbers. Use [`to_string_with`] to
+/// enable additional behavior such as serializing large integers as strings.
+pub fn to_string<T>(value: &T, pretty: bool) -> Result<String, Error>
+where
+    T: ?Sized + Marshal,
+{
+    to_string_with(value, Options::new().pretty(pretty))
+}
+
+/// Serialize the given data structure to a sequence of bytes of JSON data,
+/// using the provided [`Options`].
+pub fn to_bytes_with<T>(value: &T, options: Options) -> Result<Vec<u8>, Error>
 where
     T: ?Sized + Marshal,
 {
@@ -419,17 +529,118 @@ where
     let mut writer = JsonWriter {
         w: &mut buf,
         indent: 0,
-        pretty,
+        options,
     };
     value.marshal(&mut writer)?;
     Ok(buf)
 }
 
-/// Serialize the given data structore to string of JSON data.
-pub fn to_string<T>(value: &T, pretty: bool) -> Result<String, Error>
+/// Serialize the given data structure to a string of JSON data, using the
+/// provided [`Options`].
+pub fn to_string_with<T>(value: &T, options: Options) -> Result<String, Error>
 where
     T: ?Sized + Marshal,
 {
-    let bytes = to_bytes(value, pretty)?;
+    let bytes = to_bytes_with(value, options)?;
     String::from_utf8(bytes).map_err(Error::custom)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{Options, to_string, to_string_with};
+    use crate::json::from_str;
+
+    const MAX_SAFE: i64 = (1 << 53) - 1;
+
+    fn with_strings() -> Options {
+        Options::new().large_integers_as_strings(true)
+    }
+
+    #[test]
+    fn default_behavior_keeps_integers_as_numbers() {
+        // Large integers stay numbers when the option is disabled.
+        assert_eq!(
+            to_string(&(MAX_SAFE + 1), false).unwrap(),
+            "9007199254740992"
+        );
+        assert_eq!(to_string(&i64::MAX, false).unwrap(), "9223372036854775807");
+        assert_eq!(to_string(&u64::MAX, false).unwrap(), "18446744073709551615");
+        assert_eq!(to_string(&i64::MIN, false).unwrap(), "-9223372036854775808");
+    }
+
+    #[test]
+    fn small_integers_stay_numbers_even_when_enabled() {
+        // Values inside the safe range are never stringified.
+        assert_eq!(to_string_with(&0_i64, with_strings()).unwrap(), "0");
+        assert_eq!(
+            to_string_with(&MAX_SAFE, with_strings()).unwrap(),
+            "9007199254740991"
+        );
+        assert_eq!(
+            to_string_with(&(-MAX_SAFE), with_strings()).unwrap(),
+            "-9007199254740991"
+        );
+        assert_eq!(
+            to_string_with(&u64::from(u32::MAX), with_strings()).unwrap(),
+            "4294967295"
+        );
+        // Smaller width integer types can never exceed the safe range.
+        assert_eq!(
+            to_string_with(&i32::MAX, with_strings()).unwrap(),
+            "2147483647"
+        );
+        // Values between 2^52 and 2^53 - 1 are still safe JS integers and must
+        // remain JSON numbers.
+        assert_eq!(
+            to_string_with(&(1_i64 << 52), with_strings()).unwrap(),
+            "4503599627370496"
+        );
+    }
+
+    #[test]
+    fn large_integers_become_strings_when_enabled() {
+        let opts = with_strings();
+        assert_eq!(
+            to_string_with(&(MAX_SAFE + 1), opts).unwrap(),
+            "\"9007199254740992\""
+        );
+        assert_eq!(
+            to_string_with(&(-(MAX_SAFE + 1)), opts).unwrap(),
+            "\"-9007199254740992\""
+        );
+        assert_eq!(
+            to_string_with(&i64::MAX, opts).unwrap(),
+            "\"9223372036854775807\""
+        );
+        assert_eq!(
+            to_string_with(&i64::MIN, opts).unwrap(),
+            "\"-9223372036854775808\""
+        );
+        assert_eq!(
+            to_string_with(&u64::MAX, opts).unwrap(),
+            "\"18446744073709551615\""
+        );
+    }
+
+    #[test]
+    fn stringified_large_integers_round_trip() {
+        let opts = with_strings();
+
+        let json = to_string_with(&i64::MAX, opts).unwrap();
+        assert_eq!(from_str::<i64>(&json).unwrap(), i64::MAX);
+
+        let json = to_string_with(&u64::MAX, opts).unwrap();
+        assert_eq!(from_str::<u64>(&json).unwrap(), u64::MAX);
+
+        let json = to_string_with(&i64::MIN, opts).unwrap();
+        assert_eq!(from_str::<i64>(&json).unwrap(), i64::MIN);
+    }
+
+    #[test]
+    fn option_can_combine_with_pretty() {
+        let opts = Options::new().pretty(true).large_integers_as_strings(true);
+        let value = vec![i64::MAX, 1];
+        let json = to_string_with(&value, opts).unwrap();
+        assert_eq!(json, "[\n  \"9223372036854775807\",\n  1\n]");
+    }
 }

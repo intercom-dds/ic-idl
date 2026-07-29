@@ -1,4 +1,4 @@
-// Copyright 2026 KONGSBERG
+// Copyright 2023 KONGSBERG
 //
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions are met:
@@ -44,7 +44,11 @@ pub mod type_info;
 pub use cdr1::{MemberFlag, TypeFlag};
 pub use decode::Unmarshal;
 pub use encode::Marshal;
-pub use type_info::{DISC_INFO, MemberInfo, TypeDescriptor, TypeInfo, TypeKind, type_info};
+#[cfg(feature = "derive")]
+pub use intercom_derive::Marshal;
+pub use type_info::{
+    DISC_INFO, MemberInfo, TypeDescriptor, TypeInfo, TypeKind, member_info, type_info,
+};
 
 /// Wrapper for handling UTF16 characters.
 #[doc(hidden)]
@@ -76,16 +80,4 @@ pub const fn max<T, N>(value: T, bound: N) -> bound::Max<T, N> {
 #[doc(hidden)]
 pub const fn range<T, N, M>(value: T, min: N, max: M) -> bound::Range<T, N, M> {
     bound::Range { value, min, max }
-}
-
-/// Include generated IDL code from build script output.
-///
-/// The name should match what was passed to [`Codegen::new`] in your build script.
-///
-/// [`Codegen::new`]: intercom_build::Codegen::new
-#[macro_export]
-macro_rules! include_idl {
-    ($name:tt) => {
-        include!(concat!(env!("OUT_DIR"), "/", $name, "/lib.rs"));
-    };
 }

@@ -1,4 +1,4 @@
-// Copyright 2026 KONGSBERG
+// Copyright 2023 KONGSBERG
 //
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions are met:
@@ -34,7 +34,7 @@ mod value;
 
 pub use de::{from_str, from_string_mut, from_value, from_value_mut};
 pub use error::Error;
-pub use ser::{to_bytes, to_string};
+pub use ser::{Options, to_bytes, to_bytes_with, to_string, to_string_with};
 #[doc(inline)]
 pub use value::value;
 pub use value::{Array, Number, Object, Value, to_value};

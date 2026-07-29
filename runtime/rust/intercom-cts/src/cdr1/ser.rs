@@ -1,4 +1,4 @@
-// Copyright 2026 KONGSBERG
+// Copyright 2024 KONGSBERG
 //
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions are met:
@@ -33,8 +33,8 @@ use crate::buf::endian::{Big, Endian, Little};
 use crate::cdr::Error;
 use crate::cdr1::{Encoding, MemberFlag};
 use crate::encode::{
-    ArraySerializer, EnumSerializer, MapSerializer, Marshal, SeqSerializer, Serializer,
-    StructSerializer, UnionSerializer,
+    ArraySerializer, BitmaskSerializer, EnumSerializer, MapSerializer, Marshal, SeqSerializer,
+    Serializer, StructSerializer, UnionSerializer,
 };
 use crate::{DISC_INFO, MemberInfo, TypeInfo};
 
@@ -123,8 +123,42 @@ impl<'a, E: Endian> CdrWriter<'a, E> {
         self.enc = enc;
     }
 
+    /// Access the underlying buffer.
+    ///
+    /// Intended for callers that need to write pre-encoded bytes (e.g. an
+    /// XCDR2-encoded body) or to spawn an inner writer of a different kind
+    /// over the same buffer. Bypasses alignment tracking, callers are
+    /// responsible for getting alignment right themselves.
     #[inline]
-    fn mutable_member<F>(&mut self, info: &MemberInfo<'_>, value: F) -> Result<(), Error>
+    pub const fn buffer_mut(&mut self) -> &mut Buffer<E> {
+        self.buf
+    }
+
+    /// Write a PL-CDR parameter list sentinel (`PID_LIST_END`, length 0).
+    /// Aligns to 4 first.
+    #[inline]
+    pub fn write_param_list_end(&mut self) {
+        self.align(4);
+        self.write_u16(PID_LIST_END);
+        self.write_u16(0);
+    }
+
+    /// Write a raw PL-CDR terminator header: 4-aligned, PID + length 0.
+    /// Used for builtin-CDR's `PID_SENTINEL` (0x0001) which is not the
+    /// standard `PID_LIST_END` and is not a struct member.
+    #[inline]
+    pub fn write_sentinel(&mut self, pid: u16) {
+        self.align(4);
+        self.write_u16(pid);
+        self.write_u16(0);
+    }
+
+    /// Write one PL-CDR parameter: align to 4, reserve the header, run
+    /// `body` to write the parameter's payload, then backfill the header.
+    /// Promotes to the extended PID form if the id is >= `PID_EXTENDED` or
+    /// the body length exceeds `u16::MAX`.
+    #[inline]
+    pub fn write_param<F>(&mut self, info: &MemberInfo<'_>, body: F) -> Result<(), Error>
     where
         F: for<'c> FnOnce(&mut CdrWriter<'c, E>) -> Result<(), Error>,
     {
@@ -141,7 +175,8 @@ impl<'a, E: Endian> CdrWriter<'a, E> {
             enc: self.enc,
             align_base,
         };
-        value(&mut writer)?;
+        body(&mut writer)?;
+        writer.align(4);
 
         let end = self.buf.pos();
         let written = end - header_pos - 2 * size_of::<u16>();
@@ -151,7 +186,9 @@ impl<'a, E: Endian> CdrWriter<'a, E> {
         self.buf.set_pos(header_pos);
 
         let end_index = if (info.member_id != u32::from(PID_LIST_END)
-            && info.member_id >= u32::from(PID_EXTENDED))
+            && info.member_id >= u32::from(PID_EXTENDED)
+            && info.member_id < u32::from(FLAG_IMPL_EXTENSION))
+            || info.member_id > 0xFFFF
             || written > 0xFFFF
         {
             let shift = 2 * size_of::<u32>();
@@ -174,7 +211,7 @@ impl<'a, E: Endian> CdrWriter<'a, E> {
 
             self.write_u16(pid);
             self.write_u16(shift as u16);
-            self.write_u32(info.member_id);
+            self.write_u32(info.member_id & !u32::from(FLAG_IMPL_EXTENSION));
             self.write_u32(written as u32);
             end + shift
         } else {
@@ -204,6 +241,7 @@ impl<E: Endian> Serializer<'_> for &mut CdrWriter<'_, E> {
     type Struct = Self;
     type Union = Self;
     type Enum = Self;
+    type Bitmask = Self;
     type Sequence = Self;
     type Array = Self;
     type Map = Self;
@@ -226,7 +264,7 @@ impl<E: Endian> Serializer<'_> for &mut CdrWriter<'_, E> {
 
     #[inline]
     fn encode_i8(self, v: i8) -> Result<Self::Ok, Self::Error> {
-        self.encode_u8(v as u8)
+        self.encode_u8(v.cast_unsigned())
     }
 
     #[inline]
@@ -237,7 +275,7 @@ impl<E: Endian> Serializer<'_> for &mut CdrWriter<'_, E> {
 
     #[inline]
     fn encode_i16(self, v: i16) -> Result<Self::Ok, Self::Error> {
-        self.encode_u16(v as u16)
+        self.encode_u16(v.cast_unsigned())
     }
 
     #[inline]
@@ -248,7 +286,7 @@ impl<E: Endian> Serializer<'_> for &mut CdrWriter<'_, E> {
 
     #[inline]
     fn encode_i32(self, v: i32) -> Result<Self::Ok, Self::Error> {
-        self.encode_u32(v as u32)
+        self.encode_u32(v.cast_unsigned())
     }
 
     #[inline]
@@ -259,7 +297,7 @@ impl<E: Endian> Serializer<'_> for &mut CdrWriter<'_, E> {
 
     #[inline]
     fn encode_i64(self, v: i64) -> Result<Self::Ok, Self::Error> {
-        self.encode_u64(v as u64)
+        self.encode_u64(v.cast_unsigned())
     }
 
     #[inline]
@@ -280,17 +318,10 @@ impl<E: Endian> Serializer<'_> for &mut CdrWriter<'_, E> {
 
     #[inline]
     fn encode_string(self, v: &str) -> Result<Self::Ok, Self::Error> {
-        let len = if v.is_empty() {
-            0
-        } else {
-            v.len().checked_add(1).ok_or(Error::InvalidLen)?
-        };
+        let len = v.len().checked_add(1).ok_or(Error::InvalidLen)?;
         self.write_len(len)?;
-
-        if !v.is_empty() {
-            self.buf.extend(v.as_bytes());
-            self.write_u8(0);
-        }
+        self.buf.extend(v.as_bytes());
+        self.write_u8(0);
         Ok(())
     }
 
@@ -330,7 +361,12 @@ impl<E: Endian> Serializer<'_> for &mut CdrWriter<'_, E> {
     }
 
     #[inline]
-    fn encode_enum(self, _: &str) -> Result<Self::Enum, Self::Error> {
+    fn encode_enum(self, _: &TypeInfo<'_>) -> Result<Self::Enum, Self::Error> {
+        Ok(self)
+    }
+
+    #[inline]
+    fn encode_bitmask(self, _: &TypeInfo<'_>) -> Result<Self::Bitmask, Self::Error> {
         Ok(self)
     }
 
@@ -361,7 +397,7 @@ impl<'a, E: Endian> StructSerializer<'a> for &mut CdrWriter<'_, E> {
         T: Marshal,
     {
         if self.is_mutable() {
-            self.mutable_member(info, |ar| value.marshal(ar))?;
+            self.write_param(info, |ar| value.marshal(ar))?;
         } else {
             let mut writer = CdrWriter {
                 buf: self.buf,
@@ -387,7 +423,7 @@ impl<'a, E: Endian> StructSerializer<'a> for &mut CdrWriter<'_, E> {
                 self.encode_field(info, v)?;
             }
         } else {
-            self.mutable_member(info, |ar| {
+            self.write_param(info, |ar| {
                 if let Some(v) = value {
                     v.marshal(ar)
                 } else {
@@ -400,21 +436,32 @@ impl<'a, E: Endian> StructSerializer<'a> for &mut CdrWriter<'_, E> {
 
     fn end(self) -> Result<Self::Ok, Self::Error> {
         if self.is_mutable() {
-            self.align(4);
-            self.write_u16(PID_LIST_END);
-            self.write_u16(0);
+            self.write_param_list_end();
         }
         Ok(())
     }
 }
 
-impl<E: Endian> EnumSerializer for &mut CdrWriter<'_, E> {
+impl<'a, E: Endian> EnumSerializer<'a> for &mut CdrWriter<'_, E> {
     type Ok = ();
     type Error = Error;
 
-    fn encode_variant<T>(self, _: &str, value: T) -> Result<Self::Ok, Self::Error>
+    fn encode_variant<T>(self, _: &MemberInfo<'a>, value: T) -> Result<Self::Ok, Self::Error>
     where
         T: Marshal,
+    {
+        value.marshal(self)
+    }
+}
+
+impl<'a, E: Endian> BitmaskSerializer<'a> for &mut CdrWriter<'_, E> {
+    type Ok = ();
+    type Error = Error;
+
+    #[inline]
+    fn encode_flag<T>(self, value: T, _: &[MemberInfo<'a>]) -> Result<Self::Ok, Self::Error>
+    where
+        T: Marshal + Into<u64>,
     {
         value.marshal(self)
     }

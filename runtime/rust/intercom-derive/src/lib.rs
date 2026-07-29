@@ -1,4 +1,4 @@
-// Copyright 2026 KONGSBERG
+// Copyright 2025 KONGSBERG
 //
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions are met:
@@ -25,47 +25,36 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-const string MY_STR = "abc";
-const string MY_OTHER_STR = MY_STR;
+use proc_macro::TokenStream;
+use syn::{DeriveInput, parse_macro_input};
 
-struct HasString {
-    string empty_str;
-    @default("abc") string default_str;
-    @shared @default(MY_OTHER_STR) string default_const_str;
-};
+mod attrs;
+mod combined;
+mod enum_impl;
+mod struct_impl;
+mod type_descriptor;
+mod union_impl;
+mod utils;
 
-const HasString MY_STRING_CONSTANTS = {"abc", MY_STR, MY_OTHER_STR};
-
-typedef map<string, string> StringMap;
-typedef map<wstring, wstring> WStringMap;
-
-struct HasStringMap {
-    map<string, string> my_map;
-    StringMap my_typedef_map;
-    @shared string empty;
-};
-
-@nested
-struct WCharStruct {
-    wchar my_wchar;
-};
-
-@nested
-struct WStringStruct {
-    wstring my_wstr;
-    wchar my_wchar;
-    WStringMap my_map;
-};
-
-@nested
-struct OnlyWString {
-    wstring value;
-};
-
-@nested
-union WStringUnion switch(octet) {
-case 0:
-    wstring my_wstr;
-case 1:
-    wchar my_wchar;
-};
+/// Derives TypeDescriptor, Marshal, and Unmarshal traits for intercom-cts serialization.
+///
+/// This single derive generates implementations for all three traits:
+/// - `TypeDescriptor`: Provides type metadata (TYPE_INFO and MEMBER_INFO constants)
+/// - `Marshal`: Implements serialization
+/// - `Unmarshal`: Implements deserialization
+///
+/// # Example
+/// ```ignore
+/// #[derive(Marshal)]
+/// struct MyStruct {
+///     field1: i32,
+///     field2: String,
+/// }
+/// ```
+#[proc_macro_derive(Marshal, attributes(cts))]
+pub fn derive_marshal(input: TokenStream) -> TokenStream {
+    let input = parse_macro_input!(input as DeriveInput);
+    combined::expand_all(&input)
+        .unwrap_or_else(|err| err.to_compile_error())
+        .into()
+}

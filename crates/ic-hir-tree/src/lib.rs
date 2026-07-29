@@ -31,8 +31,8 @@ use std::fmt::Write;
 
 use ic_cli::color::Colorize as _;
 use ic_hir::hir::{
-    BitsetTy, Decl, DefFlags, DefId, DefKind, InterfaceTy, Label, Member, Numeric, ParamKind,
-    PrimitiveTy, Span, Ty, TyKind, Variant,
+    Attribute, BitsetTy, Decl, DefFlags, DefId, DefKind, InterfaceTy, Label, Member, Numeric,
+    ParamKind, PrimitiveTy, ProtoTy, Span, Ty, TyKind, Variant,
 };
 use ic_hir::visit::{self, Visitor};
 use ic_hir::{Context, ResolvedGraph};
@@ -289,7 +289,13 @@ fn emit_interface_def(context: &Context, node: &mut Leaf<String>, v: &InterfaceT
     for def in &v.definitions {
         node.push(emit_def(context, *def));
     }
-    for def in &v.prototypes {
+
+    emit_prototypes(context, node, &v.prototypes);
+    emit_attributes(context, node, &v.attributes);
+}
+
+fn emit_prototypes(context: &Context, node: &mut Leaf<String>, prototypes: &[ProtoTy]) {
+    for def in prototypes {
         let span = emit_span(&def.ident.span);
         let mut proto = leaf!(
             "{} {span} {}",
@@ -309,7 +315,10 @@ fn emit_interface_def(context: &Context, node: &mut Leaf<String>, v: &InterfaceT
         }
         node.push(proto);
     }
-    for attr in &v.attributes {
+}
+
+fn emit_attributes(context: &Context, node: &mut Leaf<String>, attributes: &[Attribute]) {
+    for attr in attributes {
         let span = emit_span(&attr.ident.span);
         let ty = emit_ty(context, &attr.ty);
         let readonly = if attr.is_readonly { "readonly " } else { "" };
@@ -467,9 +476,25 @@ fn emit_def(context: &Context, id: DefId) -> Leaf<String> {
         }
         DefKind::Interface(v) => emit_interface_def(context, &mut node, v),
         DefKind::Valuetype(v) => {
+            if let Some(parent) = v.parent {
+                let parent = &context.type_of(parent.def_id).ident.name;
+                node.push(leaf!("{} {}", "parent".purple(), parent.cyan()));
+            }
+
+            if let Some(supports) = v.supports {
+                let supports = &context.type_of(supports.def_id).ident.name;
+                node.push(leaf!("{} {}", "supports".purple(), supports.cyan()));
+            }
+
             for def in &v.definitions {
                 node.push(emit_def(context, *def));
             }
+
+            let members = v.members.iter().map(|v| emit_member(context, v));
+            node.extend(members);
+
+            emit_prototypes(context, &mut node, &v.prototypes);
+            emit_attributes(context, &mut node, &v.attributes);
         }
         DefKind::Bitset(v) => emit_bitset_def(context, &mut node, v),
         DefKind::Decl(kind) => {

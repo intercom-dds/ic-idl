@@ -1,4 +1,4 @@
-// Copyright 2026 KONGSBERG
+// Copyright 2025 KONGSBERG
 //
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions are met:
@@ -27,9 +27,10 @@
 
 use std::marker::PhantomData;
 use std::ops::RangeBounds;
+use std::sync::Arc;
 
 use crate::buf::endian::Endian;
-use crate::buf::{Cursor, Native};
+use crate::buf::{ArcSlice, Cursor, Native};
 
 /// A write-oriented buffer for building byte sequences with a specific
 /// endianness.
@@ -81,7 +82,7 @@ impl<E: Endian> Buffer<E> {
     /// position.
     #[inline]
     pub fn write_i8(&mut self, val: i8) {
-        self.write_u8(val as u8);
+        self.write_u8(val.cast_unsigned());
     }
 
     /// Writes a `u16` to the buffer using the specified endianness and
@@ -97,7 +98,7 @@ impl<E: Endian> Buffer<E> {
     /// advances the position.
     #[inline]
     pub fn write_i16(&mut self, val: i16) {
-        self.write_u16(val as u16);
+        self.write_u16(val.cast_unsigned());
     }
 
     /// Writes a `u32` to the buffer using the specified endianness and
@@ -113,7 +114,7 @@ impl<E: Endian> Buffer<E> {
     /// advances the position.
     #[inline]
     pub fn write_i32(&mut self, val: i32) {
-        self.write_u32(val as u32);
+        self.write_u32(val.cast_unsigned());
     }
 
     /// Writes a `u64` to the buffer using the specified endianness and
@@ -129,7 +130,7 @@ impl<E: Endian> Buffer<E> {
     /// advances the position.
     #[inline]
     pub fn write_i64(&mut self, val: i64) {
-        self.write_u64(val as u64);
+        self.write_u64(val.cast_unsigned());
     }
 
     /// Appends a byte slice to the end of the buffer, resizing if necessary.
@@ -285,6 +286,12 @@ impl<E: Endian> Buffer<E> {
         self.buf.truncate(self.write_idx);
         self.buf
     }
+
+    /// Consumes the buffer and returns an [`ArcSlice`] over the written bytes.
+    pub fn freeze(mut self) -> ArcSlice {
+        self.buf.truncate(self.write_idx);
+        ArcSlice::new(Arc::from(self.buf))
+    }
 }
 
 impl<E: Endian> AsRef<[u8]> for Buffer<E> {
@@ -302,7 +309,7 @@ impl<'a, E: Endian> From<&'a Buffer<E>> for Cursor<'a> {
 #[cfg(test)]
 mod tests {
     use crate::buf::endian::{Big, Little, Native};
-    use crate::buf::{Buffer, Cursor};
+    use crate::buf::{ArcSlice, Buffer, Cursor};
 
     #[test]
     fn buf_little_endian() {
@@ -396,5 +403,20 @@ mod tests {
         assert_eq!(cursor.read_u64::<Native>().unwrap(), u64::MAX);
         assert_eq!(cursor.read_u64::<Native>().unwrap(), u64::MAX);
         assert!(cursor.is_empty());
+    }
+
+    #[test]
+    fn buf_freeze() {
+        let mut buf = Buffer::<Native>::new();
+        buf.write_u8(1);
+        buf.write_u8(2);
+        buf.write_u8(3);
+
+        let frozen: ArcSlice = buf.freeze();
+        assert_eq!(frozen.as_ref(), &[1, 2, 3]);
+        assert_eq!(frozen.len(), 3);
+
+        let sliced = frozen.slice(1..3);
+        assert_eq!(sliced.as_ref(), &[2, 3]);
     }
 }

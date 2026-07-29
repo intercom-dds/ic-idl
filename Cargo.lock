@@ -483,9 +483,6 @@ version = "0.5.9"
 [[package]]
 name = "ic-expr"
 version = "0.5.9"
-dependencies = [
- "ic-syntax",
-]
 
 [[package]]
 name = "ic-fuzz"

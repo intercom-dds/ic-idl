@@ -45,7 +45,7 @@ impl<'a> Visitor<'a> for AssignExpr<'a> {
                     Self::name(),
                     Self::category(),
                     "assignment operator on bitmask flags is non-standard",
-                    Label::new(value.span()).message("non-standard assignment"),
+                    Label::new(value.span).message("non-standard assignment"),
                 )
                 .help("use the `@position` annotation instead");
             Self::report(self.ctx, diag);
@@ -60,7 +60,7 @@ impl<'a> Visitor<'a> for AssignExpr<'a> {
                     Self::name(),
                     Self::category(),
                     "assignment operator on enumerators is non-standard",
-                    Label::new(value.span()).message("non-standard assignment"),
+                    Label::new(value.span).message("non-standard assignment"),
                 )
                 .help("use the `@value` annotation instead");
             Self::report(self.ctx, diag);

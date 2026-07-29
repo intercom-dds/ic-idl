@@ -29,7 +29,7 @@ use std::collections::HashMap;
 
 use ic_diagnostic::Label;
 use ic_syntax::visit::{Visitor, walk_expr, walk_tree};
-use ic_syntax::{BitmaskDef, EnumDef, Expr, Item};
+use ic_syntax::{BitmaskDef, EnumDef, Expr, ExprKind, Item};
 
 use crate::{Category, Lint, LintCtx};
 
@@ -48,15 +48,15 @@ impl<'a> Visitor<'a> for ScopedLit<'a> {
     // TODO: in the future we should use the HIR ctx to do lookups instead of
     // registering the type name here.
     fn visit_enum(&mut self, def: &'a EnumDef) {
-        self.seen.insert(def.ident.name.as_str(), Kind::Enum);
+        self.seen.insert(def.name.name.as_str(), Kind::Enum);
     }
 
     fn visit_bitmask(&mut self, def: &'a BitmaskDef) {
-        self.seen.insert(def.ident.name.as_str(), Kind::Bitmask);
+        self.seen.insert(def.name.name.as_str(), Kind::Bitmask);
     }
 
     fn visit_expr(&mut self, expr: &'a Expr) {
-        if let Expr::Path(path) = expr {
+        if let ExprKind::Path(path) = &expr.value {
             if let Some(v) = path.segments.iter().rev().nth(1)
                 && let Some(kind) = self.seen.get(v.name.as_str())
             {

@@ -36,12 +36,12 @@ pub fn path_to_string(path: &Path) -> String {
 }
 
 /// Convert AST literal to HIR numeric value.
-pub fn literal_to_numeric(lit: &ic_syntax::LiteralValue) -> Numeric {
+pub fn literal_to_numeric(lit: &ic_syntax::Literal) -> Numeric {
     match lit {
-        ic_syntax::LiteralValue::Bool(b) => Numeric::Bool(*b),
-        ic_syntax::LiteralValue::Char(c) => Numeric::Char(*c),
-        ic_syntax::LiteralValue::WChar(c) => Numeric::WChar(*c),
-        ic_syntax::LiteralValue::Int(i) => {
+        ic_syntax::Literal::Bool(b) => Numeric::Bool(*b),
+        ic_syntax::Literal::Char(c) => Numeric::Char(*c),
+        ic_syntax::Literal::WChar(c) => Numeric::WChar(*c),
+        ic_syntax::Literal::Int(i) => {
             // Choose appropriate type based on value range
             if i32::try_from(*i).is_ok() {
                 Numeric::Int32(*i as i32)
@@ -52,9 +52,9 @@ pub fn literal_to_numeric(lit: &ic_syntax::LiteralValue) -> Numeric {
                 Numeric::UInt64(*i)
             }
         }
-        ic_syntax::LiteralValue::Float(f) => Numeric::Double(*f),
-        ic_syntax::LiteralValue::String(s) => Numeric::String(s.clone()),
-        ic_syntax::LiteralValue::WString(s) => Numeric::WString(s.clone()),
+        ic_syntax::Literal::Float(f) => Numeric::Double(*f),
+        ic_syntax::Literal::String(s) => Numeric::String(s.clone()),
+        ic_syntax::Literal::WString(s) => Numeric::WString(s.clone()),
     }
 }
 

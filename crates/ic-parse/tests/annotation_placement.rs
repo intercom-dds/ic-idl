@@ -40,35 +40,35 @@ fn assert_has_annotation(result: &ic_parse::ParseResult, name: &str) {
         result
             .orphaned_annotations
             .iter()
-            .map(|a| &a.ident.segments[0].name)
+            .map(|a| &a.path.segments[0].name)
             .collect::<Vec<_>>()
     );
 
     let item = &result.tree[0];
     let annotations = match item {
-        Item::StructValue(s) => &s.annotations,
-        Item::AliasValue(a) => &a.annotations,
-        Item::ConstValue(c) => &c.annotations,
-        Item::EnumValue(e) => &e.annotations,
-        Item::UnionValue(u) => &u.annotations,
-        Item::InterfaceValue(i) => &i.annotations,
-        Item::ExceptionValue(e) => &e.annotations,
-        Item::BitsetValue(b) => &b.annotations,
-        Item::BitmaskValue(b) => &b.annotations,
-        Item::DeclValue(d) => &d.annotations,
-        Item::ModuleValue(m) => &m.annotations,
-        Item::AnnotationValue(a) => &a.annotations,
-        Item::ValuetypeValue(v) => &v.annotations,
+        Item::Struct(s) => &s.meta.annotations,
+        Item::Alias(a) => &a.meta.annotations,
+        Item::Const(c) => &c.meta.annotations,
+        Item::Enum(e) => &e.meta.annotations,
+        Item::Union(u) => &u.meta.annotations,
+        Item::Interface(i) => &i.meta.annotations,
+        Item::Exception(e) => &e.meta.annotations,
+        Item::Bitset(b) => &b.meta.annotations,
+        Item::Bitmask(b) => &b.meta.annotations,
+        Item::Decl(d) => &d.meta.annotations,
+        Item::Module(m) => &m.meta.annotations,
+        Item::Annotation(a) => &a.meta.annotations,
+        Item::Valuetype(v) => &v.meta.annotations,
     };
 
     assert!(
-        annotations.iter().any(|a| a.ident.segments[0].name == name),
+        annotations.iter().any(|a| a.path.segments[0].name == name),
         "expected annotation @{} on {:?}, found {:?}",
         name,
         std::mem::discriminant(item),
         annotations
             .iter()
-            .map(|a| &a.ident.segments[0].name)
+            .map(|a| &a.path.segments[0].name)
             .collect::<Vec<_>>()
     );
 }
@@ -85,27 +85,29 @@ fn assert_member_has_annotation(result: &ic_parse::ParseResult, member_idx: usiz
         result
             .orphaned_annotations
             .iter()
-            .map(|a| &a.ident.segments[0].name)
+            .map(|a| &a.path.segments[0].name)
             .collect::<Vec<_>>()
     );
 
-    let Item::StructValue(s) = &result.tree[0] else {
+    let Item::Struct(s) = &result.tree[0] else {
         panic!("expected struct");
     };
 
-    let field = &s.members[member_idx];
+    let field = &s.fields[member_idx];
     assert!(
         field
+            .meta
             .annotations
             .iter()
-            .any(|a| a.ident.segments[0].name == name),
+            .any(|a| a.path.segments[0].name == name),
         "expected annotation @{} on member {}, found {:?}",
         name,
         member_idx,
         field
+            .meta
             .annotations
             .iter()
-            .map(|a| &a.ident.segments[0].name)
+            .map(|a| &a.path.segments[0].name)
             .collect::<Vec<_>>()
     );
 }
@@ -470,17 +472,17 @@ fn sequence_element_annotation() {
     assert!(result.errors.is_empty());
     assert!(result.orphaned_annotations.is_empty());
 
-    let Item::StructValue(s) = &result.tree[0] else {
+    let Item::Struct(s) = &result.tree[0] else {
         panic!("expected struct");
     };
-    let field = &s.members[0];
-    assert!(field.annotations.is_empty());
+    let field = &s.fields[0];
+    assert!(field.meta.annotations.is_empty());
 
     let ic_syntax::Type::Sequence(seq) = &field.ty else {
         panic!("expected sequence");
     };
-    assert_eq!(seq.annotations.len(), 1);
-    assert_eq!(seq.annotations[0].ident.segments[0].name, "key");
+    assert_eq!(seq.element_annotations.len(), 1);
+    assert_eq!(seq.element_annotations[0].path.segments[0].name, "key");
 }
 
 #[test]
@@ -489,17 +491,17 @@ fn map_key_annotation() {
     assert!(result.errors.is_empty());
     assert!(result.orphaned_annotations.is_empty());
 
-    let Item::StructValue(s) = &result.tree[0] else {
+    let Item::Struct(s) = &result.tree[0] else {
         panic!("expected struct");
     };
-    let field = &s.members[0];
-    assert!(field.annotations.is_empty());
+    let field = &s.fields[0];
+    assert!(field.meta.annotations.is_empty());
 
     let ic_syntax::Type::Map(m) = &field.ty else {
         panic!("expected map");
     };
     assert_eq!(m.key_annotations.len(), 1);
-    assert_eq!(m.key_annotations[0].ident.segments[0].name, "key");
+    assert_eq!(m.key_annotations[0].path.segments[0].name, "key");
     assert!(m.value_annotations.is_empty());
 }
 
@@ -509,18 +511,18 @@ fn map_value_annotation() {
     assert!(result.errors.is_empty());
     assert!(result.orphaned_annotations.is_empty());
 
-    let Item::StructValue(s) = &result.tree[0] else {
+    let Item::Struct(s) = &result.tree[0] else {
         panic!("expected struct");
     };
-    let field = &s.members[0];
-    assert!(field.annotations.is_empty());
+    let field = &s.fields[0];
+    assert!(field.meta.annotations.is_empty());
 
     let ic_syntax::Type::Map(m) = &field.ty else {
         panic!("expected map");
     };
     assert!(m.key_annotations.is_empty());
     assert_eq!(m.value_annotations.len(), 1);
-    assert_eq!(m.value_annotations[0].ident.segments[0].name, "optional");
+    assert_eq!(m.value_annotations[0].path.segments[0].name, "optional");
 }
 
 // Multiple annotations
@@ -531,14 +533,15 @@ fn multiple_annotations_different_positions() {
     assert!(result.errors.is_empty());
     assert!(result.orphaned_annotations.is_empty());
 
-    let Item::StructValue(s) = &result.tree[0] else {
+    let Item::Struct(s) = &result.tree[0] else {
         panic!("expected struct");
     };
-    assert_eq!(s.annotations.len(), 4);
+    assert_eq!(s.meta.annotations.len(), 4);
     let names: Vec<_> = s
+        .meta
         .annotations
         .iter()
-        .map(|a| a.ident.segments[0].name.as_str())
+        .map(|a| a.path.segments[0].name.as_str())
         .collect();
     assert!(names.contains(&"a"));
     assert!(names.contains(&"b"));
@@ -558,13 +561,13 @@ fn assert_orphaned(result: &ic_parse::ParseResult, name: &str) {
         result
             .orphaned_annotations
             .iter()
-            .any(|a| a.ident.segments[0].name == name),
+            .any(|a| a.path.segments[0].name == name),
         "expected @{} to be orphaned, but orphaned list is: {:?}",
         name,
         result
             .orphaned_annotations
             .iter()
-            .map(|a| &a.ident.segments[0].name)
+            .map(|a| &a.path.segments[0].name)
             .collect::<Vec<_>>()
     );
 }
@@ -587,13 +590,13 @@ fn annotation_between_struct_members_attaches_to_next() {
     assert!(result.errors.is_empty());
     assert!(result.orphaned_annotations.is_empty());
 
-    let Item::StructValue(s) = &result.tree[0] else {
+    let Item::Struct(s) = &result.tree[0] else {
         panic!("expected struct");
     };
-    assert!(s.members[0].annotations.is_empty());
-    assert_eq!(s.members[1].annotations.len(), 1);
+    assert!(s.fields[0].meta.annotations.is_empty());
+    assert_eq!(s.fields[1].meta.annotations.len(), 1);
     assert_eq!(
-        s.members[1].annotations[0].ident.segments[0].name,
+        s.fields[1].meta.annotations[0].path.segments[0].name,
         "attached"
     );
 }
@@ -610,15 +613,15 @@ fn sequence_element_annotation_after_type() {
     assert!(result.errors.is_empty());
     assert!(result.orphaned_annotations.is_empty());
 
-    let Item::StructValue(s) = &result.tree[0] else {
+    let Item::Struct(s) = &result.tree[0] else {
         panic!("expected struct");
     };
-    let field = &s.members[0];
+    let field = &s.fields[0];
     let ic_syntax::Type::Sequence(seq) = &field.ty else {
         panic!("expected sequence");
     };
-    assert_eq!(seq.annotations.len(), 1);
-    assert_eq!(seq.annotations[0].ident.segments[0].name, "key");
+    assert_eq!(seq.element_annotations.len(), 1);
+    assert_eq!(seq.element_annotations[0].path.segments[0].name, "key");
 }
 
 #[test]
@@ -627,15 +630,15 @@ fn map_value_annotation_after_type() {
     assert!(result.errors.is_empty());
     assert!(result.orphaned_annotations.is_empty());
 
-    let Item::StructValue(s) = &result.tree[0] else {
+    let Item::Struct(s) = &result.tree[0] else {
         panic!("expected struct");
     };
-    let field = &s.members[0];
+    let field = &s.fields[0];
     let ic_syntax::Type::Map(m) = &field.ty else {
         panic!("expected map");
     };
     assert_eq!(m.value_annotations.len(), 1);
-    assert_eq!(m.value_annotations[0].ident.segments[0].name, "optional");
+    assert_eq!(m.value_annotations[0].path.segments[0].name, "optional");
 }
 
 #[test]
@@ -644,15 +647,15 @@ fn map_key_annotation_after_type() {
     assert!(result.errors.is_empty());
     assert!(result.orphaned_annotations.is_empty());
 
-    let Item::StructValue(s) = &result.tree[0] else {
+    let Item::Struct(s) = &result.tree[0] else {
         panic!("expected struct");
     };
-    let field = &s.members[0];
+    let field = &s.fields[0];
     let ic_syntax::Type::Map(m) = &field.ty else {
         panic!("expected map");
     };
     assert_eq!(m.key_annotations.len(), 1);
-    assert_eq!(m.key_annotations[0].ident.segments[0].name, "key");
+    assert_eq!(m.key_annotations[0].path.segments[0].name, "key");
 }
 
 #[test]
@@ -668,22 +671,28 @@ fn nested_sequence_annotations() {
     assert!(result.errors.is_empty(), "errors: {:?}", result.errors);
     assert!(result.orphaned_annotations.is_empty());
 
-    let Item::StructValue(s) = &result.tree[0] else {
+    let Item::Struct(s) = &result.tree[0] else {
         panic!("expected struct");
     };
-    let field = &s.members[0];
-    assert_eq!(field.annotations.len(), 1);
-    assert_eq!(field.annotations[0].ident.segments[0].name, "outer");
+    let field = &s.fields[0];
+    assert_eq!(field.meta.annotations.len(), 1);
+    assert_eq!(field.meta.annotations[0].path.segments[0].name, "outer");
 
     let ic_syntax::Type::Sequence(outer_seq) = &field.ty else {
         panic!("expected outer sequence");
     };
-    assert_eq!(outer_seq.annotations.len(), 1);
-    assert_eq!(outer_seq.annotations[0].ident.segments[0].name, "inner");
+    assert_eq!(outer_seq.element_annotations.len(), 1);
+    assert_eq!(
+        outer_seq.element_annotations[0].path.segments[0].name,
+        "inner"
+    );
 
-    let ic_syntax::Type::Sequence(inner_seq) = outer_seq.ty.as_ref() else {
+    let ic_syntax::Type::Sequence(inner_seq) = &outer_seq.element else {
         panic!("expected inner sequence");
     };
-    assert_eq!(inner_seq.annotations.len(), 1);
-    assert_eq!(inner_seq.annotations[0].ident.segments[0].name, "innermost");
+    assert_eq!(inner_seq.element_annotations.len(), 1);
+    assert_eq!(
+        inner_seq.element_annotations[0].path.segments[0].name,
+        "innermost"
+    );
 }

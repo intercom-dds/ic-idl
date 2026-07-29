@@ -37,16 +37,14 @@ module char_wstring_types {
     const char CHAR_QUOTE = '\'';
     const char CHAR_BACKSLASH = '\\';
 
-    // Wchar constants (without L prefix - using regular char literals)
-    const wchar WCHAR_A = 'A';
+    const wchar WCHAR_A = L'A';
     const wchar WCHAR_OMEGA = 937;
     const wchar WCHAR_CHINESE = 20013;
 
-    // Wstring constants (without L prefix)
-    const wstring WSTRING_HELLO = "Hello";
-    const wstring WSTRING_UNICODE = "日本語テスト";
-    const wstring WSTRING_EMOJI = "🎉🚀";
-    const wstring WSTRING_EMPTY = "";
+    const wstring WSTRING_HELLO = L"Hello";
+    const wstring WSTRING_UNICODE = L"日本語テスト";
+    const wstring WSTRING_EMOJI = L"🎉🚀";
+    const wstring WSTRING_EMPTY = L"";
 
     // Struct with char fields
     struct CharFields {

@@ -29,7 +29,7 @@
 
 use ic_diagnostic::Label;
 use ic_hir::hir::{DefId, DefKind, Member, Numeric, Ty};
-use ic_syntax::{Expr, InitList};
+use ic_syntax::{ExprKind, NamedExpr};
 
 use crate::eval::ConstEvaluator;
 
@@ -47,9 +47,10 @@ impl<'a, 'b> InitializerEvaluator<'a, 'b> {
     /// Evaluates an initializer list for a struct type.
     pub fn eval_struct(
         &mut self,
-        init_list: &InitList,
+        init_list: &[NamedExpr],
         struct_def_id: DefId,
         _struct_ty: &Ty,
+        init_span: ic_syntax::Span,
     ) -> Option<Numeric> {
         let (struct_name, struct_members) = {
             let struct_def = self.evaluator.ctx.context.definitions.get(struct_def_id);
@@ -62,22 +63,19 @@ impl<'a, 'b> InitializerEvaluator<'a, 'b> {
             )
         };
 
-        if init_list.values.is_empty() {
+        if init_list.is_empty() {
             self.evaluator.diagnostics().error(
                 "struct initializer cannot be empty".to_string(),
-                Label::new(ic_syntax::util::expr_span(&Expr::InitList(
-                    init_list.clone(),
-                )))
-                .message("expected field values"),
+                Label::new(init_span).message("expected field values"),
             );
             return None;
         }
 
-        let is_named = init_list.values.iter().any(|v| v.ident.is_some());
+        let is_named = init_list.iter().any(|v| v.name.is_some());
         let fields = if is_named {
-            self.eval_struct_named(init_list, &struct_name, &struct_members)?
+            self.eval_struct_named(init_list, &struct_name, &struct_members, init_span)?
         } else {
-            self.eval_struct_positional(init_list, &struct_name, &struct_members)?
+            self.eval_struct_positional(init_list, &struct_name, &struct_members, init_span)?
         };
 
         Some(Numeric::Struct {
@@ -89,9 +87,10 @@ impl<'a, 'b> InitializerEvaluator<'a, 'b> {
     /// Evaluates named struct initialization: `{ .field1 = value1, .field2 = value2 }`
     fn eval_struct_named(
         &mut self,
-        init_list: &InitList,
+        init_list: &[NamedExpr],
         struct_name: &str,
         struct_members: &[Member],
+        init_span: ic_syntax::Span,
     ) -> Option<Vec<Numeric>> {
         let field_map: std::collections::HashMap<_, _> = struct_members
             .iter()
@@ -102,8 +101,8 @@ impl<'a, 'b> InitializerEvaluator<'a, 'b> {
         let mut field_spans = std::collections::HashMap::new();
         let mut has_error = false;
 
-        for named_expr in &init_list.values {
-            if let Some(ref ident) = named_expr.ident {
+        for named_expr in init_list {
+            if let Some(ref ident) = named_expr.name {
                 if let Some(first_span) = field_spans.insert(ident.name.clone(), ident.span) {
                     self.evaluator.diagnostics().errors.push(
                         ic_diagnostic::error_span(
@@ -132,8 +131,7 @@ impl<'a, 'b> InitializerEvaluator<'a, 'b> {
             } else {
                 self.evaluator.diagnostics().error(
                     "mixing named and positional initialization is not allowed".to_string(),
-                    Label::new(ic_syntax::util::expr_span(&named_expr.value))
-                        .message("expected named field"),
+                    Label::new(named_expr.value.span).message("expected named field"),
                 );
                 has_error = true;
             }
@@ -149,7 +147,7 @@ impl<'a, 'b> InitializerEvaluator<'a, 'b> {
                         "missing initializer for field `{}` in struct `{struct_name}`",
                         member.ident.name
                     ),
-                    Label::new(init_list.span).message("incomplete initialization"),
+                    Label::new(init_span).message("incomplete initialization"),
                 );
                 has_error = true;
             }
@@ -161,28 +159,26 @@ impl<'a, 'b> InitializerEvaluator<'a, 'b> {
     /// Evaluates positional struct initialization: `{ value1, value2 }`
     fn eval_struct_positional(
         &mut self,
-        init_list: &InitList,
+        init_list: &[NamedExpr],
         struct_name: &str,
         struct_members: &[Member],
+        init_span: ic_syntax::Span,
     ) -> Option<Vec<Numeric>> {
-        if init_list.values.len() != struct_members.len() {
+        if init_list.len() != struct_members.len() {
             self.evaluator.diagnostics().error(
                 format!(
                     "struct `{struct_name}` expects {} fields, but {} were provided",
                     struct_members.len(),
-                    init_list.values.len()
+                    init_list.len()
                 ),
-                Label::new(ic_syntax::util::expr_span(&Expr::InitList(
-                    init_list.clone(),
-                )))
-                .message("incorrect number of fields"),
+                Label::new(init_span).message("incorrect number of fields"),
             );
             return None;
         }
 
         let mut fields = Vec::new();
         let mut has_error = false;
-        for (i, named_expr) in init_list.values.iter().enumerate() {
+        for (i, named_expr) in init_list.iter().enumerate() {
             let member = &struct_members[i];
             if let Some(value) = self.evaluator.eval_for_type(&named_expr.value, &member.ty) {
                 fields.push(value);
@@ -197,35 +193,32 @@ impl<'a, 'b> InitializerEvaluator<'a, 'b> {
     /// Evaluates an array initializer list.
     pub fn eval_array(
         &mut self,
-        init_list: &InitList,
+        init_list: &[NamedExpr],
         elem_ty: &Ty,
         expected_len: usize,
+        init_span: ic_syntax::Span,
     ) -> Option<Numeric> {
         let mut elements = Vec::new();
 
         // Check that we have the correct number of elements
-        if init_list.values.len() != expected_len {
+        if init_list.len() != expected_len {
             self.evaluator.diagnostics().error(
                 format!(
                     "array expects {} elements, but {} were provided",
                     expected_len,
-                    init_list.values.len()
+                    init_list.len()
                 ),
-                Label::new(ic_syntax::util::expr_span(&Expr::InitList(
-                    init_list.clone(),
-                )))
-                .message("incorrect number of elements"),
+                Label::new(init_span).message("incorrect number of elements"),
             );
             return None;
         }
 
         // Evaluate each element
-        for named_expr in &init_list.values {
-            if named_expr.ident.is_some() {
+        for named_expr in init_list {
+            if named_expr.name.is_some() {
                 self.evaluator.diagnostics().error(
                     "array elements cannot have names".to_string(),
-                    Label::new(ic_syntax::util::expr_span(&named_expr.value))
-                        .message("unexpected named element"),
+                    Label::new(named_expr.value.span).message("unexpected named element"),
                 );
                 return None;
             }
@@ -242,16 +235,20 @@ impl<'a, 'b> InitializerEvaluator<'a, 'b> {
     }
 
     /// Evaluates a sequence initializer list.
-    pub fn eval_sequence(&mut self, init_list: &InitList, elem_ty: &Ty) -> Option<Numeric> {
+    pub fn eval_sequence(
+        &mut self,
+        init_list: &[NamedExpr],
+        elem_ty: &Ty,
+        _init_span: ic_syntax::Span,
+    ) -> Option<Numeric> {
         let mut elements = Vec::new();
 
         // Evaluate each element
-        for named_expr in &init_list.values {
-            if named_expr.ident.is_some() {
+        for named_expr in init_list {
+            if named_expr.name.is_some() {
                 self.evaluator.diagnostics().error(
                     "sequence elements cannot have names".to_string(),
-                    Label::new(ic_syntax::util::expr_span(&named_expr.value))
-                        .message("unexpected named element"),
+                    Label::new(named_expr.value.span).message("unexpected named element"),
                 );
                 return None;
             }
@@ -268,54 +265,52 @@ impl<'a, 'b> InitializerEvaluator<'a, 'b> {
     }
 
     /// Evaluates a map initializer list.
-    pub fn eval_map(&mut self, init_list: &InitList, key_ty: &Ty, elem_ty: &Ty) -> Option<Numeric> {
+    pub fn eval_map(
+        &mut self,
+        init_list: &[NamedExpr],
+        key_ty: &Ty,
+        elem_ty: &Ty,
+        _init_span: ic_syntax::Span,
+    ) -> Option<Numeric> {
         let mut pairs = Vec::new();
 
         // Each element should be a pair initializer list {key, value}
-        for named_expr in &init_list.values {
-            if named_expr.ident.is_some() {
+        for named_expr in init_list {
+            if named_expr.name.is_some() {
                 self.evaluator.diagnostics().error(
                     "map entries cannot have names".to_string(),
-                    Label::new(ic_syntax::util::expr_span(&named_expr.value))
-                        .message("unexpected named element"),
+                    Label::new(named_expr.value.span).message("unexpected named element"),
                 );
                 return None;
             }
 
             // Each element must itself be an initializer list with 2 elements
-            if let Expr::InitList(pair_init) = &named_expr.value {
-                if pair_init.values.len() != 2 {
+            if let ExprKind::InitList(pair_init) = &named_expr.value.value {
+                if pair_init.len() != 2 {
                     self.evaluator.diagnostics().error(
                         "map entry must have exactly 2 elements (key and value)".to_string(),
-                        Label::new(ic_syntax::util::expr_span(&named_expr.value))
-                            .message("expected {key, value}"),
+                        Label::new(named_expr.value.span).message("expected {key, value}"),
                     );
                     return None;
                 }
 
                 // Check no names in pair
-                if pair_init.values.iter().any(|v| v.ident.is_some()) {
+                if pair_init.iter().any(|v| v.name.is_some()) {
                     self.evaluator.diagnostics().error(
                         "map key and value cannot have names".to_string(),
-                        Label::new(ic_syntax::util::expr_span(&named_expr.value))
-                            .message("unexpected named elements"),
+                        Label::new(named_expr.value.span).message("unexpected named elements"),
                     );
                     return None;
                 }
 
                 // Evaluate key and value with their correct types
-                let key = self
-                    .evaluator
-                    .eval_for_type(&pair_init.values[0].value, key_ty)?;
-                let value = self
-                    .evaluator
-                    .eval_for_type(&pair_init.values[1].value, elem_ty)?;
+                let key = self.evaluator.eval_for_type(&pair_init[0].value, key_ty)?;
+                let value = self.evaluator.eval_for_type(&pair_init[1].value, elem_ty)?;
                 pairs.push((key, value));
             } else {
                 self.evaluator.diagnostics().error(
                     "map entry must be an initializer list {key, value}".to_string(),
-                    Label::new(ic_syntax::util::expr_span(&named_expr.value))
-                        .message("expected initializer list"),
+                    Label::new(named_expr.value.span).message("expected initializer list"),
                 );
                 return None;
             }

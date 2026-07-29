@@ -80,80 +80,80 @@ impl<'ctx> HirBuilder<'ctx> {
         let _span = trace_span!("lower", %kind, %name).entered();
 
         let def_ids = match item {
-            Item::ModuleValue(m) => {
+            Item::Module(m) => {
                 let def_id = self.process_module(m);
                 vec![def_id]
             }
 
-            Item::StructValue(s) => {
+            Item::Struct(s) => {
                 let mut processor = TypeItemProcessor::new(self.ctx, self.current_scope);
                 let def_id = processor.process_struct(s);
                 self.add_to_order_if_root(def_id);
                 vec![def_id]
             }
-            Item::InterfaceValue(i) => {
+            Item::Interface(i) => {
                 let mut processor = TypeItemProcessor::new(self.ctx, self.current_scope);
                 let def_id = processor.process_interface(i);
                 self.add_to_order_if_root(def_id);
                 vec![def_id]
             }
-            Item::UnionValue(u) => {
+            Item::Union(u) => {
                 let mut processor = TypeItemProcessor::new(self.ctx, self.current_scope);
                 let def_id = processor.process_union(u);
                 self.add_to_order_if_root(def_id);
                 vec![def_id]
             }
-            Item::ValuetypeValue(v) => {
+            Item::Valuetype(v) => {
                 let mut processor = TypeItemProcessor::new(self.ctx, self.current_scope);
                 let def_id = processor.process_valuetype(v);
                 self.add_to_order_if_root(def_id);
                 vec![def_id]
             }
-            Item::DeclValue(decl) => {
+            Item::Decl(decl) => {
                 let mut processor = TypeItemProcessor::new(self.ctx, self.current_scope);
                 let def_id = processor.process_forward_decl(decl);
                 self.add_to_order_if_root(def_id);
                 vec![def_id]
             }
 
-            Item::ConstValue(c) => {
+            Item::Const(c) => {
                 let mut processor = ValueItemProcessor::new(self.ctx, self.current_scope);
                 let def_id = processor.process_const(c);
                 self.add_to_order_if_root(def_id);
                 vec![def_id]
             }
-            Item::EnumValue(e) => {
+            Item::Enum(e) => {
                 let mut processor = ValueItemProcessor::new(self.ctx, self.current_scope);
                 let def_id = processor.process_enum(e);
                 self.add_to_order_if_root(def_id);
                 vec![def_id]
             }
-            Item::BitmaskValue(b) => {
+            Item::Bitmask(b) => {
                 let mut processor = ValueItemProcessor::new(self.ctx, self.current_scope);
                 let def_id = processor.process_bitmask(b);
                 self.add_to_order_if_root(def_id);
                 vec![def_id]
             }
 
-            Item::AnnotationValue(a) => {
+            Item::Annotation(a) => {
                 let mut processor = ValueItemProcessor::new(self.ctx, self.current_scope);
                 let def_id = processor.process_annotation(a);
                 self.add_to_order_if_root(def_id);
                 vec![def_id]
             }
-            Item::AliasValue(a) => {
+            Item::Alias(a) => {
                 let mut processor = TypeItemProcessor::new(self.ctx, self.current_scope);
                 let def_ids = processor.process_alias(a);
                 self.add_all_to_order_if_root(&def_ids);
                 def_ids
             }
-            Item::ExceptionValue(e) => {
+            Item::Exception(e) => {
                 let mut processor = TypeItemProcessor::new(self.ctx, self.current_scope);
                 let def_id = processor.process_exception(e);
                 self.add_to_order_if_root(def_id);
                 vec![def_id]
             }
-            Item::BitsetValue(b) => {
+            Item::Bitset(b) => {
                 let mut processor = ValueItemProcessor::new(self.ctx, self.current_scope);
                 let def_id = processor.process_bitset(b);
                 self.add_to_order_if_root(def_id);
@@ -169,8 +169,8 @@ impl<'ctx> HirBuilder<'ctx> {
         let module_scope = resolve::find_or_create_module(
             &mut self.ctx.context.scopes,
             self.current_scope,
-            &m.ident.name,
-            m.ident.span,
+            &m.name.name,
+            m.name.span,
             &mut self.ctx.module_scopes,
             &mut self.ctx.diagnostics,
         );
@@ -179,9 +179,9 @@ impl<'ctx> HirBuilder<'ctx> {
         let def_id = crate::define::define(
             self.ctx,
             prev_scope,
-            &m.ident,
-            m.span,
-            &m.annotations,
+            &m.name,
+            m.meta.span,
+            &m.meta.annotations,
             crate::registry::DefKindTag::Module,
             |_| {
                 DefKind::Module(ic_hir::hir::ModuleTy {
@@ -195,7 +195,7 @@ impl<'ctx> HirBuilder<'ctx> {
             .set_scope_def_id(module_scope, def_id);
 
         self.current_scope = module_scope;
-        let module_block_definitions = self.build(&m.definitions);
+        let module_block_definitions = self.build(&m.items);
 
         if let DefKind::Module(ref mut module_ty) =
             self.ctx.context.definitions.get_mut(def_id).kind

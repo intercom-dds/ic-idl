@@ -1050,7 +1050,7 @@ impl<'a> CSharpGen<'a> {
             match param.kind {
                 ParamKind::In => {}
                 ParamKind::Out => w!(w, "out "),
-                ParamKind::Inout => w!(w, "ref "),
+                ParamKind::InOut => w!(w, "ref "),
             }
             let param_ty = self.csharp_type(&param.ty, relative_to_def_id);
             w!(w, param_ty, " ", param.ident.name);
@@ -1123,7 +1123,7 @@ impl<'a> CSharpGen<'a> {
                 match param.kind {
                     ParamKind::In => {}
                     ParamKind::Out => w!(w, "out "),
-                    ParamKind::Inout => w!(w, "ref "),
+                    ParamKind::InOut => w!(w, "ref "),
                 }
                 let param_ty = self.csharp_type(&param.ty, def.id);
                 w!(w, param_ty, " ", param.ident.name);

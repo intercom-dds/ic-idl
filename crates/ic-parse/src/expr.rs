@@ -26,7 +26,7 @@
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use ic_lexer::token::{Base, Kind, Kw};
-use ic_syntax::{Binary, Expr, Group, Literal, LiteralValue, Op, OpKind, Unary};
+use ic_syntax::{BinaryExpr, Expr, ExprKind, Literal, Op, Spanned, UnaryExpr};
 use ic_vfs::Span;
 
 use super::Parser;
@@ -89,14 +89,18 @@ impl Parser<'_> {
 
             let op_span = self.consume_infix_op(op_kind);
             let rhs = self.expr_bp(prec, shift_mode)?;
-            lhs = Expr::Binary(Box::new(Binary {
-                lhs,
-                op: Op {
-                    span: op_span,
-                    kind: op_kind,
-                },
-                rhs,
-            }));
+            let span = self.make_span(lhs.span, rhs.span);
+            lhs = Spanned {
+                span,
+                value: ExprKind::Binary(Box::new(BinaryExpr {
+                    lhs,
+                    op: Spanned {
+                        span: op_span,
+                        value: op_kind,
+                    },
+                    rhs,
+                })),
+            };
         }
 
         Ok(lhs)
@@ -107,7 +111,10 @@ impl Parser<'_> {
     fn unary_expr(&mut self, shift_mode: ShiftMode) -> Result<Expr> {
         if let Some(op) = self.unary_operator() {
             let expr = self.unary_expr(shift_mode)?;
-            Ok(Expr::Unary(Box::new(Unary { op, expr })))
+            Ok(Spanned {
+                span: self.make_span(op.span, expr.span),
+                value: ExprKind::Unary(Box::new(UnaryExpr { op, operand: expr })),
+            })
         } else {
             self.primary_expr(shift_mode)
         }
@@ -115,27 +122,27 @@ impl Parser<'_> {
 
     // Rule 15
     // <unary_operator> ::= "-" | "+" | "~"
-    fn unary_operator(&mut self) -> Option<Op> {
+    fn unary_operator(&mut self) -> Option<Spanned<Op>> {
         match self.peek() {
             Kind::Minus => {
                 let tok = self.advance();
-                Some(Op {
+                Some(Spanned {
                     span: tok.span,
-                    kind: OpKind::Sub,
+                    value: Op::Sub,
                 })
             }
             Kind::Plus => {
                 let tok = self.advance();
-                Some(Op {
+                Some(Spanned {
                     span: tok.span,
-                    kind: OpKind::Add,
+                    value: Op::Add,
                 })
             }
             Kind::BitNot => {
                 let tok = self.advance();
-                Some(Op {
+                Some(Spanned {
                     span: tok.span,
-                    kind: OpKind::Not,
+                    value: Op::Not,
                 })
             }
             _ => None,
@@ -160,7 +167,13 @@ impl Parser<'_> {
             // Scoped name
             Kind::Ident | Kind::DColon => {
                 let path = self.scoped_name()?;
-                Ok(Expr::Path(path))
+                Ok(Spanned {
+                    span: self.make_span(
+                        path.segments.first().expect("path has a segment").span,
+                        path.segments.last().expect("path has a segment").span,
+                    ),
+                    value: ExprKind::Path(path),
+                })
             }
 
             Kind::LParen => {
@@ -168,10 +181,10 @@ impl Parser<'_> {
                 self.advance();
                 let inner = self.const_expr()?;
                 self.expect(Kind::RParen)?;
-                Ok(Expr::Group(Box::new(Group {
-                    expr: inner,
+                Ok(Spanned {
                     span: self.make_span(start, self.prev_span),
-                })))
+                    value: ExprKind::Group(Box::new(inner)),
+                })
             }
 
             Kind::LBrace => self.init_list(shift_mode),
@@ -207,10 +220,10 @@ impl Parser<'_> {
                 .with_label("invalid integer"));
         };
 
-        Ok(Expr::Literal(Literal {
+        Ok(Spanned {
             span: tok.span,
-            value: LiteralValue::Int(value),
-        }))
+            value: ExprKind::Literal(Literal::Int(value)),
+        })
     }
 
     // Rule 18 (floating point variant)
@@ -223,10 +236,10 @@ impl Parser<'_> {
                 .with_label("invalid float"));
         };
 
-        Ok(Expr::Literal(Literal {
+        Ok(Spanned {
             span: tok.span,
-            value: LiteralValue::Float(value),
-        }))
+            value: ExprKind::Literal(Literal::Float(value)),
+        })
     }
 
     // Rule 19
@@ -266,14 +279,14 @@ impl Parser<'_> {
         }
 
         let span = self.make_span(start, self.prev_span);
-        Ok(Expr::Literal(Literal {
+        Ok(Spanned {
             span,
-            value: if wide {
-                LiteralValue::WString(value)
+            value: ExprKind::Literal(if wide {
+                Literal::WString(value)
             } else {
-                LiteralValue::String(value)
-            },
-        }))
+                Literal::String(value)
+            }),
+        })
     }
 
     // Rule 20
@@ -292,54 +305,52 @@ impl Parser<'_> {
                 .with_label("invalid character"));
         };
 
-        Ok(Expr::Literal(Literal {
+        Ok(Spanned {
             span: tok.span,
-            value: if wide {
-                LiteralValue::WChar(value)
+            value: ExprKind::Literal(if wide {
+                Literal::WChar(value)
             } else {
-                LiteralValue::Char(value)
-            },
-        }))
+                Literal::Char(value)
+            }),
+        })
     }
 
     // Rule 17
     fn boolean_literal(&mut self) -> Expr {
         let tok = self.advance();
         let value = matches!(tok.kind, Kind::Keyword(Kw::True));
-        Expr::Literal(Literal {
+        Spanned {
             span: tok.span,
-            value: LiteralValue::Bool(value),
-        })
+            value: ExprKind::Literal(Literal::Bool(value)),
+        }
     }
 
     /// Check if current token starts an infix operator; return its kind and precedence.
-    fn infix_op(&mut self, shift_mode: ShiftMode) -> Option<(OpKind, Precedence)> {
+    fn infix_op(&mut self, shift_mode: ShiftMode) -> Option<(Op, Precedence)> {
         match self.peek() {
             // Rule 8: or_expr
-            Kind::BitOr => Some((OpKind::Or, Precedence::OR)),
+            Kind::BitOr => Some((Op::Or, Precedence::OR)),
 
             // Rule 9: xor_expr
-            Kind::BitXor => Some((OpKind::Xor, Precedence::XOR)),
+            Kind::BitXor => Some((Op::Xor, Precedence::XOR)),
 
             // Rule 10: and_expr
-            Kind::BitAnd => Some((OpKind::And, Precedence::AND)),
+            Kind::BitAnd => Some((Op::And, Precedence::AND)),
 
             // Rule 12: add_expr
-            Kind::Plus => Some((OpKind::Add, Precedence::ADD)),
-            Kind::Minus => Some((OpKind::Sub, Precedence::ADD)),
+            Kind::Plus => Some((Op::Add, Precedence::ADD)),
+            Kind::Minus => Some((Op::Sub, Precedence::ADD)),
 
             // Rule 13: mult_expr
-            Kind::Star => Some((OpKind::Multiply, Precedence::MUL)),
-            Kind::Slash => Some((OpKind::Divide, Precedence::MUL)),
-            Kind::Modulo => Some((OpKind::Modulo, Precedence::MUL)),
+            Kind::Star => Some((Op::Multiply, Precedence::MUL)),
+            Kind::Slash => Some((Op::Divide, Precedence::MUL)),
+            Kind::Modulo => Some((Op::Modulo, Precedence::MUL)),
 
             // Rule 11: shift_expr
-            Kind::Lt if self.peek_nth_raw(1) == Kind::Lt => {
-                Some((OpKind::Lshift, Precedence::SHIFT))
-            }
+            Kind::Lt if self.peek_nth_raw(1) == Kind::Lt => Some((Op::LShift, Precedence::SHIFT)),
 
             Kind::Gt if self.peek_nth_raw(1) == Kind::Gt => match shift_mode {
-                ShiftMode::Allow => Some((OpKind::Rshift, Precedence::SHIFT)),
+                ShiftMode::Allow => Some((Op::RShift, Precedence::SHIFT)),
                 ShiftMode::Template { allow_comma } => self.rshift_in_template(allow_comma),
             },
 
@@ -351,7 +362,7 @@ impl Parser<'_> {
     ///
     /// Uses lookahead to properly skim annotations (with correct adjacency rules)
     /// and determine what follows the `>>`.
-    fn rshift_in_template(&mut self, allow_comma: bool) -> Option<(OpKind, Precedence)> {
+    fn rshift_in_template(&mut self, allow_comma: bool) -> Option<(Op, Precedence)> {
         let is_rshift = self.lookahead(|p| {
             // Consume the two `>` tokens
             p.advance_raw();
@@ -368,7 +379,7 @@ impl Parser<'_> {
         });
 
         if is_rshift {
-            Some((OpKind::Rshift, Precedence::SHIFT))
+            Some((Op::RShift, Precedence::SHIFT))
         } else {
             None
         }
@@ -445,9 +456,9 @@ impl Parser<'_> {
         }
     }
 
-    fn consume_infix_op(&mut self, op_kind: OpKind) -> Span {
+    fn consume_infix_op(&mut self, op_kind: Op) -> Span {
         match op_kind {
-            OpKind::Lshift | OpKind::Rshift => {
+            Op::LShift | Op::RShift => {
                 let start = self.advance().span;
                 let end = self.advance().span;
                 self.make_span(start, end)
@@ -475,10 +486,10 @@ impl Parser<'_> {
 
         self.expect(Kind::RBrace)?;
 
-        Ok(Expr::InitList(ic_syntax::InitList {
-            values,
+        Ok(Spanned {
             span: self.make_span(start, self.prev_span),
-        }))
+            value: ExprKind::InitList(values),
+        })
     }
 
     /// Parses a single init list element: `expr`, `.field = expr`, or `field = expr`
@@ -499,7 +510,7 @@ impl Parser<'_> {
         };
 
         let value = self.expr_bp(Precedence::NONE, shift_mode)?;
-        Ok(ic_syntax::NamedExpr { ident, value })
+        Ok(ic_syntax::NamedExpr { name: ident, value })
     }
 }
 

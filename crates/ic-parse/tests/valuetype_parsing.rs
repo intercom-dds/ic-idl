@@ -26,7 +26,7 @@
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use ic_parse::from_str;
-use ic_syntax::{DeclKind, Item, ValueElement};
+use ic_syntax::{DeclKind, Item, ValueMember};
 
 #[test]
 fn parse_empty_valuetype() {
@@ -35,11 +35,11 @@ fn parse_empty_valuetype() {
     assert_eq!(result.tree.len(), 1);
 
     match &result.tree[0] {
-        Item::ValuetypeValue(def) => {
-            assert_eq!(def.ident.name, "MyValue");
-            assert!(def.elements.is_empty());
+        Item::Valuetype(def) => {
+            assert_eq!(def.name.name, "MyValue");
+            assert!(def.members.is_empty());
             assert!(def.inherits.is_none());
-            assert!(def.supports.is_none());
+            assert!(def.supports.is_empty());
         }
         _ => panic!("expected valuetype"),
     }
@@ -51,11 +51,11 @@ fn parse_valuetype_with_public_member() {
     assert!(result.errors.is_empty(), "errors: {:?}", result.errors);
 
     match &result.tree[0] {
-        Item::ValuetypeValue(def) => {
-            assert_eq!(def.elements.len(), 1);
-            match &def.elements[0] {
-                ValueElement::State(member) => {
-                    assert!(member.is_public);
+        Item::Valuetype(def) => {
+            assert_eq!(def.members.len(), 1);
+            match &def.members[0] {
+                ValueMember::State(member) => {
+                    assert_eq!(member.visibility.value, ic_syntax::Visibility::Public);
                 }
                 _ => panic!("expected state member"),
             }
@@ -70,9 +70,9 @@ fn parse_valuetype_with_private_member() {
     assert!(result.errors.is_empty(), "errors: {:?}", result.errors);
 
     match &result.tree[0] {
-        Item::ValuetypeValue(def) => match &def.elements[0] {
-            ValueElement::State(member) => {
-                assert!(!member.is_public);
+        Item::Valuetype(def) => match &def.members[0] {
+            ValueMember::State(member) => {
+                assert_ne!(member.visibility.value, ic_syntax::Visibility::Public);
             }
             _ => panic!("expected state member"),
         },
@@ -92,18 +92,24 @@ fn parse_valuetype_with_mixed_visibility() {
     assert!(result.errors.is_empty(), "errors: {:?}", result.errors);
 
     match &result.tree[0] {
-        Item::ValuetypeValue(def) => {
-            assert_eq!(def.elements.len(), 3);
-            match &def.elements[0] {
-                ValueElement::State(m) => assert!(m.is_public),
+        Item::Valuetype(def) => {
+            assert_eq!(def.members.len(), 3);
+            match &def.members[0] {
+                ValueMember::State(m) => {
+                    assert_eq!(m.visibility.value, ic_syntax::Visibility::Public);
+                }
                 _ => panic!("expected state"),
             }
-            match &def.elements[1] {
-                ValueElement::State(m) => assert!(!m.is_public),
+            match &def.members[1] {
+                ValueMember::State(m) => {
+                    assert_ne!(m.visibility.value, ic_syntax::Visibility::Public);
+                }
                 _ => panic!("expected state"),
             }
-            match &def.elements[2] {
-                ValueElement::State(m) => assert!(m.is_public),
+            match &def.members[2] {
+                ValueMember::State(m) => {
+                    assert_eq!(m.visibility.value, ic_syntax::Visibility::Public);
+                }
                 _ => panic!("expected state"),
             }
         }
@@ -117,8 +123,8 @@ fn parse_valuetype_with_inheritance() {
     assert!(result.errors.is_empty(), "errors: {:?}", result.errors);
 
     match &result.tree[0] {
-        Item::ValuetypeValue(def) => {
-            assert_eq!(def.ident.name, "Child");
+        Item::Valuetype(def) => {
+            assert_eq!(def.name.name, "Child");
             assert!(def.inherits.is_some());
             let parent = def.inherits.as_ref().unwrap();
             assert_eq!(parent.segments[0].name, "Parent");
@@ -133,9 +139,9 @@ fn parse_valuetype_with_supports() {
     assert!(result.errors.is_empty(), "errors: {:?}", result.errors);
 
     match &result.tree[0] {
-        Item::ValuetypeValue(def) => {
-            assert!(def.supports.is_some());
-            let iface = def.supports.as_ref().unwrap();
+        Item::Valuetype(def) => {
+            assert!(!def.supports.is_empty());
+            let iface = &def.supports[0];
             assert_eq!(iface.segments[0].name, "MyInterface");
         }
         _ => panic!("expected valuetype"),
@@ -148,9 +154,9 @@ fn parse_valuetype_with_inheritance_and_supports() {
     assert!(result.errors.is_empty(), "errors: {:?}", result.errors);
 
     match &result.tree[0] {
-        Item::ValuetypeValue(def) => {
+        Item::Valuetype(def) => {
             assert!(def.inherits.is_some());
-            assert!(def.supports.is_some());
+            assert!(!def.supports.is_empty());
         }
         _ => panic!("expected valuetype"),
     }
@@ -162,8 +168,8 @@ fn parse_valuetype_forward_declaration() {
     assert!(result.errors.is_empty(), "errors: {:?}", result.errors);
 
     match &result.tree[0] {
-        Item::DeclValue(decl) => {
-            assert_eq!(decl.ident.name, "Forward");
+        Item::Decl(decl) => {
+            assert_eq!(decl.name.name, "Forward");
             assert_eq!(decl.kind, DeclKind::Valuetype);
         }
         _ => panic!("expected forward declaration"),
@@ -181,11 +187,11 @@ fn parse_valuetype_with_operation() {
     assert!(result.errors.is_empty(), "errors: {:?}", result.errors);
 
     match &result.tree[0] {
-        Item::ValuetypeValue(def) => {
-            assert_eq!(def.elements.len(), 2);
-            match &def.elements[1] {
-                ValueElement::Proto(proto) => {
-                    assert_eq!(proto.ident.name, "getId");
+        Item::Valuetype(def) => {
+            assert_eq!(def.members.len(), 2);
+            match &def.members[1] {
+                ValueMember::Proto(proto) => {
+                    assert_eq!(proto.name.name, "getId");
                 }
                 _ => panic!("expected prototype"),
             }
@@ -204,8 +210,8 @@ fn parse_valuetype_with_oneway_operation() {
     assert!(result.errors.is_empty(), "errors: {:?}", result.errors);
 
     match &result.tree[0] {
-        Item::ValuetypeValue(def) => match &def.elements[0] {
-            ValueElement::Proto(proto) => {
+        Item::Valuetype(def) => match &def.members[0] {
+            ValueMember::Proto(proto) => {
                 assert!(proto.oneway.is_some());
             }
             _ => panic!("expected prototype"),
@@ -224,8 +230,8 @@ fn parse_valuetype_with_attribute() {
     assert!(result.errors.is_empty(), "errors: {:?}", result.errors);
 
     match &result.tree[0] {
-        Item::ValuetypeValue(def) => match &def.elements[0] {
-            ValueElement::Attr(attr) => {
+        Item::Valuetype(def) => match &def.members[0] {
+            ValueMember::Attribute(attr) => {
                 assert!(attr.readonly.is_none());
             }
             _ => panic!("expected attribute"),
@@ -244,8 +250,8 @@ fn parse_valuetype_with_readonly_attribute() {
     assert!(result.errors.is_empty(), "errors: {:?}", result.errors);
 
     match &result.tree[0] {
-        Item::ValuetypeValue(def) => match &def.elements[0] {
-            ValueElement::Attr(attr) => {
+        Item::Valuetype(def) => match &def.members[0] {
+            ValueMember::Attribute(attr) => {
                 assert!(attr.readonly.is_some());
             }
             _ => panic!("expected attribute"),
@@ -264,9 +270,9 @@ fn parse_valuetype_with_typedef() {
     assert!(result.errors.is_empty(), "errors: {:?}", result.errors);
 
     match &result.tree[0] {
-        Item::ValuetypeValue(def) => match &def.elements[0] {
-            ValueElement::Item(item) => {
-                assert!(matches!(item, Item::AliasValue(_)));
+        Item::Valuetype(def) => match &def.members[0] {
+            ValueMember::Item(item) => {
+                assert!(matches!(item, Item::Alias(_)));
             }
             _ => panic!("expected item"),
         },
@@ -284,9 +290,9 @@ fn parse_valuetype_with_const() {
     assert!(result.errors.is_empty(), "errors: {:?}", result.errors);
 
     match &result.tree[0] {
-        Item::ValuetypeValue(def) => match &def.elements[0] {
-            ValueElement::Item(item) => {
-                assert!(matches!(item, Item::ConstValue(_)));
+        Item::Valuetype(def) => match &def.members[0] {
+            ValueMember::Item(item) => {
+                assert!(matches!(item, Item::Const(_)));
             }
             _ => panic!("expected item"),
         },
@@ -304,9 +310,9 @@ fn parse_valuetype_with_struct() {
     assert!(result.errors.is_empty(), "errors: {:?}", result.errors);
 
     match &result.tree[0] {
-        Item::ValuetypeValue(def) => match &def.elements[0] {
-            ValueElement::Item(item) => {
-                assert!(matches!(item, Item::StructValue(_)));
+        Item::Valuetype(def) => match &def.members[0] {
+            ValueMember::Item(item) => {
+                assert!(matches!(item, Item::Struct(_)));
             }
             _ => panic!("expected item"),
         },
@@ -320,9 +326,9 @@ fn parse_valuetype_with_annotation() {
     assert!(result.errors.is_empty(), "errors: {:?}", result.errors);
 
     match &result.tree[0] {
-        Item::ValuetypeValue(def) => {
-            assert_eq!(def.annotations.len(), 1);
-            assert_eq!(def.annotations[0].ident.segments[0].name, "custom");
+        Item::Valuetype(def) => {
+            assert_eq!(def.meta.annotations.len(), 1);
+            assert_eq!(def.meta.annotations[0].path.segments[0].name, "custom");
         }
         _ => panic!("expected valuetype"),
     }
@@ -349,11 +355,11 @@ fn parse_complex_valuetype() {
     assert!(result.errors.is_empty(), "errors: {:?}", result.errors);
 
     match &result.tree[0] {
-        Item::ValuetypeValue(def) => {
+        Item::Valuetype(def) => {
             assert!(def.inherits.is_some());
-            assert!(def.supports.is_some());
+            assert!(!def.supports.is_empty());
             // 3 state members + 2 items + 2 attrs + 2 protos = 9
-            assert_eq!(def.elements.len(), 9);
+            assert_eq!(def.members.len(), 9);
         }
         _ => panic!("expected valuetype"),
     }
@@ -369,9 +375,9 @@ fn parse_valuetype_in_module() {
     assert!(result.errors.is_empty(), "errors: {:?}", result.errors);
 
     match &result.tree[0] {
-        Item::ModuleValue(module) => {
-            assert_eq!(module.definitions.len(), 1);
-            assert!(matches!(&module.definitions[0], Item::ValuetypeValue(_)));
+        Item::Module(module) => {
+            assert_eq!(module.items.len(), 1);
+            assert!(matches!(&module.items[0], Item::Valuetype(_)));
         }
         _ => panic!("expected module"),
     }

@@ -27,7 +27,7 @@
 
 use ic_diagnostic::{Label, error_span};
 use ic_syntax::visit::{Visitor, walk_tree};
-use ic_syntax::{AnnotationField, Item, util};
+use ic_syntax::{AnnotationMember, Item, util};
 
 use crate::{Category, Lint, LintCtx};
 
@@ -38,14 +38,11 @@ pub struct AnnMembers<'a> {
 }
 
 impl<'a> Visitor<'a> for AnnMembers<'_> {
-    fn visit_annotation_field(&mut self, def: &'a AnnotationField) {
-        if let AnnotationField::Item(item) = def {
+    fn visit_annotation_field(&mut self, def: &'a AnnotationMember) {
+        if let AnnotationMember::Item(item) = def {
             let span = util::item_ident_span(item);
-            match item.as_ref() {
-                Item::ConstValue(_)
-                | Item::AliasValue(_)
-                | Item::BitmaskValue(_)
-                | Item::EnumValue(_) => (),
+            match item {
+                Item::Const(_) | Item::Alias(_) | Item::Bitmask(_) | Item::Enum(_) => (),
                 v => {
                     // Bitmasks are not standard and deliberately omitted from
                     // the message.

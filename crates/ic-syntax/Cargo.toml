@@ -37,7 +37,5 @@ version.workspace = true
 ic-alloc = { path = "../ic-alloc" }
 ic-vfs = { path = "../ic-vfs" }
 
-intercom-cts.workspace = true
-
 [lints]
 workspace = true

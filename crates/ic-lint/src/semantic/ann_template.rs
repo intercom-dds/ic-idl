@@ -54,8 +54,8 @@ impl<'a> Lint<'a> for AnnTemplate<'a> {
 }
 
 impl AnnTemplate<'_> {
-    fn report_invalid_annotation(&self, ann: &ic_syntax::AnnotationAppl, kind: &str) {
-        let span = ic_syntax::util::path_span(&ann.ident);
+    fn report_invalid_annotation(&self, ann: &ic_syntax::Annotation, kind: &str) {
+        let span = ic_syntax::util::path_span(&ann.path);
         let diag = self
             .ctx
             .diag_span(
@@ -75,7 +75,7 @@ impl<'a> Visitor<'a> for AnnTemplate<'a> {
     fn visit_type(&mut self, ty: &'a ic_syntax::Type) {
         match ty {
             ic_syntax::Type::Sequence(seq) => {
-                for ann in &seq.annotations {
+                for ann in &seq.element_annotations {
                     self.report_invalid_annotation(ann, "element");
                 }
             }

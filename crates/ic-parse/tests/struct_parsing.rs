@@ -35,9 +35,9 @@ fn parse_simple_module() {
     assert_eq!(result.tree.len(), 1);
 
     match &result.tree[0] {
-        Item::ModuleValue(def) => {
-            assert_eq!(def.ident.name, "Foo");
-            assert_eq!(def.definitions.len(), 1);
+        Item::Module(def) => {
+            assert_eq!(def.name.name, "Foo");
+            assert_eq!(def.items.len(), 1);
         }
         _ => panic!("expected module"),
     }
@@ -49,14 +49,14 @@ fn parse_nested_modules() {
     assert!(result.errors.is_empty(), "errors: {:?}", result.errors);
 
     match &result.tree[0] {
-        Item::ModuleValue(parent) => {
-            assert_eq!(parent.ident.name, "Parent");
-            assert_eq!(parent.definitions.len(), 1);
+        Item::Module(parent) => {
+            assert_eq!(parent.name.name, "Parent");
+            assert_eq!(parent.items.len(), 1);
 
-            match &parent.definitions[0] {
-                Item::ModuleValue(child) => {
-                    assert_eq!(child.ident.name, "Child");
-                    assert_eq!(child.definitions.len(), 1);
+            match &parent.items[0] {
+                Item::Module(child) => {
+                    assert_eq!(child.name.name, "Child");
+                    assert_eq!(child.items.len(), 1);
                 }
                 _ => panic!("expected nested module"),
             }
@@ -71,9 +71,9 @@ fn parse_annotated_module() {
     assert!(result.errors.is_empty(), "errors: {:?}", result.errors);
 
     match &result.tree[0] {
-        Item::ModuleValue(def) => {
-            assert_eq!(def.annotations.len(), 1);
-            assert_eq!(def.annotations[0].ident.segments[0].name, "version");
+        Item::Module(def) => {
+            assert_eq!(def.meta.annotations.len(), 1);
+            assert_eq!(def.meta.annotations[0].path.segments[0].name, "version");
         }
         _ => panic!("expected module"),
     }
@@ -86,9 +86,9 @@ fn parse_simple_struct() {
     assert_eq!(result.tree.len(), 1);
 
     match &result.tree[0] {
-        Item::StructValue(def) => {
-            assert_eq!(def.ident.name, "Point");
-            assert_eq!(def.members.len(), 2);
+        Item::Struct(def) => {
+            assert_eq!(def.name.name, "Point");
+            assert_eq!(def.fields.len(), 2);
             assert!(def.parent.is_none());
         }
         _ => panic!("expected struct, got {:?}", result.tree[0]),
@@ -102,9 +102,9 @@ fn parse_empty_struct() {
     assert_eq!(result.tree.len(), 1);
 
     match &result.tree[0] {
-        Item::StructValue(def) => {
-            assert_eq!(def.ident.name, "Empty");
-            assert!(def.members.is_empty());
+        Item::Struct(def) => {
+            assert_eq!(def.name.name, "Empty");
+            assert!(def.fields.is_empty());
         }
         _ => panic!("expected struct"),
     }
@@ -117,8 +117,8 @@ fn parse_forward_declaration() {
     assert_eq!(result.tree.len(), 1);
 
     match &result.tree[0] {
-        Item::DeclValue(decl) => {
-            assert_eq!(decl.ident.name, "Forward");
+        Item::Decl(decl) => {
+            assert_eq!(decl.name.name, "Forward");
         }
         _ => panic!("expected forward declaration"),
     }
@@ -131,8 +131,8 @@ fn parse_struct_with_inheritance() {
     assert_eq!(result.tree.len(), 1);
 
     match &result.tree[0] {
-        Item::StructValue(def) => {
-            assert_eq!(def.ident.name, "Point3D");
+        Item::Struct(def) => {
+            assert_eq!(def.name.name, "Point3D");
             assert!(def.parent.is_some());
             let parent = def.parent.as_ref().unwrap();
             assert_eq!(parent.segments.len(), 1);
@@ -149,10 +149,10 @@ fn parse_struct_with_annotation() {
     assert_eq!(result.tree.len(), 1);
 
     match &result.tree[0] {
-        Item::StructValue(def) => {
-            assert_eq!(def.ident.name, "Point");
-            assert_eq!(def.annotations.len(), 1);
-            assert_eq!(def.annotations[0].ident.segments[0].name, "final");
+        Item::Struct(def) => {
+            assert_eq!(def.name.name, "Point");
+            assert_eq!(def.meta.annotations.len(), 1);
+            assert_eq!(def.meta.annotations[0].path.segments[0].name, "final");
         }
         _ => panic!("expected struct"),
     }
@@ -164,10 +164,13 @@ fn parse_struct_with_annotated_member() {
     assert!(result.errors.is_empty(), "errors: {:?}", result.errors);
 
     match &result.tree[0] {
-        Item::StructValue(def) => {
-            assert_eq!(def.members.len(), 1);
-            assert_eq!(def.members[0].annotations.len(), 1);
-            assert_eq!(def.members[0].annotations[0].ident.segments[0].name, "key");
+        Item::Struct(def) => {
+            assert_eq!(def.fields.len(), 1);
+            assert_eq!(def.fields[0].meta.annotations.len(), 1);
+            assert_eq!(
+                def.fields[0].meta.annotations[0].path.segments[0].name,
+                "key"
+            );
         }
         _ => panic!("expected struct"),
     }
@@ -179,13 +182,13 @@ fn parse_annotation_with_args() {
     assert!(result.errors.is_empty(), "errors: {:?}", result.errors);
 
     match &result.tree[0] {
-        Item::StructValue(def) => {
-            assert_eq!(def.annotations.len(), 1);
-            let ann = &def.annotations[0];
-            assert_eq!(ann.ident.segments[0].name, "range");
-            assert_eq!(ann.args.len(), 2);
-            assert_eq!(ann.args[0].ident.as_ref().unwrap().name, "min");
-            assert_eq!(ann.args[1].ident.as_ref().unwrap().name, "max");
+        Item::Struct(def) => {
+            assert_eq!(def.meta.annotations.len(), 1);
+            let ann = &def.meta.annotations[0];
+            assert_eq!(ann.path.segments[0].name, "range");
+            assert_eq!(ann.arguments.len(), 2);
+            assert_eq!(ann.arguments[0].name.as_ref().unwrap().name, "min");
+            assert_eq!(ann.arguments[1].name.as_ref().unwrap().name, "max");
         }
         _ => panic!("expected struct"),
     }
@@ -197,10 +200,10 @@ fn parse_multiple_annotations() {
     assert!(result.errors.is_empty(), "errors: {:?}", result.errors);
 
     match &result.tree[0] {
-        Item::StructValue(def) => {
-            assert_eq!(def.annotations.len(), 2);
-            assert_eq!(def.annotations[0].ident.segments[0].name, "final");
-            assert_eq!(def.annotations[1].ident.segments[0].name, "mutable");
+        Item::Struct(def) => {
+            assert_eq!(def.meta.annotations.len(), 2);
+            assert_eq!(def.meta.annotations[0].path.segments[0].name, "final");
+            assert_eq!(def.meta.annotations[1].path.segments[0].name, "mutable");
         }
         _ => panic!("expected struct"),
     }
@@ -211,14 +214,14 @@ fn parse_array_member() {
     let result = from_str("struct Arrays { long values[10]; };");
     assert!(result.errors.is_empty(), "errors: {:?}", result.errors);
 
-    let Item::StructValue(def) = &result.tree[0] else {
+    let Item::Struct(def) = &result.tree[0] else {
         panic!("expected struct")
     };
-    assert_eq!(def.members.len(), 1);
-    let ic_syntax::Declarator::Array(arr) = &def.members[0].names[0] else {
+    assert_eq!(def.fields.len(), 1);
+    let ic_syntax::Declarator::Array(arr) = &def.fields[0].declarators[0] else {
         panic!("expected array declarator")
     };
-    assert_eq!(arr.ident.name, "values");
+    assert_eq!(arr.name.name, "values");
     assert_eq!(arr.bounds.len(), 1);
 }
 
@@ -228,9 +231,9 @@ fn parse_multiple_declarators() {
     assert!(result.errors.is_empty(), "errors: {:?}", result.errors);
 
     match &result.tree[0] {
-        Item::StructValue(def) => {
-            assert_eq!(def.members.len(), 1);
-            assert_eq!(def.members[0].names.len(), 3);
+        Item::Struct(def) => {
+            assert_eq!(def.fields.len(), 1);
+            assert_eq!(def.fields[0].declarators.len(), 3);
         }
         _ => panic!("expected struct"),
     }
@@ -243,10 +246,10 @@ fn parse_annotation_with_keyword_name() {
     assert!(result.errors.is_empty(), "errors: {:?}", result.errors);
 
     match &result.tree[0] {
-        Item::StructValue(def) => {
-            assert_eq!(def.members[0].annotations.len(), 1);
+        Item::Struct(def) => {
+            assert_eq!(def.fields[0].meta.annotations.len(), 1);
             assert_eq!(
-                def.members[0].annotations[0].ident.segments[0].name,
+                def.fields[0].meta.annotations[0].path.segments[0].name,
                 "default"
             );
         }
@@ -280,13 +283,13 @@ fn parse_annotations_in_multiple_positions() {
     assert!(result.errors.is_empty(), "errors: {:?}", result.errors);
 
     match &result.tree[0] {
-        Item::StructValue(def) => {
-            assert_eq!(def.members.len(), 1);
-            let field = &def.members[0];
+        Item::Struct(def) => {
+            assert_eq!(def.fields.len(), 1);
+            let field = &def.fields[0];
             // Both @baz and @bar should be collected
-            assert_eq!(field.annotations.len(), 2);
-            assert_eq!(field.annotations[0].ident.segments[0].name, "baz");
-            assert_eq!(field.annotations[1].ident.segments[0].name, "bar");
+            assert_eq!(field.meta.annotations.len(), 2);
+            assert_eq!(field.meta.annotations[0].path.segments[0].name, "baz");
+            assert_eq!(field.meta.annotations[1].path.segments[0].name, "bar");
         }
         _ => panic!("expected struct"),
     }
@@ -299,9 +302,9 @@ fn parse_trailing_annotation_after_brace() {
     assert!(result.errors.is_empty(), "errors: {:?}", result.errors);
 
     match &result.tree[0] {
-        Item::StructValue(def) => {
-            assert_eq!(def.annotations.len(), 1);
-            assert_eq!(def.annotations[0].ident.segments[0].name, "boom");
+        Item::Struct(def) => {
+            assert_eq!(def.meta.annotations.len(), 1);
+            assert_eq!(def.meta.annotations[0].path.segments[0].name, "boom");
         }
         _ => panic!("expected struct"),
     }
@@ -314,16 +317,22 @@ fn parse_annotations_everywhere() {
     assert!(result.errors.is_empty(), "errors: {:?}", result.errors);
 
     match &result.tree[0] {
-        Item::StructValue(def) => {
+        Item::Struct(def) => {
             // @pre and @trailing on struct
-            assert_eq!(def.annotations.len(), 2);
-            assert_eq!(def.annotations[0].ident.segments[0].name, "pre");
-            assert_eq!(def.annotations[1].ident.segments[0].name, "trailing");
+            assert_eq!(def.meta.annotations.len(), 2);
+            assert_eq!(def.meta.annotations[0].path.segments[0].name, "pre");
+            assert_eq!(def.meta.annotations[1].path.segments[0].name, "trailing");
 
             // @mid and @post on field
-            assert_eq!(def.members[0].annotations.len(), 2);
-            assert_eq!(def.members[0].annotations[0].ident.segments[0].name, "mid");
-            assert_eq!(def.members[0].annotations[1].ident.segments[0].name, "post");
+            assert_eq!(def.fields[0].meta.annotations.len(), 2);
+            assert_eq!(
+                def.fields[0].meta.annotations[0].path.segments[0].name,
+                "mid"
+            );
+            assert_eq!(
+                def.fields[0].meta.annotations[1].path.segments[0].name,
+                "post"
+            );
         }
         _ => panic!("expected struct"),
     }
@@ -342,8 +351,8 @@ fn parse_recovers_after_error() {
     // But should still parse the good struct
     assert_eq!(result.tree.len(), 1);
     match &result.tree[0] {
-        Item::StructValue(def) => {
-            assert_eq!(def.ident.name, "Good");
+        Item::Struct(def) => {
+            assert_eq!(def.name.name, "Good");
         }
         _ => panic!("expected struct"),
     }

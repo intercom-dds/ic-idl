@@ -74,17 +74,17 @@ impl<'a> Visitor<'a> for Sanity {
     }
 
     fn visit_struct_field(&mut self, def: &'a ic_syntax::Field) {
-        assert!(!def.names.is_empty());
+        assert!(!def.declarators.is_empty());
         walk_struct_field(self, def);
     }
 
-    fn visit_union_variant(&mut self, variant: &'a ic_syntax::UnionField) {
+    fn visit_union_variant(&mut self, variant: &'a ic_syntax::UnionCase) {
         assert!(!variant.labels.is_empty());
         walk_union_variant(self, variant);
     }
 
     fn visit_attribute(&mut self, def: &'a ic_syntax::Attribute) {
-        assert!(!def.decl.is_empty());
+        assert!(!def.declarators.is_empty());
         walk_attribute(self, def);
     }
 }

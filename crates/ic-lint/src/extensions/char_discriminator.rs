@@ -68,10 +68,10 @@ struct CharCaseLabelChecker<'a> {
 
 impl<'a> ic_syntax::visit::Visitor<'a> for CharCaseLabelChecker<'a> {
     fn visit_union(&mut self, union_def: &'a UnionDef) {
-        for element in &union_def.fields {
+        for element in &union_def.cases {
             for label in &element.labels {
-                if let ic_syntax::Label::Case(ic_syntax::Expr::Literal(lit)) = &label
-                    && let ic_syntax::LiteralValue::Char(_) = lit.value
+                if let ic_syntax::Label::Value(expr) = label
+                    && let ic_syntax::ExprKind::Literal(ic_syntax::Literal::Char(_)) = expr.value
                 {
                     let diag = self
                         .ctx
@@ -79,7 +79,7 @@ impl<'a> ic_syntax::visit::Visitor<'a> for CharCaseLabelChecker<'a> {
                             CharDiscriminator::name(),
                             CharDiscriminator::category(),
                             "char literals should not be used in union case labels",
-                            Label::new(lit.span).message("char literal"),
+                            Label::new(expr.span).message("char literal"),
                         )
                         .help("consider using an integer or enum instead");
                     CharDiscriminator::report(self.ctx, diag);

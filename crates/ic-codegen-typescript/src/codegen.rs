@@ -566,7 +566,7 @@ impl<'a> TsGen<'a> {
         let in_params: Vec<_> = proto
             .params
             .iter()
-            .filter(|p| p.kind == ParamKind::In || p.kind == ParamKind::Inout)
+            .filter(|p| p.kind == ParamKind::In || p.kind == ParamKind::InOut)
             .collect();
 
         for (i, param) in in_params.iter().enumerate() {
@@ -582,7 +582,7 @@ impl<'a> TsGen<'a> {
         let out_params: Vec<_> = proto
             .params
             .iter()
-            .filter(|p| p.kind == ParamKind::Out || p.kind == ParamKind::Inout)
+            .filter(|p| p.kind == ParamKind::Out || p.kind == ParamKind::InOut)
             .collect();
 
         let has_return = !matches!(proto.ty.kind, TyKind::Primitive(PrimitiveTy::Void));

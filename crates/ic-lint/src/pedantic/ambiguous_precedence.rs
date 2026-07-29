@@ -27,7 +27,7 @@
 
 use ic_diagnostic::Label;
 use ic_syntax::visit::{Visitor, walk_tree};
-use ic_syntax::{Binary, Expr, OpKind, util};
+use ic_syntax::{BinaryExpr, ExprKind, Op, Spanned, util};
 use ic_vfs::Span;
 
 use crate::{Category, Lint, LintCtx};
@@ -44,16 +44,16 @@ pub struct AmbiguousPrecedence<'a> {
 impl AmbiguousPrecedence<'_> {
     fn report_ambiguous(
         &self,
-        parent_op: &ic_syntax::Op,
-        child_op: &ic_syntax::Op,
-        _parent_expr: &Binary,
-        child_expr: &Binary,
+        parent_op: &Spanned<Op>,
+        child_op: &Spanned<Op>,
+        _parent_expr: &BinaryExpr,
+        child_expr: &BinaryExpr,
     ) {
-        let parent_name = util::op_name(parent_op.kind);
-        let child_name = util::op_name(child_op.kind);
+        let parent_name = util::op_name(parent_op.value);
+        let child_name = util::op_name(child_op.value);
         let child_span = Span {
-            start: util::expr_span(&child_expr.lhs).start,
-            end: util::expr_span(&child_expr.rhs).end,
+            start: child_expr.lhs.span.start,
+            end: child_expr.rhs.span.end,
         };
 
         let diag = self
@@ -71,26 +71,26 @@ impl AmbiguousPrecedence<'_> {
 }
 
 impl<'a> Visitor<'a> for AmbiguousPrecedence<'a> {
-    fn visit_expr_binary(&mut self, binary: &'a Binary) {
-        match &binary.lhs {
-            Expr::Binary(left_binary) => {
-                if is_ambiguous(binary.op.kind, left_binary.op.kind, true) {
+    fn visit_expr_binary(&mut self, binary: &'a BinaryExpr) {
+        match &binary.lhs.value {
+            ExprKind::Binary(left_binary) => {
+                if is_ambiguous(binary.op.value, left_binary.op.value, true) {
                     self.report_ambiguous(&binary.op, &left_binary.op, binary, left_binary);
                 }
                 self.visit_expr_binary(left_binary);
             }
-            Expr::Group(group) => self.visit_expr(&group.expr),
+            ExprKind::Group(group) => self.visit_expr(group),
             _ => self.visit_expr(&binary.lhs),
         }
 
-        match &binary.rhs {
-            Expr::Binary(right_binary) => {
-                if is_ambiguous(binary.op.kind, right_binary.op.kind, false) {
+        match &binary.rhs.value {
+            ExprKind::Binary(right_binary) => {
+                if is_ambiguous(binary.op.value, right_binary.op.value, false) {
                     self.report_ambiguous(&binary.op, &right_binary.op, binary, right_binary);
                 }
                 self.visit_expr_binary(right_binary);
             }
-            Expr::Group(group) => self.visit_expr(&group.expr),
+            ExprKind::Group(group) => self.visit_expr(group),
             _ => self.visit_expr(&binary.rhs),
         }
     }
@@ -118,27 +118,21 @@ impl<'a> Lint<'a> for AmbiguousPrecedence<'a> {
 /// Check if we should warn about this specific precedence situation.
 /// We only warn when mixing operators from different "families" where
 /// the precedence might not be intuitive.
-fn is_ambiguous(parent_op: OpKind, child_op: OpKind, is_left: bool) -> bool {
+fn is_ambiguous(parent_op: Op, child_op: Op, is_left: bool) -> bool {
     match (parent_op, child_op) {
         // Warn when mixing bitwise and arithmetic, bitwise precedence
         // between different bitwise ops, and when bitiwse ops are mixed
         // with bitshifts.
         (
-            OpKind::And | OpKind::Or | OpKind::Xor,
-            OpKind::Add
-            | OpKind::Sub
-            | OpKind::Multiply
-            | OpKind::Divide
-            | OpKind::Modulo
-            | OpKind::Lshift
-            | OpKind::Rshift,
+            Op::And | Op::Or | Op::Xor,
+            Op::Add | Op::Sub | Op::Multiply | Op::Divide | Op::Modulo | Op::LShift | Op::RShift,
         )
-        | (OpKind::Or, OpKind::And | OpKind::Xor)
-        | (OpKind::Xor, OpKind::And) => true,
+        | (Op::Or, Op::And | Op::Xor)
+        | (Op::Xor, Op::And) => true,
 
         // Special case: for shift operators, only warn on the right side
         // because "a << b + c" is confusing but "a + b << c" is less so
-        (OpKind::Lshift | OpKind::Rshift, OpKind::Add | OpKind::Sub) => !is_left,
+        (Op::LShift | Op::RShift, Op::Add | Op::Sub) => !is_left,
 
         // Don't warn about standard arithmetic precedence or any other combinations
         _ => false,
@@ -152,27 +146,27 @@ mod tests {
     #[test]
     fn test_should_warn_precedence() {
         // Should warn: shift with arithmetic on right side only
-        assert!(!is_ambiguous(OpKind::Lshift, OpKind::Add, true));
-        assert!(is_ambiguous(OpKind::Lshift, OpKind::Add, false));
+        assert!(!is_ambiguous(Op::LShift, Op::Add, true));
+        assert!(is_ambiguous(Op::LShift, Op::Add, false));
 
         // Should warn: bitwise with arithmetic
-        assert!(is_ambiguous(OpKind::And, OpKind::Add, true));
-        assert!(is_ambiguous(OpKind::Or, OpKind::Multiply, false));
+        assert!(is_ambiguous(Op::And, Op::Add, true));
+        assert!(is_ambiguous(Op::Or, Op::Multiply, false));
 
         // Should NOT warn: arithmetic precedence is well-known
-        assert!(!is_ambiguous(OpKind::Add, OpKind::Multiply, true));
-        assert!(!is_ambiguous(OpKind::Sub, OpKind::Divide, false));
+        assert!(!is_ambiguous(Op::Add, Op::Multiply, true));
+        assert!(!is_ambiguous(Op::Sub, Op::Divide, false));
     }
 
     #[test]
     fn test_bitwise_precedence_warnings() {
         // Should warn: different bitwise operators
-        assert!(is_ambiguous(OpKind::Or, OpKind::And, true));
-        assert!(is_ambiguous(OpKind::Or, OpKind::Xor, false));
-        assert!(is_ambiguous(OpKind::Xor, OpKind::And, true));
+        assert!(is_ambiguous(Op::Or, Op::And, true));
+        assert!(is_ambiguous(Op::Or, Op::Xor, false));
+        assert!(is_ambiguous(Op::Xor, Op::And, true));
 
         // Should NOT warn: same bitwise operator
-        assert!(!is_ambiguous(OpKind::And, OpKind::And, true));
-        assert!(!is_ambiguous(OpKind::Or, OpKind::Or, false));
+        assert!(!is_ambiguous(Op::And, Op::And, true));
+        assert!(!is_ambiguous(Op::Or, Op::Or, false));
     }
 }

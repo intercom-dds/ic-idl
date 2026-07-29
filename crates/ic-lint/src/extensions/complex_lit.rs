@@ -27,7 +27,7 @@
 
 use ic_diagnostic::{Color, Label};
 use ic_syntax::visit::{Visitor, walk_tree};
-use ic_syntax::{ConstDef, Expr, Span, util};
+use ic_syntax::{ConstDef, ExprKind, Span, util};
 
 use crate::{Category, Lint, LintCtx};
 
@@ -54,36 +54,37 @@ impl ComplexLit<'_> {
 }
 
 impl<'a> Visitor<'a> for ComplexLit<'a> {
-    fn visit_annotation_appl(&mut self, def: &'a ic_syntax::AnnotationAppl) {
-        for arg in &def.args {
-            if let Expr::InitList(_) = &arg.value {
+    fn visit_annotation_appl(&mut self, def: &'a ic_syntax::Annotation) {
+        for arg in &def.arguments {
+            if let ExprKind::InitList(_) = &arg.value.value {
                 self.diagnose(
-                    (arg.value.span(), "complex default values are non-standard"),
-                    (util::path_span(&def.ident), "in this annotation"),
+                    (arg.value.span, "complex default values are non-standard"),
+                    (util::path_span(&def.path), "in this annotation"),
                 );
             }
         }
     }
 
     fn visit_const(&mut self, def: &'a ConstDef) {
-        if let Expr::InitList(_) = &def.value {
+        if let ExprKind::InitList(_) = &def.value.value {
             self.diagnose(
-                (def.value.span(), "complex constants are non-standard"),
-                (util::decl_span(&def.decl), "const defined here"),
+                (def.value.span, "complex constants are non-standard"),
+                (util::decl_span(&def.declarator), "const defined here"),
             );
         }
     }
 
     fn visit_expr(&mut self, expr: &'a ic_syntax::Expr) {
-        if let ic_syntax::Expr::InitList(_) = expr {
+        if let ic_syntax::ExprKind::InitList(_) = expr.value {
             let diag = self.ctx.diag_span(
                 Self::name(),
                 Self::category(),
                 "initializer lists are non-standard",
-                Label::new(expr.span()),
+                Label::new(expr.span),
             );
             Self::report(self.ctx, diag);
         }
+        ic_syntax::visit::walk_expr(self, expr);
     }
 }
 

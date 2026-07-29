@@ -40,7 +40,7 @@ pub struct KwIdent<'a> {
 
 impl<'a> Visitor<'a> for KwIdent<'a> {
     // skip annotations as they may have keywords as names
-    fn visit_annotation_appl(&mut self, _: &'a ic_syntax::AnnotationAppl) {}
+    fn visit_annotation_appl(&mut self, _: &'a ic_syntax::Annotation) {}
 
     fn visit_annotation_def(&mut self, _: &'a ic_syntax::AnnotationDef) {}
 
@@ -48,11 +48,11 @@ impl<'a> Visitor<'a> for KwIdent<'a> {
     fn visit_type(&mut self, _: &'a ic_syntax::Type) {}
 
     // Visit union variants to check their declarators
-    fn visit_union_variant(&mut self, field: &'a ic_syntax::UnionField) {
+    fn visit_union_variant(&mut self, field: &'a ic_syntax::UnionCase) {
         // Handle the declarator which can be Simple(Ident) or Array(ArrayDeclarator)
-        match &field.decl {
-            ic_syntax::Declarator::Simple(ident) => self.visit_ident(ident),
-            ic_syntax::Declarator::Array(array_decl) => self.visit_ident(&array_decl.ident),
+        match &field.declarator {
+            ic_syntax::Declarator::Name(ident) => self.visit_ident(ident),
+            ic_syntax::Declarator::Array(array_decl) => self.visit_ident(&array_decl.name),
         }
     }
 

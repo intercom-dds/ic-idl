@@ -64,7 +64,7 @@ impl<'ctx> ValueItemProcessor<'ctx> {
             (fallback, false)
         };
 
-        let (ident, ty) = resolve_declarator(&c.decl, base_ty, self.ctx, self.current_scope);
+        let (ident, ty) = resolve_declarator(&c.declarator, base_ty, self.ctx, self.current_scope);
 
         // Skip evaluation if type resolution failed to avoid confusing secondary errors
         let value = if type_resolved {
@@ -83,8 +83,8 @@ impl<'ctx> ValueItemProcessor<'ctx> {
             self.ctx,
             self.current_scope,
             &ident,
-            c.span,
-            &c.annotations,
+            c.meta.span,
+            &c.meta.annotations,
             DefKindTag::Const,
             |_| DefKind::Const(const_ty),
         )
@@ -95,7 +95,7 @@ impl<'ctx> ValueItemProcessor<'ctx> {
 
         let enum_scope = self.ctx.context.scopes.create_child_scope(
             self.current_scope,
-            e.ident.name.clone(),
+            e.name.name.clone(),
             Some(enum_id),
         );
 
@@ -117,9 +117,9 @@ impl<'ctx> ValueItemProcessor<'ctx> {
         crate::define::define(
             self.ctx,
             self.current_scope,
-            &e.ident,
-            e.span,
-            &e.annotations,
+            &e.name,
+            e.meta.span,
+            &e.meta.annotations,
             DefKindTag::Enum,
             |_| DefKind::Enum(enum_ty),
         )
@@ -134,7 +134,7 @@ impl<'ctx> ValueItemProcessor<'ctx> {
         let mut fields = Vec::new();
         let mut last_value = -1i64;
 
-        for enumerator in &e.fields {
+        for enumerator in &e.enumerators {
             let value = self.calculate_enumerator_value(enumerator, &mut last_value);
             last_value = value;
             let is_explicit = enumerator.value.is_some();
@@ -168,7 +168,7 @@ impl<'ctx> ValueItemProcessor<'ctx> {
                     _ => {
                         self.ctx.diagnostics.error(
                             "enum value must be an integer".to_string(),
-                            Label::new(expr.span()).message("expected integer value"),
+                            Label::new(expr.span).message("expected integer value"),
                         );
                         0
                     }
@@ -199,14 +199,14 @@ impl<'ctx> ValueItemProcessor<'ctx> {
             self.ctx,
             self.current_scope,
             enum_scope,
-            &enumerator.ident,
-            enumerator.ident.span,
-            &enumerator.annotations,
+            &enumerator.name,
+            enumerator.name.span,
+            &enumerator.meta.annotations,
             flags,
             |_| {
                 DefKind::Const(ConstTy {
                     ty: Ty {
-                        span: enumerator.ident.span,
+                        span: enumerator.name.span,
                         kind: TyKind::Adt(enum_id),
                     },
                     value: Numeric::Int32(value as i32),
@@ -239,7 +239,7 @@ impl<'ctx> ValueItemProcessor<'ctx> {
         let Some(value) = 1u64.checked_shl(bit_pos) else {
             self.ctx.diagnostics.errors.push(error_span(
                 "bitmask bit position out of range",
-                Label::new(flag.span).message(format!(
+                Label::new(flag.meta.span).message(format!(
                     "bit position {bit_pos} exceeds maximum of 63 for 64-bit bitmask"
                 )),
             ));
@@ -247,7 +247,7 @@ impl<'ctx> ValueItemProcessor<'ctx> {
         };
 
         let flag_ty = Ty {
-            span: flag.ident.span,
+            span: flag.name.span,
             kind: TyKind::Adt(bitmask_id),
         };
         let flags = if is_explicit {
@@ -260,9 +260,9 @@ impl<'ctx> ValueItemProcessor<'ctx> {
             self.ctx,
             self.current_scope,
             bitmask_scope,
-            &flag.ident,
-            flag.span,
-            &flag.annotations,
+            &flag.name,
+            flag.meta.span,
+            &flag.meta.annotations,
             flags,
             |_| {
                 DefKind::Const(ConstTy {
@@ -283,16 +283,16 @@ impl<'ctx> ValueItemProcessor<'ctx> {
         let bitmask_id = crate::define::define(
             self.ctx,
             self.current_scope,
-            &b.ident,
-            b.span,
-            &b.annotations,
+            &b.name,
+            b.meta.span,
+            &b.meta.annotations,
             DefKindTag::Bitmask,
             |_| DefKind::Bitmask(bitmask_ty),
         );
 
         let bitmask_scope = self.ctx.context.scopes.create_child_scope(
             self.current_scope,
-            b.ident.name.clone(),
+            b.name.name.clone(),
             Some(bitmask_id),
         );
 
@@ -337,7 +337,7 @@ impl<'ctx> ValueItemProcessor<'ctx> {
                         self.ctx,
                         parent_id,
                         "bitset",
-                        &b.ident.name,
+                        &b.name.name,
                         "inherit from",
                         path_span,
                     )
@@ -364,7 +364,7 @@ impl<'ctx> ValueItemProcessor<'ctx> {
             let Some(size) = evaluator.eval_nonneg_bound(&field.size) else {
                 self.ctx.diagnostics.error(
                     "bitfield size must be a non-negative constant expression".to_string(),
-                    Label::new(field.size.span()).message("expected constant expression"),
+                    Label::new(field.size.span).message("expected constant expression"),
                 );
                 continue;
             };
@@ -389,24 +389,23 @@ impl<'ctx> ValueItemProcessor<'ctx> {
                     PrimitiveTy::UInt64
                 };
                 Ty {
-                    span: field.span,
+                    span: field.meta.span,
                     kind: TyKind::Primitive(prim_ty),
                 }
             };
 
-            let field_annotations =
-                convert_annotations(self.ctx, &field.annotations, self.current_scope);
-
-            for name in &field.names {
-                let ident = match name {
-                    ic_syntax::Declarator::Simple(ident) => ident.clone(),
-                    ic_syntax::Declarator::Array(arr) => arr.ident.clone(),
+            let annotations =
+                convert_annotations(self.ctx, &field.meta.annotations, self.current_scope);
+            for declarator in &field.declarators {
+                let ident = match declarator {
+                    ic_syntax::Declarator::Name(ident) => ident.clone(),
+                    ic_syntax::Declarator::Array(array) => array.name.clone(),
                 };
                 fields.push(BitsetField {
                     ident,
                     size,
                     ty: ty.clone(),
-                    annotations: field_annotations.clone(),
+                    annotations: annotations.clone(),
                 });
             }
         }
@@ -416,9 +415,9 @@ impl<'ctx> ValueItemProcessor<'ctx> {
         crate::define::define(
             self.ctx,
             self.current_scope,
-            &b.ident,
-            b.span,
-            &b.annotations,
+            &b.name,
+            b.meta.span,
+            &b.meta.annotations,
             DefKindTag::Bitset,
             |_| DefKind::Bitset(bitset_ty),
         )
@@ -427,17 +426,17 @@ impl<'ctx> ValueItemProcessor<'ctx> {
     pub fn process_annotation(&mut self, a: &AnnotationDef) -> DefId {
         let scope = self.ctx.context.scopes.create_child_scope(
             self.current_scope,
-            format!("@{}", a.ident.name),
+            format!("@{}", a.name.name),
             None,
         );
 
-        let annotations = convert_annotations(self.ctx, &a.annotations, self.current_scope);
+        let annotations = convert_annotations(self.ctx, &a.meta.annotations, self.current_scope);
         let def_id = self.ctx.context.definitions.alloc_with_id(|id| Def {
             id,
-            ident: a.ident.clone(),
+            ident: a.name.clone(),
             parent: self.ctx.context.scopes.get_scope(self.current_scope).def_id,
             annotations,
-            span: a.span,
+            span: a.meta.span,
             kind: DefKind::Annotation(AnnotationTy {
                 params: Vec::new(),
                 types: Vec::new(),
@@ -451,15 +450,16 @@ impl<'ctx> ValueItemProcessor<'ctx> {
         let mut params = Vec::new();
         let mut types = Vec::new();
 
-        for field in &a.params {
+        for field in &a.members {
             match field {
-                ic_syntax::AnnotationField::Member(member) => {
+                ic_syntax::AnnotationMember::Value(member) => {
                     let mut resolver = TypeResolver::new(self.ctx, scope);
                     let Some(base_ty) = resolver.resolve_type(&member.ty) else {
                         continue;
                     };
 
-                    let (ident, ty) = resolve_declarator(&member.decl, base_ty, self.ctx, scope);
+                    let (ident, ty) =
+                        resolve_declarator(&member.declarator, base_ty, self.ctx, scope);
 
                     let default = if let Some(ref default_expr) = member.default {
                         let mut evaluator = ConstEvaluator::new(self.ctx, scope);
@@ -470,7 +470,7 @@ impl<'ctx> ValueItemProcessor<'ctx> {
 
                     params.push(AnnParam { ident, ty, default });
                 }
-                ic_syntax::AnnotationField::Item(item) => {
+                ic_syntax::AnnotationMember::Item(item) => {
                     types.extend(crate::builder::process_nested_item(self.ctx, scope, item));
                 }
             }
@@ -486,7 +486,7 @@ impl<'ctx> ValueItemProcessor<'ctx> {
         crate::define::define_annotation(
             self.ctx,
             self.current_scope,
-            &a.ident,
+            &a.name,
             def_id,
             |old, new, ctx| are_annotations_consistent(&old.kind, &new.kind, ctx),
         );

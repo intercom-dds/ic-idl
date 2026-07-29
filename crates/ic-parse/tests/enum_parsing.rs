@@ -26,7 +26,7 @@
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use ic_parse::from_str;
-use ic_syntax::{Expr, Item, LiteralValue};
+use ic_syntax::{ExprKind, Item, Literal};
 
 #[test]
 fn parse_simple_enum() {
@@ -35,12 +35,12 @@ fn parse_simple_enum() {
     assert_eq!(result.tree.len(), 1);
 
     match &result.tree[0] {
-        Item::EnumValue(def) => {
-            assert_eq!(def.ident.name, "Color");
-            assert_eq!(def.fields.len(), 3);
-            assert_eq!(def.fields[0].ident.name, "RED");
-            assert_eq!(def.fields[1].ident.name, "GREEN");
-            assert_eq!(def.fields[2].ident.name, "BLUE");
+        Item::Enum(def) => {
+            assert_eq!(def.name.name, "Color");
+            assert_eq!(def.enumerators.len(), 3);
+            assert_eq!(def.enumerators[0].name.name, "RED");
+            assert_eq!(def.enumerators[1].name.name, "GREEN");
+            assert_eq!(def.enumerators[2].name.name, "BLUE");
         }
         _ => panic!("expected enum, got {:?}", result.tree[0]),
     }
@@ -53,9 +53,9 @@ fn parse_empty_enum() {
     assert_eq!(result.tree.len(), 1);
 
     match &result.tree[0] {
-        Item::EnumValue(def) => {
-            assert_eq!(def.ident.name, "Empty");
-            assert!(def.fields.is_empty());
+        Item::Enum(def) => {
+            assert_eq!(def.name.name, "Empty");
+            assert!(def.enumerators.is_empty());
         }
         _ => panic!("expected enum"),
     }
@@ -76,19 +76,19 @@ fn parse_enum_with_values() {
     assert!(result.errors.is_empty(), "errors: {:?}", result.errors);
 
     match &result.tree[0] {
-        Item::EnumValue(def) => {
-            assert_eq!(def.fields.len(), 3);
-            assert_eq!(def.fields[0].ident.name, "LOW");
-            assert!(def.fields[0].value.is_some());
-            assert_eq!(def.fields[1].ident.name, "MEDIUM");
-            assert!(def.fields[1].value.is_some());
-            assert_eq!(def.fields[2].ident.name, "HIGH");
-            assert!(def.fields[2].value.is_some());
+        Item::Enum(def) => {
+            assert_eq!(def.enumerators.len(), 3);
+            assert_eq!(def.enumerators[0].name.name, "LOW");
+            assert!(def.enumerators[0].value.is_some());
+            assert_eq!(def.enumerators[1].name.name, "MEDIUM");
+            assert!(def.enumerators[1].value.is_some());
+            assert_eq!(def.enumerators[2].name.name, "HIGH");
+            assert!(def.enumerators[2].value.is_some());
 
             // Check actual values
-            match &def.fields[0].value {
-                Some(Expr::Literal(lit)) => {
-                    assert_eq!(lit.value, LiteralValue::Int(0));
+            match &def.enumerators[0].value {
+                Some(expr) if let ExprKind::Literal(lit) = &expr.value => {
+                    assert_eq!(lit, &Literal::Int(0));
                 }
                 _ => panic!("expected literal value"),
             }
@@ -103,9 +103,12 @@ fn parse_enum_with_annotation() {
     assert!(result.errors.is_empty(), "errors: {:?}", result.errors);
 
     match &result.tree[0] {
-        Item::EnumValue(def) => {
-            assert_eq!(def.annotations.len(), 1);
-            assert_eq!(def.annotations[0].ident.segments[0].name, "extensibility");
+        Item::Enum(def) => {
+            assert_eq!(def.meta.annotations.len(), 1);
+            assert_eq!(
+                def.meta.annotations[0].path.segments[0].name,
+                "extensibility"
+            );
         }
         _ => panic!("expected enum"),
     }
@@ -123,10 +126,13 @@ fn parse_enum_with_annotated_values() {
     assert!(result.errors.is_empty(), "errors: {:?}", result.errors);
 
     match &result.tree[0] {
-        Item::EnumValue(def) => {
-            assert_eq!(def.fields.len(), 3);
-            assert_eq!(def.fields[0].annotations.len(), 1);
-            assert_eq!(def.fields[0].annotations[0].ident.segments[0].name, "value");
+        Item::Enum(def) => {
+            assert_eq!(def.enumerators.len(), 3);
+            assert_eq!(def.enumerators[0].meta.annotations.len(), 1);
+            assert_eq!(
+                def.enumerators[0].meta.annotations[0].path.segments[0].name,
+                "value"
+            );
         }
         _ => panic!("expected enum"),
     }
@@ -138,11 +144,11 @@ fn parse_enum_in_module() {
     assert!(result.errors.is_empty(), "errors: {:?}", result.errors);
 
     match &result.tree[0] {
-        Item::ModuleValue(module) => {
-            assert_eq!(module.definitions.len(), 1);
-            match &module.definitions[0] {
-                Item::EnumValue(def) => {
-                    assert_eq!(def.ident.name, "Color");
+        Item::Module(module) => {
+            assert_eq!(module.items.len(), 1);
+            match &module.items[0] {
+                Item::Enum(def) => {
+                    assert_eq!(def.name.name, "Color");
                 }
                 _ => panic!("expected enum in module"),
             }
@@ -158,12 +164,12 @@ fn parse_simple_bitmask() {
     assert_eq!(result.tree.len(), 1);
 
     match &result.tree[0] {
-        Item::BitmaskValue(def) => {
-            assert_eq!(def.ident.name, "Permissions");
+        Item::Bitmask(def) => {
+            assert_eq!(def.name.name, "Permissions");
             assert_eq!(def.bits.len(), 3);
-            assert_eq!(def.bits[0].ident.name, "READ");
-            assert_eq!(def.bits[1].ident.name, "WRITE");
-            assert_eq!(def.bits[2].ident.name, "EXECUTE");
+            assert_eq!(def.bits[0].name.name, "READ");
+            assert_eq!(def.bits[1].name.name, "WRITE");
+            assert_eq!(def.bits[2].name.name, "EXECUTE");
         }
         _ => panic!("expected bitmask, got {:?}", result.tree[0]),
     }
@@ -175,8 +181,8 @@ fn parse_empty_bitmask() {
     assert!(result.errors.is_empty(), "errors: {:?}", result.errors);
 
     match &result.tree[0] {
-        Item::BitmaskValue(def) => {
-            assert_eq!(def.ident.name, "Empty");
+        Item::Bitmask(def) => {
+            assert_eq!(def.name.name, "Empty");
             assert!(def.bits.is_empty());
         }
         _ => panic!("expected bitmask"),
@@ -198,7 +204,7 @@ fn parse_bitmask_with_values() {
     assert!(result.errors.is_empty(), "errors: {:?}", result.errors);
 
     match &result.tree[0] {
-        Item::BitmaskValue(def) => {
+        Item::Bitmask(def) => {
             assert_eq!(def.bits.len(), 3);
             assert!(def.bits[0].value.is_some());
             assert!(def.bits[1].value.is_some());
@@ -214,9 +220,9 @@ fn parse_bitmask_with_annotation() {
     assert!(result.errors.is_empty(), "errors: {:?}", result.errors);
 
     match &result.tree[0] {
-        Item::BitmaskValue(def) => {
-            assert_eq!(def.annotations.len(), 1);
-            assert_eq!(def.annotations[0].ident.segments[0].name, "bit_bound");
+        Item::Bitmask(def) => {
+            assert_eq!(def.meta.annotations.len(), 1);
+            assert_eq!(def.meta.annotations[0].path.segments[0].name, "bit_bound");
         }
         _ => panic!("expected bitmask"),
     }
@@ -234,11 +240,11 @@ fn parse_bitmask_with_annotated_bits() {
     assert!(result.errors.is_empty(), "errors: {:?}", result.errors);
 
     match &result.tree[0] {
-        Item::BitmaskValue(def) => {
+        Item::Bitmask(def) => {
             assert_eq!(def.bits.len(), 3);
-            assert_eq!(def.bits[0].annotations.len(), 1);
+            assert_eq!(def.bits[0].meta.annotations.len(), 1);
             assert_eq!(
-                def.bits[0].annotations[0].ident.segments[0].name,
+                def.bits[0].meta.annotations[0].path.segments[0].name,
                 "position"
             );
         }
@@ -252,11 +258,11 @@ fn parse_bitmask_in_module() {
     assert!(result.errors.is_empty(), "errors: {:?}", result.errors);
 
     match &result.tree[0] {
-        Item::ModuleValue(module) => {
-            assert_eq!(module.definitions.len(), 1);
-            match &module.definitions[0] {
-                Item::BitmaskValue(def) => {
-                    assert_eq!(def.ident.name, "Flags");
+        Item::Module(module) => {
+            assert_eq!(module.items.len(), 1);
+            match &module.items[0] {
+                Item::Bitmask(def) => {
+                    assert_eq!(def.name.name, "Flags");
                 }
                 _ => panic!("expected bitmask in module"),
             }
@@ -277,9 +283,9 @@ fn parse_mixed_definitions() {
     assert!(result.errors.is_empty(), "errors: {:?}", result.errors);
     assert_eq!(result.tree.len(), 3);
 
-    assert!(matches!(&result.tree[0], Item::EnumValue(_)));
-    assert!(matches!(&result.tree[1], Item::BitmaskValue(_)));
-    assert!(matches!(&result.tree[2], Item::StructValue(_)));
+    assert!(matches!(&result.tree[0], Item::Enum(_)));
+    assert!(matches!(&result.tree[1], Item::Bitmask(_)));
+    assert!(matches!(&result.tree[2], Item::Struct(_)));
 }
 
 #[test]
@@ -289,9 +295,9 @@ fn parse_enum_trailing_annotation() {
     assert!(result.errors.is_empty(), "errors: {:?}", result.errors);
 
     match &result.tree[0] {
-        Item::EnumValue(def) => {
-            assert_eq!(def.annotations.len(), 1);
-            assert_eq!(def.annotations[0].ident.segments[0].name, "foo");
+        Item::Enum(def) => {
+            assert_eq!(def.meta.annotations.len(), 1);
+            assert_eq!(def.meta.annotations[0].path.segments[0].name, "foo");
         }
         _ => panic!("expected enum"),
     }
@@ -304,9 +310,9 @@ fn parse_bitmask_trailing_annotation() {
     assert!(result.errors.is_empty(), "errors: {:?}", result.errors);
 
     match &result.tree[0] {
-        Item::BitmaskValue(def) => {
-            assert_eq!(def.annotations.len(), 1);
-            assert_eq!(def.annotations[0].ident.segments[0].name, "bar");
+        Item::Bitmask(def) => {
+            assert_eq!(def.meta.annotations.len(), 1);
+            assert_eq!(def.meta.annotations[0].path.segments[0].name, "bar");
         }
         _ => panic!("expected bitmask"),
     }

@@ -53,16 +53,17 @@ impl<'a> Visitor<'a> for AsciiIdent<'_> {
         }
     }
 
-    fn visit_literal(&mut self, num: &'a ic_syntax::Literal) {
-        if let ic_syntax::LiteralValue::Char(c) = &num.value
+    fn visit_expr(&mut self, expr: &'a ic_syntax::Expr) {
+        if let ic_syntax::ExprKind::Literal(ic_syntax::Literal::Char(c)) = &expr.value
             && !c.is_ascii()
         {
             let diag = error_span(
                 "character literals can only consist of alphanumeric ASCII characters",
-                Label::new(num.span).message("non-ASCII character"),
+                Label::new(expr.span).message("non-ASCII character"),
             );
             Self::report(self.ctx, diag);
         }
+        ic_syntax::visit::walk_expr(self, expr);
     }
 }
 

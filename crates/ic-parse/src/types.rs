@@ -26,7 +26,9 @@
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use ic_lexer::token::{Kind, Kw};
-use ic_syntax::{Fixed, FixedType, Ident, MapType, Path, SequenceType, StringType, Type};
+use ic_syntax::{
+    FixedBounds, FixedType, Ident, MapType, Path, SequenceType, StringKind, StringType, Type,
+};
 
 use super::Parser;
 use crate::error::Result;
@@ -58,7 +60,7 @@ impl Parser<'_> {
             // Scoped name (user-defined type or built-in like boolean, char, octet)
             Kind::Ident | Kind::DColon => {
                 let path = self.scoped_name()?;
-                Ok(Type::Path(path))
+                Ok(Type::Named(path))
             }
             _ => Err(self.error_expected("type")),
         }
@@ -216,12 +218,12 @@ impl Parser<'_> {
             Ok((elem, bound, annotations))
         })?;
 
-        Ok(Type::Sequence(SequenceType {
-            ty: Box::new(elem),
+        Ok(Type::Sequence(Box::new(SequenceType {
+            element: elem,
             bound,
             span: self.make_span(start, self.prev_span),
-            annotations,
-        }))
+            element_annotations: annotations,
+        })))
     }
 
     // Rule 40
@@ -237,7 +239,7 @@ impl Parser<'_> {
         };
 
         Ok(Type::String(StringType {
-            wide: false,
+            kind: StringKind::Narrow,
             bound,
             span: self.make_span(start, self.prev_span),
         }))
@@ -256,7 +258,7 @@ impl Parser<'_> {
         };
 
         Ok(Type::String(StringType {
-            wide: true,
+            kind: StringKind::Wide,
             bound,
             span: self.make_span(start, self.prev_span),
         }))
@@ -273,7 +275,7 @@ impl Parser<'_> {
                 let total = p.bound_expr(true)?;
                 p.expect(Kind::Comma)?;
                 let fractional = p.bound_expr(false)?;
-                Ok(Fixed { total, fractional })
+                Ok(FixedBounds { total, fractional })
             })?)
         } else {
             None
@@ -318,20 +320,20 @@ impl Parser<'_> {
             Ok((key, key_annotations, value, value_annotations, bound))
         })?;
 
-        Ok(Type::Map(MapType {
-            key: Box::new(key),
+        Ok(Type::Map(Box::new(MapType {
+            key,
             key_annotations,
-            value: Box::new(value),
+            value,
             value_annotations,
             bound,
             span: self.make_span(start, self.prev_span),
-        }))
+        })))
     }
 
     // Helper: create a primitive type as a Path
     #[allow(clippy::unused_self)]
     fn primitive_type(&self, name: &str, span: ic_vfs::Span) -> Type {
-        Type::Path(Path {
+        Type::Named(Path {
             leading_colons: None,
             segments: vec![Ident {
                 name: name.to_owned(),

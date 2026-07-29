@@ -91,9 +91,9 @@ impl<'ctx> TypeItemProcessor<'ctx> {
         let def_id = define::define(
             self.ctx,
             self.current_scope,
-            &s.ident,
-            s.span,
-            &s.annotations,
+            &s.name,
+            s.meta.span,
+            &s.meta.annotations,
             DefKindTag::Struct,
             |_| {
                 DefKind::Struct(StructTy {
@@ -112,7 +112,7 @@ impl<'ctx> TypeItemProcessor<'ctx> {
                         self.ctx,
                         parent_id,
                         "struct",
-                        &s.ident.name,
+                        &s.name.name,
                         "inherit from",
                         path_span,
                     )
@@ -132,7 +132,7 @@ impl<'ctx> TypeItemProcessor<'ctx> {
             None
         };
 
-        let members = self.process_members(&s.members);
+        let members = self.process_members(&s.fields);
         let def = self.ctx.context.definitions.get_mut(def_id);
         if let DefKind::Struct(struct_ty) = &mut def.kind {
             struct_ty.parent = parent;
@@ -156,7 +156,7 @@ impl<'ctx> TypeItemProcessor<'ctx> {
                         self.ctx,
                         parent_id,
                         "interface",
-                        &i.ident.name,
+                        &i.name.name,
                         "inherit from",
                         path_span,
                     ) {
@@ -176,23 +176,23 @@ impl<'ctx> TypeItemProcessor<'ctx> {
 
         let scope = self.ctx.context.scopes.create_child_scope(
             self.current_scope,
-            i.ident.name.clone(),
+            i.name.name.clone(),
             None,
         );
 
         let def_id = define::define(
             self.ctx,
             self.current_scope,
-            &i.ident,
-            i.span,
-            &i.annotations,
+            &i.name,
+            i.meta.span,
+            &i.meta.annotations,
             DefKindTag::Interface,
             |_| {
                 DefKind::Interface(InterfaceTy {
                     parents,
                     prototypes: Vec::new(),
                     attributes: Vec::new(),
-                    is_local: i.local.is_some(),
+                    is_local: matches!(i.kind, ic_syntax::InterfaceKind::Local(_)),
                     definitions: Vec::new(),
                 })
             },
@@ -210,7 +210,7 @@ impl<'ctx> TypeItemProcessor<'ctx> {
                 ic_syntax::InterfaceMember::Proto(proto) => {
                     prototypes.push(self.process_prototype(proto));
                 }
-                ic_syntax::InterfaceMember::Attr(attr) => {
+                ic_syntax::InterfaceMember::Attribute(attr) => {
                     attributes.extend(self.process_attributes(attr));
                 }
                 ic_syntax::InterfaceMember::Item(item) => {
@@ -237,9 +237,9 @@ impl<'ctx> TypeItemProcessor<'ctx> {
         let def_id = define::define(
             self.ctx,
             self.current_scope,
-            &u.ident,
-            u.span,
-            &u.annotations,
+            &u.name,
+            u.meta.span,
+            &u.meta.annotations,
             DefKindTag::Union,
             |_| DefKind::Decl(Decl::Union),
         );
@@ -251,7 +251,7 @@ impl<'ctx> TypeItemProcessor<'ctx> {
         });
 
         let disc_annotations =
-            convert_annotations(self.ctx, &u.disc.annotations, self.current_scope);
+            convert_annotations(self.ctx, &u.disc.meta.annotations, self.current_scope);
 
         // Validate discriminator is an enum, integral type, boolean, or char
         let resolved_disc_ty = self.ctx.context.resolve_ty(&disc_ty);
@@ -279,7 +279,7 @@ impl<'ctx> TypeItemProcessor<'ctx> {
 
         if !is_valid_discriminator {
             self.ctx.diagnostics.error(
-                format!("invalid discriminator type for union `{}`", u.ident.name),
+                format!("invalid discriminator type for union `{}`", u.name.name),
                 ic_diagnostic::Label::new(ic_syntax::util::ty_span(&u.disc.ty))
                     .message("discriminator must be an enum or integral type"),
             );
@@ -287,11 +287,11 @@ impl<'ctx> TypeItemProcessor<'ctx> {
 
         let _scope = self.ctx.context.scopes.create_child_scope(
             self.current_scope,
-            u.ident.name.clone(),
+            u.name.name.clone(),
             Some(def_id),
         );
 
-        let variants = self.process_union_variants(&u.fields, &disc_ty);
+        let variants = self.process_union_variants(&u.cases, &disc_ty);
 
         let disc = ic_hir::hir::Disc {
             annotations: disc_annotations,
@@ -311,16 +311,16 @@ impl<'ctx> TypeItemProcessor<'ctx> {
 
         let scope = self.ctx.context.scopes.create_child_scope(
             self.current_scope,
-            v.ident.name.clone(),
+            v.name.name.clone(),
             None,
         );
 
         let def_id = define::define(
             self.ctx,
             self.current_scope,
-            &v.ident,
-            v.span,
-            &v.annotations,
+            &v.name,
+            v.meta.span,
+            &v.meta.annotations,
             DefKindTag::Valuetype,
             |_| {
                 DefKind::Valuetype(ValueTy {
@@ -364,7 +364,7 @@ impl<'ctx> TypeItemProcessor<'ctx> {
                     self.ctx,
                     parent_id,
                     "valuetype",
-                    &v.ident.name,
+                    &v.name.name,
                     "inherit from",
                     path_span,
                 )
@@ -377,7 +377,7 @@ impl<'ctx> TypeItemProcessor<'ctx> {
 
     /// Resolve valuetype supports interface.
     fn resolve_valuetype_supports(&mut self, v: &ValuetypeDef) -> Option<Spanned<DefId>> {
-        let supports_type = v.supports.as_ref()?;
+        let supports_type = v.supports.first()?;
         let path_span = crate::utils::path_span(supports_type);
 
         let mut resolver = TypeResolver::new(self.ctx, self.current_scope);
@@ -396,7 +396,7 @@ impl<'ctx> TypeItemProcessor<'ctx> {
                         self.ctx,
                         supports_id,
                         "valuetype",
-                        &v.ident.name,
+                        &v.name.name,
                         "support",
                         path_span,
                     )
@@ -430,18 +430,18 @@ impl<'ctx> TypeItemProcessor<'ctx> {
         let prev_scope = self.current_scope;
         self.current_scope = scope;
 
-        for element in &v.elements {
+        for element in &v.members {
             match element {
-                ic_syntax::ValueElement::State(member) => {
+                ic_syntax::ValueMember::State(member) => {
                     members.extend(self.process_value_members(member));
                 }
-                ic_syntax::ValueElement::Proto(proto) => {
+                ic_syntax::ValueMember::Proto(proto) => {
                     prototypes.push(self.process_prototype(proto));
                 }
-                ic_syntax::ValueElement::Attr(attr) => {
+                ic_syntax::ValueMember::Attribute(attr) => {
                     attributes.extend(self.process_attributes(attr));
                 }
-                ic_syntax::ValueElement::Item(item) => {
+                ic_syntax::ValueMember::Item(item) => {
                     definitions.extend(crate::builder::process_nested_item(self.ctx, scope, item));
                 }
             }
@@ -461,7 +461,7 @@ impl<'ctx> TypeItemProcessor<'ctx> {
             ic_syntax::DeclKind::Native => Decl::Native,
         };
 
-        self.create_forward_declaration(&decl.ident, hir_decl_kind)
+        self.create_forward_declaration(&decl.name, hir_decl_kind)
     }
 
     fn create_forward_declaration(&mut self, ident: &ic_syntax::Ident, kind: Decl) -> DefId {
@@ -478,9 +478,10 @@ impl<'ctx> TypeItemProcessor<'ctx> {
                 continue;
             };
 
-            let annotations = convert_annotations(self.ctx, &field.annotations, self.current_scope);
+            let annotations =
+                convert_annotations(self.ctx, &field.meta.annotations, self.current_scope);
 
-            for decl in &field.names {
+            for decl in &field.declarators {
                 let (ident, member_ty) =
                     resolve_declarator(decl, ty.clone(), self.ctx, self.current_scope);
 
@@ -498,13 +499,14 @@ impl<'ctx> TypeItemProcessor<'ctx> {
     /// Process union variants.
     fn process_union_variants(
         &mut self,
-        fields: &[ic_syntax::UnionField],
+        fields: &[ic_syntax::UnionCase],
         disc: &Ty,
     ) -> Vec<Variant> {
         let mut variants = vec![];
 
         for field in fields {
-            let annotations = convert_annotations(self.ctx, &field.annotations, self.current_scope);
+            let annotations =
+                convert_annotations(self.ctx, &field.meta.annotations, self.current_scope);
 
             let mut resolver = TypeResolver::new(self.ctx, self.current_scope);
             let Some(ty) = resolver.resolve_type(&field.ty) else {
@@ -512,7 +514,7 @@ impl<'ctx> TypeItemProcessor<'ctx> {
             };
 
             let (ident, variant_ty) =
-                resolve_declarator(&field.decl, ty, self.ctx, self.current_scope);
+                resolve_declarator(&field.declarator, ty, self.ctx, self.current_scope);
 
             let is_default = field
                 .labels
@@ -521,12 +523,12 @@ impl<'ctx> TypeItemProcessor<'ctx> {
 
             let mut labels = vec![];
             for label in &field.labels {
-                if let ic_syntax::Label::Case(expr) = label {
+                if let ic_syntax::Label::Value(expr) = label {
                     let mut evaluator = ConstEvaluator::new(self.ctx, self.current_scope);
                     if let Some(numeric) = evaluator.eval_union_case_label(expr, disc) {
                         labels.push(Label {
                             value: numeric,
-                            span: expr.span(),
+                            span: expr.span,
                         });
                     }
                 }
@@ -544,15 +546,17 @@ impl<'ctx> TypeItemProcessor<'ctx> {
         variants
     }
 
-    fn process_prototype(&mut self, proto: &ic_syntax::Prototype) -> ProtoTy {
+    fn process_prototype(&mut self, proto: &ic_syntax::Proto) -> ProtoTy {
         let mut resolver = TypeResolver::new(self.ctx, self.current_scope);
-        let ty = resolver.resolve_type(&proto.ret).unwrap_or_else(|| Ty {
-            span: ic_syntax::util::ty_span(&proto.ret),
-            kind: TyKind::Null,
-        });
+        let ty = resolver
+            .resolve_type(&proto.return_type)
+            .unwrap_or_else(|| Ty {
+                span: ic_syntax::util::ty_span(&proto.return_type),
+                kind: TyKind::Null,
+            });
 
         let params = proto
-            .params
+            .parameters
             .iter()
             .map(|param| {
                 let mut resolver = TypeResolver::new(self.ctx, self.current_scope);
@@ -562,7 +566,7 @@ impl<'ctx> TypeItemProcessor<'ctx> {
                 });
 
                 let (ident, param_ty) =
-                    resolve_declarator(&param.decl, base_ty, self.ctx, self.current_scope);
+                    resolve_declarator(&param.declarator, base_ty, self.ctx, self.current_scope);
 
                 Parameter {
                     ident,
@@ -575,7 +579,7 @@ impl<'ctx> TypeItemProcessor<'ctx> {
         let raises = self.resolve_exception_paths(&proto.raises);
 
         ProtoTy {
-            ident: proto.ident.clone(),
+            ident: proto.name.clone(),
             ty,
             params,
             raises,
@@ -593,7 +597,7 @@ impl<'ctx> TypeItemProcessor<'ctx> {
         let getraises = self.resolve_exception_paths(&attr.getraises);
         let setraises = self.resolve_exception_paths(&attr.setraises);
 
-        for decl in &attr.decl {
+        for decl in &attr.declarators {
             let (ident, attr_ty) =
                 resolve_declarator(decl, ty.clone(), self.ctx, self.current_scope);
 
@@ -641,7 +645,7 @@ impl<'ctx> TypeItemProcessor<'ctx> {
     pub fn process_alias(&mut self, a: &AliasDef) -> Vec<DefId> {
         let mut def_ids = Vec::new();
 
-        for decl in &a.decl {
+        for decl in &a.declarators {
             let mut resolver = TypeResolver::new(self.ctx, self.current_scope);
             let Some(base_ty) = resolver.resolve_type(&a.ty) else {
                 continue;
@@ -656,7 +660,7 @@ impl<'ctx> TypeItemProcessor<'ctx> {
                 self.current_scope,
                 &ident,
                 span,
-                &a.annotations,
+                &a.meta.annotations,
                 DefKindTag::Alias,
                 |_| DefKind::Alias(alias_ty),
             );
@@ -667,21 +671,21 @@ impl<'ctx> TypeItemProcessor<'ctx> {
     }
 
     pub fn process_exception(&mut self, e: &ExceptDef) -> DefId {
-        let members = self.process_members(&e.members);
+        let members = self.process_members(&e.fields);
         let except_ty = ExceptTy { members };
 
         define::define(
             self.ctx,
             self.current_scope,
-            &e.ident,
-            e.span,
-            &e.annotations,
+            &e.name,
+            e.meta.span,
+            &e.meta.annotations,
             DefKindTag::Struct,
             |_| DefKind::Except(except_ty),
         )
     }
 
-    fn process_value_members(&mut self, members: &ic_syntax::ValueMember) -> Vec<Member> {
+    fn process_value_members(&mut self, members: &ic_syntax::StateMember) -> Vec<Member> {
         let mut result = Vec::new();
 
         let mut resolver = TypeResolver::new(self.ctx, self.current_scope);
@@ -689,7 +693,7 @@ impl<'ctx> TypeItemProcessor<'ctx> {
             return result;
         };
 
-        for decl in &members.decl {
+        for decl in &members.declarators {
             let (ident, member_ty) =
                 resolve_declarator(decl, ty.clone(), self.ctx, self.current_scope);
 

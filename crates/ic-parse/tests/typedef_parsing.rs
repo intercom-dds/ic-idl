@@ -34,15 +34,15 @@ fn parse_simple_typedef() {
     assert!(result.errors.is_empty(), "errors: {:?}", result.errors);
     assert_eq!(result.tree.len(), 1);
 
-    let Item::AliasValue(def) = &result.tree[0] else {
+    let Item::Alias(def) = &result.tree[0] else {
         panic!("expected AliasValue")
     };
-    assert_eq!(def.decl.len(), 1);
-    let Declarator::Simple(ident) = &def.decl[0] else {
+    assert_eq!(def.declarators.len(), 1);
+    let Declarator::Name(ident) = &def.declarators[0] else {
         panic!("expected simple declarator")
     };
     assert_eq!(ident.name, "MyInt");
-    let Type::Path(path) = &def.ty else {
+    let Type::Named(path) = &def.ty else {
         panic!("expected path type")
     };
     assert_eq!(path.segments[0].name, "int32");
@@ -55,14 +55,14 @@ fn parse_typedef_multiple_declarators() {
     assert_eq!(result.tree.len(), 1);
 
     match &result.tree[0] {
-        Item::AliasValue(def) => {
-            assert_eq!(def.decl.len(), 3);
+        Item::Alias(def) => {
+            assert_eq!(def.declarators.len(), 3);
             let names: Vec<_> = def
-                .decl
+                .declarators
                 .iter()
                 .map(|d| match d {
-                    Declarator::Simple(ident) => ident.name.as_str(),
-                    Declarator::Array(arr) => arr.ident.name.as_str(),
+                    Declarator::Name(ident) => ident.name.as_str(),
+                    Declarator::Array(arr) => arr.name.name.as_str(),
                 })
                 .collect();
             assert_eq!(names, vec!["A", "B", "C"]);
@@ -76,14 +76,14 @@ fn parse_typedef_array() {
     let result = from_str("typedef long Arr[10];");
     assert!(result.errors.is_empty(), "errors: {:?}", result.errors);
 
-    let Item::AliasValue(def) = &result.tree[0] else {
+    let Item::Alias(def) = &result.tree[0] else {
         panic!("expected AliasValue")
     };
-    assert_eq!(def.decl.len(), 1);
-    let Declarator::Array(arr) = &def.decl[0] else {
+    assert_eq!(def.declarators.len(), 1);
+    let Declarator::Array(arr) = &def.declarators[0] else {
         panic!("expected array declarator")
     };
-    assert_eq!(arr.ident.name, "Arr");
+    assert_eq!(arr.name.name, "Arr");
     assert_eq!(arr.bounds.len(), 1);
 }
 
@@ -92,13 +92,13 @@ fn parse_typedef_multidim_array() {
     let result = from_str("typedef long Matrix[10][20][30];");
     assert!(result.errors.is_empty(), "errors: {:?}", result.errors);
 
-    let Item::AliasValue(def) = &result.tree[0] else {
+    let Item::Alias(def) = &result.tree[0] else {
         panic!("expected AliasValue")
     };
-    let Declarator::Array(arr) = &def.decl[0] else {
+    let Declarator::Array(arr) = &def.declarators[0] else {
         panic!("expected array declarator")
     };
-    assert_eq!(arr.ident.name, "Matrix");
+    assert_eq!(arr.name.name, "Matrix");
     assert_eq!(arr.bounds.len(), 3);
 }
 
@@ -108,9 +108,9 @@ fn parse_typedef_with_annotation() {
     assert!(result.errors.is_empty(), "errors: {:?}", result.errors);
 
     match &result.tree[0] {
-        Item::AliasValue(def) => {
-            assert_eq!(def.annotations.len(), 1);
-            assert_eq!(def.annotations[0].ident.segments[0].name, "custom");
+        Item::Alias(def) => {
+            assert_eq!(def.meta.annotations.len(), 1);
+            assert_eq!(def.meta.annotations[0].path.segments[0].name, "custom");
         }
         _ => panic!("expected AliasValue"),
     }
@@ -122,8 +122,8 @@ fn parse_typedef_user_type() {
     assert!(result.errors.is_empty(), "errors: {:?}", result.errors);
 
     match &result.tree[0] {
-        Item::AliasValue(def) => match &def.ty {
-            Type::Path(path) => {
+        Item::Alias(def) => match &def.ty {
+            Type::Named(path) => {
                 assert_eq!(path.segments.len(), 2);
                 assert_eq!(path.segments[0].name, "MyModule");
                 assert_eq!(path.segments[1].name, "MyType");
@@ -140,11 +140,11 @@ fn parse_typedef_sequence_unbounded() {
     assert!(result.errors.is_empty(), "errors: {:?}", result.errors);
 
     match &result.tree[0] {
-        Item::AliasValue(def) => match &def.ty {
+        Item::Alias(def) => match &def.ty {
             Type::Sequence(seq) => {
                 assert!(seq.bound.is_none());
-                match seq.ty.as_ref() {
-                    Type::Path(path) => assert_eq!(path.segments[0].name, "int32"),
+                match &seq.element {
+                    Type::Named(path) => assert_eq!(path.segments[0].name, "int32"),
                     _ => panic!("expected path type inside sequence"),
                 }
             }
@@ -160,7 +160,7 @@ fn parse_typedef_sequence_bounded() {
     assert!(result.errors.is_empty(), "errors: {:?}", result.errors);
 
     match &result.tree[0] {
-        Item::AliasValue(def) => match &def.ty {
+        Item::Alias(def) => match &def.ty {
             Type::Sequence(seq) => {
                 assert!(seq.bound.is_some());
             }
@@ -176,10 +176,10 @@ fn parse_typedef_sequence_nested() {
     assert!(result.errors.is_empty(), "errors: {:?}", result.errors);
 
     match &result.tree[0] {
-        Item::AliasValue(def) => match &def.ty {
-            Type::Sequence(outer) => match outer.ty.as_ref() {
-                Type::Sequence(inner) => match inner.ty.as_ref() {
-                    Type::Path(path) => assert_eq!(path.segments[0].name, "int32"),
+        Item::Alias(def) => match &def.ty {
+            Type::Sequence(outer) => match &outer.element {
+                Type::Sequence(inner) => match &inner.element {
+                    Type::Named(path) => assert_eq!(path.segments[0].name, "int32"),
                     _ => panic!("expected path type"),
                 },
                 _ => panic!("expected nested sequence"),
@@ -196,10 +196,10 @@ fn parse_typedef_sequence_with_annotation() {
     assert!(result.errors.is_empty(), "errors: {:?}", result.errors);
 
     match &result.tree[0] {
-        Item::AliasValue(def) => match &def.ty {
+        Item::Alias(def) => match &def.ty {
             Type::Sequence(seq) => {
-                assert_eq!(seq.annotations.len(), 1);
-                assert_eq!(seq.annotations[0].ident.segments[0].name, "key");
+                assert_eq!(seq.element_annotations.len(), 1);
+                assert_eq!(seq.element_annotations[0].path.segments[0].name, "key");
             }
             _ => panic!("expected sequence type"),
         },
@@ -213,9 +213,9 @@ fn parse_typedef_string_unbounded() {
     assert!(result.errors.is_empty(), "errors: {:?}", result.errors);
 
     match &result.tree[0] {
-        Item::AliasValue(def) => match &def.ty {
+        Item::Alias(def) => match &def.ty {
             Type::String(s) => {
-                assert!(!s.wide);
+                assert_ne!(s.kind, ic_syntax::StringKind::Wide);
                 assert!(s.bound.is_none());
             }
             _ => panic!("expected string type"),
@@ -230,9 +230,9 @@ fn parse_typedef_string_bounded() {
     assert!(result.errors.is_empty(), "errors: {:?}", result.errors);
 
     match &result.tree[0] {
-        Item::AliasValue(def) => match &def.ty {
+        Item::Alias(def) => match &def.ty {
             Type::String(s) => {
-                assert!(!s.wide);
+                assert_ne!(s.kind, ic_syntax::StringKind::Wide);
                 assert!(s.bound.is_some());
             }
             _ => panic!("expected string type"),
@@ -247,9 +247,9 @@ fn parse_typedef_wstring_unbounded() {
     assert!(result.errors.is_empty(), "errors: {:?}", result.errors);
 
     match &result.tree[0] {
-        Item::AliasValue(def) => match &def.ty {
+        Item::Alias(def) => match &def.ty {
             Type::String(s) => {
-                assert!(s.wide);
+                assert_eq!(s.kind, ic_syntax::StringKind::Wide);
                 assert!(s.bound.is_none());
             }
             _ => panic!("expected string type"),
@@ -264,9 +264,9 @@ fn parse_typedef_wstring_bounded() {
     assert!(result.errors.is_empty(), "errors: {:?}", result.errors);
 
     match &result.tree[0] {
-        Item::AliasValue(def) => match &def.ty {
+        Item::Alias(def) => match &def.ty {
             Type::String(s) => {
-                assert!(s.wide);
+                assert_eq!(s.kind, ic_syntax::StringKind::Wide);
                 assert!(s.bound.is_some());
             }
             _ => panic!("expected string type"),
@@ -281,7 +281,7 @@ fn parse_typedef_fixed() {
     assert!(result.errors.is_empty(), "errors: {:?}", result.errors);
 
     match &result.tree[0] {
-        Item::AliasValue(def) => match &def.ty {
+        Item::Alias(def) => match &def.ty {
             Type::Fixed(f) => {
                 assert!(f.bounds.is_some());
             }
@@ -297,15 +297,15 @@ fn parse_typedef_map_basic() {
     assert!(result.errors.is_empty(), "errors: {:?}", result.errors);
 
     match &result.tree[0] {
-        Item::AliasValue(def) => match &def.ty {
+        Item::Alias(def) => match &def.ty {
             Type::Map(m) => {
                 assert!(m.bound.is_none());
-                match m.key.as_ref() {
-                    Type::String(s) => assert!(!s.wide),
+                match &m.key {
+                    Type::String(s) => assert_ne!(s.kind, ic_syntax::StringKind::Wide),
                     _ => panic!("expected string key type"),
                 }
-                match m.value.as_ref() {
-                    Type::Path(path) => assert_eq!(path.segments[0].name, "int32"),
+                match &m.value {
+                    Type::Named(path) => assert_eq!(path.segments[0].name, "int32"),
                     _ => panic!("expected path value type"),
                 }
             }
@@ -321,7 +321,7 @@ fn parse_typedef_map_bounded() {
     assert!(result.errors.is_empty(), "errors: {:?}", result.errors);
 
     match &result.tree[0] {
-        Item::AliasValue(def) => match &def.ty {
+        Item::Alias(def) => match &def.ty {
             Type::Map(m) => {
                 assert!(m.bound.is_some());
             }
@@ -337,12 +337,12 @@ fn parse_typedef_map_with_annotations() {
     assert!(result.errors.is_empty(), "errors: {:?}", result.errors);
 
     match &result.tree[0] {
-        Item::AliasValue(def) => match &def.ty {
+        Item::Alias(def) => match &def.ty {
             Type::Map(m) => {
                 assert_eq!(m.key_annotations.len(), 1);
-                assert_eq!(m.key_annotations[0].ident.segments[0].name, "key");
+                assert_eq!(m.key_annotations[0].path.segments[0].name, "key");
                 assert_eq!(m.value_annotations.len(), 1);
-                assert_eq!(m.value_annotations[0].ident.segments[0].name, "value");
+                assert_eq!(m.value_annotations[0].path.segments[0].name, "value");
             }
             _ => panic!("expected map type"),
         },
@@ -356,8 +356,8 @@ fn parse_typedef_map_nested_sequence() {
     assert!(result.errors.is_empty(), "errors: {:?}", result.errors);
 
     match &result.tree[0] {
-        Item::AliasValue(def) => match &def.ty {
-            Type::Map(m) => match m.value.as_ref() {
+        Item::Alias(def) => match &def.ty {
+            Type::Map(m) => match m.value {
                 Type::Sequence(_) => {}
                 _ => panic!("expected sequence value type"),
             },
@@ -373,12 +373,12 @@ fn parse_typedef_sequence_of_string() {
     assert!(result.errors.is_empty(), "errors: {:?}", result.errors);
 
     match &result.tree[0] {
-        Item::AliasValue(def) => match &def.ty {
+        Item::Alias(def) => match &def.ty {
             Type::Sequence(seq) => {
                 assert!(seq.bound.is_some());
-                match seq.ty.as_ref() {
+                match &seq.element {
                     Type::String(s) => {
-                        assert!(!s.wide);
+                        assert_ne!(s.kind, ic_syntax::StringKind::Wide);
                         assert!(s.bound.is_some());
                     }
                     _ => panic!("expected string type inside sequence"),
@@ -396,10 +396,10 @@ fn parse_typedef_in_module() {
     assert!(result.errors.is_empty(), "errors: {:?}", result.errors);
 
     match &result.tree[0] {
-        Item::ModuleValue(def) => {
-            assert_eq!(def.definitions.len(), 2);
-            assert!(matches!(&def.definitions[0], Item::AliasValue(_)));
-            assert!(matches!(&def.definitions[1], Item::AliasValue(_)));
+        Item::Module(def) => {
+            assert_eq!(def.items.len(), 2);
+            assert!(matches!(&def.items[0], Item::Alias(_)));
+            assert!(matches!(&def.items[1], Item::Alias(_)));
         }
         _ => panic!("expected module"),
     }

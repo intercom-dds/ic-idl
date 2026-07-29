@@ -27,10 +27,8 @@
 
 use ic_lexer::stream::{Stream, StreamCheckpoint};
 use ic_lexer::token::{Kind, Kw, Token};
-use ic_syntax::{
-    AnnotationAppl, AnnotationArg, Expr, Ident, Item, Literal, LiteralValue, Path, Span,
-};
-use ic_vfs::SourceMap;
+use ic_syntax::{Annotation, AnnotationArg, ExprKind, Ident, Item, Literal, Path, Spanned};
+use ic_vfs::{SourceMap, Span};
 
 use crate::error::{Expected, ParseError, Result};
 
@@ -39,7 +37,7 @@ use crate::error::{Expected, ParseError, Result};
 pub struct Checkpoint {
     stream: StreamCheckpoint,
     prev_span: Span,
-    pending_annotations: Vec<AnnotationAppl>,
+    pending_annotations: Vec<Annotation>,
     annotation_errors_len: usize,
 }
 
@@ -53,7 +51,7 @@ pub struct Parser<'a> {
     stream: Stream,
 
     /// Annotations accumulated during trivia skimming.
-    pub pending_annotations: Vec<AnnotationAppl>,
+    pub pending_annotations: Vec<Annotation>,
 
     /// Span of the previously consumed token.
     pub prev_span: Span,
@@ -62,7 +60,7 @@ pub struct Parser<'a> {
     source: &'a SourceMap,
 
     /// Orphaned annotations that couldn't be attached to any construct.
-    orphaned_annotations: Vec<AnnotationAppl>,
+    orphaned_annotations: Vec<Annotation>,
 
     /// Errors that occurred while parsing annotations.
     annotation_errors: Vec<ParseError>,
@@ -217,7 +215,7 @@ impl<'a> Parser<'a> {
 
     /// Expects a semicolon and returns any trailing comments that follow it.
     /// This is used for constructs that end with `;` and should capture trailing doc comments.
-    pub fn expect_semi(&mut self) -> Result<Vec<AnnotationAppl>> {
+    pub fn expect_semi(&mut self) -> Result<Vec<Annotation>> {
         self.expect(Kind::Semi)?;
         Ok(self.take_trailing_comments())
     }
@@ -254,7 +252,7 @@ impl<'a> Parser<'a> {
     }
 
     /// Collects and returns any trailing comments at the current position.
-    pub fn take_trailing_comments(&mut self) -> Vec<AnnotationAppl> {
+    pub fn take_trailing_comments(&mut self) -> Vec<Annotation> {
         let mut comments = Vec::new();
         while let Kind::Comment {
             trailing: true,
@@ -275,12 +273,12 @@ impl<'a> Parser<'a> {
     }
 
     /// Converts the current comment token to a `@doc` annotation.
-    fn comment_to_doc_annotation(&mut self) -> AnnotationAppl {
+    fn comment_to_doc_annotation(&mut self) -> Annotation {
         let token = self.advance_raw();
         let text = self.clean_comment_text(token.span);
 
-        AnnotationAppl {
-            ident: Path {
+        Annotation {
+            path: Path {
                 leading_colons: None,
                 segments: vec![Ident {
                     name: "doc".to_string(),
@@ -288,13 +286,13 @@ impl<'a> Parser<'a> {
                 }],
             },
             span: token.span,
-            args: vec![AnnotationArg {
-                ident: None,
+            arguments: vec![AnnotationArg {
+                name: None,
                 span: token.span,
-                value: Expr::Literal(Literal {
+                value: Spanned {
                     span: token.span,
-                    value: LiteralValue::String(text),
-                }),
+                    value: ExprKind::Literal(Literal::String(text)),
+                },
             }],
         }
     }
@@ -322,7 +320,7 @@ impl<'a> Parser<'a> {
 
     /// Takes accumulated annotations, clearing the buffer.
     /// This skims any pending annotations/comments first.
-    pub fn take_annotations(&mut self) -> Vec<AnnotationAppl> {
+    pub fn take_annotations(&mut self) -> Vec<Annotation> {
         self.skim_annotations();
         std::mem::take(&mut self.pending_annotations)
     }
@@ -490,7 +488,7 @@ impl<'a> Parser<'a> {
     pub fn braced<T>(
         &mut self,
         parse_content: impl FnOnce(&mut Self) -> Result<T>,
-    ) -> Result<(T, Vec<AnnotationAppl>)> {
+    ) -> Result<(T, Vec<Annotation>)> {
         let mut annotations = self.take_annotations();
         self.expect(Kind::LBrace)?;
         annotations.extend(self.take_trailing_comments());
@@ -538,7 +536,7 @@ impl<'a> Parser<'a> {
     // <specification> ::= <definition>+
     /// Parses the entire specification.
     /// Returns the parsed items, errors, and orphaned annotations.
-    pub fn parse(mut self) -> (Vec<Item>, Vec<ParseError>, Vec<AnnotationAppl>) {
+    pub fn parse(mut self) -> (Vec<Item>, Vec<ParseError>, Vec<Annotation>) {
         let mut items = Vec::new();
         let mut errors = Vec::new();
 

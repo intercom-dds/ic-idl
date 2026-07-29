@@ -45,18 +45,18 @@ struct Example {
     assert_eq!(result.tree.len(), 1);
 
     // Check that the struct has the expected fields with annotations
-    if let Item::StructValue(s) = &result.tree[0] {
-        assert_eq!(s.members.len(), 2);
+    if let Item::Struct(s) = &result.tree[0] {
+        assert_eq!(s.fields.len(), 2);
 
         // Check field1 has a trailing comment annotation
-        let field1 = &s.members[0];
-        assert_eq!(field1.annotations.len(), 1);
-        assert_eq!(field1.annotations[0].ident.segments[0].name, "doc");
+        let field1 = &s.fields[0];
+        assert_eq!(field1.meta.annotations.len(), 1);
+        assert_eq!(field1.meta.annotations[0].path.segments[0].name, "doc");
 
         // Check field2 has a trailing comment annotation
-        let field2 = &s.members[1];
-        assert_eq!(field2.annotations.len(), 1);
-        assert_eq!(field2.annotations[0].ident.segments[0].name, "doc");
+        let field2 = &s.fields[1];
+        assert_eq!(field2.meta.annotations.len(), 1);
+        assert_eq!(field2.meta.annotations[0].path.segments[0].name, "doc");
     } else {
         panic!("Expected a struct item");
     }
@@ -83,21 +83,21 @@ struct MixedComments {
     assert_eq!(result.tree.len(), 1);
 
     // Check that the struct has the expected fields with annotations
-    if let Item::StructValue(s) = &result.tree[0] {
-        assert_eq!(s.members.len(), 3);
+    if let Item::Struct(s) = &result.tree[0] {
+        assert_eq!(s.fields.len(), 3);
 
         // field1 should have 1 leading comment annotation
-        assert_eq!(s.members[0].annotations.len(), 1);
-        assert_eq!(s.members[0].annotations[0].ident.segments[0].name, "doc");
+        assert_eq!(s.fields[0].meta.annotations.len(), 1);
+        assert_eq!(s.fields[0].meta.annotations[0].path.segments[0].name, "doc");
 
         // field2 should have 1 trailing comment annotation
-        assert_eq!(s.members[1].annotations.len(), 1);
-        assert_eq!(s.members[1].annotations[0].ident.segments[0].name, "doc");
+        assert_eq!(s.fields[1].meta.annotations.len(), 1);
+        assert_eq!(s.fields[1].meta.annotations[0].path.segments[0].name, "doc");
 
         // field3 should have 2 leading comment annotations
-        assert_eq!(s.members[2].annotations.len(), 2);
-        assert_eq!(s.members[2].annotations[0].ident.segments[0].name, "doc");
-        assert_eq!(s.members[2].annotations[1].ident.segments[0].name, "doc");
+        assert_eq!(s.fields[2].meta.annotations.len(), 2);
+        assert_eq!(s.fields[2].meta.annotations[0].path.segments[0].name, "doc");
+        assert_eq!(s.fields[2].meta.annotations[1].path.segments[0].name, "doc");
     } else {
         panic!("Expected a struct item");
     }

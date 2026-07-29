@@ -168,23 +168,23 @@ impl<'ctx> TypeResolver<'ctx> {
     /// Resolve an AST type to a HIR type.
     pub fn resolve_type(&mut self, ast_type: &AstType) -> Option<Ty> {
         match ast_type {
-            AstType::Path(path) => self.resolve_path_type(path),
+            AstType::Named(path) => self.resolve_path_type(path),
             AstType::String(s) => Some(Ty {
-                span: (s.span),
+                span: s.span,
                 kind: TyKind::String {
-                    wide: s.wide,
+                    wide: matches!(s.kind, ic_syntax::StringKind::Wide),
                     bound: s.bound.as_ref().and_then(|e| self.evaluate_bound(e)),
-                    bound_span: s.bound.as_ref().map(ic_syntax::Expr::span),
+                    bound_span: s.bound.as_ref().map(|e| e.span),
                 },
             }),
             AstType::Sequence(seq) => {
-                let elem_ty = self.resolve_type(&seq.ty)?;
+                let elem_ty = self.resolve_type(&seq.element)?;
                 Some(Ty {
-                    span: (seq.span),
+                    span: seq.span,
                     kind: TyKind::Sequence {
                         ty: Box::new(elem_ty),
                         bound: seq.bound.as_ref().and_then(|e| self.evaluate_bound(e)),
-                        bound_span: seq.bound.as_ref().map(ic_syntax::Expr::span),
+                        bound_span: seq.bound.as_ref().map(|e| e.span),
                     },
                 })
             }
@@ -192,17 +192,17 @@ impl<'ctx> TypeResolver<'ctx> {
                 let key_ty = self.resolve_type(&m.key)?;
                 let elem_ty = self.resolve_type(&m.value)?;
                 Some(Ty {
-                    span: (m.span),
+                    span: m.span,
                     kind: TyKind::Map {
                         key: Box::new(key_ty),
                         elem: Box::new(elem_ty),
                         bound: m.bound.as_ref().and_then(|e| self.evaluate_bound(e)),
-                        bound_span: m.bound.as_ref().map(ic_syntax::Expr::span),
+                        bound_span: m.bound.as_ref().map(|e| e.span),
                     },
                 })
             }
             AstType::Fixed(f) => Some(Ty {
-                span: (f.span),
+                span: f.span,
                 kind: TyKind::Fixed,
             }),
         }
@@ -383,7 +383,7 @@ pub fn resolve_declarator(
     scope: ScopeId,
 ) -> (ic_syntax::Ident, Ty) {
     match decl {
-        ic_syntax::Declarator::Simple(ident) => (ident.clone(), base_ty),
+        ic_syntax::Declarator::Name(ident) => (ident.clone(), base_ty),
         ic_syntax::Declarator::Array(arr) => {
             let mut ty = base_ty;
             for bound_expr in arr.bounds.iter().rev() {
@@ -395,11 +395,11 @@ pub fn resolve_declarator(
                     kind: TyKind::Array {
                         ty: Box::new(ty.clone()),
                         len,
-                        len_span: ic_syntax::util::expr_span(bound_expr),
+                        len_span: bound_expr.span,
                     },
                 };
             }
-            (arr.ident.clone(), ty)
+            (arr.name.clone(), ty)
         }
     }
 }

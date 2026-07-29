@@ -37,14 +37,14 @@ pub struct ArrayParam<'a> {
 
 impl<'a> Visitor<'a> for ArrayParam<'a> {
     fn visit_prototype_param(&mut self, param: &'a ic_syntax::Param) {
-        if let Declarator::Array(decl) = &param.decl {
+        if let Declarator::Array(decl) = &param.declarator {
             let diag = self
                 .ctx
                 .diag_span(
                     Self::name(),
                     Self::category(),
                     "using arrays as parameters in prototypes is not standard",
-                    Label::new(decl.ident.span).message("this parameter is an array"),
+                    Label::new(decl.name.span).message("this parameter is an array"),
                 )
                 .note("standard IDL does not permit arrays as parameters");
             Self::report(self.ctx, diag);

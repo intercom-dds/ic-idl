@@ -27,7 +27,7 @@
 
 use ic_hir::hir::{Decl, Def, DefFlags, DefId, DefKind};
 use ic_hir::scope::ScopeId;
-use ic_syntax::{AnnotationAppl, Ident, Span};
+use ic_syntax::{Annotation, Ident, Span};
 
 use crate::LoweringContext;
 use crate::annotation::convert_annotations;
@@ -38,7 +38,7 @@ pub fn define(
     scope: ScopeId,
     ident: &Ident,
     span: Span,
-    ast_annotations: &[AnnotationAppl],
+    ast_annotations: &[Annotation],
     kind_tag: DefKindTag,
     build_kind: impl FnOnce(DefId) -> DefKind,
 ) -> DefId {
@@ -77,7 +77,7 @@ pub fn define_scoped_const(
     extra_scope: ScopeId,
     ident: &Ident,
     span: Span,
-    ast_annotations: &[AnnotationAppl],
+    ast_annotations: &[Annotation],
     flags: DefFlags,
     build_kind: impl FnOnce(DefId) -> DefKind,
 ) -> DefId {

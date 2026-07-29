@@ -29,7 +29,7 @@ use std::collections::HashMap;
 use std::path::Path;
 
 use ic_preproc::{ExpansionInfo, ProcArgs};
-use ic_syntax::{AnnotationAppl, Item, Span};
+use ic_syntax::{Annotation, Item, Span};
 use ic_vfs::{FileId, Include, SourceMap};
 use tracing::{debug, debug_span};
 
@@ -41,7 +41,7 @@ use crate::util::Error;
 pub struct ParseResult {
     pub tree: Vec<Item>,
     pub errors: Vec<Error>,
-    pub orphaned_annotations: Vec<AnnotationAppl>,
+    pub orphaned_annotations: Vec<Annotation>,
     pub preproc_warnings: Vec<ic_preproc::Error>,
     pub expansion_info: HashMap<Span, ExpansionInfo>,
 }

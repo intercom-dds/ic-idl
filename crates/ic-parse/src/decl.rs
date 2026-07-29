@@ -28,9 +28,9 @@
 use ic_lexer::token::{Kind, Kw};
 use ic_syntax::{
     AliasDef, ArrayDeclarator, Attribute, Bit, Bitfield, BitmaskDef, BitsetDef, ConstDef, Decl,
-    DeclKind, Declarator, Discriminator, Empty, EnumDef, Enumerator, ExceptDef, Field,
-    InterfaceDef, InterfaceMember, Item, Label, ModuleDef, Param, ParamKind, Prototype, StructDef,
-    UnionDef, UnionField, ValueElement, ValueMember, ValuetypeDef,
+    DeclKind, Declarator, Disc, EnumDef, Enumerator, ExceptDef, Field, InterfaceDef, InterfaceKind,
+    InterfaceMember, Item, Label, Meta, ModuleDef, Param, ParamKind, Proto, Spanned, StateMember,
+    StructDef, UnionCase, UnionDef, ValueMember, ValuetypeDef, Visibility,
 };
 
 use super::Parser;
@@ -66,11 +66,13 @@ impl Parser<'_> {
         let (definitions, mut annotations) = self.braced(super::Parser::definitions)?;
         annotations.extend(self.expect_semi()?);
 
-        Ok(Item::ModuleValue(ModuleDef {
-            span: self.make_span(start, self.prev_span),
-            annotations,
-            ident,
-            definitions,
+        Ok(Item::Module(ModuleDef {
+            meta: Meta {
+                span: self.make_span(start, self.prev_span),
+                annotations,
+            },
+            name: ident,
+            items: definitions,
         }))
     }
 
@@ -92,11 +94,15 @@ impl Parser<'_> {
         let mut annotations = self.take_annotations();
         annotations.extend(self.expect_semi()?);
 
-        Ok(Item::DeclValue(Decl {
-            span: self.make_span(start, self.prev_span),
-            annotations,
-            ident,
+        Ok(Item::Decl(Decl {
+            meta: Meta {
+                span: self.make_span(start, self.prev_span),
+                annotations,
+            },
+            name: ident,
             kind: DeclKind::Native,
+            local: None,
+            abstract_: None,
         }))
     }
 
@@ -111,10 +117,12 @@ impl Parser<'_> {
         let mut annotations = self.take_annotations();
         annotations.extend(self.expect_semi()?);
 
-        Ok(Item::ConstValue(ConstDef {
-            span: self.make_span(start, self.prev_span),
-            annotations,
-            decl,
+        Ok(Item::Const(ConstDef {
+            meta: Meta {
+                span: self.make_span(start, self.prev_span),
+                annotations,
+            },
+            declarator: decl,
             ty,
             value,
         }))
@@ -142,11 +150,15 @@ impl Parser<'_> {
         // Rule 48: forward declaration
         if self.eat(Kind::Semi) {
             annotations.extend(self.take_annotations());
-            return Ok(Item::DeclValue(Decl {
-                span: self.make_span(start, self.prev_span),
-                annotations,
-                ident,
+            return Ok(Item::Decl(Decl {
+                meta: Meta {
+                    span: self.make_span(start, self.prev_span),
+                    annotations,
+                },
+                name: ident,
                 kind: DeclKind::Struct,
+                local: None,
+                abstract_: None,
             }));
         }
 
@@ -161,11 +173,13 @@ impl Parser<'_> {
         annotations.extend(body_annotations);
         annotations.extend(self.expect_semi()?);
 
-        Ok(Item::StructValue(StructDef {
-            span: self.make_span(start, self.prev_span),
-            annotations,
-            ident,
-            members,
+        Ok(Item::Struct(StructDef {
+            meta: Meta {
+                span: self.make_span(start, self.prev_span),
+                annotations,
+            },
+            name: ident,
+            fields: members,
             parent,
         }))
     }
@@ -179,9 +193,11 @@ impl Parser<'_> {
         annotations.extend(self.expect_semi()?);
 
         Ok(Field {
-            span: self.make_span(start, self.prev_span),
-            annotations,
-            names,
+            meta: Meta {
+                span: self.make_span(start, self.prev_span),
+                annotations,
+            },
+            declarators: names,
             ty,
         })
     }
@@ -205,11 +221,15 @@ impl Parser<'_> {
         // Rule 56: forward declaration
         if self.eat(Kind::Semi) {
             annotations.extend(self.take_annotations());
-            return Ok(Item::DeclValue(Decl {
-                span: self.make_span(start, self.prev_span),
-                annotations,
-                ident,
+            return Ok(Item::Decl(Decl {
+                meta: Meta {
+                    span: self.make_span(start, self.prev_span),
+                    annotations,
+                },
+                name: ident,
                 kind: DeclKind::Union,
+                local: None,
+                abstract_: None,
             }));
         }
 
@@ -228,15 +248,20 @@ impl Parser<'_> {
         annotations.extend(body_annotations);
         annotations.extend(self.expect_semi()?);
 
-        Ok(Item::UnionValue(UnionDef {
-            span: self.make_span(start, self.prev_span),
-            annotations,
-            ident,
-            disc: Discriminator {
-                annotations: disc_annotations,
+        Ok(Item::Union(UnionDef {
+            meta: Meta {
+                span: self.make_span(start, self.prev_span),
+                annotations,
+            },
+            name: ident,
+            disc: Disc {
+                meta: Meta {
+                    span: self.make_span(start, self.prev_span),
+                    annotations: disc_annotations,
+                },
                 ty: disc_ty,
             },
-            fields,
+            cases: fields,
         }))
     }
 
@@ -249,7 +274,7 @@ impl Parser<'_> {
     }
 
     // Rule 52
-    fn switch_body(&mut self) -> Result<Vec<UnionField>> {
+    fn switch_body(&mut self) -> Result<Vec<UnionCase>> {
         let mut fields = Vec::new();
         while !self.at(Kind::RBrace) && !self.at(Kind::Eoi) {
             fields.push(self.case()?);
@@ -258,7 +283,7 @@ impl Parser<'_> {
     }
 
     // Rule 53
-    fn case(&mut self) -> Result<UnionField> {
+    fn case(&mut self) -> Result<UnionCase> {
         let start = self.span();
 
         // Rule 54: at least one case label
@@ -272,12 +297,14 @@ impl Parser<'_> {
         let (ty, decl) = self.element_spec()?;
         annotations.extend(self.take_trailing_comments());
 
-        Ok(UnionField {
-            span: self.make_span(start, self.prev_span),
-            annotations,
+        Ok(UnionCase {
+            meta: Meta {
+                span: self.make_span(start, self.prev_span),
+                annotations,
+            },
             labels,
-            ty: Box::new(ty),
-            decl,
+            ty,
+            declarator: decl,
         })
     }
 
@@ -286,10 +313,10 @@ impl Parser<'_> {
         if self.eat_keyword(Kw::Case).is_some() {
             let expr = self.const_expr()?;
             self.expect(Kind::Colon)?;
-            Ok(Label::Case(expr))
+            Ok(Label::Value(expr))
         } else if self.eat_keyword(Kw::Default).is_some() {
             self.expect(Kind::Colon)?;
-            Ok(Label::Default(Empty {}))
+            Ok(Label::Default(self.prev_span))
         } else {
             Err(self.error_expected("case or default"))
         }
@@ -315,11 +342,13 @@ impl Parser<'_> {
         annotations.extend(body_annotations);
         annotations.extend(self.expect_semi()?);
 
-        Ok(Item::EnumValue(EnumDef {
-            span: self.make_span(start, self.prev_span),
-            annotations,
-            ident,
-            fields,
+        Ok(Item::Enum(EnumDef {
+            meta: Meta {
+                span: self.make_span(start, self.prev_span),
+                annotations,
+            },
+            name: ident,
+            enumerators: fields,
         }))
     }
 
@@ -338,8 +367,11 @@ impl Parser<'_> {
         annotations.extend(self.take_annotations());
 
         Ok(Enumerator {
-            ident,
-            annotations,
+            meta: Meta {
+                span: ident.span,
+                annotations,
+            },
+            name: ident,
             value,
         })
     }
@@ -351,7 +383,7 @@ impl Parser<'_> {
             while self.at(Kind::Comma) {
                 let comma_span = self.advance().span;
                 if let Some(last) = enumerators.last_mut() {
-                    last.annotations.extend(self.take_trailing_comments());
+                    last.meta.annotations.extend(self.take_trailing_comments());
                 }
                 if self.at(Kind::RBrace) {
                     return Err(self.error_message(comma_span, "trailing comma is not allowed"));
@@ -369,7 +401,10 @@ impl Parser<'_> {
         while self.at(Kind::LBracket) {
             bounds.push(self.fixed_array_size()?);
         }
-        Ok(Declarator::Array(ArrayDeclarator { ident, bounds }))
+        Ok(Declarator::Array(ArrayDeclarator {
+            name: ident,
+            bounds,
+        }))
     }
 
     // Rule 60
@@ -398,10 +433,12 @@ impl Parser<'_> {
         let mut annotations = self.take_annotations();
         annotations.extend(self.expect_semi()?);
 
-        Ok(Item::AliasValue(AliasDef {
-            span: self.make_span(start, self.prev_span),
-            annotations,
-            decl,
+        Ok(Item::Alias(AliasDef {
+            meta: Meta {
+                span: self.make_span(start, self.prev_span),
+                annotations,
+            },
+            declarators: decl,
             ty,
         }))
     }
@@ -428,13 +465,13 @@ impl Parser<'_> {
         if self.at(Kind::LBracket) {
             self.array_declarator(ident)
         } else {
-            Ok(Declarator::Simple(ident))
+            Ok(Declarator::Name(ident))
         }
     }
 
     pub(super) fn simple_declarator(&mut self) -> Result<Declarator> {
         let ident = self.ident()?;
-        Ok(Declarator::Simple(ident))
+        Ok(Declarator::Name(ident))
     }
 
     // Rule 72
@@ -446,11 +483,13 @@ impl Parser<'_> {
         let (members, mut annotations) = self.braced(super::Parser::members)?;
         annotations.extend(self.expect_semi()?);
 
-        Ok(Item::ExceptionValue(ExceptDef {
-            span: self.make_span(start, self.prev_span),
-            annotations,
-            ident,
-            members,
+        Ok(Item::Exception(ExceptDef {
+            meta: Meta {
+                span: self.make_span(start, self.prev_span),
+                annotations,
+            },
+            name: ident,
+            fields: members,
         }))
     }
 
@@ -477,15 +516,19 @@ impl Parser<'_> {
     fn interface_forward_dcl(
         &mut self,
         start: ic_vfs::Span,
-        _local: Option<ic_vfs::Span>,
+        local: Option<ic_vfs::Span>,
         ident: ic_syntax::Ident,
     ) -> Result<Item> {
         let annotations = self.expect_semi()?;
-        Ok(Item::DeclValue(Decl {
-            span: self.make_span(start, self.prev_span),
-            annotations,
-            ident,
+        Ok(Item::Decl(Decl {
+            meta: Meta {
+                span: self.make_span(start, self.prev_span),
+                annotations,
+            },
+            name: ident,
             kind: DeclKind::Interface,
+            local,
+            abstract_: None,
         }))
     }
 
@@ -504,13 +547,15 @@ impl Parser<'_> {
         let (members, mut annotations) = self.braced(super::Parser::interface_body)?;
         annotations.extend(self.expect_semi()?);
 
-        Ok(Item::InterfaceValue(InterfaceDef {
-            span: self.make_span(start, self.prev_span),
-            annotations,
-            ident,
+        Ok(Item::Interface(InterfaceDef {
+            meta: Meta {
+                span: self.make_span(start, self.prev_span),
+                annotations,
+            },
+            name: ident,
             members,
             inherits,
-            local,
+            kind: local.map_or(InterfaceKind::Regular, InterfaceKind::Local),
         }))
     }
 
@@ -569,7 +614,7 @@ impl Parser<'_> {
             // Rule 88-92: attribute
             Kind::Keyword(Kw::ReadOnly | Kw::Attribute) => {
                 let annotations = self.take_annotations();
-                Ok(InterfaceMember::Attr(self.attr_dcl(annotations)?))
+                Ok(InterfaceMember::Attribute(self.attr_dcl(annotations)?))
             }
             // Rule 97
             Kind::Keyword(Kw::Typedef) => Ok(InterfaceMember::Item(self.typedef_dcl()?)),
@@ -594,8 +639,8 @@ impl Parser<'_> {
     fn op_dcl(
         &mut self,
         start: ic_vfs::Span,
-        mut annotations: Vec<ic_syntax::AnnotationAppl>,
-    ) -> Result<Prototype> {
+        mut annotations: Vec<ic_syntax::Annotation>,
+    ) -> Result<Proto> {
         // Rule 83: op_type_spec
         let ret = self.type_spec()?;
         let ident = self.ident()?;
@@ -615,12 +660,14 @@ impl Parser<'_> {
         self.expect(Kind::Semi)?;
         annotations.extend(self.take_trailing_comments());
 
-        Ok(Prototype {
-            span: self.make_span(start, self.prev_span),
-            annotations,
-            ident,
-            ret,
-            params,
+        Ok(Proto {
+            meta: Meta {
+                span: self.make_span(start, self.prev_span),
+                annotations,
+            },
+            name: ident,
+            return_type: ret,
+            parameters: params,
             raises,
             oneway: None,
         })
@@ -640,6 +687,7 @@ impl Parser<'_> {
 
     // Rule 85
     fn param_dcl(&mut self) -> Result<Param> {
+        let start = self.span();
         // Rule 86: param_attribute
         let kind = match self.peek() {
             Kind::Keyword(Kw::In) => {
@@ -652,7 +700,7 @@ impl Parser<'_> {
             }
             Kind::Keyword(Kw::InOut) => {
                 self.advance();
-                Some(ParamKind::Inout)
+                Some(ParamKind::InOut)
             }
             _ => None,
         };
@@ -660,11 +708,19 @@ impl Parser<'_> {
         let ty = self.type_spec()?;
         let decl = self.declarator()?;
 
-        Ok(Param { decl, ty, kind })
+        Ok(Param {
+            meta: Meta {
+                span: self.make_span(start, self.prev_span),
+                annotations: Vec::new(),
+            },
+            declarator: decl,
+            ty,
+            kind,
+        })
     }
 
     // Rule 88
-    fn attr_dcl(&mut self, mut annotations: Vec<ic_syntax::AnnotationAppl>) -> Result<Attribute> {
+    fn attr_dcl(&mut self, mut annotations: Vec<ic_syntax::Annotation>) -> Result<Attribute> {
         let start = self.span();
 
         // Rule 89: readonly_attr_spec
@@ -693,9 +749,11 @@ impl Parser<'_> {
             annotations.extend(self.take_trailing_comments());
 
             return Ok(Attribute {
-                span: self.make_span(start, self.prev_span),
-                annotations,
-                decl,
+                meta: Meta {
+                    span: self.make_span(start, self.prev_span),
+                    annotations,
+                },
+                declarators: decl,
                 ty,
                 readonly,
                 getraises,
@@ -727,9 +785,11 @@ impl Parser<'_> {
         annotations.extend(self.take_trailing_comments());
 
         Ok(Attribute {
-            span: self.make_span(start, self.prev_span),
-            annotations,
-            decl,
+            meta: Meta {
+                span: self.make_span(start, self.prev_span),
+                annotations,
+            },
+            declarators: decl,
             ty,
             readonly: None,
             getraises,
@@ -796,13 +856,17 @@ impl Parser<'_> {
         let (elements, mut annotations) = self.braced(super::Parser::value_elements)?;
         annotations.extend(self.expect_semi()?);
 
-        Ok(Item::ValuetypeValue(ValuetypeDef {
-            span: self.make_span(start, self.prev_span),
-            annotations,
-            ident,
-            elements,
+        Ok(Item::Valuetype(ValuetypeDef {
+            meta: Meta {
+                span: self.make_span(start, self.prev_span),
+                annotations,
+            },
+            name: ident,
+            members: elements,
             inherits,
             supports,
+            truncatable: None,
+            abstract_: None,
         }))
     }
 
@@ -820,7 +884,7 @@ impl Parser<'_> {
     // <value_inheritance_spec> ::= [ ":" <value_name> ] [ "supports" <interface_name> ]
     fn value_inheritance_spec(
         &mut self,
-    ) -> Result<(Option<ic_syntax::Path>, Option<ic_syntax::Path>)> {
+    ) -> Result<(Option<ic_syntax::Path>, Vec<ic_syntax::Path>)> {
         let inherits = if self.eat(Kind::Colon) {
             Some(self.value_name()?)
         } else {
@@ -828,9 +892,9 @@ impl Parser<'_> {
         };
 
         let supports = if self.eat_keyword(Kw::Supports).is_some() {
-            Some(self.interface_name()?)
+            vec![self.interface_name()?]
         } else {
-            None
+            Vec::new()
         };
 
         Ok((inherits, supports))
@@ -843,41 +907,39 @@ impl Parser<'_> {
     }
 
     // Rule 105
-    fn value_element(&mut self) -> Result<ValueElement> {
+    fn value_element(&mut self) -> Result<ValueMember> {
         let annotations = self.take_annotations();
 
         match self.peek() {
             // Rule 106: state_member
-            Kind::Keyword(Kw::Public | Kw::Private) => {
-                Ok(ValueElement::State(self.state_member()?))
-            }
+            Kind::Keyword(Kw::Public | Kw::Private) => Ok(ValueMember::State(self.state_member()?)),
             Kind::Keyword(Kw::Oneway) => {
                 let start = self.span();
                 self.advance();
                 let mut proto = self.op_dcl(start, annotations)?;
                 proto.oneway = Some(start);
-                Ok(ValueElement::Proto(proto))
+                Ok(ValueMember::Proto(proto))
             }
             Kind::Keyword(Kw::ReadOnly | Kw::Attribute) => {
-                Ok(ValueElement::Attr(self.attr_dcl(annotations)?))
+                Ok(ValueMember::Attribute(self.attr_dcl(annotations)?))
             }
-            Kind::Keyword(Kw::Typedef) => Ok(ValueElement::Item(self.typedef_dcl()?)),
-            Kind::Keyword(Kw::Const) => Ok(ValueElement::Item(self.const_dcl()?)),
-            Kind::Keyword(Kw::Exception) => Ok(ValueElement::Item(self.except_dcl()?)),
-            Kind::Keyword(Kw::Struct) => Ok(ValueElement::Item(self.struct_dcl()?)),
-            Kind::Keyword(Kw::Enum) => Ok(ValueElement::Item(self.enum_dcl()?)),
-            Kind::Keyword(Kw::Union) => Ok(ValueElement::Item(self.union_dcl()?)),
-            Kind::Keyword(Kw::Bitset) => Ok(ValueElement::Item(self.bitset_dcl()?)),
-            Kind::Keyword(Kw::Bitmask) => Ok(ValueElement::Item(self.bitmask_dcl()?)),
-            Kind::Keyword(Kw::Native) => Ok(ValueElement::Item(self.native_dcl()?)),
+            Kind::Keyword(Kw::Typedef) => Ok(ValueMember::Item(self.typedef_dcl()?)),
+            Kind::Keyword(Kw::Const) => Ok(ValueMember::Item(self.const_dcl()?)),
+            Kind::Keyword(Kw::Exception) => Ok(ValueMember::Item(self.except_dcl()?)),
+            Kind::Keyword(Kw::Struct) => Ok(ValueMember::Item(self.struct_dcl()?)),
+            Kind::Keyword(Kw::Enum) => Ok(ValueMember::Item(self.enum_dcl()?)),
+            Kind::Keyword(Kw::Union) => Ok(ValueMember::Item(self.union_dcl()?)),
+            Kind::Keyword(Kw::Bitset) => Ok(ValueMember::Item(self.bitset_dcl()?)),
+            Kind::Keyword(Kw::Bitmask) => Ok(ValueMember::Item(self.bitmask_dcl()?)),
+            Kind::Keyword(Kw::Native) => Ok(ValueMember::Item(self.native_dcl()?)),
             _ => {
                 let start = self.span();
-                Ok(ValueElement::Proto(self.op_dcl(start, annotations)?))
+                Ok(ValueMember::Proto(self.op_dcl(start, annotations)?))
             }
         }
     }
 
-    fn value_elements(&mut self) -> Result<Vec<ValueElement>> {
+    fn value_elements(&mut self) -> Result<Vec<ValueMember>> {
         let mut elements = Vec::new();
         while !self.at(Kind::RBrace) && !self.at(Kind::Eoi) {
             elements.push(self.value_element()?);
@@ -886,7 +948,7 @@ impl Parser<'_> {
     }
 
     // Rule 106
-    fn state_member(&mut self) -> Result<ValueMember> {
+    fn state_member(&mut self) -> Result<StateMember> {
         let visibility_span = self.span();
         let is_public = if self.eat_keyword(Kw::Public).is_some() {
             true
@@ -895,18 +957,28 @@ impl Parser<'_> {
         } else {
             return Err(self.error_expected("public or private"));
         };
-        let visibility = self.make_span(visibility_span, self.prev_span);
+        let visibility = Spanned {
+            span: self.make_span(visibility_span, self.prev_span),
+            value: if is_public {
+                Visibility::Public
+            } else {
+                Visibility::Private
+            },
+        };
 
         let ty = self.type_spec()?;
         let decl = self.declarators()?;
         self.expect(Kind::Semi)?;
         let _ = self.take_trailing_comments();
 
-        Ok(ValueMember {
-            decl,
+        Ok(StateMember {
+            meta: Meta {
+                span: self.make_span(visibility_span, self.prev_span),
+                annotations: Vec::new(),
+            },
+            declarators: decl,
             ty,
             visibility,
-            is_public,
         })
     }
 
@@ -914,11 +986,15 @@ impl Parser<'_> {
     // <value_forward_dcl> ::= <value_kind> <identifier>
     fn value_forward_dcl(&mut self, start: ic_vfs::Span, ident: ic_syntax::Ident) -> Result<Item> {
         let annotations = self.expect_semi()?;
-        Ok(Item::DeclValue(Decl {
-            span: self.make_span(start, self.prev_span),
-            annotations,
-            ident,
+        Ok(Item::Decl(Decl {
+            meta: Meta {
+                span: self.make_span(start, self.prev_span),
+                annotations,
+            },
+            name: ident,
             kind: DeclKind::Valuetype,
+            local: None,
+            abstract_: None,
         }))
     }
 
@@ -941,10 +1017,12 @@ impl Parser<'_> {
         let (fields, mut annotations) = self.braced(super::Parser::bitfields)?;
         annotations.extend(self.expect_semi()?);
 
-        Ok(Item::BitsetValue(BitsetDef {
-            span: self.make_span(start, self.prev_span),
-            annotations,
-            ident,
+        Ok(Item::Bitset(BitsetDef {
+            meta: Meta {
+                span: self.make_span(start, self.prev_span),
+                annotations,
+            },
+            name: ident,
             parent,
             fields,
         }))
@@ -968,7 +1046,7 @@ impl Parser<'_> {
             Ok((size, ty))
         })?;
 
-        let names = if self.at(Kind::Ident) {
+        let declarators = if self.at(Kind::Ident) {
             self.declarators()?
         } else {
             Vec::new()
@@ -977,11 +1055,13 @@ impl Parser<'_> {
         annotations.extend(self.expect_semi()?);
 
         Ok(Bitfield {
-            span: self.make_span(start, self.prev_span),
-            annotations,
-            names,
+            meta: Meta {
+                span: self.make_span(start, self.prev_span),
+                annotations,
+            },
             size,
             ty,
+            declarators,
         })
     }
 
@@ -1002,10 +1082,12 @@ impl Parser<'_> {
         let (bits, mut annotations) = self.braced(super::Parser::bit_values)?;
         annotations.extend(self.expect_semi()?);
 
-        Ok(Item::BitmaskValue(BitmaskDef {
-            span: self.make_span(start, self.prev_span),
-            annotations,
-            ident,
+        Ok(Item::Bitmask(BitmaskDef {
+            meta: Meta {
+                span: self.make_span(start, self.prev_span),
+                annotations,
+            },
+            name: ident,
             bits,
         }))
     }
@@ -1026,9 +1108,11 @@ impl Parser<'_> {
         all_annotations.extend(self.take_annotations());
 
         Ok(Bit {
-            span: self.make_span(start, self.prev_span),
-            annotations: all_annotations,
-            ident,
+            meta: Meta {
+                span: self.make_span(start, self.prev_span),
+                annotations: all_annotations,
+            },
+            name: ident,
             value,
         })
     }
@@ -1040,7 +1124,7 @@ impl Parser<'_> {
             while self.at(Kind::Comma) {
                 let comma_span = self.advance().span;
                 if let Some(last) = bits.last_mut() {
-                    last.annotations.extend(self.take_trailing_comments());
+                    last.meta.annotations.extend(self.take_trailing_comments());
                 }
                 if self.at(Kind::RBrace) {
                     return Err(self.error_message(comma_span, "trailing comma is not allowed"));

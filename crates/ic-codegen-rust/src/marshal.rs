@@ -106,6 +106,7 @@ impl RustGen<'_> {
     fn emit_type_descriptor(def: &Def, w: &mut Twine) {
         w!(w, "impl ::intercom_cts::type_info::TypeDescriptor for ", def, " {\n");
         w!(w, "const TYPE_INFO: &'static ::intercom_cts::TypeInfo<'static> = &TYPE_INFO;\n");
+        w!(w, "const MEMBER_INFO: &'static [::intercom_cts::MemberInfo<'static>] = &MEMBER_INFO;\n");
         w!(w, "}\n\n");
     }
 
@@ -116,8 +117,13 @@ impl RustGen<'_> {
     pub(crate) fn emit_newtype_type_descriptor(&self, def: &Def, alias: &AliasTy, w: &mut Twine) {
         let inner_ty = self.rust_type(&alias.ty, def.id);
         w!(w, "impl ::intercom_cts::type_info::TypeDescriptor for ", def, " {\n");
+
         w!(w, "const TYPE_INFO: &'static ::intercom_cts::TypeInfo<'static> =\n");
         w!(w, "\t::intercom_cts::type_info::<", inner_ty, ">();\n");
+
+        w!(w, "const MEMBER_INFO: &'static [::intercom_cts::MemberInfo<'static>] =\n");
+        w!(w, "\t::intercom_cts::member_info::<", inner_ty, ">();\n");
+
         w!(w, "}\n\n");
     }
 
@@ -160,10 +166,6 @@ impl RustGen<'_> {
             DefKind::Valuetype(v) => self.valuetype_members(v),
             _ => vec![],
         };
-
-        if members.is_empty() {
-            return;
-        }
 
         w!(w, "const MEMBER_INFO: &[::intercom_cts::MemberInfo<'static>] = &[\n");
         let mut id = 0usize;
@@ -311,6 +313,33 @@ impl RustGen<'_> {
         w!(w, "];\n\n");
     }
 
+    pub(crate) fn emit_bitmask_marshal_impl(def: &Def, w: &mut Twine) {
+        w!(w, "impl ::intercom_cts::Marshal for ", def, " {\n");
+        w!(w, "fn marshal<'a, S>(&self, ar: S) -> ::std::result::Result<S::Ok, S::Error>\n");
+        w!(w, "where\n");
+        w!(w, "\tS: ::intercom_cts::encode::Serializer<'a>,\n");
+        w!(w, "{\n");
+        w!(w, "use ::intercom_cts::encode::BitmaskSerializer as _;\n\n");
+        w!(w, "let state = ar.encode_bitmask(&TYPE_INFO)?;\n");
+        w!(w, "state.encode_flag(self.0, MEMBER_INFO)\n");
+        w!(w, "}\n");
+        w!(w, "}\n\n");
+    }
+
+    pub(crate) fn emit_bitmask_unmarshal_impl(def: &Def, w: &mut Twine) {
+        w!(w, "impl ::intercom_cts::Unmarshal for ", def, " {\n");
+        w!(w, "fn unmarshal_mut<'a, D>(&mut self, ar: D) -> ::std::result::Result<(), D::Error>\n");
+        w!(w, "where\n");
+        w!(w, "\tD: ::intercom_cts::decode::Deserializer<'a>,\n");
+        w!(w, "{\n");
+        w!(w, "use ::intercom_cts::decode::BitmaskDeserializer as _;\n\n");
+        w!(w, "let state = ar.decode_bitmask(&TYPE_INFO)?;\n");
+        w!(w, "*self = state.decode_flags(MEMBER_INFO)?;\n");
+        w!(w, "Ok(())\n");
+        w!(w, "}\n");
+        w!(w, "}\n\n");
+    }
+
     pub(crate) fn emit_enum_member_info(
         &self,
         def: &Def,
@@ -346,17 +375,17 @@ impl RustGen<'_> {
         w!(w, "\tS: ::intercom_cts::encode::Serializer<'a>,\n");
         w!(w, "{\n");
         w!(w, "use ::intercom_cts::encode::EnumSerializer as _;\n\n");
-        w!(w, "let state = ar.encode_enum(TYPE_INFO.name)?;\n");
+        w!(w, "let state = ar.encode_enum(&TYPE_INFO)?;\n");
         w!(w, "match self {\n");
-        for &field_id in &enum_ty.fields {
+
+        for (i, &field_id) in enum_ty.fields.iter().enumerate() {
             let field_def = self.hir.context.definitions.get(field_id);
             if let DefKind::Const(const_ty) = &field_def.kind {
                 let value = Self::format_numeric(&const_ty.value);
-                let original_field_def = self.original_hir.context.definitions.get(field_id);
-                let original_name = &original_field_def.ident.name;
-                w!(w, "Self::", field_def, " => state.encode_variant::<", rust_ty, ">(\"", original_name, "\", ", value, "),\n");
+                w!(w, "Self::", field_def, " => state.encode_variant::<", rust_ty, ">(&MEMBER_INFO[", i.to_string(), "], ", value, "),\n");
             }
         }
+
         w!(w, "}\n");
         w!(w, "}\n");
         w!(w, "}\n\n");
@@ -377,7 +406,7 @@ impl RustGen<'_> {
         w!(w, "\tD: ::intercom_cts::decode::Deserializer<'a>,\n");
         w!(w, "{\n");
         w!(w, "use ::intercom_cts::decode::EnumDeserializer as _;\n\n");
-        w!(w, "let state = ar.decode_enum(TYPE_INFO.name)?;\n");
+        w!(w, "let state = ar.decode_enum(&TYPE_INFO)?;\n");
         w!(w, "*self = state.decode_enumerator(*self)?;\n");
         w!(w, "Ok(())\n");
         w!(w, "}\n");
@@ -390,6 +419,7 @@ impl RustGen<'_> {
         w!(w, "{\n");
         w!(w, "use ::intercom_cts::error::Error as _;\n\n");
         w!(w, "let value = match de.decode_", rust_ty, "()? {\n");
+
         for &field_id in &enum_ty.fields {
             let field_def = self.hir.context.definitions.get(field_id);
             if let DefKind::Const(const_ty) = &field_def.kind {
@@ -397,6 +427,7 @@ impl RustGen<'_> {
                 w!(w, value, " => Self::", field_def, ",\n");
             }
         }
+
         w!(w, "_ => return Err(D::Error::custom(\"invalid enum value for type ", qual, "\")),\n");
         w!(w, "};\n");
         w!(w, "Ok(value)\n");
@@ -408,6 +439,7 @@ impl RustGen<'_> {
         w!(w, "{\n");
         w!(w, "use ::intercom_cts::error::Error as _;\n\n");
         w!(w, "let value = match name {\n");
+
         for &field_id in &enum_ty.fields {
             let field_def = self.hir.context.definitions.get(field_id);
             let original_field_def = self.original_hir.context.definitions.get(field_id);

@@ -1,4 +1,4 @@
-// Copyright 2026 KONGSBERG
+// Copyright 2025 KONGSBERG
 //
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions are met:
@@ -25,10 +25,12 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+mod arc_slice;
 mod buffer;
 mod cursor;
 pub mod endian;
 
+pub use arc_slice::ArcSlice;
 pub use buffer::Buffer;
 pub use cursor::Cursor;
 pub use endian::{Big, Endian, Little, Native};

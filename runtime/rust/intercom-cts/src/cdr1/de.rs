@@ -1,4 +1,4 @@
-// Copyright 2026 KONGSBERG
+// Copyright 2023 KONGSBERG
 //
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions are met:
@@ -32,16 +32,17 @@ use crate::buf::endian::{Big, Endian, Little};
 use crate::cdr::Error;
 use crate::cdr1::{Encoding, MemberFlag};
 use crate::decode::{
-    ArrayDeserializer, Deserializer, EnumDeserializer, EnumVisitor, MapDeserializer,
-    OptionDeserializer, SeqDeserializer, StructDeserializer, UnionDeserializer, Unmarshal,
+    ArrayDeserializer, BitmaskDeserializer, Deserializer, EnumDeserializer, EnumVisitor,
+    MapDeserializer, OptionDeserializer, SeqDeserializer, StructDeserializer, UnionDeserializer,
+    Unmarshal,
 };
 use crate::{DISC_INFO, MemberInfo, TypeFlag, TypeInfo};
 
 const PID_EXTENDED: u16 = 0x3F01;
 const PID_LIST_END: u32 = 0x3F02;
 const PID_PID_MASK: u16 = 0x3FFF;
-const _FLAG_MUST_UNDERSTAND: u16 = 0x4000;
-const _FLAG_IMPL_EXTENSION: u16 = 0x8000;
+const FLAG_MUST_UNDERSTAND: u16 = 0x4000;
+const FLAG_IMPL_EXTENSION: u16 = 0x8000;
 const MEMBER_ID_MASK: u32 = 0x0FFF_FFFF;
 
 pub struct CdrReader<'de, E: Endian> {
@@ -54,6 +55,7 @@ pub struct CdrReader<'de, E: Endian> {
 }
 
 impl<'a, E: Endian> CdrReader<'a, E> {
+    #[must_use]
     pub const fn new(input: &'a [u8]) -> Self {
         let len = input.len();
         Self {
@@ -64,6 +66,15 @@ impl<'a, E: Endian> CdrReader<'a, E> {
             member_length: len,
             _endian: PhantomData::<E>,
         }
+    }
+
+    /// Number of bytes in the underlying buffer not yet consumed.
+    ///
+    /// Useful when reading an appendable struct's body: trailing fields
+    /// that aren't present can be left at their defaults.
+    #[must_use]
+    pub const fn bytes_remaining(&self) -> usize {
+        self.buf.unread_bytes()
     }
 
     fn align(&mut self, align: usize) {
@@ -149,7 +160,8 @@ impl<'a, E: Endian> CdrReader<'a, E> {
 
     fn decode_mutable_header(&mut self) -> Result<(u32, usize), Error> {
         self.align(4);
-        let pid = self.decode_u16()? & PID_PID_MASK;
+        let raw_pid = self.decode_u16()?;
+        let pid = raw_pid & PID_PID_MASK;
         let res = if pid == PID_EXTENDED {
             let shift = usize::from(self.decode_u16()?);
             if shift > 2 * size_of::<u32>() && self.buf.unread_bytes() > shift {
@@ -160,15 +172,73 @@ impl<'a, E: Endian> CdrReader<'a, E> {
             }
 
             // Long PL
-            let member_id = self.decode_u32()? & MEMBER_ID_MASK;
+            let member_id =
+                (self.decode_u32()? & MEMBER_ID_MASK) | u32::from(raw_pid & FLAG_IMPL_EXTENSION);
             let len = self.decode_u32()? as usize;
             (member_id, len)
         } else {
-            let member_id = u32::from(pid);
+            let member_id = u32::from(raw_pid & !FLAG_MUST_UNDERSTAND);
             let len = self.decode_u16()?;
             (member_id, usize::from(len))
         };
         Ok(res)
+    }
+
+    /// Read the next PL-CDR parameter at the current position.
+    ///
+    /// On a regular parameter returns `Some((pid, body))` and advances
+    /// the cursor past the parameter's body. The `pid` keeps the
+    /// vendor-extension bit (`PID_FLAG_IMPL_EXTENSION` 0x8000) so it matches
+    /// member ids that bake it in; the must-understand flag (0x4000) is
+    /// stripped. Callers that want only the low 14 bits should mask with
+    /// `PID_PID_MASK`.
+    ///
+    /// Returns `None` when the standard `PID_LIST_END` sentinel (0x3F02) is
+    /// encountered; the cursor is left just past the sentinel header. Other
+    /// builtin sentinels (e.g. PID 0x0001 used for builtin-CDR top types) are
+    /// not handled here; the caller must recognise them.
+    pub fn read_param(&mut self) -> Result<Option<(u32, &'a [u8])>, Error> {
+        self.align(4);
+
+        // Decode the header without masking out the flag bits so the caller
+        // can distinguish vendor-extension PIDs.
+        let raw_pid = self.decode_u16()?;
+        let pid_low = raw_pid & PID_PID_MASK;
+
+        let (full_pid, len) = if pid_low == PID_EXTENDED {
+            let shift = usize::from(self.decode_u16()?);
+            if shift > 2 * size_of::<u32>() && self.buf.unread_bytes() > shift {
+                // SAFETY: bounds checked
+                unsafe {
+                    self.buf.advance_unchecked(shift - 2 * size_of::<u32>());
+                }
+            }
+
+            let member_id =
+                (self.decode_u32()? & MEMBER_ID_MASK) | u32::from(raw_pid & FLAG_IMPL_EXTENSION);
+            let len = self.decode_u32()? as usize;
+            (member_id, len)
+        } else {
+            let len = self.decode_u16()?;
+            (u32::from(raw_pid & !FLAG_MUST_UNDERSTAND), usize::from(len))
+        };
+
+        if (full_pid & u32::from(PID_PID_MASK)) == PID_LIST_END {
+            return Ok(None);
+        }
+
+        let start = self.buf.pos();
+        let body = self.buf.get(start..start + len)?;
+        if self.buf.unread_bytes() >= len {
+            // SAFETY: bounds checked
+            unsafe {
+                self.buf.advance_unchecked(len);
+            }
+        } else {
+            return Err(Error::Eof);
+        }
+
+        Ok(Some((full_pid, body)))
     }
 
     #[inline]
@@ -198,6 +268,7 @@ impl<'a, 'de, E: Endian> Deserializer<'a> for &'a mut CdrReader<'de, E> {
     type Struct = Self;
     type Union = Self;
     type Enum = Self;
+    type Bitmask = Self;
     type Map = MemberSeq<'a, 'de, E>;
     type Sequence = MemberSeq<'a, 'de, E>;
     type Array = MemberSeq<'a, 'de, E>;
@@ -223,7 +294,7 @@ impl<'a, 'de, E: Endian> Deserializer<'a> for &'a mut CdrReader<'de, E> {
 
     #[inline]
     fn decode_i8(self) -> Result<i8, Self::Error> {
-        self.decode_u8().map(|v| v as i8)
+        self.decode_u8().map(u8::cast_signed)
     }
 
     #[inline]
@@ -233,7 +304,7 @@ impl<'a, 'de, E: Endian> Deserializer<'a> for &'a mut CdrReader<'de, E> {
 
     #[inline]
     fn decode_i16(self) -> Result<i16, Self::Error> {
-        self.decode_u16().map(|v| v as i16)
+        self.decode_u16().map(u16::cast_signed)
     }
 
     #[inline]
@@ -243,7 +314,7 @@ impl<'a, 'de, E: Endian> Deserializer<'a> for &'a mut CdrReader<'de, E> {
 
     #[inline]
     fn decode_i32(self) -> Result<i32, Self::Error> {
-        self.decode_u32().map(|v| v as i32)
+        self.decode_u32().map(u32::cast_signed)
     }
 
     #[inline]
@@ -253,7 +324,7 @@ impl<'a, 'de, E: Endian> Deserializer<'a> for &'a mut CdrReader<'de, E> {
 
     #[inline]
     fn decode_i64(self) -> Result<i64, Self::Error> {
-        self.decode_u64().map(|v| v as i64)
+        self.decode_u64().map(u64::cast_signed)
     }
 
     #[inline]
@@ -325,7 +396,12 @@ impl<'a, 'de, E: Endian> Deserializer<'a> for &'a mut CdrReader<'de, E> {
     }
 
     #[inline]
-    fn decode_enum(self, _: &str) -> Result<Self::Enum, Self::Error> {
+    fn decode_enum(self, _: &TypeInfo<'_>) -> Result<Self::Enum, Self::Error> {
+        Ok(self)
+    }
+
+    #[inline]
+    fn decode_bitmask(self, _: &TypeInfo<'_>) -> Result<Self::Bitmask, Self::Error> {
         Ok(self)
     }
 
@@ -475,6 +551,18 @@ impl<E: Endian> EnumDeserializer for &mut CdrReader<'_, E> {
     }
 }
 
+impl<'a, E: Endian> BitmaskDeserializer<'a> for &mut CdrReader<'_, E> {
+    type Error = Error;
+
+    #[inline]
+    fn decode_flags<T>(self, _: &[MemberInfo<'a>]) -> Result<T, Self::Error>
+    where
+        T: Unmarshal + Default,
+    {
+        T::unmarshal(self)
+    }
+}
+
 pub struct MemberSeq<'a, 'de, E: Endian> {
     reader: &'a mut CdrReader<'de, E>,
     len: usize,
@@ -566,4 +654,60 @@ pub fn from_bytes<T: Unmarshal + Default, E: Endian>(input: &[u8]) -> Result<T, 
 pub fn from_bytes_mut<T: Unmarshal, E: Endian>(input: &[u8], value: &mut T) -> Result<(), Error> {
     let mut reader = CdrReader::<E>::new(input);
     value.unmarshal_mut(&mut reader)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::buf::Buffer;
+    use crate::buf::endian::Little;
+    use crate::cdr1::CdrWriter;
+    use crate::encode::Serializer;
+
+    #[test]
+    fn read_param_iterates_params_and_terminates_on_sentinel() {
+        // Build a parameter list: PID 7 with u32 body 0xAABBCCDD, then PID 9
+        // with two u16 bodies, then PID_LIST_END.
+        let mut buf: Buffer<Little> = Buffer::new();
+        let mut w = CdrWriter::new(&mut buf);
+
+        let info_7 = MemberInfo {
+            name: "",
+            member_id: 7,
+            flags: MemberFlag::nil(),
+            type_info: &crate::type_info::TypeInfo {
+                name: "",
+                flags: TypeFlag::nil(),
+                kind: crate::type_info::TypeKind::Struct,
+                key_info: None,
+                element_info: None,
+            },
+        };
+        let info_9 = MemberInfo {
+            member_id: 9,
+            ..info_7
+        };
+
+        w.write_param(&info_7, |w| w.encode_u32(0xAABB_CCDD))
+            .unwrap();
+        w.write_param(&info_9, |w| {
+            w.encode_u16(0x1122)?;
+            w.encode_u16(0x3344)
+        })
+        .unwrap();
+        w.write_param_list_end();
+
+        let bytes = buf.to_vec();
+
+        let mut r = CdrReader::<Little>::new(&bytes);
+        let (id1, body1) = r.read_param().unwrap().expect("first param");
+        assert_eq!(id1, 7);
+        assert_eq!(body1, [0xDD, 0xCC, 0xBB, 0xAA]);
+
+        let (id2, body2) = r.read_param().unwrap().expect("second param");
+        assert_eq!(id2, 9);
+        assert_eq!(body2, [0x22, 0x11, 0x44, 0x33]);
+
+        assert!(r.read_param().unwrap().is_none(), "sentinel");
+    }
 }

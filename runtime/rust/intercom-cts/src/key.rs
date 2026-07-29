@@ -1,4 +1,4 @@
-// Copyright 2026 KONGSBERG
+// Copyright 2025 KONGSBERG
 //
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions are met:
@@ -27,7 +27,7 @@
 
 //! Machinery for key-only serialization.
 
-use crate::decode::{Deserializer, StructDeserializer};
+use crate::decode::{Deserializer, StructDeserializer, UnionDeserializer};
 use crate::encode::{Serializer, StructSerializer, UnionSerializer};
 use crate::{Marshal, MemberFlag, MemberInfo, TypeFlag, TypeInfo, Unmarshal};
 
@@ -64,7 +64,8 @@ impl<T: Unmarshal> Unmarshal for Key<T> {
     }
 }
 
-/// Adapter for key-only serialization. This will skip non-key members.
+/// Adapter for key-only serialization. Wraps any [`Serializer`] or
+/// [`Deserializer`] and filters out non-key members during traversal.
 pub struct KeyAdapter<S> {
     inner: S,
     implicit: bool,
@@ -88,6 +89,7 @@ impl<'a, S: Serializer<'a>> Serializer<'a> for KeyAdapter<S> {
     type Struct = KeyAdapter<S::Struct>;
     type Union = KeyAdapter<S::Union>;
     type Enum = S::Enum;
+    type Bitmask = S::Bitmask;
     type Sequence = S::Sequence;
     type Array = S::Array;
     type Map = S::Map;
@@ -197,8 +199,13 @@ impl<'a, S: Serializer<'a>> Serializer<'a> for KeyAdapter<S> {
     }
 
     #[inline]
-    fn encode_enum(self, name: &str) -> Result<Self::Enum, Self::Error> {
-        self.inner.encode_enum(name)
+    fn encode_enum(self, info: &TypeInfo<'a>) -> Result<Self::Enum, Self::Error> {
+        self.inner.encode_enum(info)
+    }
+
+    #[inline]
+    fn encode_bitmask(self, info: &TypeInfo<'a>) -> Result<Self::Bitmask, Self::Error> {
+        self.inner.encode_bitmask(info)
     }
 
     #[inline]
@@ -238,6 +245,7 @@ impl<'a, S: StructSerializer<'a>> StructSerializer<'a> for KeyAdapter<S> {
         Ok(())
     }
 
+    #[inline]
     fn encode_optional<T>(&mut self, _: &MemberInfo<'a>, _: &Option<T>) -> Result<(), Self::Error>
     where
         T: Marshal,
@@ -273,15 +281,16 @@ impl<'a, S: UnionSerializer<'a>> UnionSerializer<'a> for KeyAdapter<S> {
 
     #[inline]
     fn encode_null(self) -> Result<Self::Ok, Self::Error> {
-        todo!()
+        self.inner.encode_null()
     }
 }
 
 impl<'a, D: Deserializer<'a>> Deserializer<'a> for KeyAdapter<D> {
     type Error = D::Error;
     type Struct = KeyAdapter<D::Struct>;
-    type Union = D::Union;
+    type Union = KeyAdapter<D::Union>;
     type Enum = D::Enum;
+    type Bitmask = D::Bitmask;
     type Sequence = D::Sequence;
     type Array = D::Array;
     type Map = D::Map;
@@ -375,12 +384,21 @@ impl<'a, D: Deserializer<'a>> Deserializer<'a> for KeyAdapter<D> {
 
     #[inline]
     fn decode_union(self, info: &TypeInfo<'a>) -> Result<Self::Union, Self::Error> {
-        self.inner.decode_union(info)
+        let implicit = self.implicit || info.flags.contains(TypeFlag::IS_KEYED);
+        self.inner.decode_union(info).map(|inner| KeyAdapter {
+            inner,
+            implicit,
+            depth: self.depth + 1,
+        })
     }
 
     #[inline]
-    fn decode_enum(self, name: &str) -> Result<Self::Enum, Self::Error> {
-        self.inner.decode_enum(name)
+    fn decode_enum(self, info: &TypeInfo<'a>) -> Result<Self::Enum, Self::Error> {
+        self.inner.decode_enum(info)
+    }
+
+    fn decode_bitmask(self, info: &TypeInfo<'a>) -> Result<Self::Bitmask, Self::Error> {
+        self.inner.decode_bitmask(info)
     }
 
     #[inline]
@@ -413,7 +431,9 @@ impl<'a, D: StructDeserializer<'a>> StructDeserializer<'a> for KeyAdapter<D> {
     where
         T: Unmarshal,
     {
-        if info.flags.contains(MemberFlag::IS_KEY) || self.implicit {
+        let dominated = info.flags.contains(MemberFlag::IS_KEY) || self.implicit;
+        let optional = info.flags.contains(MemberFlag::IS_OPTIONAL);
+        if dominated && !optional {
             self.inner.decode_field(
                 info,
                 &mut Key {
@@ -429,4 +449,64 @@ impl<'a, D: StructDeserializer<'a>> StructDeserializer<'a> for KeyAdapter<D> {
     fn end(self) -> Result<Self::Ok, Self::Error> {
         self.inner.end()
     }
+}
+
+impl<'a, U: UnionDeserializer<'a>> UnionDeserializer<'a> for KeyAdapter<U> {
+    type Ok = ();
+    type Error = U::Error;
+
+    #[inline]
+    fn decode_discriminant<T>(&mut self, value: &mut T) -> Result<(), Self::Error>
+    where
+        T: Unmarshal,
+    {
+        self.inner.decode_discriminant(value)
+    }
+
+    #[inline]
+    fn decode_variant<T>(self, _: &MemberInfo<'a>, _: &mut T) -> Result<(), Self::Error>
+    where
+        T: Unmarshal,
+    {
+        Ok(())
+    }
+}
+
+/// Wrapper that makes [`Marshal`] and [`Unmarshal`] process only key members.
+pub struct KeyOnly<T>(pub T);
+
+impl<T: Marshal> Marshal for KeyOnly<T> {
+    fn marshal<'a, S>(&self, archive: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer<'a>,
+    {
+        marshal_key(&self.0, archive)
+    }
+}
+
+impl<T: Unmarshal> Unmarshal for KeyOnly<T> {
+    fn unmarshal_mut<'a, D>(&mut self, archive: D) -> Result<(), D::Error>
+    where
+        D: Deserializer<'a>,
+    {
+        unmarshal_key(&mut self.0, archive)
+    }
+}
+
+/// Serialize only the key members of `value`.
+pub fn marshal_key<'a, T, S>(value: &T, archive: S) -> Result<S::Ok, S::Error>
+where
+    T: Marshal,
+    S: Serializer<'a>,
+{
+    value.marshal(KeyAdapter::new(archive))
+}
+
+/// Deserialize only the key members into `value`.
+pub fn unmarshal_key<'a, T, D>(value: &mut T, archive: D) -> Result<(), D::Error>
+where
+    T: Unmarshal,
+    D: Deserializer<'a>,
+{
+    value.unmarshal_mut(KeyAdapter::new(archive))
 }

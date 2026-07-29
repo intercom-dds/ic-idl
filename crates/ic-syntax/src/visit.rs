@@ -416,6 +416,10 @@ pub fn walk_bitset<'a, V: Visitor<'a> + ?Sized>(v: &mut V, x: &'a BitsetDef) {
 
 pub fn walk_bitfield<'a, V: Visitor<'a> + ?Sized>(v: &mut V, x: &'a Bitfield) {
     walk_meta(v, &x.meta);
+    for x in &x.declarators {
+        v.visit_declarator(x);
+    }
+
     v.visit_expr(&x.size);
     if let Some(x) = &x.ty {
         v.visit_type(x);

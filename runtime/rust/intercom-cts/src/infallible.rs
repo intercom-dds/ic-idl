@@ -1,4 +1,4 @@
-// Copyright 2026 KONGSBERG
+// Copyright 2023 KONGSBERG
 //
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions are met:
@@ -29,12 +29,12 @@ use std::convert::Infallible;
 use std::marker::PhantomData;
 
 use crate::decode::{
-    ArrayDeserializer, EnumDeserializer, EnumVisitor, MapDeserializer, OptionDeserializer,
-    SeqDeserializer, StructDeserializer, UnionDeserializer,
+    ArrayDeserializer, BitmaskDeserializer, EnumDeserializer, EnumVisitor, MapDeserializer,
+    OptionDeserializer, SeqDeserializer, StructDeserializer, UnionDeserializer,
 };
 use crate::encode::{
-    ArraySerializer, EnumSerializer, MapSerializer, SeqSerializer, StructSerializer,
-    UnionSerializer,
+    ArraySerializer, BitmaskSerializer, EnumSerializer, MapSerializer, SeqSerializer,
+    StructSerializer, UnionSerializer,
 };
 use crate::error::Error;
 use crate::{Marshal, MemberInfo, Unmarshal};
@@ -84,13 +84,25 @@ impl<Ok, Err: Error> UnionSerializer<'_> for Never<Ok, Err> {
     }
 }
 
-impl<Ok, Err: Error> EnumSerializer for Never<Ok, Err> {
+impl<'a, Ok, Err: Error> EnumSerializer<'a> for Never<Ok, Err> {
     type Ok = Ok;
     type Error = Err;
 
-    fn encode_variant<T>(self, _: &str, _: T) -> Result<Self::Ok, Self::Error>
+    fn encode_variant<T>(self, _: &MemberInfo<'a>, _: T) -> Result<Self::Ok, Self::Error>
     where
         T: Marshal,
+    {
+        match self.n {}
+    }
+}
+
+impl<'a, Ok, Err: Error> BitmaskSerializer<'a> for Never<Ok, Err> {
+    type Ok = Ok;
+    type Error = Err;
+
+    fn encode_flag<T>(self, _: T, _: &[MemberInfo<'a>]) -> Result<Self::Ok, Self::Error>
+    where
+        T: Marshal + Into<u64>,
     {
         match self.n {}
     }
@@ -243,6 +255,17 @@ impl<Ok, Err: Error> OptionDeserializer for Never<Ok, Err> {
     fn decode_some<T>(self, _: &mut T) -> Result<(), Self::Error>
     where
         T: Unmarshal,
+    {
+        match self.n {}
+    }
+}
+
+impl<'a, Ok, Err: Error> BitmaskDeserializer<'a> for Never<Ok, Err> {
+    type Error = Err;
+
+    fn decode_flags<T>(self, _: &[MemberInfo<'a>]) -> Result<T, Self::Error>
+    where
+        T: Unmarshal + Default,
     {
         match self.n {}
     }

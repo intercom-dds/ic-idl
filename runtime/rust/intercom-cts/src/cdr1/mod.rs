@@ -1,4 +1,4 @@
-// Copyright 2026 KONGSBERG
+// Copyright 2024 KONGSBERG
 //
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions are met:
@@ -31,9 +31,11 @@ mod ser;
 pub use de::{CdrReader, from_be_bytes, from_bytes, from_bytes_mut, from_le_bytes};
 pub use ser::{CdrWriter, to_be_bytes, to_buffer, to_bytes, to_le_bytes};
 
-use crate::buf::Buffer;
 use crate::buf::endian::Endian;
+use crate::buf::{Big, Buffer, Little};
 pub use crate::cdr::Error;
+use crate::decode::Unmarshal;
+use crate::{cdr, cdr2};
 
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub enum Encoding {
@@ -91,7 +93,7 @@ pub enum Scheme {
 
 impl Scheme {
     #[must_use]
-    pub fn is_le(&self) -> bool {
+    pub const fn is_le(self) -> bool {
         matches!(
             self,
             Scheme::CdrLe
@@ -104,7 +106,7 @@ impl Scheme {
     }
 
     #[must_use]
-    pub fn is_be(&self) -> bool {
+    pub const fn is_be(self) -> bool {
         !self.is_le()
     }
 }
@@ -151,4 +153,89 @@ pub fn write_encapsulation<E: Endian>(buffer: &mut Buffer<E>, scheme: Scheme) {
     buffer.write_u8(scheme as u8);
     buffer.write_u8(0);
     buffer.write_u8(0);
+}
+
+pub fn decode_into<T: Unmarshal>(bytes: &[u8], value: &mut T) -> cdr::Result<()> {
+    let (scheme, bytes) = encapsulation(bytes)?;
+    match scheme {
+        Scheme::CdrLe | Scheme::PlCdrLe => from_bytes_mut::<_, Little>(bytes, value),
+        Scheme::CdrBe | Scheme::PlCdrBe => from_bytes_mut::<_, Big>(bytes, value),
+        Scheme::Cdr2Le | Scheme::DelimitedCdr2Le | Scheme::PlCdr2Le => {
+            cdr2::from_bytes_mut::<_, Little>(bytes, value)
+        }
+        Scheme::Cdr2Be | Scheme::DelimitedCdr2Be | Scheme::PlCdr2Be => {
+            cdr2::from_bytes_mut::<_, Big>(bytes, value)
+        }
+        Scheme::PlainCdrLe => cdr::from_bytes_mut::<_, Little>(bytes, value),
+        Scheme::PlainCdrBe => cdr::from_bytes_mut::<_, Big>(bytes, value),
+        Scheme::Xml => Err(Error::UnsupportedEnc),
+    }
+}
+
+pub fn decode<T: Unmarshal + Default>(bytes: &[u8]) -> cdr::Result<T> {
+    let mut value = T::default();
+    decode_into(bytes, &mut value)?;
+    Ok(value)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn encapsulate(scheme: Scheme, payload: Vec<u8>) -> Vec<u8> {
+        let mut bytes = vec![0, scheme as u8, 0, 0];
+        bytes.extend(payload);
+        bytes
+    }
+
+    #[test]
+    fn decodes_cdr_le() {
+        let payload = to_bytes::<_, Little>(&"hello".to_string()).unwrap();
+        let bytes = encapsulate(Scheme::CdrLe, payload);
+
+        let decoded: String = decode(&bytes).unwrap();
+        assert_eq!(decoded, "hello");
+    }
+
+    #[test]
+    fn decodes_cdr_be() {
+        let payload = to_bytes::<_, Big>(&0x1234_5678u32).unwrap();
+        let bytes = encapsulate(Scheme::CdrBe, payload);
+
+        let decoded: u32 = decode(&bytes).unwrap();
+        assert_eq!(decoded, 0x1234_5678);
+    }
+
+    #[test]
+    fn decodes_cdr2_le() {
+        let payload = cdr2::to_bytes::<_, Little>(&"hello".to_string()).unwrap();
+        let bytes = encapsulate(Scheme::Cdr2Le, payload);
+
+        let decoded: String = decode(&bytes).unwrap();
+        assert_eq!(decoded, "hello");
+    }
+
+    #[test]
+    fn decodes_pl_cdr_le() {
+        let payload = to_bytes::<_, Little>(&42u32).unwrap();
+        let bytes = encapsulate(Scheme::PlCdrLe, payload);
+
+        let mut decoded = 0u32;
+        decode_into(&bytes, &mut decoded).unwrap();
+        assert_eq!(decoded, 42);
+    }
+
+    #[test]
+    fn errors_on_truncated_input() {
+        assert!(decode::<u32>(&[0, 1, 0]).is_err());
+
+        let bytes = encapsulate(Scheme::CdrLe, vec![1, 2]);
+        assert!(decode::<u32>(&bytes).is_err());
+    }
+
+    #[test]
+    fn errors_on_xml_scheme() {
+        let bytes = encapsulate(Scheme::Xml, vec![]);
+        assert!(matches!(decode::<u32>(&bytes), Err(Error::UnsupportedEnc)));
+    }
 }

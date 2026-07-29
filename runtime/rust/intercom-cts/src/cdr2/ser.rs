@@ -1,4 +1,4 @@
-// Copyright 2026 KONGSBERG
+// Copyright 2024 KONGSBERG
 //
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions are met:
@@ -32,8 +32,8 @@ use crate::buf::{Big, Buffer, Endian, Little};
 use crate::cdr::Error;
 use crate::cdr1::MemberFlag;
 use crate::encode::{
-    ArraySerializer, EnumSerializer, MapSerializer, Marshal, SeqSerializer, Serializer,
-    StructSerializer, UnionSerializer,
+    ArraySerializer, BitmaskSerializer, EnumSerializer, MapSerializer, Marshal, SeqSerializer,
+    Serializer, StructSerializer, UnionSerializer,
 };
 use crate::type_info::{MemberInfo, TypeInfo, TypeKind};
 
@@ -77,7 +77,7 @@ pub(crate) fn needs_dheader_as_field(info: &TypeInfo) -> bool {
     }
 }
 
-/// Calculate the Length Code (LC) for XCDR2 PL_CDR2 encoding (MUTABLE types).
+/// Calculate the Length Code (LC) for XCDR2 `PL_CDR2` encoding (MUTABLE types).
 ///
 /// LC is a 3-bit value (0-7) that encodes how the member's serialized size is represented:
 /// - LC 0-3: Direct length (1, 2, 4, 8 bytes), no NEXTINT field
@@ -250,6 +250,7 @@ impl<'a, 'b, E: Endian> Serializer<'a> for &'b mut Cdr2Writer<'a, E> {
     type Struct = Cdr2CompositeWriter<'a, 'b, E>;
     type Union = Cdr2CompositeWriter<'a, 'b, E>;
     type Enum = Self;
+    type Bitmask = Self;
     type Sequence = Cdr2CollectionWriter<'a, 'b, E>;
     type Array = Cdr2CollectionWriter<'a, 'b, E>;
     type Map = Cdr2MapWriter<'a, 'b, E>;
@@ -278,7 +279,7 @@ impl<'a, 'b, E: Endian> Serializer<'a> for &'b mut Cdr2Writer<'a, E> {
 
     #[inline]
     fn encode_i8(self, v: i8) -> Result<Self::Ok, Self::Error> {
-        self.write_u8(v as u8);
+        self.write_u8(v.cast_unsigned());
         Ok(())
     }
 
@@ -290,7 +291,7 @@ impl<'a, 'b, E: Endian> Serializer<'a> for &'b mut Cdr2Writer<'a, E> {
 
     #[inline]
     fn encode_i16(self, v: i16) -> Result<Self::Ok, Self::Error> {
-        self.write_u16(v as u16);
+        self.write_u16(v.cast_unsigned());
         Ok(())
     }
 
@@ -302,7 +303,7 @@ impl<'a, 'b, E: Endian> Serializer<'a> for &'b mut Cdr2Writer<'a, E> {
 
     #[inline]
     fn encode_i32(self, v: i32) -> Result<Self::Ok, Self::Error> {
-        self.write_u32(v as u32);
+        self.write_u32(v.cast_unsigned());
         Ok(())
     }
 
@@ -314,7 +315,7 @@ impl<'a, 'b, E: Endian> Serializer<'a> for &'b mut Cdr2Writer<'a, E> {
 
     #[inline]
     fn encode_i64(self, v: i64) -> Result<Self::Ok, Self::Error> {
-        self.write_u64(v as u64);
+        self.write_u64(v.cast_unsigned());
         Ok(())
     }
 
@@ -338,17 +339,10 @@ impl<'a, 'b, E: Endian> Serializer<'a> for &'b mut Cdr2Writer<'a, E> {
 
     #[inline]
     fn encode_string(self, v: &str) -> Result<Self::Ok, Self::Error> {
-        let len = if v.is_empty() {
-            0
-        } else {
-            v.len().checked_add(1).ok_or(Error::InvalidLen)?
-        };
+        let len = v.len().checked_add(1).ok_or(Error::InvalidLen)?;
         self.write_len(len)?;
-
-        if !v.is_empty() {
-            self.buf.extend(v.as_bytes());
-            self.write_u8(0);
-        }
+        self.buf.extend(v.as_bytes());
+        self.write_u8(0);
         Ok(())
     }
 
@@ -387,7 +381,12 @@ impl<'a, 'b, E: Endian> Serializer<'a> for &'b mut Cdr2Writer<'a, E> {
     }
 
     #[inline]
-    fn encode_enum(self, _name: &str) -> Result<Self::Enum, Self::Error> {
+    fn encode_enum(self, _: &TypeInfo<'_>) -> Result<Self::Enum, Self::Error> {
+        Ok(self)
+    }
+
+    #[inline]
+    fn encode_bitmask(self, _: &TypeInfo<'_>) -> Result<Self::Bitmask, Self::Error> {
         Ok(self)
     }
 
@@ -804,13 +803,26 @@ impl<'a, E: Endian> UnionSerializer<'a> for Cdr2CompositeWriter<'a, '_, E> {
     }
 }
 
-impl<E: Endian> EnumSerializer for &mut Cdr2Writer<'_, E> {
+impl<'a, E: Endian> EnumSerializer<'a> for &mut Cdr2Writer<'_, E> {
     type Ok = ();
     type Error = Error;
 
-    fn encode_variant<T>(self, _name: &str, value: T) -> Result<Self::Ok, Self::Error>
+    fn encode_variant<T>(self, _: &MemberInfo<'a>, value: T) -> Result<Self::Ok, Self::Error>
     where
         T: Marshal,
+    {
+        value.marshal(self)
+    }
+}
+
+impl<'a, E: Endian> BitmaskSerializer<'a> for &mut Cdr2Writer<'_, E> {
+    type Ok = ();
+    type Error = Error;
+
+    #[inline]
+    fn encode_flag<T>(self, value: T, _: &[MemberInfo<'a>]) -> Result<Self::Ok, Self::Error>
+    where
+        T: Marshal + Into<u64>,
     {
         value.marshal(self)
     }

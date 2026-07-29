@@ -28,6 +28,8 @@
 use std::env;
 use std::path::{Path, PathBuf};
 
+const BINARY_NAME: &str = "ic-idl";
+
 /// Returns a list of all directories found in `$PATH`.
 pub fn user_path() -> Vec<PathBuf> {
     env::var("PATH")
@@ -54,12 +56,12 @@ pub fn search_dirs() -> Vec<PathBuf> {
     // Check the INTERCOM_DIR env variable
     if let Ok(ref p) = env::var("INTERCOM_DIR") {
         paths.push(p.into());
-        let cidl = Path::new(&p).join("cidl");
-        paths.extend(configs(&cidl));
+        let binary = Path::new(&p).join(BINARY_NAME);
+        paths.extend(configs(&binary));
 
         if let Some(parent) = Path::new(&p).parent() {
-            let cidl = parent.join("cidl");
-            paths.extend(configs(&cidl));
+            let binary = parent.join(BINARY_NAME);
+            paths.extend(configs(&binary));
         }
 
         // Install archive

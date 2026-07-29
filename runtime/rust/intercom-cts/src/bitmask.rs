@@ -1,4 +1,4 @@
-// Copyright 2026 KONGSBERG
+// Copyright 2023 KONGSBERG
 //
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions are met:
@@ -222,25 +222,6 @@ macro_rules! bitmask {
                     fields.push("0");
                 }
                 write!(f, "{}({})", stringify!($name), fields.join(" | "))
-            }
-        }
-
-        impl $crate::Marshal for $name {
-            fn marshal<'a, S>(&self, archive: S) -> ::std::result::Result<S::Ok, S::Error>
-            where
-                S: $crate::encode::Serializer<'a>,
-            {
-                self.0.marshal(archive)
-            }
-        }
-
-        impl $crate::Unmarshal for $name {
-            fn unmarshal_mut<'a, D>(&mut self, archive: D) -> ::std::result::Result<(), D::Error>
-            where
-                D: $crate::decode::Deserializer<'a>,
-            {
-                self.0 = <$type>::unmarshal(archive)?;
-                Ok(())
             }
         }
     };

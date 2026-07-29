@@ -1,4 +1,4 @@
-// Copyright 2026 KONGSBERG
+// Copyright 2023 KONGSBERG
 //
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions are met:
@@ -48,7 +48,10 @@ pub trait Serializer<'a>: Sized {
     type Union: UnionSerializer<'a, Ok = Self::Ok, Error = Self::Error>;
 
     /// Serializer used to serialize plain, C-like `enum`s.
-    type Enum: EnumSerializer<Ok = Self::Ok, Error = Self::Error>;
+    type Enum: EnumSerializer<'a, Ok = Self::Ok, Error = Self::Error>;
+
+    /// Serializer used to serialize bitmasks.
+    type Bitmask: BitmaskSerializer<'a, Ok = Self::Ok, Error = Self::Error>;
 
     /// Serializer used to serialize sequences.
     type Sequence: SeqSerializer<Ok = Self::Ok, Error = Self::Error>;
@@ -392,33 +395,10 @@ pub trait Serializer<'a>: Sized {
     fn encode_union(self, info: &TypeInfo<'a>) -> Result<Self::Union, Self::Error>;
 
     /// Serialize a plain, C-like enum.
-    ///
-    /// # Example
-    /// ```
-    /// use intercom_cts::Marshal;
-    /// use intercom_cts::encode::{EnumSerializer, Serializer};
-    ///
-    /// enum Value {
-    ///     Red,
-    ///     Green,
-    ///     Blue = 9
-    /// }
-    ///
-    /// impl Marshal for Value {
-    ///     fn marshal<'a, S>(&self, archive: S) -> Result<S::Ok, S::Error>
-    ///     where
-    ///         S: Serializer<'a>,
-    ///     {
-    ///         let state = archive.encode_enum("Value")?;
-    ///         match self {
-    ///             Self::Red => state.encode_variant("Red", 0),
-    ///             Self::Green => state.encode_variant("Green", 1),
-    ///             Self::Blue => state.encode_variant("Blue", 9),
-    ///         }
-    ///     }
-    /// }
-    /// ```
-    fn encode_enum(self, name: &str) -> Result<Self::Enum, Self::Error>;
+    fn encode_enum(self, info: &TypeInfo<'a>) -> Result<Self::Enum, Self::Error>;
+
+    /// Serialize a bitmask.
+    fn encode_bitmask(self, info: &TypeInfo<'a>) -> Result<Self::Bitmask, Self::Error>;
 
     /// Serialize a sequence,
     ///
@@ -565,13 +545,22 @@ pub trait SeqSerializer {
     fn end(self) -> Result<Self::Ok, Self::Error>;
 }
 
-pub trait EnumSerializer {
+pub trait EnumSerializer<'a> {
     type Ok;
     type Error: Error;
 
-    fn encode_variant<T>(self, name: &str, value: T) -> Result<Self::Ok, Self::Error>
+    fn encode_variant<T>(self, info: &MemberInfo<'a>, value: T) -> Result<Self::Ok, Self::Error>
     where
         T: Marshal;
+}
+
+pub trait BitmaskSerializer<'a> {
+    type Ok;
+    type Error: Error;
+
+    fn encode_flag<T>(self, value: T, members: &[MemberInfo<'a>]) -> Result<Self::Ok, Self::Error>
+    where
+        T: Marshal + Into<u64>;
 }
 
 pub trait MapSerializer {

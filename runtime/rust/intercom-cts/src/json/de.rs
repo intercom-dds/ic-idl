@@ -1,4 +1,4 @@
-// Copyright 2026 KONGSBERG
+// Copyright 2023 KONGSBERG
 //
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions are met:
@@ -32,8 +32,9 @@ use super::key::KeyDeserializer;
 use super::parse::parse;
 use super::{Error, Number, Value};
 use crate::decode::{
-    ArrayDeserializer, Deserializer, EnumDeserializer, EnumVisitor, MapDeserializer,
-    OptionDeserializer, SeqDeserializer, StructDeserializer, Type, UnionDeserializer, Unmarshal,
+    ArrayDeserializer, BitmaskDeserializer, Deserializer, EnumDeserializer, EnumVisitor,
+    MapDeserializer, OptionDeserializer, SeqDeserializer, StructDeserializer, Type,
+    UnionDeserializer, Unmarshal,
 };
 use crate::error::Error as _;
 use crate::{DISC_INFO, MemberInfo, TypeInfo};
@@ -46,6 +47,7 @@ impl<'a> Deserializer<'a> for &'a mut JsonReader {
     type Struct = Self;
     type Union = Self;
     type Enum = Self;
+    type Bitmask = Self;
     type Map = Indexed<btree_map::IntoIter<String, Value>>;
     type Sequence = Indexed<vec::IntoIter<Value>>;
     type Array = Self::Sequence;
@@ -166,7 +168,11 @@ impl<'a> Deserializer<'a> for &'a mut JsonReader {
         Ok(self)
     }
 
-    fn decode_enum(self, _name: &str) -> Result<Self::Enum, Self::Error> {
+    fn decode_enum(self, _: &TypeInfo<'_>) -> Result<Self::Enum, Self::Error> {
+        Ok(self)
+    }
+
+    fn decode_bitmask(self, _: &TypeInfo<'_>) -> Result<Self::Bitmask, Self::Error> {
         Ok(self)
     }
 
@@ -272,6 +278,33 @@ impl EnumDeserializer for &mut JsonReader {
             _ => return Err(Error::custom("expected enum")),
         };
         Ok(value)
+    }
+}
+
+impl<'a> BitmaskDeserializer<'a> for &mut JsonReader {
+    type Error = Error;
+
+    fn decode_flags<T>(self, members: &[MemberInfo<'a>]) -> Result<T, Self::Error>
+    where
+        T: Unmarshal + Default,
+    {
+        match &self.value {
+            Value::String(flags_str) => {
+                let mut bits = 0u64;
+                if !flags_str.is_empty() {
+                    for flag_name in flags_str.split('|') {
+                        let flag_name = flag_name.trim();
+                        if let Some(member) = members.iter().find(|m| m.name == flag_name) {
+                            bits |= 1u64 << member.member_id;
+                        }
+                    }
+                }
+                self.value = Value::Number(Number::Unsigned(bits));
+                T::unmarshal(self)
+            }
+            Value::Number(_) => T::unmarshal(self),
+            _ => Err(Error::custom("expected bitmask string or number")),
+        }
     }
 }
 

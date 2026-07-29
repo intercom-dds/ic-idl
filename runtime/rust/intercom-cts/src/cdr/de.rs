@@ -1,4 +1,4 @@
-// Copyright 2026 KONGSBERG
+// Copyright 2023 KONGSBERG
 //
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions are met:
@@ -31,8 +31,9 @@ use super::Error;
 use crate::buf::Cursor;
 use crate::buf::endian::{Big, Endian, Little};
 use crate::decode::{
-    ArrayDeserializer, Deserializer, EnumDeserializer, EnumVisitor, MapDeserializer,
-    OptionDeserializer, SeqDeserializer, StructDeserializer, UnionDeserializer, Unmarshal,
+    ArrayDeserializer, BitmaskDeserializer, Deserializer, EnumDeserializer, EnumVisitor,
+    MapDeserializer, OptionDeserializer, SeqDeserializer, StructDeserializer, UnionDeserializer,
+    Unmarshal,
 };
 use crate::{MemberInfo, TypeInfo};
 
@@ -69,6 +70,7 @@ impl<'a, 'de, E: Endian> Deserializer<'a> for &'a mut CdrReader<'de, E> {
     type Struct = Self;
     type Union = Self;
     type Enum = Self;
+    type Bitmask = Self;
     type Map = MemberSeq<'a, 'de, E>;
     type Sequence = MemberSeq<'a, 'de, E>;
     type Array = MemberSeq<'a, 'de, E>;
@@ -94,7 +96,7 @@ impl<'a, 'de, E: Endian> Deserializer<'a> for &'a mut CdrReader<'de, E> {
 
     #[inline]
     fn decode_i8(self) -> Result<i8, Self::Error> {
-        self.decode_u8().map(|v| v as i8)
+        self.decode_u8().map(u8::cast_signed)
     }
 
     #[inline]
@@ -104,7 +106,7 @@ impl<'a, 'de, E: Endian> Deserializer<'a> for &'a mut CdrReader<'de, E> {
 
     #[inline]
     fn decode_i16(self) -> Result<i16, Self::Error> {
-        self.decode_u16().map(|v| v as i16)
+        self.decode_u16().map(u16::cast_signed)
     }
 
     #[inline]
@@ -114,7 +116,7 @@ impl<'a, 'de, E: Endian> Deserializer<'a> for &'a mut CdrReader<'de, E> {
 
     #[inline]
     fn decode_i32(self) -> Result<i32, Self::Error> {
-        self.decode_u32().map(|v| v as i32)
+        self.decode_u32().map(u32::cast_signed)
     }
 
     #[inline]
@@ -124,7 +126,7 @@ impl<'a, 'de, E: Endian> Deserializer<'a> for &'a mut CdrReader<'de, E> {
 
     #[inline]
     fn decode_i64(self) -> Result<i64, Self::Error> {
-        self.decode_u64().map(|v| v as i64)
+        self.decode_u64().map(u64::cast_signed)
     }
 
     #[inline]
@@ -195,7 +197,12 @@ impl<'a, 'de, E: Endian> Deserializer<'a> for &'a mut CdrReader<'de, E> {
     }
 
     #[inline]
-    fn decode_enum(self, _: &str) -> Result<Self::Enum, Self::Error> {
+    fn decode_enum(self, _: &TypeInfo<'_>) -> Result<Self::Enum, Self::Error> {
+        Ok(self)
+    }
+
+    #[inline]
+    fn decode_bitmask(self, _: &TypeInfo<'_>) -> Result<Self::Bitmask, Self::Error> {
         Ok(self)
     }
 
@@ -286,6 +293,18 @@ impl<E: Endian> EnumDeserializer for &mut CdrReader<'_, E> {
         V: EnumVisitor + Unmarshal,
     {
         visitor.member_id(&mut *self)
+    }
+}
+
+impl<'a, E: Endian> BitmaskDeserializer<'a> for &mut CdrReader<'_, E> {
+    type Error = Error;
+
+    #[inline]
+    fn decode_flags<T>(self, _: &[MemberInfo<'a>]) -> Result<T, Self::Error>
+    where
+        T: Unmarshal + Default,
+    {
+        T::unmarshal(self)
     }
 }
 

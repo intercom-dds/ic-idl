@@ -27,23 +27,23 @@
 
 //! Annotation system using intercom-cts serialization framework.
 
-use intercom_cts::decode::{Deserializer, EnumDeserializer as _, StructDeserializer};
+use intercom_cts::decode::{Deserializer, StructDeserializer};
 use intercom_cts::error::Error as CtsError;
 use intercom_cts::type_info::type_info;
-use intercom_cts::{MemberFlag, MemberInfo, TypeFlag, TypeInfo, TypeKind, Unmarshal};
+use intercom_cts::{MemberFlag, MemberInfo, TypeFlag, TypeInfo, TypeKind, Unmarshal, infallible};
 
 use crate::hir::{Ann, Numeric};
 
 /// Error type for CTS-based annotation operations
 #[derive(Debug, Clone)]
-pub enum CtsAnnotationError {
+pub enum Error {
     /// Annotation name mismatch
     WrongAnnotationType {
         expected: &'static str,
         actual: String,
     },
 
-    /// Deserialization error  
+    /// Deserialization error
     DeserializationError(String),
 
     /// Field not found
@@ -56,7 +56,7 @@ pub enum CtsAnnotationError {
     },
 }
 
-impl std::fmt::Display for CtsAnnotationError {
+impl std::fmt::Display for Error {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::WrongAnnotationType { expected, actual } => {
@@ -71,9 +71,9 @@ impl std::fmt::Display for CtsAnnotationError {
     }
 }
 
-impl std::error::Error for CtsAnnotationError {}
+impl std::error::Error for Error {}
 
-impl CtsError for CtsAnnotationError {
+impl CtsError for Error {
     fn custom<T: std::fmt::Display>(msg: T) -> Self {
         Self::DeserializationError(msg.to_string())
     }
@@ -106,7 +106,7 @@ struct AnnStructDeserializer<'a> {
 
 impl<'a> StructDeserializer<'a> for AnnStructDeserializer<'a> {
     type Ok = ();
-    type Error = CtsAnnotationError;
+    type Error = Error;
 
     fn decode_field<T>(&mut self, info: &MemberInfo<'a>, value: &mut T) -> Result<(), Self::Error>
     where
@@ -155,7 +155,7 @@ impl StringEnumDeserializer {
 }
 
 impl intercom_cts::decode::EnumDeserializer for StringEnumDeserializer {
-    type Error = CtsAnnotationError;
+    type Error = Error;
 
     fn decode_enumerator<T>(self, visitor: T) -> Result<T, Self::Error>
     where
@@ -165,122 +165,12 @@ impl intercom_cts::decode::EnumDeserializer for StringEnumDeserializer {
     }
 }
 
-struct Never;
-
-impl<'a> StructDeserializer<'a> for Never {
-    type Ok = ();
-    type Error = CtsAnnotationError;
-
-    fn decode_field<T>(&mut self, _info: &MemberInfo<'a>, _value: &mut T) -> Result<(), Self::Error>
-    where
-        T: Unmarshal,
-    {
-        unreachable!()
-    }
-
-    fn end(self) -> Result<Self::Ok, Self::Error> {
-        unreachable!()
-    }
-}
-
-impl<'a> intercom_cts::decode::UnionDeserializer<'a> for Never {
-    type Ok = ();
-    type Error = CtsAnnotationError;
-
-    fn decode_discriminant<T>(&mut self, _value: &mut T) -> Result<(), Self::Error>
-    where
-        T: Unmarshal,
-    {
-        unreachable!()
-    }
-
-    fn decode_variant<T>(
-        self,
-        _info: &MemberInfo<'a>,
-        _value: &mut T,
-    ) -> Result<Self::Ok, Self::Error>
-    where
-        T: Unmarshal,
-    {
-        unreachable!()
-    }
-}
-
-impl intercom_cts::decode::EnumDeserializer for Never {
-    type Error = CtsAnnotationError;
-
-    fn decode_enumerator<T>(self, _visitor: T) -> Result<T, Self::Error>
-    where
-        T: Unmarshal + intercom_cts::decode::EnumVisitor,
-    {
-        unreachable!()
-    }
-}
-
-impl intercom_cts::decode::SeqDeserializer for Never {
-    type Error = CtsAnnotationError;
-
-    fn decode_next<T>(&mut self, _value: &mut T) -> Result<bool, Self::Error>
-    where
-        T: Unmarshal,
-    {
-        unreachable!()
-    }
-
-    fn size_hint(&self) -> Option<usize> {
-        unreachable!()
-    }
-}
-
-impl intercom_cts::decode::ArrayDeserializer for Never {
-    type Error = CtsAnnotationError;
-
-    fn decode_next<T>(&mut self, _value: &mut T) -> Result<bool, Self::Error>
-    where
-        T: Unmarshal,
-    {
-        unreachable!()
-    }
-}
-
-impl intercom_cts::decode::MapDeserializer for Never {
-    type Error = CtsAnnotationError;
-
-    fn decode_pair<K, V>(&mut self, _key: &mut K, _value: &mut V) -> Result<bool, Self::Error>
-    where
-        K: Unmarshal,
-        V: Unmarshal,
-    {
-        unreachable!()
-    }
-
-    fn size_hint(&self) -> Option<usize> {
-        unreachable!()
-    }
-}
-
-impl intercom_cts::decode::OptionDeserializer for Never {
-    type Error = CtsAnnotationError;
-
-    fn is_some(&mut self) -> bool {
-        unreachable!()
-    }
-
-    fn decode_some<T>(self, _value: &mut T) -> Result<(), Self::Error>
-    where
-        T: Unmarshal,
-    {
-        unreachable!()
-    }
-}
-
-/// Option deserializer for annotation values
 struct AnnOptionDeserializer<'a> {
     numeric: Option<&'a Numeric>,
 }
 
 impl intercom_cts::decode::OptionDeserializer for AnnOptionDeserializer<'_> {
-    type Error = CtsAnnotationError;
+    type Error = Error;
 
     fn is_some(&mut self) -> bool {
         self.numeric.is_some()
@@ -298,24 +188,25 @@ impl intercom_cts::decode::OptionDeserializer for AnnOptionDeserializer<'_> {
 }
 
 impl<'a> Deserializer<'a> for AnnDeserializer<'a> {
-    type Error = CtsAnnotationError;
+    type Error = Error;
     type Struct = AnnStructDeserializer<'a>;
     type Enum = StringEnumDeserializer;
-    type Union = Never;
-    type Array = Never;
-    type Sequence = Never;
-    type Map = Never;
+    type Bitmask = Self;
+    type Union = infallible::Never<(), Error>;
+    type Array = infallible::Never<(), Error>;
+    type Sequence = infallible::Never<(), Error>;
+    type Map = infallible::Never<(), Error>;
     type Option = AnnOptionDeserializer<'a>;
 
     fn decode_bool(self) -> Result<bool, Self::Error> {
         match self {
-            Self::Annotation(_) => Err(CtsAnnotationError::TypeConversionError {
+            Self::Annotation(_) => Err(Error::TypeConversionError {
                 field: "annotation".to_string(),
                 expected: "bool",
             }),
             Self::Numeric(numeric) => match numeric {
                 Numeric::Bool(b) => Ok(*b),
-                _ => Err(CtsAnnotationError::TypeConversionError {
+                _ => Err(Error::TypeConversionError {
                     field: "value".to_string(),
                     expected: "bool",
                 }),
@@ -325,13 +216,13 @@ impl<'a> Deserializer<'a> for AnnDeserializer<'a> {
 
     fn decode_i8(self) -> Result<i8, Self::Error> {
         match self {
-            Self::Annotation(_) => Err(CtsAnnotationError::TypeConversionError {
+            Self::Annotation(_) => Err(Error::TypeConversionError {
                 field: "annotation".to_string(),
                 expected: "i8",
             }),
             Self::Numeric(numeric) => match numeric {
                 Numeric::Int8(v) => Ok(*v),
-                _ => Err(CtsAnnotationError::TypeConversionError {
+                _ => Err(Error::TypeConversionError {
                     field: "value".to_string(),
                     expected: "i8",
                 }),
@@ -341,14 +232,14 @@ impl<'a> Deserializer<'a> for AnnDeserializer<'a> {
 
     fn decode_i16(self) -> Result<i16, Self::Error> {
         match self {
-            Self::Annotation(_) => Err(CtsAnnotationError::TypeConversionError {
+            Self::Annotation(_) => Err(Error::TypeConversionError {
                 field: "annotation".to_string(),
                 expected: "i16",
             }),
             Self::Numeric(numeric) => match numeric {
                 Numeric::Int8(v) => Ok(i16::from(*v)),
                 Numeric::Int16(v) => Ok(*v),
-                _ => Err(CtsAnnotationError::TypeConversionError {
+                _ => Err(Error::TypeConversionError {
                     field: "value".to_string(),
                     expected: "i16",
                 }),
@@ -358,7 +249,7 @@ impl<'a> Deserializer<'a> for AnnDeserializer<'a> {
 
     fn decode_i32(self) -> Result<i32, Self::Error> {
         match self {
-            Self::Annotation(_) => Err(CtsAnnotationError::TypeConversionError {
+            Self::Annotation(_) => Err(Error::TypeConversionError {
                 field: "annotation".to_string(),
                 expected: "i32",
             }),
@@ -366,7 +257,7 @@ impl<'a> Deserializer<'a> for AnnDeserializer<'a> {
                 Numeric::Int8(v) => Ok(i32::from(*v)),
                 Numeric::Int16(v) => Ok(i32::from(*v)),
                 Numeric::Int32(v) => Ok(*v),
-                _ => Err(CtsAnnotationError::TypeConversionError {
+                _ => Err(Error::TypeConversionError {
                     field: "value".to_string(),
                     expected: "i32",
                 }),
@@ -376,7 +267,7 @@ impl<'a> Deserializer<'a> for AnnDeserializer<'a> {
 
     fn decode_i64(self) -> Result<i64, Self::Error> {
         match self {
-            Self::Annotation(_) => Err(CtsAnnotationError::TypeConversionError {
+            Self::Annotation(_) => Err(Error::TypeConversionError {
                 field: "annotation".to_string(),
                 expected: "i64",
             }),
@@ -388,13 +279,11 @@ impl<'a> Deserializer<'a> for AnnDeserializer<'a> {
                 Numeric::UInt8(v) => Ok(i64::from(*v)),
                 Numeric::UInt16(v) => Ok(i64::from(*v)),
                 Numeric::UInt32(v) => Ok(i64::from(*v)),
-                Numeric::UInt64(v) => {
-                    i64::try_from(*v).map_err(|_| CtsAnnotationError::TypeConversionError {
-                        field: "value".to_string(),
-                        expected: "i64 (value too large)",
-                    })
-                }
-                _ => Err(CtsAnnotationError::TypeConversionError {
+                Numeric::UInt64(v) => i64::try_from(*v).map_err(|_| Error::TypeConversionError {
+                    field: "value".to_string(),
+                    expected: "i64 (value too large)",
+                }),
+                _ => Err(Error::TypeConversionError {
                     field: "value".to_string(),
                     expected: "i64",
                 }),
@@ -404,13 +293,13 @@ impl<'a> Deserializer<'a> for AnnDeserializer<'a> {
 
     fn decode_u8(self) -> Result<u8, Self::Error> {
         match self {
-            Self::Annotation(_) => Err(CtsAnnotationError::TypeConversionError {
+            Self::Annotation(_) => Err(Error::TypeConversionError {
                 field: "annotation".to_string(),
                 expected: "u8",
             }),
             Self::Numeric(numeric) => match numeric {
                 Numeric::UInt8(v) => Ok(*v),
-                _ => Err(CtsAnnotationError::TypeConversionError {
+                _ => Err(Error::TypeConversionError {
                     field: "value".to_string(),
                     expected: "u8",
                 }),
@@ -420,14 +309,14 @@ impl<'a> Deserializer<'a> for AnnDeserializer<'a> {
 
     fn decode_u16(self) -> Result<u16, Self::Error> {
         match self {
-            Self::Annotation(_) => Err(CtsAnnotationError::TypeConversionError {
+            Self::Annotation(_) => Err(Error::TypeConversionError {
                 field: "annotation".to_string(),
                 expected: "u16",
             }),
             Self::Numeric(numeric) => match numeric {
                 Numeric::UInt8(v) => Ok(u16::from(*v)),
                 Numeric::UInt16(v) => Ok(*v),
-                _ => Err(CtsAnnotationError::TypeConversionError {
+                _ => Err(Error::TypeConversionError {
                     field: "value".to_string(),
                     expected: "u16",
                 }),
@@ -437,7 +326,7 @@ impl<'a> Deserializer<'a> for AnnDeserializer<'a> {
 
     fn decode_u32(self) -> Result<u32, Self::Error> {
         match self {
-            Self::Annotation(_) => Err(CtsAnnotationError::TypeConversionError {
+            Self::Annotation(_) => Err(Error::TypeConversionError {
                 field: "annotation".to_string(),
                 expected: "u32",
             }),
@@ -445,7 +334,7 @@ impl<'a> Deserializer<'a> for AnnDeserializer<'a> {
                 Numeric::UInt8(v) => Ok(u32::from(*v)),
                 Numeric::UInt16(v) => Ok(u32::from(*v)),
                 Numeric::UInt32(v) => Ok(*v),
-                _ => Err(CtsAnnotationError::TypeConversionError {
+                _ => Err(Error::TypeConversionError {
                     field: "value".to_string(),
                     expected: "u32",
                 }),
@@ -455,7 +344,7 @@ impl<'a> Deserializer<'a> for AnnDeserializer<'a> {
 
     fn decode_u64(self) -> Result<u64, Self::Error> {
         match self {
-            Self::Annotation(_) => Err(CtsAnnotationError::TypeConversionError {
+            Self::Annotation(_) => Err(Error::TypeConversionError {
                 field: "annotation".to_string(),
                 expected: "u64",
             }),
@@ -464,7 +353,7 @@ impl<'a> Deserializer<'a> for AnnDeserializer<'a> {
                 Numeric::UInt16(v) => Ok(u64::from(*v)),
                 Numeric::UInt32(v) => Ok(u64::from(*v)),
                 Numeric::UInt64(v) => Ok(*v),
-                _ => Err(CtsAnnotationError::TypeConversionError {
+                _ => Err(Error::TypeConversionError {
                     field: "value".to_string(),
                     expected: "u64",
                 }),
@@ -474,13 +363,13 @@ impl<'a> Deserializer<'a> for AnnDeserializer<'a> {
 
     fn decode_f32(self) -> Result<f32, Self::Error> {
         match self {
-            Self::Annotation(_) => Err(CtsAnnotationError::TypeConversionError {
+            Self::Annotation(_) => Err(Error::TypeConversionError {
                 field: "annotation".to_string(),
                 expected: "f32",
             }),
             Self::Numeric(numeric) => match numeric {
                 Numeric::Float(v) => Ok(*v),
-                _ => Err(CtsAnnotationError::TypeConversionError {
+                _ => Err(Error::TypeConversionError {
                     field: "value".to_string(),
                     expected: "f32",
                 }),
@@ -490,14 +379,14 @@ impl<'a> Deserializer<'a> for AnnDeserializer<'a> {
 
     fn decode_f64(self) -> Result<f64, Self::Error> {
         match self {
-            Self::Annotation(_) => Err(CtsAnnotationError::TypeConversionError {
+            Self::Annotation(_) => Err(Error::TypeConversionError {
                 field: "annotation".to_string(),
                 expected: "f64",
             }),
             Self::Numeric(numeric) => match numeric {
                 Numeric::Float(v) => Ok(f64::from(*v)),
                 Numeric::Double(v) => Ok(*v),
-                _ => Err(CtsAnnotationError::TypeConversionError {
+                _ => Err(Error::TypeConversionError {
                     field: "value".to_string(),
                     expected: "f64",
                 }),
@@ -507,13 +396,13 @@ impl<'a> Deserializer<'a> for AnnDeserializer<'a> {
 
     fn decode_char(self) -> Result<char, Self::Error> {
         match self {
-            Self::Annotation(_) => Err(CtsAnnotationError::TypeConversionError {
+            Self::Annotation(_) => Err(Error::TypeConversionError {
                 field: "annotation".to_string(),
                 expected: "char",
             }),
             Self::Numeric(numeric) => match numeric {
                 Numeric::Char(c) | Numeric::WChar(c) => Ok(*c),
-                _ => Err(CtsAnnotationError::TypeConversionError {
+                _ => Err(Error::TypeConversionError {
                     field: "value".to_string(),
                     expected: "char",
                 }),
@@ -527,13 +416,13 @@ impl<'a> Deserializer<'a> for AnnDeserializer<'a> {
 
     fn decode_string(self) -> Result<String, Self::Error> {
         match self {
-            Self::Annotation(_) => Err(CtsAnnotationError::TypeConversionError {
+            Self::Annotation(_) => Err(Error::TypeConversionError {
                 field: "annotation".to_string(),
                 expected: "string",
             }),
             Self::Numeric(numeric) => match numeric {
                 Numeric::String(s) | Numeric::WString(s) => Ok(s.clone()),
-                _ => Err(CtsAnnotationError::TypeConversionError {
+                _ => Err(Error::TypeConversionError {
                     field: "value".to_string(),
                     expected: "string",
                 }),
@@ -547,7 +436,7 @@ impl<'a> Deserializer<'a> for AnnDeserializer<'a> {
 
     fn begin_decode_option(self) -> Result<Self::Option, Self::Error> {
         match self {
-            Self::Annotation(_) => Err(CtsAnnotationError::TypeConversionError {
+            Self::Annotation(_) => Err(Error::TypeConversionError {
                 field: "annotation".to_string(),
                 expected: "option",
             }),
@@ -563,22 +452,22 @@ impl<'a> Deserializer<'a> for AnnDeserializer<'a> {
                 ann,
                 field_index: 0,
             }),
-            Self::Numeric(_) => Err(CtsAnnotationError::TypeConversionError {
+            Self::Numeric(_) => Err(Error::TypeConversionError {
                 field: "value".to_string(),
                 expected: "struct",
             }),
         }
     }
 
-    fn decode_enum(self, _name: &str) -> Result<Self::Enum, Self::Error> {
+    fn decode_enum(self, _info: &TypeInfo<'a>) -> Result<Self::Enum, Self::Error> {
         match self {
-            Self::Annotation(_) => Err(CtsAnnotationError::TypeConversionError {
+            Self::Annotation(_) => Err(Error::TypeConversionError {
                 field: "annotation".to_string(),
                 expected: "enum",
             }),
             Self::Numeric(numeric) => match numeric {
                 Numeric::String(s) | Numeric::WString(s) => Ok(StringEnumDeserializer::new(s)),
-                _ => Err(CtsAnnotationError::TypeConversionError {
+                _ => Err(Error::TypeConversionError {
                     field: "value".to_string(),
                     expected: "string (for enum)",
                 }),
@@ -586,8 +475,18 @@ impl<'a> Deserializer<'a> for AnnDeserializer<'a> {
         }
     }
 
+    fn decode_bitmask(self, _info: &TypeInfo<'a>) -> Result<Self::Bitmask, Self::Error> {
+        match self {
+            Self::Annotation(_) => Err(Error::TypeConversionError {
+                field: "annotation".to_string(),
+                expected: "bitmask",
+            }),
+            Self::Numeric(_) => Ok(self),
+        }
+    }
+
     fn decode_union(self, _info: &TypeInfo<'a>) -> Result<Self::Union, Self::Error> {
-        Err(CtsAnnotationError::TypeConversionError {
+        Err(Error::TypeConversionError {
             field: match self {
                 Self::Annotation(_) => "annotation",
                 Self::Numeric(_) => "value",
@@ -598,7 +497,7 @@ impl<'a> Deserializer<'a> for AnnDeserializer<'a> {
     }
 
     fn decode_array(self, _len: usize) -> Result<Self::Array, Self::Error> {
-        Err(CtsAnnotationError::TypeConversionError {
+        Err(Error::TypeConversionError {
             field: match self {
                 Self::Annotation(_) => "annotation",
                 Self::Numeric(_) => "value",
@@ -609,7 +508,7 @@ impl<'a> Deserializer<'a> for AnnDeserializer<'a> {
     }
 
     fn decode_sequence(self) -> Result<Self::Sequence, Self::Error> {
-        Err(CtsAnnotationError::TypeConversionError {
+        Err(Error::TypeConversionError {
             field: match self {
                 Self::Annotation(_) => "annotation",
                 Self::Numeric(_) => "value",
@@ -620,7 +519,7 @@ impl<'a> Deserializer<'a> for AnnDeserializer<'a> {
     }
 
     fn decode_map(self) -> Result<Self::Map, Self::Error> {
-        Err(CtsAnnotationError::TypeConversionError {
+        Err(Error::TypeConversionError {
             field: match self {
                 Self::Annotation(_) => "annotation",
                 Self::Numeric(_) => "value",
@@ -628,6 +527,17 @@ impl<'a> Deserializer<'a> for AnnDeserializer<'a> {
             .to_string(),
             expected: "map",
         })
+    }
+}
+
+impl<'a> intercom_cts::decode::BitmaskDeserializer<'a> for AnnDeserializer<'a> {
+    type Error = Error;
+
+    fn decode_flags<T>(self, _members: &[MemberInfo<'a>]) -> Result<T, Self::Error>
+    where
+        T: Unmarshal + Default,
+    {
+        T::unmarshal(self)
     }
 }
 
@@ -670,7 +580,7 @@ impl Unmarshal for Optional {
     }
 }
 
-/// The @range annotation  
+/// The @range annotation
 #[derive(Debug, Clone, PartialEq, Default)]
 pub struct Range {
     pub min: Option<i64>,
@@ -817,106 +727,17 @@ impl Unmarshal for DefaultValue {
     }
 }
 
-/// Example enum for the @mode annotation
-#[derive(Debug, Clone, PartialEq, Default)]
-pub enum Mode {
-    #[default]
-    ReadWrite,
-    ReadOnly,
-    WriteOnly,
-}
-
-impl intercom_cts::decode::EnumVisitor for Mode {
-    fn member_id<'a, D>(self, _de: D) -> Result<Self, D::Error>
-    where
-        Self: Sized,
-        D: Deserializer<'a>,
-    {
-        Err(D::Error::custom("Mode enum does not support member IDs"))
-    }
-
-    fn member_field<'a, D>(self, name: &str) -> Result<Self, D::Error>
-    where
-        Self: Sized,
-        D: Deserializer<'a>,
-    {
-        match name {
-            "read_write" => Ok(Mode::ReadWrite),
-            "read_only" => Ok(Mode::ReadOnly),
-            "write_only" => Ok(Mode::WriteOnly),
-            _ => Err(D::Error::custom(format!("Unknown mode: {name}"))),
-        }
-    }
-}
-
-impl Unmarshal for Mode {
-    fn unmarshal_mut<'a, D>(&mut self, archive: D) -> Result<(), D::Error>
-    where
-        D: Deserializer<'a>,
-    {
-        let state = archive.decode_enum("Mode")?;
-        *self = state.decode_enumerator(Mode::default())?;
-        Ok(())
-    }
-}
-
-/// The @mode annotation
-#[derive(Debug, Clone, PartialEq, Default)]
-pub struct ModeAnnotation {
-    pub value: Mode,
-}
-
-/// Type info for Mode enum
-static MODE_TYPE_INFO: TypeInfo<'static> = TypeInfo {
-    name: "Mode",
-    flags: TypeFlag::IS_FINAL,
-    kind: TypeKind::Enum,
-    key_info: None,
-    element_info: None,
-};
-
-impl Unmarshal for ModeAnnotation {
-    fn unmarshal_mut<'a, D>(&mut self, archive: D) -> Result<(), D::Error>
-    where
-        D: Deserializer<'a>,
-    {
-        let mut state = archive.decode_struct(&TypeInfo {
-            name: "ModeAnnotation",
-            flags: TypeFlag::nil(),
-            kind: TypeKind::Struct,
-            key_info: None,
-            element_info: None,
-        })?;
-
-        state.decode_field(
-            &MemberInfo {
-                name: "value",
-                member_id: 0,
-                flags: MemberFlag::nil(),
-                type_info: &MODE_TYPE_INFO,
-            },
-            &mut self.value,
-        )?;
-
-        state.end()?;
-        Ok(())
-    }
-}
-
 /// Helper to deserialize an annotation with a specific expected name
 ///
 /// # Errors
 ///
 /// Returns error if annotation name doesn't match or deserialization fails
-pub fn unmarshal_annotation<T>(
-    ann: &Ann,
-    expected_name: &'static str,
-) -> Result<T, CtsAnnotationError>
+pub fn unmarshal_annotation<T>(ann: &Ann, expected_name: &'static str) -> Result<T, Error>
 where
     T: Unmarshal + Default,
 {
     if ann.ident.name != expected_name {
-        return Err(CtsAnnotationError::WrongAnnotationType {
+        return Err(Error::WrongAnnotationType {
             expected: expected_name,
             actual: ann.ident.name.clone(),
         });
@@ -935,27 +756,18 @@ pub trait AnnCtsExt {
     /// # Errors
     ///
     /// Returns error if deserialization fails
-    fn unmarshal<T: Unmarshal + Default>(
-        &self,
-        expected_name: &'static str,
-    ) -> Result<T, CtsAnnotationError>;
+    fn unmarshal<T: Unmarshal + Default>(&self, expected_name: &'static str) -> Result<T, Error>;
 }
 
 impl AnnCtsExt for Ann {
-    fn unmarshal<T: Unmarshal + Default>(
-        &self,
-        expected_name: &'static str,
-    ) -> Result<T, CtsAnnotationError> {
+    fn unmarshal<T: Unmarshal + Default>(&self, expected_name: &'static str) -> Result<T, Error> {
         unmarshal_annotation(self, expected_name)
     }
 }
 
 /// Find and unmarshal an annotation from a list
 #[must_use]
-pub fn find_annotation<T>(
-    annotations: &[Ann],
-    name: &'static str,
-) -> Option<Result<T, CtsAnnotationError>>
+pub fn find_annotation<T>(annotations: &[Ann], name: &'static str) -> Option<Result<T, Error>>
 where
     T: Unmarshal + Default,
 {
@@ -1056,10 +868,7 @@ mod tests {
     fn test_wrong_type() {
         let ann = make_ann("optional", vec![]);
         let err = ann.unmarshal::<Range>("range").unwrap_err();
-        assert!(matches!(
-            err,
-            CtsAnnotationError::WrongAnnotationType { .. }
-        ));
+        assert!(matches!(err, Error::WrongAnnotationType { .. }));
     }
 
     #[test]

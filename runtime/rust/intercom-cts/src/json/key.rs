@@ -1,4 +1,4 @@
-// Copyright 2026 KONGSBERG
+// Copyright 2023 KONGSBERG
 //
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions are met:
@@ -30,7 +30,7 @@ use crate::decode::Deserializer;
 use crate::encode::{EnumSerializer, Serializer};
 use crate::error::Error as Err;
 use crate::infallible::Never;
-use crate::{Marshal, TypeInfo};
+use crate::{Marshal, MemberInfo, TypeInfo};
 
 pub struct KeySerializer;
 
@@ -45,6 +45,7 @@ impl Serializer<'_> for KeySerializer {
     type Struct = Never<Self::Ok, Self::Error>;
     type Union = Never<Self::Ok, Self::Error>;
     type Enum = Self;
+    type Bitmask = Never<Self::Ok, Self::Error>;
     type Sequence = Never<Self::Ok, Self::Error>;
     type Array = Never<Self::Ok, Self::Error>;
     type Map = Never<Self::Ok, Self::Error>;
@@ -101,8 +102,12 @@ impl Serializer<'_> for KeySerializer {
         Ok(value.to_string())
     }
 
-    fn encode_enum(self, _: &str) -> Result<Self::Enum, Self::Error> {
+    fn encode_enum(self, _: &TypeInfo<'_>) -> Result<Self::Enum, Self::Error> {
         Ok(self)
+    }
+
+    fn encode_bitmask(self, _: &TypeInfo<'_>) -> Result<Self::Bitmask, Self::Error> {
+        invalid()
     }
 
     fn encode_f32(self, _: f32) -> Result<Self::Ok, Self::Error> {
@@ -141,15 +146,15 @@ impl Serializer<'_> for KeySerializer {
     }
 }
 
-impl EnumSerializer for KeySerializer {
+impl<'a> EnumSerializer<'a> for KeySerializer {
     type Ok = String;
     type Error = Error;
 
-    fn encode_variant<T>(self, name: &str, _: T) -> Result<Self::Ok, Self::Error>
+    fn encode_variant<T>(self, info: &MemberInfo<'a>, _: T) -> Result<Self::Ok, Self::Error>
     where
         T: Marshal,
     {
-        Ok(name.to_string())
+        Ok(info.name.to_string())
     }
 }
 
@@ -161,6 +166,7 @@ impl<'a, D: Deserializer<'a>> Deserializer<'a> for KeyDeserializer<D> {
     type Struct = Never<(), Self::Error>;
     type Union = Never<(), Self::Error>;
     type Enum = D::Enum;
+    type Bitmask = Never<(), Self::Error>;
     type Map = Never<(), Self::Error>;
     type Sequence = Never<(), Self::Error>;
     type Array = Never<(), Self::Error>;
@@ -234,8 +240,12 @@ impl<'a, D: Deserializer<'a>> Deserializer<'a> for KeyDeserializer<D> {
         invalid()
     }
 
-    fn decode_enum(self, name: &str) -> Result<Self::Enum, Self::Error> {
-        self.0.decode_enum(name)
+    fn decode_enum(self, info: &TypeInfo<'a>) -> Result<Self::Enum, Self::Error> {
+        self.0.decode_enum(info)
+    }
+
+    fn decode_bitmask(self, _: &TypeInfo<'a>) -> Result<Self::Bitmask, Self::Error> {
+        invalid()
     }
 
     fn decode_sequence(self) -> Result<Self::Sequence, Self::Error> {

@@ -35,6 +35,3 @@ version.workspace = true
 
 [lints]
 workspace = true
-
-[dependencies]
-ic-syntax = { path = "../ic-syntax" }

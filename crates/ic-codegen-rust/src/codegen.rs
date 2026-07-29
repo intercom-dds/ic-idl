@@ -766,6 +766,8 @@ impl<'a> RustGen<'a> {
                 Self::emit_default_impl(def, w);
                 self.emit_bitmask_type_info(def, bitmask_ty, w);
                 self.emit_bitmask_member_info(def, bitmask_ty, w);
+                Self::emit_bitmask_marshal_impl(def, w);
+                Self::emit_bitmask_unmarshal_impl(def, w);
                 Self::emit_type_info_close(w);
             }
             DefKind::Alias(alias_ty) => {

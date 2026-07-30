@@ -159,8 +159,8 @@ where
         builder.build(&builtin_items);
 
         let builtin_ids = context.order.clone();
-        for &def_id in &builtin_ids {
-            context.context.definitions.get_mut(def_id).flags |= DefFlags::IS_BUILTIN;
+        for (_, def) in &mut context.context.definitions {
+            def.flags |= DefFlags::IS_BUILTIN;
         }
 
         if !include_in_output {

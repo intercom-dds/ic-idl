@@ -55,7 +55,6 @@ impl Stream {
     }
 
     #[inline]
-    #[must_use]
     pub fn file_id(&self) -> FileId {
         self.file_id
     }

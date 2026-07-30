@@ -63,6 +63,9 @@ pub fn element_type(path: &Type) -> String {
     }
 }
 
+/// # Panics
+///
+/// Panics if the path has no segments.
 #[must_use]
 pub fn path_span(path: &Path) -> Span {
     let start = path.leading_colons.map_or_else(

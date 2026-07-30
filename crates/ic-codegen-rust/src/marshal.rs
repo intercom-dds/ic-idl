@@ -301,11 +301,20 @@ impl RustGen<'_> {
         let scoped_name = self.scoped_name(def.id, def.id);
 
         w!(w, "const MEMBER_INFO: &[::intercom_cts::MemberInfo<'static>] = &[\n");
-        for (i, &flag_id) in bitmask_ty.flags.iter().enumerate() {
+        for &flag_id in &bitmask_ty.flags {
             let original_flag_def = self.original_hir.context.definitions.get(flag_id);
+            let position = if let DefKind::Const(const_ty) = &original_flag_def.kind {
+                self.original_hir
+                    .context
+                    .unsigned_value(&const_ty.value)
+                    .trailing_zeros()
+            } else {
+                0
+            };
+
             w!(w, "::intercom_cts::MemberInfo {\n");
             w!(w, "name: \"", original_flag_def.ident.name, "\",\n");
-            w!(w, "member_id: ", i.to_string(), ",\n");
+            w!(w, "member_id: ", position.to_string(), ",\n");
             w!(w, "flags: ::intercom_cts::MemberFlag::nil(),\n");
             w!(w, "type_info: ::intercom_cts::type_info::<", scoped_name, ">(),\n");
             w!(w, "},\n");
@@ -334,7 +343,7 @@ impl RustGen<'_> {
         w!(w, "{\n");
         w!(w, "use ::intercom_cts::decode::BitmaskDeserializer as _;\n\n");
         w!(w, "let state = ar.decode_bitmask(&TYPE_INFO)?;\n");
-        w!(w, "*self = state.decode_flags(MEMBER_INFO)?;\n");
+        w!(w, "self.0 = state.decode_flags(MEMBER_INFO)?;\n");
         w!(w, "Ok(())\n");
         w!(w, "}\n");
         w!(w, "}\n\n");

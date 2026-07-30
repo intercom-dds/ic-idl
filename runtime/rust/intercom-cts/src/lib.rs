@@ -81,3 +81,15 @@ pub const fn max<T, N>(value: T, bound: N) -> bound::Max<T, N> {
 pub const fn range<T, N, M>(value: T, min: N, max: M) -> bound::Range<T, N, M> {
     bound::Range { value, min, max }
 }
+
+/// Include generated IDL code from build script output.
+///
+/// The name should match what was passed to [`Codegen::new`] in your build script.
+///
+/// [`Codegen::new`]: intercom_build::Codegen::new
+#[macro_export]
+macro_rules! include_idl {
+    ($name:tt) => {
+        include!(concat!(env!("OUT_DIR"), "/", $name, "/lib.rs"));
+    };
+}

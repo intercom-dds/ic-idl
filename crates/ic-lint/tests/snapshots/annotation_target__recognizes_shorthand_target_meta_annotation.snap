@@ -1,0 +1,15 @@
+---
+source: crates/ic-lint/tests/annotation_target.rs
+assertion_line: 81
+expression: test_lint_hir(source)
+---
+⨯ annotation-target: `@ext::struct_only` cannot be applied to modules
+  @ test.idl:7:2
+
+ 5 │ };
+ 6 │ 
+ 7 │ @ext::struct_only
+   │  ˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆ invalid annotation target
+ 8 │ module Invalid {};
+
+  ? the annotationt  can only be applied to structs

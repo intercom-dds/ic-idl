@@ -583,6 +583,7 @@ impl<'ctx> TypeItemProcessor<'ctx> {
             ty,
             params,
             raises,
+            annotations: convert_annotations(self.ctx, &proto.meta.annotations, self.current_scope),
         }
     }
 
@@ -607,6 +608,11 @@ impl<'ctx> TypeItemProcessor<'ctx> {
                 is_readonly: attr.readonly.is_some(),
                 getraises: getraises.clone(),
                 setraises: setraises.clone(),
+                annotations: convert_annotations(
+                    self.ctx,
+                    &attr.meta.annotations,
+                    self.current_scope,
+                ),
             });
         }
 

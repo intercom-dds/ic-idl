@@ -2,28 +2,26 @@
 source: crates/ic-lint/tests/union_key.rs
 expression: test_lint_hir(source)
 ---
-⨯ union-key: union variant 'red_value' cannot use @key
+⨯ annotation-target: `@key` cannot be applied to union members
   @ test.idl:10:6
 
   8 │ union ColorData switch(Color) {
   9 │ case RED:
  10 │     @key long red_value;
-    │      ˆˆˆ @key not allowed on union variant
+    │      ˆˆˆ invalid annotation target
  11 │ case GREEN:
  12 │     @key long green_value;
 
-  ? remove @key from the variant or move it to the discriminator
-  * only the union discriminator can be marked as @key
+  ? the annotation only can be applied to struct members or union discriminators
 
-⨯ union-key: union variant 'green_value' cannot use @key
+⨯ annotation-target: `@key` cannot be applied to union members
   @ test.idl:12:6
 
  10 │     @key long red_value;
  11 │ case GREEN:
  12 │     @key long green_value;
-    │      ˆˆˆ @key not allowed on union variant
+    │      ˆˆˆ invalid annotation target
  13 │ case BLUE:
  14 │     long blue_value;  // OK - no @key
 
-  ? remove @key from the variant or move it to the discriminator
-  * only the union discriminator can be marked as @key
+  ? the annotation only can be applied to struct members or union discriminators

@@ -378,6 +378,9 @@ pub struct AnnParam {
 
     /// Default value for the parameter
     pub default: Option<Numeric>,
+
+    /// Annotations attached to the annotation member.
+    pub annotations: Vec<Ann>,
 }
 
 #[derive(Debug, Clone)]
@@ -528,6 +531,7 @@ pub struct ProtoTy {
     pub ty: Ty,
     pub params: Vec<Parameter>,
     pub raises: Vec<Spanned<DefId>>,
+    pub annotations: Vec<Ann>,
 }
 
 #[derive(Debug, Clone)]
@@ -544,6 +548,7 @@ pub struct Attribute {
     pub is_readonly: bool,
     pub getraises: Vec<Spanned<DefId>>,
     pub setraises: Vec<Spanned<DefId>>,
+    pub annotations: Vec<Ann>,
 }
 
 #[derive(Copy, Clone, Debug)]

@@ -2,14 +2,13 @@
 source: crates/ic-lint/tests/union_key.rs
 expression: test_lint_hir(source)
 ---
-⨯ union-key: union variant 'value' cannot use @key
+⨯ annotation-target: `@key` cannot be applied to union members
   @ test.idl:4:6
 
  2 │ union KeyMember switch(long) {
  3 │ case 1:
  4 │     @key string value;
-   │      ˆˆˆ @key not allowed on union variant
+   │      ˆˆˆ invalid annotation target
  5 │ };
 
-  ? remove @key from the variant or move it to the discriminator
-  * only the union discriminator can be marked as @key
+  ? the annotation only can be applied to struct members or union discriminators

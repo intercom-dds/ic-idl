@@ -383,6 +383,7 @@ pub fn fold_module_ty<F: Fold + ?Sized>(_folder: &mut F, m: ModuleTy) -> ModuleT
 pub fn fold_annotation_ty<F: Fold + ?Sized>(folder: &mut F, mut a: AnnotationTy) -> AnnotationTy {
     for param in &mut a.params {
         param.ty = folder.fold_ty(param.ty.clone());
+        param.annotations = fold_annotations(folder, std::mem::take(&mut param.annotations));
         if let Some(ref mut default) = param.default {
             *default = folder.fold_numeric(default.clone());
         }
@@ -413,6 +414,7 @@ pub fn fold_parameter<F: Fold + ?Sized>(folder: &mut F, mut p: Parameter) -> Par
 pub fn fold_proto_ty<F: Fold + ?Sized>(folder: &mut F, mut p: ProtoTy) -> ProtoTy {
     p.ty = folder.fold_ty(p.ty);
     p.params = fold_vec!(folder, p.params, fold_parameter);
+    p.annotations = fold_annotations(folder, p.annotations);
     p
 }
 
@@ -428,5 +430,6 @@ pub fn fold_annotation<F: Fold + ?Sized>(folder: &mut F, mut a: Ann) -> Ann {
 
 pub fn fold_attribute<F: Fold + ?Sized>(folder: &mut F, mut a: Attribute) -> Attribute {
     a.ty = folder.fold_ty(a.ty);
+    a.annotations = fold_annotations(folder, a.annotations);
     a
 }

@@ -2,38 +2,35 @@
 source: crates/ic-lint/tests/union_key.rs
 expression: test_lint_hir(source)
 ---
-⨯ union-key: union discriminator for 'MultiViolations' cannot be @optional
+⨯ annotation-target: `@optional` cannot be applied to union discriminators
   @ test.idl:2:31
 
  2 │ union MultiViolations switch(@optional long) {
-   │                               ˆˆˆˆˆˆˆˆ @optional not allowed on discriminator
+   │                               ˆˆˆˆˆˆˆˆ invalid annotation target
  3 │ case 1:
  4 │     @key string first;
 
-  ? remove @optional from the discriminator
-  * union discriminators must always be present
+  ? the annotation only can be applied to annotation members, struct members, union members, typedefs, exception members or valuetype members
 
-⨯ union-key: union variant 'first' cannot use @key
+⨯ annotation-target: `@key` cannot be applied to union members
   @ test.idl:4:6
 
  2 │ union MultiViolations switch(@optional long) {
  3 │ case 1:
  4 │     @key string first;
-   │      ˆˆˆ @key not allowed on union variant
+   │      ˆˆˆ invalid annotation target
  5 │ case 2:
  6 │     @key long second;
 
-  ? remove @key from the variant or move it to the discriminator
-  * only the union discriminator can be marked as @key
+  ? the annotation only can be applied to struct members or union discriminators
 
-⨯ union-key: union variant 'second' cannot use @key
+⨯ annotation-target: `@key` cannot be applied to union members
   @ test.idl:6:6
 
  4 │     @key string first;
  5 │ case 2:
  6 │     @key long second;
-   │      ˆˆˆ @key not allowed on union variant
+   │      ˆˆˆ invalid annotation target
  7 │ };
 
-  ? remove @key from the variant or move it to the discriminator
-  * only the union discriminator can be marked as @key
+  ? the annotation only can be applied to struct members or union discriminators

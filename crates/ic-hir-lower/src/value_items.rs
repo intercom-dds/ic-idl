@@ -468,7 +468,15 @@ impl<'ctx> ValueItemProcessor<'ctx> {
                         None
                     };
 
-                    params.push(AnnParam { ident, ty, default });
+                    let annotations =
+                        convert_annotations(self.ctx, &member.meta.annotations, scope);
+
+                    params.push(AnnParam {
+                        ident,
+                        ty,
+                        default,
+                        annotations,
+                    });
                 }
                 ic_syntax::AnnotationMember::Item(item) => {
                     types.extend(crate::builder::process_nested_item(self.ctx, scope, item));

@@ -1,0 +1,24 @@
+---
+source: crates/ic-lint/tests/annotation_target.rs
+expression: test_lint_hir(source)
+---
+⨯ annotation-target: `@aggregate_only` cannot be applied to modules
+  @ test.idl:5:2
+
+ 3 │ @annotation aggregate_only {};
+ 4 │ 
+ 5 │ @aggregate_only
+   │  ˆˆˆˆˆˆˆˆˆˆˆˆˆˆ invalid annotation target
+ 6 │ module invalid_module {};
+
+  ? the annotation only can be applied to structs or unions
+
+⨯ annotation-target: `@aggregate_only` cannot be applied to struct members
+  @ test.idl:9:6
+
+  8 │ struct Foo {
+  9 │     @aggregate_only long invalid_member;
+    │      ˆˆˆˆˆˆˆˆˆˆˆˆˆˆ invalid annotation target
+ 10 │ };
+
+  ? the annotation only can be applied to structs or unions

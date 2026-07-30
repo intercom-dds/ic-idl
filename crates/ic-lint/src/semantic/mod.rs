@@ -25,12 +25,13 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+pub mod ann_target;
 pub mod ann_template;
 pub mod bit_bound;
 pub mod conflicting_annotations;
 pub mod default_type_mismatch;
 pub mod derived_struct_key;
-pub mod duplicate_annotations_hir;
+pub mod duplicate_annotations;
 pub mod duplicate_bounds;
 pub mod duplicate_case_labels;
 pub mod duplicate_enum_values;
@@ -48,7 +49,6 @@ pub mod oneway;
 pub mod recursive_type;
 pub mod redundant_inheritance;
 pub mod union_case_label_range;
-pub mod union_key;
 pub mod unreachable_union_cases;
 pub mod void_ty;
 pub mod zero_bound;

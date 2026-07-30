@@ -36,8 +36,8 @@ module Example {
         STOPPED
     };
 
+    @bit_bound(8)
     bitmask Flags {
-        @bit_bound(8)
         FLAG_READ,
         FLAG_WRITE,
         FLAG_EXECUTE

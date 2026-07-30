@@ -71,7 +71,7 @@ module advanced_annotations {
 
     // @default_literal annotation
     module default_literal {
-        @mutable enum Status {
+        enum Status {
             IDLE = 0,
             RUNNING = 1,
             @default_literal UNKNOWN = 99
@@ -81,7 +81,7 @@ module advanced_annotations {
             Status status;
         };
 
-        @mutable enum Priority {
+        enum Priority {
             LOW = 1,
             MEDIUM = 5,
             @default_literal HIGH = 10

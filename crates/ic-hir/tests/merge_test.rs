@@ -27,9 +27,26 @@
 
 mod common;
 
-use ic_hir::hir::DefKind;
+use ic_hir::Context;
+use ic_hir::hir::{Ann, Def, DefId, DefKind, Numeric};
 use ic_hir::merge::merge_hir_trees;
 use ic_vfs::SourceMap;
+
+fn find_def<'a>(context: &'a Context, name: &str) -> (DefId, &'a Def) {
+    context
+        .definitions
+        .iter()
+        .find(|(_, def)| def.ident.name == name)
+        .unwrap_or_else(|| panic!("{name} should exist"))
+}
+
+fn assert_marker_annotation(annotations: &[Ann], marker_id: DefId, item_id: DefId) {
+    assert_eq!(annotations.len(), 1);
+    let annotation = &annotations[0];
+    assert_eq!(annotation.def_id, Some(marker_id));
+    assert_eq!(annotation.args.len(), 1);
+    assert_eq!(annotation.args[0].value, Numeric::Const(item_id));
+}
 
 #[test]
 fn test_merge_empty_graphs() {
@@ -1076,4 +1093,67 @@ fn test_merge_lenient_annotation_dedup_across_files() {
         .count();
 
     assert_eq!(vendors, 1, "structurally identical annotations dedupe");
+}
+
+#[test]
+fn test_merge_remaps_annotations_on_nested_hir_nodes() {
+    let (graph1, _, _) = common::parse_and_resolve(
+        r"
+        struct Padding {
+            long value;
+        };
+        ",
+    );
+    let (graph2, _, _) = common::parse_and_resolve(
+        r"
+        @annotation marker {
+            enum Kind { ITEM };
+            Kind value;
+        };
+
+        @annotation configured {
+            @marker(ITEM) long value;
+        };
+
+        interface Service {
+            @marker(ITEM) void call();
+            @marker(ITEM) attribute long value;
+        };
+
+        valuetype State {
+            @marker(ITEM) void update();
+            @marker(ITEM) attribute long value;
+        };
+        ",
+    );
+
+    assert!(graph1.errors.is_empty());
+    assert!(graph2.errors.is_empty());
+
+    let merged = merge_hir_trees(&[graph1, graph2]);
+    assert!(merged.errors.is_empty());
+
+    let (marker_id, marker_def) = find_def(&merged.context, "marker");
+    assert!(matches!(marker_def.kind, DefKind::Annotation(_)));
+    let (item_id, _) = find_def(&merged.context, "ITEM");
+
+    let (_, configured_def) = find_def(&merged.context, "configured");
+    let DefKind::Annotation(configured) = &configured_def.kind else {
+        panic!("configured should be an annotation");
+    };
+    assert_marker_annotation(&configured.params[0].annotations, marker_id, item_id);
+
+    let (_, service_def) = find_def(&merged.context, "Service");
+    let DefKind::Interface(service) = &service_def.kind else {
+        panic!("Service should be an interface");
+    };
+    assert_marker_annotation(&service.prototypes[0].annotations, marker_id, item_id);
+    assert_marker_annotation(&service.attributes[0].annotations, marker_id, item_id);
+
+    let (_, state_def) = find_def(&merged.context, "State");
+    let DefKind::Valuetype(state) = &state_def.kind else {
+        panic!("State should be a valuetype");
+    };
+    assert_marker_annotation(&state.prototypes[0].annotations, marker_id, item_id);
+    assert_marker_annotation(&state.attributes[0].annotations, marker_id, item_id);
 }

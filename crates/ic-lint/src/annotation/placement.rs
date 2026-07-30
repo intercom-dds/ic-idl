@@ -26,10 +26,40 @@
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use ic_diagnostic::Label;
+use ic_syntax::visit::{self, Visitor};
 
 use crate::{Category, Lint, LintCtx, SyntaxInput};
 
 pub struct AnnPlacement;
+
+struct PlacementVisitor<'a> {
+    ctx: &'a LintCtx<'a>,
+}
+
+impl<'a> Visitor<'a> for PlacementVisitor<'a> {
+    fn visit_prototype_param(&mut self, param: &'a ic_syntax::Param) {
+        for annotation in &param.meta.annotations {
+            if annotation
+                .path
+                .segments
+                .last()
+                .is_some_and(|segment| segment.name == "doc")
+            {
+                continue;
+            }
+
+            let diag = self.ctx.diag_span(
+                AnnPlacement::name(),
+                AnnPlacement::category(),
+                "annotations on prototype parameters are not allowed",
+                Label::new(annotation.span).message("invalid annotation placement"),
+            );
+            AnnPlacement::report(self.ctx, diag);
+        }
+
+        visit::walk_param(self, param);
+    }
+}
 
 impl<'a> Lint<'a> for AnnPlacement {
     fn name() -> &'static str {
@@ -56,5 +86,8 @@ impl<'a> Lint<'a> for AnnPlacement {
                 .note("annotation is not attached to any declaration");
             Self::report(ctx, diag);
         }
+
+        let mut visitor = PlacementVisitor { ctx };
+        visit::walk_tree(&mut visitor, input.tree);
     }
 }

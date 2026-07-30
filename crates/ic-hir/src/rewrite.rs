@@ -73,15 +73,30 @@ pub fn replace_all_def_ids_in_def<S: std::hash::BuildHasher>(
 
     match &mut def.kind {
         DefKind::Module(m) => replace_def_ids_in_list(&mut m.definitions, mapping),
-        DefKind::Interface(i) => replace_def_ids_in_list(&mut i.definitions, mapping),
         DefKind::Enum(e) => replace_def_ids_in_list(&mut e.fields, mapping),
         DefKind::Bitmask(b) => replace_def_ids_in_list(&mut b.flags, mapping),
         DefKind::Annotation(a) => {
             replace_def_ids_in_list(&mut a.types, mapping);
             for param in &mut a.params {
                 replace_def_ids_in_ty(&mut param.ty, mapping);
+                for ann in &mut param.annotations {
+                    replace_def_ids_in_ann(ann, mapping);
+                }
                 if let Some(default) = &mut param.default {
                     replace_def_ids_in_numeric(default, mapping);
+                }
+            }
+        }
+        DefKind::Interface(i) => {
+            replace_def_ids_in_list(&mut i.definitions, mapping);
+            for proto in &mut i.prototypes {
+                for ann in &mut proto.annotations {
+                    replace_def_ids_in_ann(ann, mapping);
+                }
+            }
+            for attr in &mut i.attributes {
+                for ann in &mut attr.annotations {
+                    replace_def_ids_in_ann(ann, mapping);
                 }
             }
         }
@@ -124,6 +139,16 @@ pub fn replace_all_def_ids_in_def<S: std::hash::BuildHasher>(
             replace_def_ids_in_list(&mut v.definitions, mapping);
             for member in &mut v.members {
                 for ann in &mut member.annotations {
+                    replace_def_ids_in_ann(ann, mapping);
+                }
+            }
+            for proto in &mut v.prototypes {
+                for ann in &mut proto.annotations {
+                    replace_def_ids_in_ann(ann, mapping);
+                }
+            }
+            for attr in &mut v.attributes {
+                for ann in &mut attr.annotations {
                     replace_def_ids_in_ann(ann, mapping);
                 }
             }

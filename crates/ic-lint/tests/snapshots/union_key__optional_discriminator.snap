@@ -2,13 +2,12 @@
 source: crates/ic-lint/tests/union_key.rs
 expression: test_lint_hir(source)
 ---
-⨯ union-key: union discriminator for 'OptionalDisc' cannot be @optional
+⨯ annotation-target: `@optional` cannot be applied to union discriminators
   @ test.idl:2:28
 
  2 │ union OptionalDisc switch(@optional long) {
-   │                            ˆˆˆˆˆˆˆˆ @optional not allowed on discriminator
+   │                            ˆˆˆˆˆˆˆˆ invalid annotation target
  3 │ case 1:
  4 │     string value;
 
-  ? remove @optional from the discriminator
-  * union discriminators must always be present
+  ? the annotation only can be applied to annotation members, struct members, union members, typedefs, exception members or valuetype members

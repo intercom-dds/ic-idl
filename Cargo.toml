@@ -64,7 +64,7 @@ default-members = ["crates/ic-idl"]
 
 [workspace.package]
 version = "0.6.0"
-rust-version = "1.96"
+rust-version = "1.97"
 publish = false
 authors = ["KONGSBERG <DDS-InterCOM@kda.kongsberg.com>"]
 

@@ -30,7 +30,7 @@ name = "intercom-derive"
 version = "0.5.0"
 authors = ["InterCOM DDS team <IDS-InterCOM_DDS@kda.kongsberg.com>"]
 edition = "2024"
-rust-version = "1.90"
+rust-version = "1.97"
 publish = false
 
 [lib]

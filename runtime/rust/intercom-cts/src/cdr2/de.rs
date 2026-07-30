@@ -200,7 +200,6 @@ impl<'r, 'de, E: Endian> Deserializer<'de> for &'r mut Xcdr2Reader<'de, E> {
     }
 
     #[inline]
-    #[allow(clippy::chunks_exact_to_as_chunks)]
     fn decode_wstring(self) -> Result<String, Self::Error> {
         let len = self.decode_u32()? as usize;
         match len {

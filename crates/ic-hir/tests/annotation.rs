@@ -27,12 +27,24 @@
 
 use ic_hir::annotation::*;
 use ic_hir::hir::{Ann, AnnArg, Ident, Numeric};
+use ic_vfs::{Location, SourceMap};
+
+fn test_span() -> ic_syntax::Span {
+    let mut map = SourceMap::default();
+    let file_id = map.embed("");
+    let location = Location::new(0, file_id);
+
+    ic_syntax::Span {
+        start: location,
+        end: location,
+    }
+}
 
 fn make_ann(name: &str, args: Vec<AnnArg>) -> Ann {
     Ann {
         ident: Ident {
             name: name.to_string(),
-            span: ic_syntax::Span::default(),
+            span: test_span(),
         },
         def_id: None,
         args,
@@ -44,11 +56,11 @@ fn make_arg(name: Option<&str>, value: Numeric) -> AnnArg {
         ident: name.map_or_else(
             || Ident {
                 name: "value".to_string(),
-                span: ic_syntax::Span::default(),
+                span: test_span(),
             },
             |n| Ident {
                 name: n.to_string(),
-                span: ic_syntax::Span::default(),
+                span: test_span(),
             },
         ),
         value,

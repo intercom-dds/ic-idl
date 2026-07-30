@@ -27,7 +27,7 @@
 
 use ic_cli::color::ColorMode;
 use ic_diagnostic::{Color, Diag, DiagnosticEmitter, Label};
-use ic_vfs::{FileId, Location, Span};
+use ic_vfs::{FileId, Location, SourceMap, Span};
 
 fn make_span(file_id: FileId, start: u32, end: u32) -> Span {
     Span {
@@ -41,7 +41,8 @@ fn test_horizontal_clamping() {
     ic_cli::color::set_color_override(ColorMode::Never);
 
     let source = "x".repeat(200);
-    let file_id = FileId::_do_not_use();
+    let mut map = SourceMap::default();
+    let file_id = map.embed(&source);
     let span = make_span(file_id, 150, 160);
 
     let diag =

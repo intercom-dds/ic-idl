@@ -25,8 +25,6 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use ic_vfs::Location;
-
 use crate::{Declarator, Item, Op, Path, Span, Type};
 
 #[must_use]
@@ -71,16 +69,14 @@ pub fn path_span(path: &Path) -> Span {
         || {
             path.segments
                 .first()
-                .map_or_else(Location::default, |v| v.span.start)
+                .expect("path has a segment")
+                .span
+                .start
         },
         |v| v.start,
     );
 
-    let end = path
-        .segments
-        .last()
-        .map_or_else(Location::default, |v| v.span.end);
-
+    let end = path.segments.last().expect("path has a segment").span.end;
     Span { start, end }
 }
 

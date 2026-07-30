@@ -95,7 +95,7 @@ pub fn test_lint_preproc(source: &str) -> String {
         &mut vfs,
     )
     .collect();
-    let ast = ic_parse::from_iter(tokens, &vfs);
+    let ast = ic_parse::from_iter(tokens, file_id, &vfs);
 
     let mut config = LintConfig::new();
     config.set_category_level(Category::Preprocessor, Level::Warning);

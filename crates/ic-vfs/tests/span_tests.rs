@@ -27,7 +27,7 @@
 
 use std::ops::Range;
 
-use ic_vfs::{FileId, Location, SourceMap, Span};
+use ic_vfs::{Location, SourceMap, Span};
 
 #[test]
 fn test_location_creation() {
@@ -146,13 +146,6 @@ fn test_span_ordering() {
 
     assert!(span1 < span2);
     assert_eq!(span1.cmp(&span3), std::cmp::Ordering::Less);
-}
-
-#[test]
-fn test_location_default() {
-    let loc = Location::default();
-    assert_eq!(loc.offset, 0);
-    assert_eq!(loc.file_id, FileId::_do_not_use());
 }
 
 #[test]

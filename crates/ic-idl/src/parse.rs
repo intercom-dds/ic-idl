@@ -62,7 +62,7 @@ pub fn from_file(file_id: FileId, args: ProcArgs, vfs: &mut SourceMap) -> ParseR
     let _span = debug_span!("parse_file", ?file_id).entered();
     let mut state = ic_preproc::State::new();
     let tokens: Vec<_> = ic_preproc::with_state(file_id, args, &mut state, vfs).collect();
-    let parsed = ic_parse::from_iter(tokens, vfs);
+    let parsed = ic_parse::from_iter(tokens, file_id, vfs);
     debug!(
         items = parsed.tree.len(),
         errors = parsed.errors.len(),

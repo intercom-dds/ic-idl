@@ -49,13 +49,6 @@ impl<T> Id<T> {
             _marker: PhantomData,
         }
     }
-
-    // Some objects need to be default constructed. This should be avoided
-    // where possible, but it's difficult to do so for generated code.
-    #[doc(hidden)]
-    pub fn _do_not_use() -> Self {
-        Self::new(usize::MAX, ArenaId(u16::MAX))
-    }
 }
 
 impl<T> PartialEq for Id<T> {
@@ -493,12 +486,6 @@ mod tests {
     fn test_id_from_usize() {
         let id: Id<i32> = 42usize.into();
         assert_eq!(usize::from(id), 42);
-    }
-
-    #[test]
-    fn test_id_do_not_use() {
-        let id: Id<i32> = Id::_do_not_use();
-        assert_eq!(usize::from(id), usize::MAX);
     }
 
     #[test]

@@ -29,8 +29,7 @@ use ic_cli::color::ColorMode;
 use ic_diagnostic::{Color, Diag, Label};
 use ic_vfs::{FileId, Location, SourceMap, Span, UTF8_BOM};
 
-fn make_span(start: u32, end: u32) -> Span {
-    let file_id = FileId::_do_not_use(); // For testing only
+fn make_span(file_id: FileId, start: u32, end: u32) -> Span {
     Span {
         start: Location::new(start, file_id),
         end: Location::new(end, file_id),
@@ -41,16 +40,18 @@ fn make_span(start: u32, end: u32) -> Span {
 fn test_overlapping_spans() {
     ic_cli::color::set_color_override(ColorMode::Never);
     let source = "struct Data {\n    int field1;\n    int field2;\n    int field3;\n}";
+    let mut map = SourceMap::default();
+    let file_id = map.embed(source);
 
     // Test overlapping spans
     let diag = Diag::error("overlapping spans")
         .label(
-            Label::new(make_span(14, 40)) // From "int field1" to "field2"
+            Label::new(make_span(file_id, 14, 40)) // From "int field1" to "field2"
                 .message("first overlap")
                 .color(Color::Red),
         )
         .label(
-            Label::new(make_span(28, 54)) // From "int field2" to "field3"
+            Label::new(make_span(file_id, 28, 54)) // From "int field2" to "field3"
                 .message("second overlap")
                 .color(Color::Yellow),
         );
@@ -66,10 +67,12 @@ fn test_overlapping_spans() {
 fn test_single_char_span() {
     ic_cli::color::set_color_override(ColorMode::Never);
     let source = "int x = 5;";
+    let mut map = SourceMap::default();
+    let file_id = map.embed(source);
 
     // Test single character span
     let diag = Diag::error("single character span").label(
-        Label::new(make_span(4, 5)) // Just the 'x'
+        Label::new(make_span(file_id, 4, 5)) // Just the 'x'
             .message("variable name")
             .color(Color::Blue),
     );
@@ -116,16 +119,18 @@ fn test_utf8_bom_is_not_rendered_or_counted_as_a_column() {
 fn test_adjacent_spans() {
     ic_cli::color::set_color_override(ColorMode::Never);
     let source = "int add(int a, int b) { return a + b; }";
+    let mut map = SourceMap::default();
+    let file_id = map.embed(source);
 
     // Test adjacent spans with no gap
     let diag = Diag::error("adjacent spans")
         .label(
-            Label::new(make_span(8, 13)) // "int a"
+            Label::new(make_span(file_id, 8, 13)) // "int a"
                 .message("first parameter")
                 .color(Color::Yellow),
         )
         .label(
-            Label::new(make_span(15, 20)) // "int b"
+            Label::new(make_span(file_id, 15, 20)) // "int b"
                 .message("second parameter")
                 .color(Color::Green),
         );
@@ -141,21 +146,23 @@ fn test_adjacent_spans() {
 fn test_nested_spans() {
     ic_cli::color::set_color_override(ColorMode::Never);
     let source = "void process(struct Data { int x; int y; } data);";
+    let mut map = SourceMap::default();
+    let file_id = map.embed(source);
 
     // Test nested spans - one span inside another
     let diag = Diag::error("nested structures")
         .label(
-            Label::new(make_span(13, 43)) // The entire struct definition
+            Label::new(make_span(file_id, 13, 43)) // The entire struct definition
                 .message("inline struct definition")
                 .color(Color::Blue),
         )
         .label(
-            Label::new(make_span(27, 33)) // "int x;"
+            Label::new(make_span(file_id, 27, 33)) // "int x;"
                 .message("first field")
                 .color(Color::Yellow),
         )
         .label(
-            Label::new(make_span(34, 40)) // "int y;"
+            Label::new(make_span(file_id, 34, 40)) // "int y;"
                 .message("second field")
                 .color(Color::Green),
         );
@@ -171,10 +178,12 @@ fn test_nested_spans() {
 fn test_empty_lines() {
     ic_cli::color::set_color_override(ColorMode::Never);
     let source = "interface Test {\n\n    void method();\n\n}";
+    let mut map = SourceMap::default();
+    let file_id = map.embed(source);
 
     // Test span across empty lines
     let diag = Diag::error("span across empty lines").label(
-        Label::new(make_span(16, 38)) // From start of empty line to end of method
+        Label::new(make_span(file_id, 16, 38)) // From start of empty line to end of method
             .message("includes empty lines")
             .color(Color::Red),
     );
@@ -190,26 +199,28 @@ fn test_empty_lines() {
 fn test_many_labels_single_line() {
     ic_cli::color::set_color_override(ColorMode::Never);
     let source = "calculate(a, b, c, d, e, f, g);";
+    let mut map = SourceMap::default();
+    let file_id = map.embed(source);
 
     // Test many labels on single line
     let diag = Diag::error("too many parameters")
         .label(
-            Label::new(make_span(10, 11)) // 'a'
+            Label::new(make_span(file_id, 10, 11)) // 'a'
                 .message("first")
                 .color(Color::Red),
         )
         .label(
-            Label::new(make_span(13, 14)) // 'b'
+            Label::new(make_span(file_id, 13, 14)) // 'b'
                 .message("second")
                 .color(Color::Yellow),
         )
         .label(
-            Label::new(make_span(16, 17)) // 'c'
+            Label::new(make_span(file_id, 16, 17)) // 'c'
                 .message("third")
                 .color(Color::Green),
         )
         .label(
-            Label::new(make_span(19, 20)) // 'd'
+            Label::new(make_span(file_id, 19, 20)) // 'd'
                 .message("fourth")
                 .color(Color::Blue),
         );

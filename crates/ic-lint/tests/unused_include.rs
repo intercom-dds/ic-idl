@@ -46,7 +46,7 @@ fn parse_with_preproc(
     let tokens: Vec<_> = iter
         .filter(|t| !matches!(t.kind, ic_lexer::token::Kind::Newline))
         .collect();
-    ic_parse::from_iter(tokens, vfs)
+    ic_parse::from_iter(tokens, file_id, vfs)
 }
 
 /// Helper function to test include-related lints with file-based includes.

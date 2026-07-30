@@ -86,39 +86,3 @@ impl<'a> Lint<'a> for AssignExpr<'a> {
         walk_tree(&mut lint, tree);
     }
 }
-
-// #[cfg(test)]
-// mod tests {
-//     use ic_syntax::*;
-//
-//     use super::*;
-//
-//     #[test]
-//     fn omitted_value() {
-//         let variant = Enumerator {
-//             annotations: vec![],
-//             name: Ident {
-//                 name: Symbol::default(),
-//                 span: Span::default(),
-//             },
-//             value: None,
-//         };
-//         AssignExpr.visit_enum_variant(&variant);
-//     }
-//
-//     #[test]
-//     fn value_expr() {
-//         let variant = Enumerator {
-//             annotations: vec![],
-//             name: Ident {
-//                 name: Symbol::default(),
-//                 span: Span::default(),
-//             },
-//             value: Some(Expr::Lit(Literal {
-//                 kind: LitKind::Int,
-//                 span: Span::default(),
-//             })),
-//         };
-//         AssignExpr.visit_enum_variant(&variant);
-//     }
-// }

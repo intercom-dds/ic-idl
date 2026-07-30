@@ -29,7 +29,7 @@
 
 use ic_cli::color::ColorMode;
 use ic_diagnostic::{Color, Diag, DiagnosticEmitter, Label};
-use ic_vfs::{FileId, Location, Span};
+use ic_vfs::{FileId, Location, SourceMap, Span};
 
 fn make_span(file_id: FileId, start: u32, end: u32) -> Span {
     Span {
@@ -55,7 +55,8 @@ fn test_large_span_truncation() {
     lines.push("};".to_string());
 
     let source = lines.join("\n");
-    let file_id = FileId::_do_not_use();
+    let mut map = SourceMap::default();
+    let file_id = map.embed(&source);
 
     // Calculate positions for the annotations
     let optional_start = source.find("@optional").unwrap() as u32;
@@ -132,7 +133,8 @@ fn test_multiple_truncated_spans() {
     lines.push("};".to_string());
 
     let source = lines.join("\n");
-    let file_id = FileId::_do_not_use();
+    let mut map = SourceMap::default();
+    let file_id = map.embed(&source);
 
     // Find positions for first duplicate parameter
     let first_a = source.find("in long a,").unwrap() as u32;
@@ -180,7 +182,8 @@ fn test_no_truncation_needed() {
     long y;
 };";
 
-    let file_id = FileId::_do_not_use();
+    let mut map = SourceMap::default();
+    let file_id = map.embed(source);
 
     // Find positions for the first field annotations
     let first_optional = source.find("@optional").unwrap() as u32;

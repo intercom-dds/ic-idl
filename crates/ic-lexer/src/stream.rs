@@ -25,7 +25,7 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use ic_vfs::Span;
+use ic_vfs::{FileId, Location, Span};
 
 use crate::token::{Kind, Token};
 
@@ -34,6 +34,7 @@ use crate::token::{Kind, Token};
 pub struct Stream {
     tokens: Vec<Token>,
     pos: usize,
+    file_id: FileId,
 }
 
 #[must_use]
@@ -44,9 +45,31 @@ pub struct StreamCheckpoint {
 
 impl Stream {
     #[inline]
-    pub fn new(iter: impl IntoIterator<Item = Token>) -> Self {
+    pub fn new(iter: impl IntoIterator<Item = Token>, file_id: FileId) -> Self {
         let tokens: Vec<_> = iter.into_iter().collect();
-        Self { tokens, pos: 0 }
+        Self {
+            tokens,
+            pos: 0,
+            file_id,
+        }
+    }
+
+    #[inline]
+    #[must_use]
+    pub fn file_id(&self) -> FileId {
+        self.file_id
+    }
+
+    fn eoi_span(&self) -> Span {
+        let location = self
+            .tokens
+            .last()
+            .map_or_else(|| Location::new(0, self.file_id), |tok| tok.span.end);
+
+        Span {
+            start: location,
+            end: location,
+        }
     }
 
     #[inline]
@@ -60,7 +83,7 @@ impl Stream {
     pub fn current(&self) -> Token {
         self.tokens.get(self.pos).copied().unwrap_or(Token {
             kind: Kind::Eoi,
-            span: Span::default(),
+            span: self.eoi_span(),
         })
     }
 
@@ -107,22 +130,37 @@ impl Stream {
 
 #[cfg(test)]
 mod tests {
+    use ic_vfs::SourceMap;
+
     use super::*;
 
+    fn file_id() -> FileId {
+        let mut map = SourceMap::default();
+        map.embed("")
+    }
+
     fn tok(kind: Kind) -> Token {
+        let location = Location::new(0, file_id());
+
         Token {
             kind,
-            span: Span::default(),
+            span: Span {
+                start: location,
+                end: location,
+            },
         }
     }
 
     fn sample_stream() -> Stream {
-        Stream::new(vec![tok(Kind::Ident), tok(Kind::Semi), tok(Kind::Ident)])
+        Stream::new(
+            vec![tok(Kind::Ident), tok(Kind::Semi), tok(Kind::Ident)],
+            file_id(),
+        )
     }
 
     #[test]
     fn empty_stream_is_eoi() {
-        let s = Stream::new(std::iter::empty());
+        let s = Stream::new(std::iter::empty(), file_id());
         assert_eq!(s.peek(), Kind::Eoi);
         assert_eq!(s.current().kind, Kind::Eoi);
     }
@@ -137,7 +175,7 @@ mod tests {
 
     #[test]
     fn advance_past_end_returns_eoi() {
-        let mut s = Stream::new(vec![tok(Kind::Ident)]);
+        let mut s = Stream::new(vec![tok(Kind::Ident)], file_id());
         _ = s.advance();
         let past = s.advance();
         assert_eq!(past.kind, Kind::Eoi);

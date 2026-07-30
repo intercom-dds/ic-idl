@@ -28,7 +28,7 @@
 use ic_lexer::stream::{Stream, StreamCheckpoint};
 use ic_lexer::token::{Kind, Kw, Token};
 use ic_syntax::{Annotation, AnnotationArg, ExprKind, Ident, Item, Literal, Path, Spanned};
-use ic_vfs::{SourceMap, Span};
+use ic_vfs::{Location, SourceMap, Span};
 
 use crate::error::{Expected, ParseError, Result};
 
@@ -72,10 +72,12 @@ pub struct Parser<'a> {
 impl<'a> Parser<'a> {
     /// Creates a new parser from a token stream.
     pub fn new(stream: Stream, source: &'a SourceMap) -> Self {
+        let start = Location::new(0, stream.file_id());
+
         Self {
             stream,
             pending_annotations: Vec::new(),
-            prev_span: Span::default(),
+            prev_span: Span { start, end: start },
             source,
             orphaned_annotations: Vec::new(),
             annotation_errors: Vec::new(),

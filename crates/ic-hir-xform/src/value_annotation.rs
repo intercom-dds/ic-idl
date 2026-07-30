@@ -77,6 +77,9 @@ pub fn transform(mut graph: ResolvedGraph) -> ResolvedGraph {
 
     // Transform each definition in place
     for (id, def) in &mut graph.context.definitions {
+        let ident_span = def.ident.span;
+        let def_span = def.span;
+
         let original_def = std::mem::replace(
             def,
             Def {
@@ -84,11 +87,11 @@ pub fn transform(mut graph: ResolvedGraph) -> ResolvedGraph {
                 parent: None,
                 ident: ic_hir::hir::Ident {
                     name: String::new(),
-                    span: ic_hir::hir::Span::default(),
+                    span: ident_span,
                 },
                 kind: DefKind::Decl(ic_hir::hir::Decl::Struct),
                 flags: ic_hir::hir::DefFlags::nil(),
-                span: ic_hir::hir::Span::default(),
+                span: def_span,
                 annotations: vec![],
             },
         );
@@ -100,7 +103,20 @@ pub fn transform(mut graph: ResolvedGraph) -> ResolvedGraph {
 
 #[cfg(test)]
 mod tests {
+    use ic_vfs::{Location, SourceMap};
+
     use super::*;
+
+    fn test_span() -> ic_hir::hir::Span {
+        let mut map = SourceMap::default();
+        let file_id = map.embed("");
+        let location = Location::new(0, file_id);
+
+        ic_hir::hir::Span {
+            start: location,
+            end: location,
+        }
+    }
 
     #[test]
     fn test_value_annotation_transform() {
@@ -115,11 +131,11 @@ mod tests {
             parent: None,
             ident: ic_hir::hir::Ident {
                 name: "TestType".to_string(),
-                span: ic_hir::hir::Span::default(),
+                span: test_span(),
             },
             kind: DefKind::Decl(ic_hir::hir::Decl::Struct),
             flags: ic_hir::hir::DefFlags::nil(),
-            span: ic_hir::hir::Span::default(),
+            span: test_span(),
             annotations: vec![],
         };
 

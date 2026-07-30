@@ -61,11 +61,20 @@ pub fn assign_member_ids(fields: &[FieldAttrs]) -> Vec<u32> {
 
 pub fn assign_variant_discriminants(variants: &[VariantAttrs]) -> Vec<proc_macro2::TokenStream> {
     let mut next_disc = 0i32;
+    let mut base: Option<&syn::Expr> = None;
+    let mut offset = 0i32;
+
     variants
         .iter()
         .map(|variant| {
             if let Some(disc) = &variant.disc {
+                base = Some(disc);
+                offset = 1;
                 quote!(#disc)
+            } else if let Some(base) = base {
+                let step = proc_macro2::Literal::i32_unsuffixed(offset);
+                offset += 1;
+                quote!((#base) + #step)
             } else {
                 let disc = next_disc;
                 next_disc += 1;

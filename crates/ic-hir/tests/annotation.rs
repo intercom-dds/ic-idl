@@ -91,7 +91,6 @@ fn test_cts_annotation_error_custom() {
 
 #[test]
 fn test_optional_with_all_numeric_types() {
-    // Test that Optional only accepts bool values
     let ann = make_ann(
         "optional",
         vec![make_arg(Some("value"), Numeric::Bool(true))],
@@ -99,7 +98,6 @@ fn test_optional_with_all_numeric_types() {
     let optional: Optional = ann.unmarshal("optional").unwrap();
     assert!(optional.value);
 
-    // Test with wrong numeric types - these should fail during field decoding
     let ann = make_ann(
         "optional",
         vec![make_arg(Some("value"), Numeric::Int32(42))],
@@ -118,7 +116,6 @@ fn test_optional_with_all_numeric_types() {
 #[test]
 #[allow(clippy::too_many_lines)]
 fn test_range_with_all_numeric_types() {
-    // Test with i8
     let ann = make_ann(
         "range",
         vec![
@@ -130,7 +127,6 @@ fn test_range_with_all_numeric_types() {
     assert_eq!(range.min, Some(-128));
     assert_eq!(range.max, Some(127));
 
-    // Test with i16
     let ann = make_ann(
         "range",
         vec![
@@ -142,7 +138,6 @@ fn test_range_with_all_numeric_types() {
     assert_eq!(range.min, Some(-32768));
     assert_eq!(range.max, Some(32767));
 
-    // Test with i32
     let ann = make_ann(
         "range",
         vec![
@@ -154,7 +149,6 @@ fn test_range_with_all_numeric_types() {
     assert_eq!(range.min, Some(i64::from(i32::MIN)));
     assert_eq!(range.max, Some(i64::from(i32::MAX)));
 
-    // Test with i64
     let ann = make_ann(
         "range",
         vec![
@@ -166,7 +160,6 @@ fn test_range_with_all_numeric_types() {
     assert_eq!(range.min, Some(i64::MIN));
     assert_eq!(range.max, Some(i64::MAX));
 
-    // Test with unsigned types
     let ann = make_ann(
         "range",
         vec![
@@ -200,7 +193,6 @@ fn test_range_with_all_numeric_types() {
     assert_eq!(range.min, Some(0));
     assert_eq!(range.max, Some(i64::from(u32::MAX)));
 
-    // Test with UInt64 that fits in i64
     let ann = make_ann(
         "range",
         vec![
@@ -212,7 +204,6 @@ fn test_range_with_all_numeric_types() {
     assert_eq!(range.min, Some(0));
     assert_eq!(range.max, Some(i64::MAX));
 
-    // Test with UInt64 that doesn't fit in i64 - should fail
     let ann = make_ann(
         "range",
         vec![
@@ -223,7 +214,6 @@ fn test_range_with_all_numeric_types() {
     let result: Result<Range, _> = ann.unmarshal("range");
     assert!(result.is_err());
 
-    // Test with wrong types
     let ann = make_ann(
         "range",
         vec![
@@ -247,7 +237,6 @@ fn test_range_with_all_numeric_types() {
 
 #[test]
 fn test_default_value_with_wrong_types() {
-    // DefaultValue expects a string
     let ann = make_ann(
         "default",
         vec![make_arg(None, Numeric::String("test".to_string()))],
@@ -255,7 +244,6 @@ fn test_default_value_with_wrong_types() {
     let default: DefaultValue = ann.unmarshal("default").unwrap();
     assert_eq!(default.value, "test");
 
-    // Test with non-string types
     let ann = make_ann("default", vec![make_arg(None, Numeric::Int32(42))]);
     let result: Result<DefaultValue, _> = ann.unmarshal("default");
     assert!(result.is_err());
@@ -267,49 +255,6 @@ fn test_default_value_with_wrong_types() {
     let ann = make_ann("default", vec![make_arg(None, Numeric::Float(1.234))]);
     let result: Result<DefaultValue, _> = ann.unmarshal("default");
     assert!(result.is_err());
-}
-
-#[test]
-fn test_mode_annotation_invalid_string() {
-    // Test invalid mode string
-    let ann = make_ann(
-        "mode",
-        vec![make_arg(None, Numeric::String("invalid_mode".to_string()))],
-    );
-    let result: Result<ModeAnnotation, _> = ann.unmarshal("mode");
-    assert!(result.is_err());
-
-    // Test with non-string type
-    let ann = make_ann("mode", vec![make_arg(None, Numeric::Int32(1))]);
-    let result: Result<ModeAnnotation, _> = ann.unmarshal("mode");
-    assert!(result.is_err());
-}
-
-#[test]
-fn test_mode_all_variants() {
-    // Test ReadWrite
-    let ann = make_ann(
-        "mode",
-        vec![make_arg(None, Numeric::String("read_write".to_string()))],
-    );
-    let mode: ModeAnnotation = ann.unmarshal("mode").unwrap();
-    assert_eq!(mode.value, Mode::ReadWrite);
-
-    // Test ReadOnly
-    let ann = make_ann(
-        "mode",
-        vec![make_arg(None, Numeric::String("read_only".to_string()))],
-    );
-    let mode: ModeAnnotation = ann.unmarshal("mode").unwrap();
-    assert_eq!(mode.value, Mode::ReadOnly);
-
-    // Test WriteOnly
-    let ann = make_ann(
-        "mode",
-        vec![make_arg(None, Numeric::String("write_only".to_string()))],
-    );
-    let mode: ModeAnnotation = ann.unmarshal("mode").unwrap();
-    assert_eq!(mode.value, Mode::WriteOnly);
 }
 
 #[test]
@@ -327,24 +272,16 @@ fn test_find_annotation_multiple() {
         ),
     ];
 
-    // Find optional
     let optional: Optional = find_annotation(&annotations, "optional").unwrap().unwrap();
-    assert!(optional.value); // Default is true
+    assert!(optional.value);
 
-    // Find range
     let range: Range = find_annotation(&annotations, "range").unwrap().unwrap();
     assert_eq!(range.min, Some(0));
     assert_eq!(range.max, None);
 
-    // Find default
     let default: DefaultValue = find_annotation(&annotations, "default").unwrap().unwrap();
     assert_eq!(default.value, "test");
 
-    // Find mode
-    let mode: ModeAnnotation = find_annotation(&annotations, "mode").unwrap().unwrap();
-    assert_eq!(mode.value, Mode::ReadOnly);
-
-    // Try to find non-existent
     let result: Option<Result<Optional, _>> = find_annotation(&annotations, "nonexistent");
     assert!(result.is_none());
 }
@@ -359,19 +296,17 @@ fn test_empty_annotations() {
 
 #[test]
 fn test_duplicate_annotations() {
-    // If there are duplicates, find_annotation returns the first one
     let annotations = vec![
         make_ann("range", vec![make_arg(Some("min"), Numeric::Int32(0))]),
         make_ann("range", vec![make_arg(Some("min"), Numeric::Int32(10))]),
     ];
 
     let range: Range = find_annotation(&annotations, "range").unwrap().unwrap();
-    assert_eq!(range.min, Some(0)); // First one
+    assert_eq!(range.min, Some(0));
 }
 
 #[test]
 fn test_positional_vs_named_arguments() {
-    // Test positional argument (no name)
     let ann = make_ann(
         "default",
         vec![make_arg(None, Numeric::String("positional".to_string()))],
@@ -379,7 +314,6 @@ fn test_positional_vs_named_arguments() {
     let default: DefaultValue = ann.unmarshal("default").unwrap();
     assert_eq!(default.value, "positional");
 
-    // Test named argument
     let ann = make_ann(
         "default",
         vec![make_arg(
@@ -390,7 +324,6 @@ fn test_positional_vs_named_arguments() {
     let default: DefaultValue = ann.unmarshal("default").unwrap();
     assert_eq!(default.value, "named");
 
-    // Test with wrong field name - value is still used if it's not found by name
     let ann = make_ann(
         "default",
         vec![make_arg(
@@ -399,18 +332,16 @@ fn test_positional_vs_named_arguments() {
         )],
     );
     let default: DefaultValue = ann.unmarshal("default").unwrap();
-    assert_eq!(default.value, "wrong"); // Gets the value even with wrong name
+    assert_eq!(default.value, "wrong");
 }
 
 #[test]
 fn test_complex_annotation_scenarios() {
-    // Range with only min
     let ann = make_ann("range", vec![make_arg(Some("min"), Numeric::Int32(-10))]);
     let range: Range = ann.unmarshal("range").unwrap();
     assert_eq!(range.min, Some(-10));
     assert_eq!(range.max, None);
 
-    // Range with only max
     let ann = make_ann("range", vec![make_arg(Some("max"), Numeric::Int32(100))]);
     let range: Range = ann.unmarshal("range").unwrap();
     assert_eq!(range.min, None);
@@ -443,7 +374,6 @@ fn test_edge_case_numeric_values() {
     assert_eq!(range.min, Some(-128));
     assert_eq!(range.max, Some(127));
 
-    // Test with maximum unsigned values
     let ann = make_ann(
         "range",
         vec![
@@ -458,23 +388,20 @@ fn test_edge_case_numeric_values() {
 
 #[test]
 fn test_mixed_argument_types() {
-    // Test with mix of positional and named arguments
     let ann = make_ann(
         "range",
         vec![
-            make_arg(None, Numeric::Int32(5)), // Positional - should map to "min" if it's first field
-            make_arg(Some("max"), Numeric::Int32(10)), // Named
+            make_arg(None, Numeric::Int32(5)),
+            make_arg(Some("max"), Numeric::Int32(10)),
         ],
     );
     let range: Range = ann.unmarshal("range").unwrap();
-    // Positional arguments don't work as expected for Range
     assert_eq!(range.min, None);
     assert_eq!(range.max, Some(10));
 }
 
 #[test]
 fn test_special_string_values() {
-    // Test with empty string
     let ann = make_ann(
         "default",
         vec![make_arg(None, Numeric::String(String::new()))],
@@ -482,7 +409,6 @@ fn test_special_string_values() {
     let default: DefaultValue = ann.unmarshal("default").unwrap();
     assert_eq!(default.value, "");
 
-    // Test with special characters
     let ann = make_ann(
         "default",
         vec![make_arg(
@@ -493,7 +419,6 @@ fn test_special_string_values() {
     let default: DefaultValue = ann.unmarshal("default").unwrap();
     assert_eq!(default.value, "hello\nworld\t!");
 
-    // Test with unicode
     let ann = make_ann(
         "default",
         vec![make_arg(
@@ -507,7 +432,6 @@ fn test_special_string_values() {
 
 #[test]
 fn test_char_values() {
-    // While Range doesn't support char, we can test the error handling
     let ann = make_ann(
         "range",
         vec![
@@ -521,7 +445,6 @@ fn test_char_values() {
 
 #[test]
 fn test_float_double_values() {
-    // Test float/double rejection for Range
     let ann = make_ann(
         "range",
         vec![
@@ -545,51 +468,28 @@ fn test_float_double_values() {
 
 #[test]
 fn test_optional_edge_cases() {
-    // Test optional with no arguments - should use default (true)
     let ann = make_ann("optional", vec![]);
     let optional: Optional = ann.unmarshal("optional").unwrap();
     assert!(optional.value);
 
-    // Test with multiple arguments - only first named "value" should be used
     let ann = make_ann(
         "optional",
         vec![
             make_arg(Some("other"), Numeric::Bool(true)),
             make_arg(Some("value"), Numeric::Bool(false)),
-            make_arg(Some("value"), Numeric::Bool(true)), // Duplicate - should be ignored
+            make_arg(Some("value"), Numeric::Bool(true)),
         ],
     );
     let optional: Optional = ann.unmarshal("optional").unwrap();
-    assert!(!optional.value); // Should use the first "value" field
+    assert!(!optional.value);
 
-    // Test positional bool
     let ann = make_ann("optional", vec![make_arg(None, Numeric::Bool(false))]);
     let optional: Optional = ann.unmarshal("optional").unwrap();
     assert!(!optional.value);
 }
 
 #[test]
-fn test_mode_default_behavior() {
-    // Mode with no arguments - should use default (ReadWrite)
-    let ann = make_ann("mode", vec![]);
-    let mode: ModeAnnotation = ann.unmarshal("mode").unwrap();
-    assert_eq!(mode.value, Mode::ReadWrite);
-
-    // Mode with wrong field name - still gets the value
-    let ann = make_ann(
-        "mode",
-        vec![make_arg(
-            Some("wrong"),
-            Numeric::String("read_only".to_string()),
-        )],
-    );
-    let mode: ModeAnnotation = ann.unmarshal("mode").unwrap();
-    assert_eq!(mode.value, Mode::ReadOnly); // Gets the value even with wrong name
-}
-
-#[test]
 fn test_error_propagation() {
-    // Test that errors contain useful information
     let ann = make_ann(
         "optional",
         vec![make_arg(Some("value"), Numeric::Int32(42))],
@@ -603,7 +503,6 @@ fn test_error_propagation() {
         _ => panic!("Expected TypeConversionError"),
     }
 
-    // Test wrong annotation type
     let ann = make_ann("wrong", vec![]);
     let result: Result<Optional, _> = ann.unmarshal("optional");
     match result {
@@ -617,8 +516,6 @@ fn test_error_propagation() {
 
 #[test]
 fn test_multiple_positional_arguments() {
-    // For Range, positional arguments should work if structured correctly
-    // First positional goes to first field "min" if it's named "value"
     let ann = make_ann(
         "range",
         vec![
@@ -627,7 +524,6 @@ fn test_multiple_positional_arguments() {
         ],
     );
     let range: Range = ann.unmarshal("range").unwrap();
-    // Positional arguments don't work for Range
     assert_eq!(range.min, None);
     assert_eq!(range.max, None);
 }

@@ -2,29 +2,27 @@
 source: crates/ic-lint/tests/union_key.rs
 expression: test_lint_hir(source)
 ---
-⨯ union-key: union discriminator for 'CharUnion' cannot be @optional
+⨯ annotation-target: `@optional` cannot be applied to union discriminators
   @ test.idl:2:25
 
  2 │ union CharUnion switch(@optional char) {
-   │                         ˆˆˆˆˆˆˆˆ @optional not allowed on discriminator
+   │                         ˆˆˆˆˆˆˆˆ invalid annotation target
  3 │ case 'a':
  4 │     @key string a_value;
 
-  ? remove @optional from the discriminator
-  * union discriminators must always be present
+  ? the annotation only can be applied to annotation members, struct members, union members, typedefs, exception members or valuetype members
 
-⨯ union-key: union variant 'a_value' cannot use @key
+⨯ annotation-target: `@key` cannot be applied to union members
   @ test.idl:4:6
 
  2 │ union CharUnion switch(@optional char) {
  3 │ case 'a':
  4 │     @key string a_value;
-   │      ˆˆˆ @key not allowed on union variant
+   │      ˆˆˆ invalid annotation target
  5 │ case 'b':
  6 │     string b_value;
 
-  ? remove @key from the variant or move it to the discriminator
-  * only the union discriminator can be marked as @key
+  ? the annotation only can be applied to struct members or union discriminators
 
 ! char-discriminator: char types should not be used as union discriminators
   @ test.idl:2:34

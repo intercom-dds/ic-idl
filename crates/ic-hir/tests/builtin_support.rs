@@ -89,3 +89,32 @@ fn test_builtin_types_included_in_output() {
     assert_eq!(second_def.ident.name, "UserType");
     assert!(!second_def.flags.contains(DefFlags::IS_BUILTIN));
 }
+
+#[test]
+fn test_nested_builtin_definitions_are_marked_builtin() {
+    let builtin_src = r"
+        module ext {
+            @annotation nested {};
+            struct NestedType {
+                long value;
+            };
+        };
+    ";
+    let user_src = "struct UserType {};";
+
+    let (result, _, diagnostics) = parse_with_custom_builtins(builtin_src, user_src, false);
+
+    assert!(result.errors.is_empty(), "Unexpected errors: {diagnostics}");
+
+    for (_, def) in &result.context.definitions {
+        if def.ident.name == "UserType" {
+            assert!(!def.flags.contains(DefFlags::IS_BUILTIN));
+        } else {
+            assert!(
+                def.flags.contains(DefFlags::IS_BUILTIN),
+                "{} should be marked as built-in",
+                def.ident.name
+            );
+        }
+    }
+}

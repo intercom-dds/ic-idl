@@ -167,12 +167,7 @@ module MyModule {
     };
 };
 ";
-
-    let output = test_lint_hir(source);
-    assert!(
-        output.is_empty(),
-        "Expected no warnings for range on struct, but got: {output}"
-    );
+    assert_snapshot!(test_lint_hir(source));
 }
 
 #[test]
@@ -183,12 +178,7 @@ module MyModule {
     const long MAX_PERCENTAGE = 100;
 };
 ";
-
-    let output = test_lint_hir(source);
-    assert!(
-        output.is_empty(),
-        "Expected no warnings for range on const, but got: {output}"
-    );
+    assert_snapshot!(test_lint_hir(source));
 }
 
 #[test]

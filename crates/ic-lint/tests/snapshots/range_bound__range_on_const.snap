@@ -1,0 +1,14 @@
+---
+source: crates/ic-lint/tests/range_bound.rs
+expression: test_lint_hir(source)
+---
+⨯ annotation-target: `@range` cannot be applied to constants
+  @ test.idl:3:6
+
+ 2 │ module MyModule {
+ 3 │     @range(min=0, max=100)
+   │      ˆˆˆˆˆ invalid annotation target
+ 4 │     const long MAX_PERCENTAGE = 100;
+ 5 │ };
+
+  ? the annotation only can be applied to annotation members, struct members, union members, typedefs, exception members or valuetype members

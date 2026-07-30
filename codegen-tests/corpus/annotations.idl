@@ -74,18 +74,10 @@ module annotation_tests {
         long value;
     };
 
-    // Multiple annotations
     @appendable
     struct MultiAnnotated {
         @key long id_;
         @optional string name;
         double value;
-    };
-
-    // Bit-bound annotation
-    struct BitBounded {
-        @bit_bound(8) long small;
-        @bit_bound(16) long medium;
-        long normal;
     };
 };

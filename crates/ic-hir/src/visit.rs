@@ -219,6 +219,9 @@ pub fn walk_union<'a, V>(visitor: &mut V, data: &'a UnionTy)
 where
     V: Visitor<'a> + ?Sized,
 {
+    for ann in &data.disc.annotations {
+        visitor.visit_annotation(ann);
+    }
     visitor.visit_ty(&data.disc.ty);
     for variant in &data.variants {
         visitor.visit_variant(variant);
@@ -372,6 +375,9 @@ pub fn walk_ann_param<'a, V>(visitor: &mut V, param: &'a crate::hir::AnnParam)
 where
     V: Visitor<'a> + ?Sized,
 {
+    for ann in &param.annotations {
+        visitor.visit_annotation(ann);
+    }
     visitor.visit_ty(&param.ty);
     if let Some(ref default) = param.default {
         visitor.visit_numeric(default);
@@ -395,6 +401,9 @@ pub fn walk_proto<'a, V>(visitor: &mut V, proto: &'a ProtoTy)
 where
     V: Visitor<'a> + ?Sized,
 {
+    for ann in &proto.annotations {
+        visitor.visit_annotation(ann);
+    }
     visitor.visit_ty(&proto.ty);
     for param in &proto.params {
         visitor.visit_parameter(param);
@@ -421,5 +430,8 @@ pub fn walk_attribute<'a, V>(visitor: &mut V, attr: &'a Attribute)
 where
     V: Visitor<'a> + ?Sized,
 {
+    for ann in &attr.annotations {
+        visitor.visit_annotation(ann);
+    }
     visitor.visit_ty(&attr.ty);
 }

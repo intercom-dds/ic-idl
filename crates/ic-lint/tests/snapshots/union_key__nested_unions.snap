@@ -2,25 +2,23 @@
 source: crates/ic-lint/tests/union_key.rs
 expression: test_lint_hir(source)
 ---
-⨯ union-key: union discriminator for 'Inner' cannot be @optional
+⨯ annotation-target: `@optional` cannot be applied to union discriminators
   @ test.idl:2:21
 
  2 │ union Inner switch(@optional boolean) {
-   │                     ˆˆˆˆˆˆˆˆ @optional not allowed on discriminator
+   │                     ˆˆˆˆˆˆˆˆ invalid annotation target
  3 │ case TRUE:
  4 │     string value;
 
-  ? remove @optional from the discriminator
-  * union discriminators must always be present
+  ? the annotation only can be applied to annotation members, struct members, union members, typedefs, exception members or valuetype members
 
-⨯ union-key: union variant 'inner' cannot use @key
+⨯ annotation-target: `@key` cannot be applied to union members
   @ test.idl:11:6
 
   9 │ union Outer switch(long) {
  10 │ case 1:
  11 │     @key Inner inner;
-    │      ˆˆˆ @key not allowed on union variant
+    │      ˆˆˆ invalid annotation target
  12 │ };
 
-  ? remove @key from the variant or move it to the discriminator
-  * only the union discriminator can be marked as @key
+  ? the annotation only can be applied to struct members or union discriminators

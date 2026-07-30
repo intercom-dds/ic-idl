@@ -26,10 +26,10 @@
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use ic_diagnostic::Label;
-use ic_hir::ResolvedGraph;
 use ic_hir::annotation::{AnnCtsExt, Max, Min, Range};
-use ic_hir::hir::{Ann, Def, PrimitiveTy, Ty, TyKind};
+use ic_hir::hir::{Ann, Def, DefKind, PrimitiveTy, Ty, TyKind};
 use ic_hir::visit::Visitor;
+use ic_hir::{ResolvedGraph, visit};
 
 use crate::{Category, Lint, LintCtx};
 
@@ -54,7 +54,7 @@ impl<'a> Lint<'a> for RangeBound<'a> {
 
     fn check_hir(ctx: &'a LintCtx<'_>, hir: &ResolvedGraph) {
         let mut visitor = RangeBound { ctx, hir };
-        ic_hir::visit::walk_tree(&mut visitor, hir);
+        visit::walk_tree(&mut visitor, hir);
     }
 }
 
@@ -70,9 +70,9 @@ impl RangeBound<'_> {
                 PrimitiveTy::UInt8 => Some((0, i64::from(u8::MAX))),
                 PrimitiveTy::UInt16 => Some((0, i64::from(u16::MAX))),
                 PrimitiveTy::UInt32 => Some((0, i64::from(u32::MAX))),
-                PrimitiveTy::UInt64 => Some((0, 9_223_372_036_854_775_807)), // i64::MAX
-                PrimitiveTy::Char => Some((0, 127)),                         // ASCII range
-                PrimitiveTy::WChar => Some((0, 65535)),                      // Unicode BMP
+                PrimitiveTy::UInt64 => Some((0, 9_223_372_036_854_775_807)),
+                PrimitiveTy::Char => Some((0, 127)),
+                PrimitiveTy::WChar => Some((0, 65535)),
                 _ => None,
             },
             TyKind::Adt(_) => {
@@ -247,17 +247,15 @@ impl RangeBound<'_> {
                 )
                 .label(Label::new(max_sp).message("max value here"))
                 .help("ensure @min is less than or equal to @max");
+
             Self::report(self.ctx, diag);
         }
     }
 
     fn check_annotations(&mut self, annotations: &[Ann], ty: &Ty) {
-        // Check individual @range annotations
         for ann in annotations {
             self.check_range_annotation(ann, ty);
         }
-
-        // Check @min/@max combinations
         self.check_min_max_annotations(annotations, ty);
     }
 }
@@ -268,8 +266,6 @@ impl<'a> Visitor<'a> for RangeBound<'a> {
     }
 
     fn visit_def(&mut self, def: &'a Def) {
-        // Check annotations on const and alias definitions
-        use ic_hir::hir::DefKind;
         match &def.kind {
             DefKind::Const(const_ty) => {
                 self.check_annotations(&def.annotations, &const_ty.ty);
@@ -279,27 +275,27 @@ impl<'a> Visitor<'a> for RangeBound<'a> {
             }
             _ => {}
         }
-        ic_hir::visit::walk_def(self, def);
+        visit::walk_def(self, def);
     }
 
     fn visit_struct(&mut self, _def: &'a Def, data: &'a ic_hir::hir::StructTy) {
         for member in &data.members {
             self.check_annotations(&member.annotations, &member.ty);
         }
-        ic_hir::visit::walk_struct(self, data);
+        visit::walk_struct(self, data);
     }
 
     fn visit_union(&mut self, _def: &'a Def, data: &'a ic_hir::hir::UnionTy) {
         for variant in &data.variants {
             self.check_annotations(&variant.annotations, &variant.ty);
         }
-        ic_hir::visit::walk_union(self, data);
+        visit::walk_union(self, data);
     }
 
     fn visit_except(&mut self, _def: &'a Def, data: &'a ic_hir::hir::ExceptTy) {
         for member in &data.members {
             self.check_annotations(&member.annotations, &member.ty);
         }
-        ic_hir::visit::walk_except(self, data);
+        visit::walk_except(self, data);
     }
 }

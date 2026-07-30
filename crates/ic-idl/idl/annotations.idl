@@ -25,10 +25,47 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+module ext {
+    @annotation annotation_target {
+        bitmask AnnotationTarget {
+            ANNOTATION_DEF,
+            ANNOTATION_MEMBER,
+            MODULE_DEF,
+            STRUCT_DEF,
+            STRUCT_MEMBER,
+            UNION_DEF,
+            UNION_DISC,
+            UNION_MEMBER,
+            ENUM_DEF,
+            ENUMERATOR,
+            BITMASK_DEF,
+            BITMASK_FLAG,
+            BITSET_DEF,
+            BITSET_MEMBER,
+            TYPE_ALIAS,
+            CONST_DEF,
+            EXCEPTION_DEF,
+            EXCEPTION_MEMBER,
+            INTERFACE_DEF,
+            PROTOTYPE,
+            ATTRIBUTE_DEF,
+            VALUETYPE_DEF,
+            VALUETYPE_MEMBER,
+            NATIVE_DEF
+        };
+        const AnnotationTarget ALL_MEMBERS =
+            STRUCT_MEMBER | UNION_MEMBER | EXCEPTION_MEMBER | ANNOTATION_MEMBER | VALUETYPE_MEMBER;
+
+        AnnotationTarget value;
+    };
+};
+
+@ext::annotation_target(STRUCT_MEMBER | UNION_MEMBER)
 @annotation id {
     unsigned long value;
 };
 
+@ext::annotation_target(MODULE_DEF | STRUCT_DEF | UNION_DEF)
 @annotation autoid {
     enum AutoidKind {
         SEQUENTIAL,
@@ -37,20 +74,25 @@
     AutoidKind value default HASH;
 };
 
+@ext::annotation_target(ALL_MEMBERS | TYPE_ALIAS)
 @annotation optional {
     boolean value default TRUE;
 };
 
+@ext::annotation_target(BITMASK_FLAG)
 @annotation position {
     unsigned short value;
 };
 
+@ext::annotation_target(ENUMERATOR)
 @annotation value {
     any value;
 };
 
+@ext::annotation_target(STRUCT_DEF | UNION_DEF | EXCEPTION_DEF)
 @annotation empty {};
 
+@ext::annotation_target(STRUCT_DEF | UNION_DEF)
 @annotation extensibility {
     enum ExtensibilityKind {
          FINAL,
@@ -67,55 +109,70 @@
     ExtensibilityKind value;
 };
 
+@ext::annotation_target(STRUCT_DEF | UNION_DEF)
 @annotation final {};
 
+@ext::annotation_target(STRUCT_DEF | UNION_DEF)
 @annotation mutable {};
 
+@ext::annotation_target(STRUCT_DEF | UNION_DEF)
 @annotation appendable {};
 
+@ext::annotation_target(ALL_MEMBERS | TYPE_ALIAS)
 @annotation shared {
     boolean value default TRUE;
 };
 
+@ext::annotation_target(STRUCT_MEMBER | UNION_DISC)
 @annotation key {
     boolean value default TRUE;
 };
 
+@ext::annotation_target(STRUCT_MEMBER | UNION_DISC | UNION_MEMBER)
 @annotation must_understand {
     boolean value default TRUE;
 };
 
+@ext::annotation_target(ALL_MEMBERS | UNION_DISC | TYPE_ALIAS)
 @annotation default {
     any value;
 };
 
+@ext::annotation_target(ENUMERATOR)
 @annotation default_literal {};
 
+@ext::annotation_target(ALL_MEMBERS | TYPE_ALIAS)
 @annotation range {
     any min;
     any max;
 };
 
+@ext::annotation_target(ALL_MEMBERS | TYPE_ALIAS)
 @annotation min {
     any value;
 };
 
+@ext::annotation_target(ALL_MEMBERS | TYPE_ALIAS)
 @annotation max {
     any value;
 };
 
+@ext::annotation_target(ALL_MEMBERS | TYPE_ALIAS)
 @annotation unit {
     string value;
 };
 
+@ext::annotation_target(ENUM_DEF | BITMASK_DEF)
 @annotation bit_bound {
     unsigned short value;
 };
 
+@ext::annotation_target(ALL_MEMBERS | TYPE_ALIAS)
 @annotation external {
     boolean value default TRUE;
 };
 
+@ext::annotation_target(STRUCT_DEF | UNION_DEF | TYPE_ALIAS)
 @annotation nested {
     boolean value default TRUE;
 };
@@ -134,6 +191,7 @@
     string text;
 };
 
+@ext::annotation_target(INTERFACE_DEF)
 @annotation service {
     string platform default "*";
     string name default "";
@@ -141,6 +199,7 @@
     string reply_topic default "";
 };
 
+@ext::annotation_target(STRUCT_DEF | UNION_DEF)
 @annotation topic {
     string name default "";
     string class default "";
@@ -155,22 +214,27 @@
     string name;
 };
 
+@ext::annotation_target(INTERFACE_DEF)
 @annotation DDSService {
     string name default "";
 };
 
+@ext::annotation_target(INTERFACE_DEF)
 @annotation DDSRequestTopic {
     string name;
 };
 
+@ext::annotation_target(INTERFACE_DEF)
 @annotation DDSReplyTopic {
     string name;
 };
 
+@ext::annotation_target(PROTOTYPE)
 @annotation oneway {
     boolean value default TRUE;
 };
 
+@ext::annotation_target(INTERFACE_DEF | PROTOTYPE)
 @annotation ami {
     boolean value default TRUE;
 };
@@ -193,18 +257,22 @@
     boolean value default TRUE;
 };
 
+@ext::annotation_target(STRUCT_MEMBER | UNION_MEMBER)
 @annotation hashid {
     string value default "";
 };
 
+@ext::annotation_target(MODULE_DEF)
 @annotation default_nested {
     boolean value default TRUE;
 };
 
+@ext::annotation_target(ENUM_DEF)
 @annotation ignore_literal_names {
     boolean value default TRUE;
 };
 
+@ext::annotation_target(STRUCT_MEMBER | UNION_MEMBER | UNION_DISC | TYPE_ALIAS)
 @annotation try_construct {
     enum TryConstructFailAction {
         USE_DEFAULT,
@@ -227,14 +295,6 @@
     DataRepresentationMask allowed_kinds;
 };
 
-@annotation jaus {
-    string id default "";
-    string name default "";
-    string version default "";
-    string assumptions default "";
-    string inherits_from default "";
-};
-
 @annotation doc {
     enum PlacementKind {
         BEGIN_FILE,
@@ -248,10 +308,12 @@
     PlacementKind placement default BEFORE_DECLARATION;
 };
 
+@ext::annotation_target(PROTOTYPE)
 @annotation static {
     boolean value default TRUE;
 };
 
+@ext::annotation_target(PROTOTYPE)
 @annotation _const {
     boolean value default TRUE;
 };
@@ -322,18 +384,6 @@ module ext {
     @annotation vmf_decimal {
         long chars default 0;
         long decimal_bits;
-    };
-
-    @annotation jaus_presence_vector {
-        long value;
-    };
-
-    @annotation jaus_integer {
-        boolean value default TRUE;
-    };
-
-    @annotation jaus_integer_function {
-        boolean value default TRUE;
     };
 
     @annotation rename {

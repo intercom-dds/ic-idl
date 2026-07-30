@@ -1,0 +1,11 @@
+---
+source: crates/ic-lint/tests/annotation_target.rs
+expression: test_lint(source)
+---
+! ann-placement: annotations on prototype parameters are not allowed
+  @ test.idl:3:15
+
+ 2 │ interface Service {
+ 3 │     void call(@key in long value);
+   │               ˆˆˆˆ invalid annotation placement
+ 4 │ };

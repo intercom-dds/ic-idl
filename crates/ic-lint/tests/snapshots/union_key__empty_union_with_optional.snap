@@ -2,13 +2,12 @@
 source: crates/ic-lint/tests/union_key.rs
 expression: test_lint_hir(source)
 ---
-⨯ union-key: union discriminator for 'EmptyUnion' cannot be @optional
+⨯ annotation-target: `@optional` cannot be applied to union discriminators
   @ test.idl:2:26
 
  2 │ union EmptyUnion switch(@optional long) {
-   │                          ˆˆˆˆˆˆˆˆ @optional not allowed on discriminator
+   │                          ˆˆˆˆˆˆˆˆ invalid annotation target
  3 │ default:
  4 │     long value;
 
-  ? remove @optional from the discriminator
-  * union discriminators must always be present
+  ? the annotation only can be applied to annotation members, struct members, union members, typedefs, exception members or valuetype members

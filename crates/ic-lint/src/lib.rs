@@ -125,7 +125,6 @@ use ic_vfs::SourceMap;
 use tracing::{debug, debug_span, trace};
 
 mod annotation;
-mod deprecated;
 mod extensions;
 mod pedantic;
 mod preproc;
@@ -548,11 +547,12 @@ define_lints! {
         pedantic::large_union_variant::LargeUnionVariant,
         pedantic::prefer_enum_name::PreferEnumName,
         pedantic::unused_include::UnusedInclude,
+        semantic::ann_target::AnnotationTarget,
         semantic::bit_bound::BitBound,
         semantic::conflicting_annotations::ConflictingAnnotations,
         semantic::default_type_mismatch::DefaultTypeMismatch,
         semantic::derived_struct_key::DerivedStructKey,
-        semantic::duplicate_annotations_hir::DuplicateAnnotations,
+        semantic::duplicate_annotations::DuplicateAnnotations,
         semantic::duplicate_bounds::DuplicateBounds,
         semantic::duplicate_case_labels::DuplicateCaseLabels,
         semantic::duplicate_enum_values::DuplicateEnumValues,
@@ -568,7 +568,6 @@ define_lints! {
         semantic::recursive_type::RecursiveType,
         semantic::redundant_inheritance::RedundantInheritance,
         semantic::union_case_label_range::UnionCaseLabelRange,
-        semantic::union_key::UnionKey,
         semantic::unreachable_union_cases::UnreachableUnionCases,
         semantic::void_ty::VoidTy,
         semantic::zero_bound::ZeroBound,

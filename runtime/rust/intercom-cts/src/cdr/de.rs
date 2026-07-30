@@ -166,7 +166,6 @@ impl<'a, 'de, E: Endian> Deserializer<'a> for &'a mut CdrReader<'de, E> {
     }
 
     #[inline]
-    #[allow(clippy::chunks_exact_to_as_chunks)]
     fn decode_wstring(self) -> Result<String, Self::Error> {
         let len = self.decode_u32()? as usize;
         match len {

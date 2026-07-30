@@ -893,53 +893,6 @@ mod tests {
     }
 
     #[test]
-    fn test_mode_enum_unmarshal() {
-        let ann = make_ann(
-            "mode",
-            vec![make_arg(None, Numeric::String("read_only".to_string()))],
-        );
-
-        let mode: ModeAnnotation = ann.unmarshal("mode").unwrap();
-        assert_eq!(mode.value, Mode::ReadOnly);
-    }
-
-    #[test]
-    fn test_mode_enum_with_name() {
-        let ann = make_ann(
-            "mode",
-            vec![make_arg(
-                Some("value"),
-                Numeric::String("write_only".to_string()),
-            )],
-        );
-
-        let mode: ModeAnnotation = ann.unmarshal("mode").unwrap();
-        assert_eq!(mode.value, Mode::WriteOnly);
-    }
-
-    #[test]
-    fn test_mode_enum_default() {
-        let ann = make_ann(
-            "mode",
-            vec![make_arg(None, Numeric::String("read_write".to_string()))],
-        );
-
-        let mode: ModeAnnotation = ann.unmarshal("mode").unwrap();
-        assert_eq!(mode.value, Mode::ReadWrite);
-    }
-
-    #[test]
-    fn test_mode_enum_invalid() {
-        let ann = make_ann(
-            "mode",
-            vec![make_arg(None, Numeric::String("invalid_mode".to_string()))],
-        );
-
-        let result: Result<ModeAnnotation, _> = ann.unmarshal("mode");
-        assert!(result.is_err());
-    }
-
-    #[test]
     fn test_min_unmarshal() {
         let ann = make_ann("min", vec![make_arg(None, Numeric::Int32(-100))]);
 

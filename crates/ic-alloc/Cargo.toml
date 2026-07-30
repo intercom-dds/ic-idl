@@ -35,6 +35,3 @@ rust-version.workspace = true
 
 [lints]
 workspace = true
-
-[dependencies]
-intercom-cts.workspace = true

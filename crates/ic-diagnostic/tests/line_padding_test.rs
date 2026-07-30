@@ -29,7 +29,7 @@
 
 use ic_cli::color::ColorMode;
 use ic_diagnostic::{Diag, DiagnosticEmitter, Label};
-use ic_vfs::{FileId, Location, Span};
+use ic_vfs::{FileId, Location, SourceMap, Span};
 
 fn make_span(file_id: FileId, start: u32, end: u32) -> Span {
     Span {
@@ -42,7 +42,8 @@ fn make_span(file_id: FileId, start: u32, end: u32) -> Span {
 fn test_line_padding_two_digits() {
     ic_cli::color::set_color_override(ColorMode::Never);
     let source = "line 1\nline 2\nline 3\nline 4\nline 5\nline 6\nline 7\nline 8\nline 9\nline 10";
-    let file_id = FileId::_do_not_use();
+    let mut map = SourceMap::default();
+    let file_id = map.embed(source);
 
     // Create labels on lines 1 and 10 to test 1-digit vs 2-digit padding
     let diag = Diag::error("test error message")
@@ -72,7 +73,8 @@ fn test_line_padding_three_digits() {
         lines.push(line);
     }
     let source = lines.join("\n");
-    let file_id = FileId::_do_not_use();
+    let mut map = SourceMap::default();
+    let file_id = map.embed(&source);
 
     // Get exact offsets for lines 1, 50, and 100
     let (_, start_1, end_1) = offsets[0];
@@ -110,7 +112,8 @@ fn test_line_padding_with_multiline_spans() {
         lines.push(line);
     }
     let source = lines.join("\n");
-    let file_id = FileId::_do_not_use();
+    let mut map = SourceMap::default();
+    let file_id = map.embed(&source);
 
     // Get exact offsets - span from line 5 to line 8, and line 145
     let (_, start_5, _) = offsets[4];
@@ -149,7 +152,8 @@ fn test_line_padding_with_ellipsis() {
         lines.push(line);
     }
     let source = lines.join("\n");
-    let file_id = FileId::_do_not_use();
+    let mut map = SourceMap::default();
+    let file_id = map.embed(&source);
 
     // Get exact offsets for a very large span from line 10 to line 190
     let (_, start_10, _) = offsets[9];
@@ -183,7 +187,8 @@ fn test_line_padding_four_digits() {
         lines.push(line);
     }
     let source = lines.join("\n");
-    let file_id = FileId::_do_not_use();
+    let mut map = SourceMap::default();
+    let file_id = map.embed(&source);
 
     // Get exact offsets for lines 1, 99, 999, and 9999
     let (_, start_1, end_1) = offsets[0];
@@ -226,7 +231,8 @@ fn test_line_padding_mixed_extreme() {
         lines.push(line);
     }
     let source = lines.join("\n");
-    let file_id = FileId::_do_not_use();
+    let mut map = SourceMap::default();
+    let file_id = map.embed(&source);
 
     // Get exact offsets for lines 5 and 10000
     let (_, start_5, end_5) = offsets[4];

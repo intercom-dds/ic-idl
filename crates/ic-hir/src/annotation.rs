@@ -779,14 +779,27 @@ where
 
 #[cfg(test)]
 mod tests {
+    use ic_vfs::{Location, SourceMap};
+
     use super::*;
     use crate::hir::{AnnArg, Ident};
+
+    fn test_span() -> ic_syntax::Span {
+        let mut map = SourceMap::default();
+        let file_id = map.embed("");
+        let location = Location::new(0, file_id);
+
+        ic_syntax::Span {
+            start: location,
+            end: location,
+        }
+    }
 
     fn make_ann(name: &str, args: Vec<AnnArg>) -> Ann {
         Ann {
             ident: Ident {
                 name: name.to_string(),
-                span: ic_syntax::Span::default(),
+                span: test_span(),
             },
             def_id: None,
             args,
@@ -798,11 +811,11 @@ mod tests {
             ident: name.map_or_else(
                 || Ident {
                     name: "value".to_string(),
-                    span: ic_syntax::Span::default(),
+                    span: test_span(),
                 },
                 |n| Ident {
                     name: n.to_string(),
-                    span: ic_syntax::Span::default(),
+                    span: test_span(),
                 },
             ),
             value,

@@ -365,13 +365,6 @@ impl HirMerger {
         let mut created = vec![];
 
         for (old_def_id, old_def) in &old_context.definitions {
-            debug_assert_ne!(
-                old_def.ident.span.start,
-                Span::default().start,
-                "definition '{}' has an invalid file id in its identifier span",
-                old_def.ident.name,
-            );
-
             if let Some(&merged_id) = self.span_map.get(&old_def.ident.span) {
                 self.def_id_maps[graph_index].insert(old_def_id, merged_id);
                 continue;

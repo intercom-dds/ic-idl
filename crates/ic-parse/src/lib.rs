@@ -123,11 +123,11 @@ pub fn from_str(input: &str) -> ParseResult {
 pub fn from_file(file_id: FileId, vfs: &SourceMap) -> ParseResult {
     let source = vfs.source(file_id);
     let cursor = Cursor::new(source, file_id);
-    from_iter(cursor, vfs)
+    from_iter(cursor, file_id, vfs)
 }
 
 /// Parses from a token iterator.
-pub fn from_iter<I>(tokens: I, vfs: &SourceMap) -> ParseResult
+pub fn from_iter<I>(tokens: I, file_id: FileId, vfs: &SourceMap) -> ParseResult
 where
     I: IntoIterator<Item = Token>,
 {
@@ -135,6 +135,7 @@ where
         tokens
             .into_iter()
             .filter(|t| !matches!(t.kind, Kind::Newline)),
+        file_id,
     );
     let parser = Parser::new(stream, vfs);
     let (tree, errors, orphaned_annotations) = parser.parse();

@@ -282,11 +282,10 @@ fn create_constants_module(
     constants: &[DefId],
     parent: Option<DefId>,
 ) -> DefId {
-    // Get span from first constant, or use a default
     let span = constants
         .first()
         .map(|&id| hir.context.definitions.get(id).span)
-        .unwrap_or_default();
+        .expect("constants is not empty");
 
     // Create the Constants module
     hir.context.definitions.alloc_with_id(|id| hir::Def {

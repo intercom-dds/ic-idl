@@ -232,11 +232,11 @@ fn macro_arg_unterminated_error() {
 
     // Verify we have the expected error with proper span tracking
     let has_expected_error = state.errors().iter().any(|err| {
-        matches!(err, ic_preproc::Error::Syntax { message, span } 
-            if message.contains("unexpected end") && *span != ic_vfs::Span::default())
+        matches!(err, ic_preproc::Error::Syntax { message, span }
+            if message.contains("unexpected end") && span.start.file_id == id)
     });
     assert!(
         has_expected_error,
-        "Expected error about unexpected end of file with non-default span"
+        "Expected error about unexpected end of file with a span in the source file"
     );
 }

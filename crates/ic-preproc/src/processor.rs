@@ -170,6 +170,17 @@ where
         self.state.borrow_mut()
     }
 
+    fn eof_span(&mut self) -> Span {
+        let file_id = self.cursor().file_id();
+        let offset = u32::try_from(self.vfs.source_str(file_id).len()).unwrap_or(u32::MAX);
+        let location = Location::new(offset, file_id);
+
+        Span {
+            start: location,
+            end: location,
+        }
+    }
+
     fn source_of(&self, span: Span) -> &'a str {
         let Some(file) = self.stack.last() else {
             unreachable!("cursor stack is empty");
@@ -1133,9 +1144,14 @@ where
                     }
                 }
             } else {
+                let span = match last_token_span {
+                    Some(span) => span,
+                    None => self.eof_span(),
+                };
+
                 self.state().errors.push(Error::Syntax {
                     message: "unexpected end of file in macro arguments",
-                    span: last_token_span.unwrap_or_default(),
+                    span,
                 });
                 break;
             }

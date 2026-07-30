@@ -42,16 +42,7 @@ impl Location {
     }
 }
 
-// This really shouldn't be default constructible, but all generated code
-// relies on it. We have a sanity lint that verifies all `Position`s in the AST
-// has a valid `FileId`, so that should hopefully catch such cases.
-impl Default for Location {
-    fn default() -> Self {
-        Self::new(0, FileId::_do_not_use())
-    }
-}
-
-#[derive(Copy, Clone, Default, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Span {
     pub start: Location,
     pub end: Location,

@@ -27,10 +27,9 @@
 
 use ic_cli::color::ColorMode;
 use ic_diagnostic::{Color, Diag, Label};
-use ic_vfs::{FileId, Location, Span};
+use ic_vfs::{FileId, Location, SourceMap, Span};
 
-fn make_span(start: u32, end: u32) -> Span {
-    let file_id = FileId::_do_not_use();
+fn make_span(file_id: FileId, start: u32, end: u32) -> Span {
     Span {
         start: Location::new(start, file_id),
         end: Location::new(end, file_id),
@@ -41,21 +40,23 @@ fn make_span(start: u32, end: u32) -> Span {
 fn test_overlap_colors() {
     ic_cli::color::set_color_override(ColorMode::Never);
     let source = "void process(struct Data { int x; int y; } data);";
+    let mut map = SourceMap::default();
+    let file_id = map.embed(source);
 
     // Create spans with specific colors
     let diag = Diag::error("nested structures")
         .label(
-            Label::new(make_span(13, 43))
+            Label::new(make_span(file_id, 13, 43))
                 .message("struct (should be blue)")
                 .color(Color::Blue),
         )
         .label(
-            Label::new(make_span(27, 33))
+            Label::new(make_span(file_id, 27, 33))
                 .message("int x (should be yellow)")
                 .color(Color::Yellow),
         )
         .label(
-            Label::new(make_span(34, 40))
+            Label::new(make_span(file_id, 34, 40))
                 .message("int y (should be green)")
                 .color(Color::Green),
         );

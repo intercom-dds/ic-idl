@@ -116,6 +116,7 @@ fn primitive_size(prim: PrimitiveTy) -> Option<usize> {
 #[cfg(test)]
 mod tests {
     use ic_syntax::{Ident, Span};
+    use ic_vfs::{Location, SourceMap};
 
     use super::*;
     use crate::hir::{
@@ -123,27 +124,38 @@ mod tests {
         StructTy, UnionTy, Variant,
     };
 
+    fn test_span() -> Span {
+        let mut map = SourceMap::default();
+        let file_id = map.embed("");
+        let location = Location::new(0, file_id);
+
+        Span {
+            start: location,
+            end: location,
+        }
+    }
+
     fn make_primitive_type(prim: PrimitiveTy) -> Ty {
         Ty {
-            span: Span::default(),
+            span: test_span(),
             kind: TyKind::Primitive(prim),
         }
     }
 
     fn make_array_type(elem_ty: Ty, len: usize) -> Ty {
         Ty {
-            span: Span::default(),
+            span: test_span(),
             kind: TyKind::Array {
                 ty: Box::new(elem_ty),
                 len,
-                len_span: Span::default(),
+                len_span: test_span(),
             },
         }
     }
 
     fn make_string_type(wide: bool, bound: Option<usize>) -> Ty {
         Ty {
-            span: Span::default(),
+            span: test_span(),
             kind: TyKind::String {
                 wide,
                 bound,
@@ -154,7 +166,7 @@ mod tests {
 
     fn make_sequence_type(elem_ty: Ty, bound: Option<usize>) -> Ty {
         Ty {
-            span: Span::default(),
+            span: test_span(),
             kind: TyKind::Sequence {
                 ty: Box::new(elem_ty),
                 bound,
@@ -289,14 +301,14 @@ mod tests {
 
         // Any type has unknown size
         let any_type = Ty {
-            span: Span::default(),
+            span: test_span(),
             kind: TyKind::Any,
         };
         assert_eq!(type_size(&any_type, &ctx), None);
 
         // Fixed type assumed to be 64-bit
         let fixed_type = Ty {
-            span: Span::default(),
+            span: test_span(),
             kind: TyKind::Fixed,
         };
         assert_eq!(type_size(&fixed_type, &ctx), Some(8));
@@ -316,9 +328,9 @@ mod tests {
             parent: None,
             ident: Ident {
                 name: "TestStruct".to_string(),
-                span: Span::default(),
+                span: test_span(),
             },
-            span: Span::default(),
+            span: test_span(),
             flags: DefFlags::default(),
             annotations: vec![],
             kind: DefKind::Struct(StructTy {
@@ -327,7 +339,7 @@ mod tests {
                     Member {
                         ident: Ident {
                             name: "field1".to_string(),
-                            span: Span::default(),
+                            span: test_span(),
                         },
                         ty: make_primitive_type(PrimitiveTy::Int32),
                         annotations: vec![],
@@ -335,7 +347,7 @@ mod tests {
                     Member {
                         ident: Ident {
                             name: "field2".to_string(),
-                            span: Span::default(),
+                            span: test_span(),
                         },
                         ty: make_primitive_type(PrimitiveTy::Int64),
                         annotations: vec![],
@@ -343,7 +355,7 @@ mod tests {
                     Member {
                         ident: Ident {
                             name: "field3".to_string(),
-                            span: Span::default(),
+                            span: test_span(),
                         },
                         ty: make_primitive_type(PrimitiveTy::Bool),
                         annotations: vec![],
@@ -353,7 +365,7 @@ mod tests {
         });
 
         let struct_type = Ty {
-            span: Span::default(),
+            span: test_span(),
             kind: TyKind::Adt(struct_id),
         };
 
@@ -370,9 +382,9 @@ mod tests {
             parent: None,
             ident: Ident {
                 name: "IntArray".to_string(),
-                span: Span::default(),
+                span: test_span(),
             },
-            span: Span::default(),
+            span: test_span(),
             flags: DefFlags::default(),
             annotations: vec![],
             kind: DefKind::Alias(AliasTy {
@@ -381,7 +393,7 @@ mod tests {
         });
 
         let alias_type = Ty {
-            span: Span::default(),
+            span: test_span(),
             kind: TyKind::Adt(alias_id),
         };
 
@@ -403,9 +415,9 @@ mod tests {
             parent: None,
             ident: Ident {
                 name: "TestUnion".to_string(),
-                span: Span::default(),
+                span: test_span(),
             },
-            span: Span::default(),
+            span: test_span(),
             flags: DefFlags::default(),
             annotations: vec![],
             kind: DefKind::Union(UnionTy {
@@ -418,7 +430,7 @@ mod tests {
                         annotations: vec![],
                         ident: Ident {
                             name: "variant1".to_string(),
-                            span: Span::default(),
+                            span: test_span(),
                         },
                         ty: make_primitive_type(PrimitiveTy::Int8),
                         labels: vec![],
@@ -428,7 +440,7 @@ mod tests {
                         annotations: vec![],
                         ident: Ident {
                             name: "variant2".to_string(),
-                            span: Span::default(),
+                            span: test_span(),
                         },
                         ty: make_primitive_type(PrimitiveTy::Int64),
                         labels: vec![],
@@ -438,7 +450,7 @@ mod tests {
                         annotations: vec![],
                         ident: Ident {
                             name: "variant3".to_string(),
-                            span: Span::default(),
+                            span: test_span(),
                         },
                         ty: make_primitive_type(PrimitiveTy::Float64),
                         labels: vec![],
@@ -449,7 +461,7 @@ mod tests {
         });
 
         let union_type = Ty {
-            span: Span::default(),
+            span: test_span(),
             kind: TyKind::Adt(union_id),
         };
 
@@ -466,9 +478,9 @@ mod tests {
             parent: None,
             ident: Ident {
                 name: "TestEnum".to_string(),
-                span: Span::default(),
+                span: test_span(),
             },
-            span: Span::default(),
+            span: test_span(),
             flags: DefFlags::default(),
             annotations: vec![],
             kind: DefKind::Enum(EnumTy {
@@ -478,7 +490,7 @@ mod tests {
         });
 
         let enum_type = Ty {
-            span: Span::default(),
+            span: test_span(),
             kind: TyKind::Adt(enum_id),
         };
 
@@ -495,9 +507,9 @@ mod tests {
             parent: None,
             ident: Ident {
                 name: "TestBitmask".to_string(),
-                span: Span::default(),
+                span: test_span(),
             },
-            span: Span::default(),
+            span: test_span(),
             flags: DefFlags::default(),
             annotations: vec![],
             kind: DefKind::Bitmask(BitmaskTy {
@@ -507,7 +519,7 @@ mod tests {
         });
 
         let bitmask_type = Ty {
-            span: Span::default(),
+            span: test_span(),
             kind: TyKind::Adt(bitmask_id),
         };
 
@@ -524,9 +536,9 @@ mod tests {
             parent: None,
             ident: Ident {
                 name: "TestBitset".to_string(),
-                span: Span::default(),
+                span: test_span(),
             },
-            span: Span::default(),
+            span: test_span(),
             flags: DefFlags::default(),
             annotations: vec![],
             kind: DefKind::Bitset(BitsetTy {
@@ -535,7 +547,7 @@ mod tests {
                     BitsetField {
                         ident: Ident {
                             name: "field1".to_string(),
-                            span: Span::default(),
+                            span: test_span(),
                         },
                         size: 8,
                         ty: make_primitive_type(PrimitiveTy::UInt8),
@@ -544,7 +556,7 @@ mod tests {
                     BitsetField {
                         ident: Ident {
                             name: "field2".to_string(),
-                            span: Span::default(),
+                            span: test_span(),
                         },
                         size: 5,
                         ty: make_primitive_type(PrimitiveTy::UInt8),
@@ -553,7 +565,7 @@ mod tests {
                     BitsetField {
                         ident: Ident {
                             name: "field3".to_string(),
-                            span: Span::default(),
+                            span: test_span(),
                         },
                         size: 4,
                         ty: make_primitive_type(PrimitiveTy::UInt8),
@@ -564,7 +576,7 @@ mod tests {
         });
 
         let bitset_type = Ty {
-            span: Span::default(),
+            span: test_span(),
             kind: TyKind::Adt(bitset_id),
         };
 
@@ -582,9 +594,9 @@ mod tests {
             parent: None,
             ident: Ident {
                 name: "InnerStruct".to_string(),
-                span: Span::default(),
+                span: test_span(),
             },
-            span: Span::default(),
+            span: test_span(),
             flags: DefFlags::default(),
             annotations: vec![],
             kind: DefKind::Struct(StructTy {
@@ -593,7 +605,7 @@ mod tests {
                     Member {
                         ident: Ident {
                             name: "x".to_string(),
-                            span: Span::default(),
+                            span: test_span(),
                         },
                         ty: make_primitive_type(PrimitiveTy::Int32),
                         annotations: vec![],
@@ -601,7 +613,7 @@ mod tests {
                     Member {
                         ident: Ident {
                             name: "y".to_string(),
-                            span: Span::default(),
+                            span: test_span(),
                         },
                         ty: make_primitive_type(PrimitiveTy::Int32),
                         annotations: vec![],
@@ -616,9 +628,9 @@ mod tests {
             parent: None,
             ident: Ident {
                 name: "OuterStruct".to_string(),
-                span: Span::default(),
+                span: test_span(),
             },
-            span: Span::default(),
+            span: test_span(),
             flags: DefFlags::default(),
             annotations: vec![],
             kind: DefKind::Struct(StructTy {
@@ -627,7 +639,7 @@ mod tests {
                     Member {
                         ident: Ident {
                             name: "flag".to_string(),
-                            span: Span::default(),
+                            span: test_span(),
                         },
                         ty: make_primitive_type(PrimitiveTy::Bool),
                         annotations: vec![],
@@ -635,10 +647,10 @@ mod tests {
                     Member {
                         ident: Ident {
                             name: "inner".to_string(),
-                            span: Span::default(),
+                            span: test_span(),
                         },
                         ty: Ty {
-                            span: Span::default(),
+                            span: test_span(),
                             kind: TyKind::Adt(inner_id),
                         },
                         annotations: vec![],
@@ -648,7 +660,7 @@ mod tests {
         });
 
         let outer_type = Ty {
-            span: Span::default(),
+            span: test_span(),
             kind: TyKind::Adt(outer_id),
         };
 
@@ -664,7 +676,7 @@ mod tests {
         // This should return None due to the cycle
         let node_id = ctx.definitions.alloc_with_id(|id| {
             let node_ty = Ty {
-                span: Span::default(),
+                span: test_span(),
                 kind: TyKind::Adt(id),
             };
 
@@ -673,9 +685,9 @@ mod tests {
                 parent: None,
                 ident: Ident {
                     name: "Node".to_string(),
-                    span: Span::default(),
+                    span: test_span(),
                 },
-                span: Span::default(),
+                span: test_span(),
                 flags: DefFlags::default(),
                 annotations: vec![],
                 kind: DefKind::Struct(StructTy {
@@ -683,7 +695,7 @@ mod tests {
                     members: vec![Member {
                         ident: Ident {
                             name: "items".to_string(),
-                            span: Span::default(),
+                            span: test_span(),
                         },
                         ty: make_array_type(node_ty, 10),
                         annotations: vec![],
@@ -693,7 +705,7 @@ mod tests {
         });
 
         let node_type = Ty {
-            span: Span::default(),
+            span: test_span(),
             kind: TyKind::Adt(node_id),
         };
 
@@ -712,9 +724,9 @@ mod tests {
             parent: None,
             ident: Ident {
                 name: "A_temp".to_string(),
-                span: Span::default(),
+                span: test_span(),
             },
-            span: Span::default(),
+            span: test_span(),
             flags: DefFlags::default(),
             annotations: vec![],
             kind: DefKind::Struct(StructTy {
@@ -728,9 +740,9 @@ mod tests {
             parent: None,
             ident: Ident {
                 name: "B_temp".to_string(),
-                span: Span::default(),
+                span: test_span(),
             },
-            span: Span::default(),
+            span: test_span(),
             flags: DefFlags::default(),
             annotations: vec![],
             kind: DefKind::Struct(StructTy {
@@ -745,9 +757,9 @@ mod tests {
             parent: None,
             ident: Ident {
                 name: "A".to_string(),
-                span: Span::default(),
+                span: test_span(),
             },
-            span: Span::default(),
+            span: test_span(),
             flags: DefFlags::default(),
             annotations: vec![],
             kind: DefKind::Struct(StructTy {
@@ -755,10 +767,10 @@ mod tests {
                 members: vec![Member {
                     ident: Ident {
                         name: "b".to_string(),
-                        span: Span::default(),
+                        span: test_span(),
                     },
                     ty: Ty {
-                        span: Span::default(),
+                        span: test_span(),
                         kind: TyKind::Adt(b_id),
                     },
                     annotations: vec![],
@@ -771,9 +783,9 @@ mod tests {
             parent: None,
             ident: Ident {
                 name: "B".to_string(),
-                span: Span::default(),
+                span: test_span(),
             },
-            span: Span::default(),
+            span: test_span(),
             flags: DefFlags::default(),
             annotations: vec![],
             kind: DefKind::Struct(StructTy {
@@ -781,10 +793,10 @@ mod tests {
                 members: vec![Member {
                     ident: Ident {
                         name: "a".to_string(),
-                        span: Span::default(),
+                        span: test_span(),
                     },
                     ty: Ty {
-                        span: Span::default(),
+                        span: test_span(),
                         kind: TyKind::Adt(a_id),
                     },
                     annotations: vec![],
@@ -793,7 +805,7 @@ mod tests {
         };
 
         let a_type = Ty {
-            span: Span::default(),
+            span: test_span(),
             kind: TyKind::Adt(a_id),
         };
 

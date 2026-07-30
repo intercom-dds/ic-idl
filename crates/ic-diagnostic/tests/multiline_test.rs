@@ -27,10 +27,9 @@
 
 use ic_cli::color::ColorMode;
 use ic_diagnostic::{Color, Diag, Label};
-use ic_vfs::{FileId, Location, Span};
+use ic_vfs::{FileId, Location, SourceMap, Span};
 
-fn make_span(start: u32, end: u32) -> Span {
-    let file_id = FileId::_do_not_use(); // For testing only
+fn make_span(file_id: FileId, start: u32, end: u32) -> Span {
     Span {
         start: Location::new(start, file_id),
         end: Location::new(end, file_id),
@@ -48,10 +47,12 @@ interface MyInterface {
         string param2
     );
 }";
+    let mut map = SourceMap::default();
+    let file_id = map.embed(source);
 
     // Create a diagnostic that spans multiple lines (from "myMethod" to the closing paren)
     let diag = Diag::error("method spans multiple lines").label(
-        Label::new(make_span(35, 87)) // This should span from "myMethod" to ")"
+        Label::new(make_span(file_id, 35, 87)) // This should span from "myMethod" to ")"
             .message("this method definition spans multiple lines")
             .color(Color::Red),
     );
@@ -65,12 +66,12 @@ interface MyInterface {
     // Test with multiple labels on different lines
     let diag2 = Diag::error("multiple parameters on different lines")
         .label(
-            Label::new(make_span(53, 63)) // "int param1"
+            Label::new(make_span(file_id, 53, 63)) // "int param1"
                 .message("first parameter")
                 .color(Color::Yellow),
         )
         .label(
-            Label::new(make_span(73, 86)) // "string param2"
+            Label::new(make_span(file_id, 73, 86)) // "string param2"
                 .message("second parameter")
                 .color(Color::Blue),
         );
@@ -83,7 +84,7 @@ interface MyInterface {
 
     // Test showing current behavior - only first line is highlighted
     let diag3 = Diag::error("large multi-line block").label(
-        Label::new(make_span(23, 92)) // From opening brace to closing brace
+        Label::new(make_span(file_id, 23, 92)) // From opening brace to closing brace
             .message("entire method block")
             .color(Color::Green),
     );

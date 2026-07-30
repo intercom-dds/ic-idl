@@ -27,10 +27,9 @@
 
 use ic_cli::color::ColorMode;
 use ic_diagnostic::{Color, Diag, DiagnosticEmitter, Label};
-use ic_vfs::{FileId, Location, Span};
+use ic_vfs::{FileId, Location, SourceMap, Span};
 
-fn make_span(start: u32, end: u32) -> Span {
-    let file_id = FileId::_do_not_use();
+fn make_span(file_id: FileId, start: u32, end: u32) -> Span {
     Span {
         start: Location::new(start, file_id),
         end: Location::new(end, file_id),
@@ -41,8 +40,10 @@ fn make_span(start: u32, end: u32) -> Span {
 fn single_tab() {
     ic_cli::color::set_color_override(ColorMode::Never);
     let source = "\tint x = 42;";
+    let mut map = SourceMap::default();
+    let file_id = map.embed(source);
     let diag = Diag::error("test error").label(
-        Label::new(make_span(5, 6))
+        Label::new(make_span(file_id, 5, 6))
             .message("here")
             .color(Color::Red),
     );
@@ -58,8 +59,10 @@ fn single_tab() {
 fn multiple_tabs() {
     ic_cli::color::set_color_override(ColorMode::Never);
     let source = "\t\tint x = 42;";
+    let mut map = SourceMap::default();
+    let file_id = map.embed(source);
     let diag = Diag::error("test error").label(
-        Label::new(make_span(6, 7))
+        Label::new(make_span(file_id, 6, 7))
             .message("here")
             .color(Color::Red),
     );
@@ -75,8 +78,10 @@ fn multiple_tabs() {
 fn mixed_spaces_and_tabs() {
     ic_cli::color::set_color_override(ColorMode::Never);
     let source = " \tint x = 42;";
+    let mut map = SourceMap::default();
+    let file_id = map.embed(source);
     let diag = Diag::error("test error").label(
-        Label::new(make_span(6, 7))
+        Label::new(make_span(file_id, 6, 7))
             .message("here")
             .color(Color::Red),
     );
@@ -93,8 +98,10 @@ fn tabs_between_tokens() {
     ic_cli::color::set_color_override(ColorMode::Never);
     // Test that column numbers are calculated correctly with tabs
     let source = "\tint\tx = 42;";
+    let mut map = SourceMap::default();
+    let file_id = map.embed(source);
     let diag = Diag::error("test error").label(
-        Label::new(make_span(5, 6))
+        Label::new(make_span(file_id, 5, 6))
             .message("variable")
             .color(Color::Red),
     );
@@ -110,8 +117,10 @@ fn tabs_between_tokens() {
 fn tab_at_end_of_line() {
     ic_cli::color::set_color_override(ColorMode::Never);
     let source = "int x = 42;\t";
+    let mut map = SourceMap::default();
+    let file_id = map.embed(source);
     let diag = Diag::error("trailing tab").label(
-        Label::new(make_span(11, 12))
+        Label::new(make_span(file_id, 11, 12))
             .message("tab here")
             .color(Color::Red),
     );
@@ -127,19 +136,21 @@ fn tab_at_end_of_line() {
 fn multiple_errors_with_tabs() {
     ic_cli::color::set_color_override(ColorMode::Never);
     let source = "\tint\tx\t=\t42;";
+    let mut map = SourceMap::default();
+    let file_id = map.embed(source);
     let diag = Diag::error("multiple tabs")
         .label(
-            Label::new(make_span(1, 4))
+            Label::new(make_span(file_id, 1, 4))
                 .message("type")
                 .color(Color::Red),
         )
         .label(
-            Label::new(make_span(5, 6))
+            Label::new(make_span(file_id, 5, 6))
                 .message("variable")
                 .color(Color::Yellow),
         )
         .label(
-            Label::new(make_span(9, 11))
+            Label::new(make_span(file_id, 9, 11))
                 .message("value")
                 .color(Color::Blue),
         );
@@ -155,14 +166,16 @@ fn multiple_errors_with_tabs() {
 fn tab_in_multiline_error() {
     ic_cli::color::set_color_override(ColorMode::Never);
     let source = "struct Foo {\n\tint x;\n\tfloat y;\n}";
+    let mut map = SourceMap::default();
+    let file_id = map.embed(source);
     let diag = Diag::error("struct fields")
         .label(
-            Label::new(make_span(13, 19))
+            Label::new(make_span(file_id, 13, 19))
                 .message("first field")
                 .color(Color::Red),
         )
         .label(
-            Label::new(make_span(21, 29))
+            Label::new(make_span(file_id, 21, 29))
                 .message("second field")
                 .color(Color::Yellow),
         );

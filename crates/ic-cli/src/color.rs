@@ -25,6 +25,7 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+use std::borrow::Cow;
 use std::fmt::Display;
 use std::sync::{OnceLock, RwLock};
 
@@ -56,6 +57,7 @@ pub enum Color {
     White,
     Gray,
     Clear,
+    Rgb(u8, u8, u8),
 }
 
 /// A colorized string that respects the color mode
@@ -86,44 +88,45 @@ impl<T: Display> Display for Colored<T> {
             return write!(f, "{}", self.value);
         }
 
-        let mut codes = Vec::new();
-
+        let mut codes = vec![];
         if let Some(color) = self.style.fg {
             codes.push(match color {
-                Color::Black => "38;5;0",
-                Color::Red => "38;5;1",
-                Color::Green => "38;5;2",
-                Color::Yellow => "38;5;3",
-                Color::Blue => "38;5;4",
-                Color::Purple => "38;5;5",
-                Color::Cyan => "38;5;6",
-                Color::White => "38;5;7",
-                Color::Gray => "38;5;8",
-                Color::Clear => "39",
+                Color::Black => Cow::Borrowed("38;5;0"),
+                Color::Red => Cow::Borrowed("38;5;1"),
+                Color::Green => Cow::Borrowed("38;5;2"),
+                Color::Yellow => Cow::Borrowed("38;5;3"),
+                Color::Blue => Cow::Borrowed("38;5;4"),
+                Color::Purple => Cow::Borrowed("38;5;5"),
+                Color::Cyan => Cow::Borrowed("38;5;6"),
+                Color::White => Cow::Borrowed("38;5;7"),
+                Color::Gray => Cow::Borrowed("38;5;8"),
+                Color::Clear => Cow::Borrowed("39"),
+                Color::Rgb(r, g, b) => Cow::Owned(format!("38;2;{r};{g};{b}")),
             });
         }
 
         if let Some(color) = self.style.bg {
             codes.push(match color {
-                Color::Black => "40",
-                Color::Red => "41",
-                Color::Green => "42",
-                Color::Yellow => "43",
-                Color::Blue => "44",
-                Color::Purple => "45",
-                Color::Cyan => "46",
-                Color::White => "47",
-                Color::Gray => "100",
-                Color::Clear => "49",
+                Color::Black => Cow::Borrowed("40"),
+                Color::Red => Cow::Borrowed("41"),
+                Color::Green => Cow::Borrowed("42"),
+                Color::Yellow => Cow::Borrowed("43"),
+                Color::Blue => Cow::Borrowed("44"),
+                Color::Purple => Cow::Borrowed("45"),
+                Color::Cyan => Cow::Borrowed("46"),
+                Color::White => Cow::Borrowed("47"),
+                Color::Gray => Cow::Borrowed("100"),
+                Color::Clear => Cow::Borrowed("49"),
+                Color::Rgb(r, g, b) => Cow::Owned(format!("48;2;{r};{g};{b}")),
             });
         }
 
         if self.style.bold {
-            codes.push("1");
+            codes.push(Cow::Borrowed("1"));
         }
 
         if self.style.dim {
-            codes.push("2");
+            codes.push(Cow::Borrowed("2"));
         }
 
         if codes.is_empty() {

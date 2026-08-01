@@ -1,0 +1,6 @@
+---
+source: crates/ic-diagnostic/tests/json_test.rs
+assertion_line: 57
+expression: "emit(&map, &diag)"
+---
+{"code":"duplicate-name","description":"IDL requires member names to be unique in their scope","help":"rename one of the members","labels":[{"end":{"column":11,"line":2},"file":"a.idl","message":"first defined here","start":{"column":3,"line":2}}],"level":"error","message":"duplicate member `x`","note":"names must be unique within a struct"}

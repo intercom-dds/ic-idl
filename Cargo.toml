@@ -102,7 +102,6 @@ struct_field_names = "allow"
 ignore_without_reason = "allow"
 multiple_crate_versions = "allow"
 missing_errors_doc = "allow"
-chunks_exact_to_as_chunks = "allow"
 
 [profile.release]
 lto = "thin"

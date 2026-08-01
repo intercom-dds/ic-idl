@@ -1,0 +1,6 @@
+---
+source: crates/ic-diagnostic/tests/json_test.rs
+assertion_line: 91
+expression: "emit(&map, &diag)"
+---
+{"level":"error","message":"quote \" backslash \\ tab \t newline \n control \u0001 unicode å"}

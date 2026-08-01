@@ -36,6 +36,7 @@ version.workspace = true
 [dependencies]
 ic-cli = { path = "../ic-cli" }
 ic-vfs = { path = "../ic-vfs" }
+intercom-cts.workspace = true
 
 [dev-dependencies]
 insta = "1.48.0"

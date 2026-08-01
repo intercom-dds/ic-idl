@@ -32,6 +32,7 @@
 
 mod engine;
 mod format;
+mod json;
 mod render;
 
 use std::collections::HashMap;
@@ -239,6 +240,17 @@ pub fn warn_span<S: Into<String>>(msg: S, label: Label) -> Diag {
     Diag::warning(msg).label(label.color(Color::Yellow))
 }
 
+/// Formats a single line of JSON for a message that has no source location.
+/// Returns an empty string when the level is [`Level::Disabled`].
+#[must_use]
+pub fn json_message(level: Level, msg: &str) -> String {
+    let Some(diag) = Diag::with_level(level, msg) else {
+        return String::new();
+    };
+
+    json::line(&diag, &[]).unwrap_or_default()
+}
+
 pub struct DiagnosticEmitter {
     line_indices: HashMap<FileId, LineIndex>,
     max_width: Option<usize>,
@@ -311,6 +323,47 @@ impl DiagnosticEmitter {
             let empty_index = LineIndex::new("");
             format::compact(f, "unknown", diag, &empty_index)
         }
+    }
+
+    /// # Errors
+    ///
+    /// May fail if writing to the given buffer fails.
+    pub fn emit_json(
+        &mut self,
+        f: &mut dyn fmt::Write,
+        vfs: &SourceMap,
+        diag: &Diag,
+    ) -> fmt::Result {
+        let mut labels = Vec::with_capacity(diag.labels.len());
+
+        for label in &diag.labels {
+            let file_id = label.span.start.file_id;
+            let info = vfs.file_info(file_id);
+            let source = &info.source;
+
+            let index = self
+                .line_indices
+                .entry(file_id)
+                .or_insert_with(|| LineIndex::new(source));
+
+            let (start_line, start_col) = index.line_col(label.span.start.offset);
+            let (end_line, end_col) = index.line_col(label.span.end.offset);
+
+            labels.push(json::ResolvedLabel {
+                file: info.path.to_string_lossy().into_owned(),
+                start: json::Position {
+                    line: start_line,
+                    column: start_col,
+                },
+                end: json::Position {
+                    line: end_line,
+                    column: end_col,
+                },
+                message: label.msg.clone(),
+            });
+        }
+
+        json::write(f, diag, &labels)
     }
 }
 

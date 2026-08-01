@@ -149,7 +149,14 @@ pub fn fmt_errors(
                 emit_diag(&mut emitter, &mut buf, vfs, &diag, format)
             }
             Error::Lower(diag) => emit_diag(&mut emitter, &mut buf, vfs, diag, format),
-            Error::Io(e) => writeln!(&mut buf, "{prefix} {e}"),
+            Error::Io(e) => match format {
+                ErrorFormat::Json => writeln!(
+                    &mut buf,
+                    "{}",
+                    ic_diagnostic::json_message(ic_diagnostic::Level::Error, &e.to_string()),
+                ),
+                _ => writeln!(&mut buf, "{prefix} {e}"),
+            },
         };
     }
     buf
@@ -165,6 +172,7 @@ fn emit_diag(
     match format {
         ErrorFormat::Detailed => emitter.emit(buf, vfs, diag),
         ErrorFormat::Short => emitter.emit_compact(buf, vfs, diag),
+        ErrorFormat::Json => emitter.emit_json(buf, vfs, diag),
     }
 }
 

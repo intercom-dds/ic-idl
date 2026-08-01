@@ -39,6 +39,7 @@ dev = [
     "pytest>=8.0",
     "pytest-xdist>=3.0",
     "pytest-sugar>=1.0",
+    "jsonschema>=4.0",
 ]
 
 [tool.ruff.lint]

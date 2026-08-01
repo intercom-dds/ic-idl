@@ -1,0 +1,6 @@
+---
+source: crates/ic-diagnostic/tests/json_test.rs
+assertion_line: 71
+expression: "emit(&map, &diag)"
+---
+{"labels":[{"end":{"column":11,"line":1},"file":"a.idl","message":"first definition","start":{"column":8,"line":1}},{"end":{"column":11,"line":1},"file":"b.idl","message":"redefined here","start":{"column":8,"line":1}}],"level":"error","message":"duplicate definition of `Bar`"}

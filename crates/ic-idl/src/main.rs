@@ -29,6 +29,7 @@
 
 use std::{backtrace, panic};
 
+use ic_cli::color::Colorize as _;
 use ic_cli::{Command, ParseError};
 use ic_emit::File;
 use ic_idl::util::{self, IgnoreBrokenPipe};
@@ -40,18 +41,26 @@ mod info;
 mod parse;
 mod unstable;
 
-macro_rules! error {
-    ($($arg:tt)*) => {{
-        use ic_cli::color::Colorize as _;
-        eprintln!("ic-idl · {} {}", "error:".red().bold(), format!($($arg)*));
-    }}
+fn report_error(format: ErrorFormat, msg: &str) {
+    if format == ErrorFormat::Json {
+        eprintln!(
+            "{}",
+            ic_diagnostic::json_message(ic_diagnostic::Level::Error, msg),
+        );
+    } else {
+        eprintln!("ic-idl · {} {msg}", "error:".red().bold());
+    }
 }
 
-macro_rules! warn {
-    ($($arg:tt)*) => {{
-        use ic_cli::color::Colorize as _;
-        eprintln!("{} {}", "warning:".yellow().bold(), format!($($arg)*));
-    }}
+fn report_warning(format: ErrorFormat, msg: &str) {
+    if format == ErrorFormat::Json {
+        eprintln!(
+            "{}",
+            ic_diagnostic::json_message(ic_diagnostic::Level::Warning, msg),
+        );
+    } else {
+        eprintln!("{} {msg}", "warning:".yellow().bold());
+    }
 }
 
 fn main() {
@@ -67,12 +76,16 @@ fn main() {
             return;
         }
         Err(ParseError::Status(v)) => {
-            error!("{v}");
+            report_error(ErrorFormat::Detailed, &v);
             std::process::exit(1);
         }
     };
 
     let options = CompilerOptions::from_result(&result);
+
+    if options.error_format == ErrorFormat::Json {
+        ic_cli::color::set_color_override(ic_cli::color::ColorMode::Never);
+    }
 
     // Handle special flags
     if options.version {
@@ -92,7 +105,10 @@ fn main() {
 
     // Print unknown warnings
     for unknown in &options.warn.unknown_warnings {
-        warn!("unknown warning '{}'", unknown.yellow());
+        report_warning(
+            options.error_format,
+            &format!("unknown warning '{}'", unknown.yellow()),
+        );
     }
 
     // Enable tracing
@@ -104,7 +120,7 @@ fn main() {
     let files = match util::collect_files(&options.files) {
         Ok(files) => files,
         Err(e) => {
-            error!("{e}");
+            report_error(options.error_format, &e.to_string());
             std::process::exit(1);
         }
     };
@@ -114,7 +130,7 @@ fn main() {
     options.files = files;
 
     if options.files.is_empty() {
-        error!("no input files");
+        report_error(options.error_format, "no input files");
         return;
     }
 
@@ -133,50 +149,13 @@ fn try_compile(options: CompilerOptions) {
 
     // Handle preprocessor-only mode
     if compiler.options().preprocessor_only {
-        let proc_args = compiler.proc_args();
-        for file in &compiler.options().files {
-            match parse::preprocess_only(file, proc_args.clone()) {
-                Ok(output) => {
-                    println!("{output}");
-                }
-                Err(e) => {
-                    error!("{e}");
-                    std::process::exit(1);
-                }
-            }
-        }
+        run_preprocessor_only(&compiler);
         return;
     }
 
     // Handle parse-only mode
     if compiler.options().unstable.parse_only {
-        let proc_args = compiler.proc_args();
-        for file in compiler.options().files.clone() {
-            match parse::from_path(&file, proc_args.clone(), compiler.source_map_mut()) {
-                Ok(ast) => {
-                    if !ast.errors.is_empty() {
-                        let formatted = ic_idl::pretty::fmt_errors(
-                            &ast.errors,
-                            compiler.source_map(),
-                            &ast.expansion_info,
-                            compiler.options().error_format,
-                        );
-                        eprintln!("{formatted}");
-                        info!(errors = ast.errors.len(), "failed");
-                        std::process::exit(1);
-                    }
-
-                    if compiler.options().unstable.ast_dump {
-                        println!("{:#?}", ast.tree);
-                    }
-                    info!(errors = 0, "completed");
-                }
-                Err(e) => {
-                    error!("{e}");
-                    std::process::exit(1);
-                }
-            }
-        }
+        run_parse_only(&mut compiler);
         return;
     }
 
@@ -184,7 +163,7 @@ fn try_compile(options: CompilerOptions) {
     let (hir, diagnostics) = match compiler.compile() {
         Ok((hir, diag)) => (hir, diag),
         Err(CompileError::Io(e)) => {
-            error!("{e}");
+            report_error(compiler.options().error_format, &e.to_string());
             std::process::exit(1);
         }
         Err(CompileError::Diagnostics(diagnostics)) => {
@@ -222,7 +201,10 @@ fn try_compile(options: CompilerOptions) {
     let generated = match generate_code(compiler.options(), &hir, compiler.source_map()) {
         Ok(files) => files,
         Err(e) => {
-            error!("code generation error: {e}");
+            report_error(
+                compiler.options().error_format,
+                &format!("code generation error: {e}"),
+            );
             std::process::exit(1);
         }
     };
@@ -233,7 +215,10 @@ fn try_compile(options: CompilerOptions) {
             println!("{f}");
         }
     } else if let Err(e) = write_files(&generated) {
-        error!("failed to write files: {}", e);
+        report_error(
+            compiler.options().error_format,
+            &format!("failed to write files: {e}"),
+        );
         std::process::exit(1);
     }
 
@@ -243,6 +228,53 @@ fn try_compile(options: CompilerOptions) {
         outputs = generated.len(),
         "completed"
     );
+}
+
+fn run_preprocessor_only(compiler: &Compiler) {
+    let proc_args = compiler.proc_args();
+
+    for file in &compiler.options().files {
+        match parse::preprocess_only(file, proc_args.clone()) {
+            Ok(output) => {
+                println!("{output}");
+            }
+            Err(e) => {
+                report_error(compiler.options().error_format, &e.to_string());
+                std::process::exit(1);
+            }
+        }
+    }
+}
+
+fn run_parse_only(compiler: &mut Compiler) {
+    let proc_args = compiler.proc_args();
+
+    for file in compiler.options().files.clone() {
+        match parse::from_path(&file, proc_args.clone(), compiler.source_map_mut()) {
+            Ok(ast) => {
+                if !ast.errors.is_empty() {
+                    let formatted = ic_idl::pretty::fmt_errors(
+                        &ast.errors,
+                        compiler.source_map(),
+                        &ast.expansion_info,
+                        compiler.options().error_format,
+                    );
+                    eprintln!("{formatted}");
+                    info!(errors = ast.errors.len(), "failed");
+                    std::process::exit(1);
+                }
+
+                if compiler.options().unstable.ast_dump {
+                    println!("{:#?}", ast.tree);
+                }
+                info!(errors = 0, "completed");
+            }
+            Err(e) => {
+                report_error(compiler.options().error_format, &e.to_string());
+                std::process::exit(1);
+            }
+        }
+    }
 }
 
 macro_rules! backends {
@@ -367,24 +399,33 @@ fn emit_diagnostics(compiler: &Compiler, diagnostics: &CompileDiagnostics, forma
     };
 
     if !diagnostics.warnings.is_empty() && !diagnostics.errors.is_empty() {
-        error!(
-            "aborting due to {} error{}, {} warning{}",
-            diagnostics.errors.len(),
-            error_plural,
-            diagnostics.warnings.len(),
-            warning_plural,
+        report_error(
+            format,
+            &format!(
+                "aborting due to {} error{}, {} warning{}",
+                diagnostics.errors.len(),
+                error_plural,
+                diagnostics.warnings.len(),
+                warning_plural,
+            ),
         );
     } else if !diagnostics.errors.is_empty() {
-        error!(
-            "aborting due to {} error{}",
-            diagnostics.errors.len(),
-            error_plural,
+        report_error(
+            format,
+            &format!(
+                "aborting due to {} error{}",
+                diagnostics.errors.len(),
+                error_plural,
+            ),
         );
     } else if !diagnostics.warnings.is_empty() {
-        warn!(
-            "{} warning{} emitted",
-            diagnostics.warnings.len(),
-            warning_plural,
+        report_warning(
+            format,
+            &format!(
+                "{} warning{} emitted",
+                diagnostics.warnings.len(),
+                warning_plural,
+            ),
         );
     }
 }
@@ -422,14 +463,20 @@ fn dump_backtrace(info: &std::panic::PanicHookInfo) {
 
     match info.location() {
         Some(loc) => {
-            error!(
-                "thread '{thread}' panicked at '{msg}', {}:{}",
-                loc.file(),
-                loc.line(),
+            report_error(
+                ErrorFormat::Detailed,
+                &format!(
+                    "thread '{thread}' panicked at '{msg}', {}:{}",
+                    loc.file(),
+                    loc.line(),
+                ),
             );
         }
         None => {
-            error!("thread '{thread}' panicked at '{msg}'");
+            report_error(
+                ErrorFormat::Detailed,
+                &format!("thread '{thread}' panicked at '{msg}'"),
+            );
         }
     }
 

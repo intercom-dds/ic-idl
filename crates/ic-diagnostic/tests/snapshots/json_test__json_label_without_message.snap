@@ -1,0 +1,6 @@
+---
+source: crates/ic-diagnostic/tests/json_test.rs
+assertion_line: 82
+expression: "emit(&map, &diag)"
+---
+{"labels":[{"end":{"column":7,"line":1},"file":"a.idl","start":{"column":1,"line":1}}],"level":"error","message":"bad struct"}

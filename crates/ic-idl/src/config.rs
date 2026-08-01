@@ -40,6 +40,7 @@ pub enum ErrorFormat {
     #[default]
     Detailed,
     Short,
+    Json,
 }
 
 impl convert::Convert for ErrorFormat {
@@ -47,8 +48,9 @@ impl convert::Convert for ErrorFormat {
         match input.last().map(String::as_str) {
             Some("detailed") | None => Ok(Self::Detailed),
             Some("short") => Ok(Self::Short),
+            Some("json") => Ok(Self::Json),
             Some(other) => Err(ConvertError::InvalidValue(format!(
-                "invalid error format '{}', expected 'detailed' or 'short'",
+                "invalid error format '{}', expected 'detailed', 'short' or 'json'",
                 other.yellow(),
             ))),
         }
@@ -210,7 +212,7 @@ pub struct Options {
     #[option(long)]
     pub ignore_comments: bool,
 
-    /// Error output format: detailed or short
+    /// Error output format: detailed, short or json
     #[option(long, arg = "fmt")]
     pub error_format: ErrorFormat,
 
@@ -461,6 +463,26 @@ impl convert::Convert for Warnings {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    fn parse_error_format(args: &[&str]) -> convert::Result<ErrorFormat> {
+        let args: Vec<String> = args.iter().map(ToString::to_string).collect();
+        convert::Convert::from_result(&args)
+    }
+
+    #[test]
+    fn error_format_accepts_json() {
+        assert_eq!(parse_error_format(&["json"]).unwrap(), ErrorFormat::Json);
+    }
+
+    #[test]
+    fn error_format_defaults_to_detailed() {
+        assert_eq!(parse_error_format(&[]).unwrap(), ErrorFormat::Detailed);
+    }
+
+    #[test]
+    fn error_format_rejects_unknown() {
+        assert!(parse_error_format(&["yaml"]).is_err());
+    }
 
     fn parse_warnings(args: &[&str]) -> Warnings {
         let args: Vec<String> = args.iter().map(ToString::to_string).collect();

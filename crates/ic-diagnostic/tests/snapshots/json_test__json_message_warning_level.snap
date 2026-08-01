@@ -1,0 +1,6 @@
+---
+source: crates/ic-diagnostic/tests/json_test.rs
+assertion_line: 103
+expression: "json_message(Level::Warning, \"unknown warning 'bogus'\")"
+---
+{"level":"warning","message":"unknown warning 'bogus'"}

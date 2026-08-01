@@ -1,0 +1,6 @@
+---
+source: crates/ic-diagnostic/tests/json_test.rs
+assertion_line: 41
+expression: "emit(&map, &diag)"
+---
+{"level":"warning","message":"no input files"}

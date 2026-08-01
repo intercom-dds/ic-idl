@@ -1,0 +1,6 @@
+---
+source: crates/ic-diagnostic/tests/json_test.rs
+assertion_line: 97
+expression: "json_message(Level::Error, \"no such file: missing.idl\")"
+---
+{"level":"error","message":"no such file: missing.idl"}

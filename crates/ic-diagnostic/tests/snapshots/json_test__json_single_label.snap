@@ -1,0 +1,6 @@
+---
+source: crates/ic-diagnostic/tests/json_test.rs
+assertion_line: 32
+expression: "emit(&map, &diag)"
+---
+{"labels":[{"end":{"column":15,"line":2},"file":"a.idl","message":"unexpected `}`","start":{"column":14,"line":2}}],"level":"error","message":"unexpected `}`, expected `{`"}

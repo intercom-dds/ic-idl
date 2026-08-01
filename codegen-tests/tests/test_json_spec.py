@@ -39,6 +39,20 @@ SCHEMA_PATH = Path(__file__).parent.parent / "schemas" / "dds-json_types.schema.
 
 CORBA_KINDS = {"interface", "valuetype", "exception"}
 
+COLLECTION_DECLS = (
+    "sequenceStructMemberDecl",
+    "arrayStructMemberDecl",
+    "mapStructMemberDecl",
+    "sequenceUnionCaseDecl",
+    "arrayUnionCaseDecl",
+    "mapUnionCaseDecl",
+    "sequenceTypeDecl",
+    "arrayTypeDecl",
+    "mapTypeDecl",
+)
+
+TYPE_REF_FIELDS = ("type", "key_type", "value_type")
+
 
 def load_schema() -> dict[str, Any]:
     schema = json.loads(SCHEMA_PATH.read_text())
@@ -46,6 +60,17 @@ def load_schema() -> dict[str, Any]:
 
     definitions["complexTypeKind"]["enum"].extend(["typedef", *sorted(CORBA_KINDS)])
     definitions["structDecl"]["properties"]["members"].pop("minItems", None)
+
+    for name in COLLECTION_DECLS:
+        properties = definitions[name]["properties"]
+        for field in TYPE_REF_FIELDS:
+            if field in properties:
+                properties[field] = {
+                    "oneOf": [
+                        {"type": "string"},
+                        {"$ref": "#/definitions/typeDecl"},
+                    ]
+                }
 
     return schema
 

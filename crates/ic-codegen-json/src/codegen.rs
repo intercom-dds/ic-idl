@@ -26,7 +26,6 @@
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use std::collections::BTreeMap;
-use std::fmt::Write;
 
 use ic_emit::File;
 use ic_hir::ResolvedGraph;
@@ -311,10 +310,7 @@ impl<'a> JsonGen<'a> {
             .iter()
             .map(|field| {
                 let mut field_obj = BTreeMap::new();
-                field_obj.insert(
-                    "name".to_string(),
-                    Value::String(field.ident.name.clone()),
-                );
+                field_obj.insert("name".to_string(), Value::String(field.ident.name.clone()));
                 field_obj.insert("bits".to_string(), Value::Number(field.size.into()));
 
                 if let TyKind::Primitive(prim) = field.ty.kind {
@@ -577,7 +573,7 @@ impl<'a> JsonGen<'a> {
             }
             TyKind::Sequence { ty, bound, .. } => {
                 obj.insert("kind".to_string(), Value::String("sequence".to_string()));
-                obj.insert("type".to_string(), Value::String(self.type_to_string(ty)));
+                obj.insert("type".to_string(), self.type_ref_value(ty));
                 if let Some(b) = bound {
                     obj.insert(
                         "sequence_max_length".to_string(),
@@ -589,14 +585,8 @@ impl<'a> JsonGen<'a> {
                 key, elem, bound, ..
             } => {
                 obj.insert("kind".to_string(), Value::String("map".to_string()));
-                obj.insert(
-                    "key_type".to_string(),
-                    Value::String(self.type_to_string(key)),
-                );
-                obj.insert(
-                    "value_type".to_string(),
-                    Value::String(self.type_to_string(elem)),
-                );
+                obj.insert("key_type".to_string(), self.type_ref_value(key));
+                obj.insert("value_type".to_string(), self.type_ref_value(elem));
                 if let Some(b) = bound {
                     obj.insert("map_max_length".to_string(), Value::Number((*b).into()));
                 }
@@ -606,7 +596,7 @@ impl<'a> JsonGen<'a> {
                 let elem = flatten_array(ty, &mut dims);
 
                 obj.insert("kind".to_string(), Value::String("array".to_string()));
-                obj.insert("type".to_string(), Value::String(self.type_to_string(elem)));
+                obj.insert("type".to_string(), self.type_ref_value(elem));
                 obj.insert(
                     "array_dimensions".to_string(),
                     Value::Array(dims.into_iter().map(|d| Value::Number(d.into())).collect()),
@@ -642,46 +632,27 @@ impl<'a> JsonGen<'a> {
         );
     }
 
-    fn type_to_string(&self, ty: &Ty) -> String {
+    fn type_ref_value(&self, ty: &Ty) -> Value {
         match &ty.kind {
-            TyKind::Primitive(prim) => type_name(*prim).to_string(),
-            TyKind::String { wide, bound, .. } => {
-                let base = if *wide { "wstring" } else { "string" };
-                match bound {
-                    Some(b) => format!("{base}<{b}>"),
-                    None => base.to_string(),
-                }
-            }
-            TyKind::Sequence { ty, bound, .. } => {
-                let elem = self.type_to_string(ty);
-                match bound {
-                    Some(b) => format!("sequence<{elem}, {b}>"),
-                    None => format!("sequence<{elem}>"),
-                }
-            }
-            TyKind::Map {
-                key, elem, bound, ..
+            TyKind::Primitive(prim) => Value::String(type_name(*prim).to_string()),
+            TyKind::String {
+                wide, bound: None, ..
             } => {
-                let key = self.type_to_string(key);
-                let elem = self.type_to_string(elem);
-                match bound {
-                    Some(b) => format!("map<{key}, {elem}, {b}>"),
-                    None => format!("map<{key}, {elem}>"),
-                }
+                let base = if *wide { "wstring" } else { "string" };
+                Value::String(base.to_string())
             }
-            TyKind::Array { .. } => {
-                let mut dims = Vec::new();
-                let elem = flatten_array(ty, &mut dims);
-                let mut out = self.type_to_string(elem);
-                for dim in dims {
-                    let _ = write!(out, "[{dim}]");
-                }
-                out
+            TyKind::Adt(def_id) => Value::String(self.make_scoped_name(*def_id)),
+            TyKind::Any => Value::String("any".to_string()),
+            TyKind::Fixed => Value::String("fixed".to_string()),
+            TyKind::Null => Value::String("null".to_string()),
+            TyKind::String { .. }
+            | TyKind::Sequence { .. }
+            | TyKind::Map { .. }
+            | TyKind::Array { .. } => {
+                let mut obj = BTreeMap::new();
+                self.emit_type_ref(ty, &mut obj);
+                Value::Object(obj)
             }
-            TyKind::Adt(def_id) => self.make_scoped_name(*def_id),
-            TyKind::Any => "any".to_string(),
-            TyKind::Fixed => "fixed".to_string(),
-            TyKind::Null => "null".to_string(),
         }
     }
 

@@ -26,12 +26,14 @@
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use std::collections::BTreeMap;
+use std::fmt::Write;
 
 use ic_emit::File;
 use ic_hir::ResolvedGraph;
 use ic_hir::hir::{
-    AliasTy, Ann, BitmaskTy, ConstTy, Def, DefFlags, DefId, DefKind, EnumTy, ExceptTy, InterfaceTy,
-    Member, ModuleTy, Numeric, PrimitiveTy, StructTy, Ty, TyKind, UnionTy, ValueTy, Variant,
+    AliasTy, Ann, AnnArg, BitmaskTy, BitsetTy, ConstTy, Def, DefFlags, DefId, DefKind, EnumTy,
+    ExceptTy, InterfaceTy, Member, ModuleTy, Numeric, PrimitiveTy, StructTy, Ty, TyKind, UnionTy,
+    ValueTy, Variant,
 };
 use ic_vfs::{FileId, SourceMap};
 use intercom_cts::json::{self, Value};
@@ -124,7 +126,7 @@ impl<'a> JsonGen<'a> {
             DefKind::Except(e) => self.emit_except(def, e, obj),
             DefKind::Annotation(a) => self.emit_annotation_def(def, a, obj),
             DefKind::Decl(d) => Self::emit_forward_decl(def, *d, obj),
-            DefKind::Bitset(_) => {}
+            DefKind::Bitset(b) => self.emit_bitset(def, b, obj),
         }
     }
 
@@ -173,6 +175,7 @@ impl<'a> JsonGen<'a> {
         let cases: Vec<Value> = union_ty
             .variants
             .iter()
+            .filter(|v| !matches!(v.ty.kind, TyKind::Null))
             .map(|v| self.emit_union_case(v))
             .collect();
         union_obj.insert("cases".to_string(), Value::Array(cases));
@@ -217,10 +220,19 @@ impl<'a> JsonGen<'a> {
         Value::Object(case_obj)
     }
 
+    fn builtin_annotation(&self, name: &str) -> Option<DefId> {
+        self.hir.builtin_order.iter().copied().find(|&id| {
+            let def = self.hir.context.definitions.get(id);
+            matches!(def.kind, DefKind::Annotation(_)) && def.ident.name == name
+        })
+    }
+
     fn emit_enum(&self, def: &Def, enum_ty: &EnumTy, obj: &mut BTreeMap<String, Value>) {
         let mut enum_obj = BTreeMap::new();
         enum_obj.insert("kind".to_string(), Value::String("enum".to_string()));
         self.emit_annotations(&def.annotations, &mut enum_obj);
+
+        let default_literal = self.builtin_annotation("default_literal");
 
         let enumerators: Vec<Value> = enum_ty
             .fields
@@ -237,6 +249,15 @@ impl<'a> JsonGen<'a> {
                     && let DefKind::Const(c) = &field_def.kind
                 {
                     enumerator.insert("value".to_string(), self.format_numeric(&c.value));
+                }
+
+                if default_literal.is_some()
+                    && field_def
+                        .annotations
+                        .iter()
+                        .any(|ann| ann.def_id == default_literal)
+                {
+                    enumerator.insert("default".to_string(), Value::Bool(true));
                 }
 
                 Value::Object(enumerator)
@@ -256,7 +277,7 @@ impl<'a> JsonGen<'a> {
             .flags
             .iter()
             .enumerate()
-            .map(|(pos, &flag_id)| {
+            .map(|(index, &flag_id)| {
                 let flag_def = self.hir.context.definitions.get(flag_id);
                 let mut flag_obj = BTreeMap::new();
                 flag_obj.insert(
@@ -264,11 +285,13 @@ impl<'a> JsonGen<'a> {
                     Value::String(flag_def.ident.name.clone()),
                 );
 
-                if let DefKind::Const(c) = &flag_def.kind {
-                    flag_obj.insert("position".to_string(), self.format_numeric(&c.value));
-                } else {
-                    flag_obj.insert("position".to_string(), Value::Number(pos.into()));
-                }
+                let position = match &flag_def.kind {
+                    DefKind::Const(c) => Some(self.hir.context.unsigned_value(&c.value))
+                        .filter(|mask| mask.is_power_of_two())
+                        .map_or(index, |mask| mask.trailing_zeros() as usize),
+                    _ => index,
+                };
+                flag_obj.insert("position".to_string(), Value::Number(position.into()));
 
                 Value::Object(flag_obj)
             })
@@ -278,13 +301,44 @@ impl<'a> JsonGen<'a> {
         obj.insert(def.ident.name.clone(), Value::Object(bitmask_obj));
     }
 
+    fn emit_bitset(&self, def: &Def, bitset: &BitsetTy, obj: &mut BTreeMap<String, Value>) {
+        let mut bitset_obj = BTreeMap::new();
+        bitset_obj.insert("kind".to_string(), Value::String("bitset".to_string()));
+        self.emit_annotations(&def.annotations, &mut bitset_obj);
+
+        let bitfields: Vec<Value> = bitset
+            .fields
+            .iter()
+            .map(|field| {
+                let mut field_obj = BTreeMap::new();
+                field_obj.insert(
+                    "name".to_string(),
+                    Value::String(field.ident.name.clone()),
+                );
+                field_obj.insert("bits".to_string(), Value::Number(field.size.into()));
+
+                if let TyKind::Primitive(prim) = field.ty.kind {
+                    field_obj.insert(
+                        "type".to_string(),
+                        Value::String(type_name(prim).to_string()),
+                    );
+                }
+
+                Value::Object(field_obj)
+            })
+            .collect();
+
+        bitset_obj.insert("bitfields".to_string(), Value::Array(bitfields));
+        obj.insert(def.ident.name.clone(), Value::Object(bitset_obj));
+    }
+
     fn emit_alias(&self, def: &Def, alias: &AliasTy, obj: &mut BTreeMap<String, Value>) {
         let mut alias_obj = BTreeMap::new();
-        self.emit_annotations(&def.annotations, &mut alias_obj);
         alias_obj.insert("kind".to_string(), Value::String("typedef".to_string()));
 
         let mut type_obj = BTreeMap::new();
         self.emit_type_ref(&alias.ty, &mut type_obj);
+        self.emit_annotations(&def.annotations, &mut type_obj);
         alias_obj.insert("type".to_string(), Value::Object(type_obj));
 
         obj.insert(def.ident.name.clone(), Value::Object(alias_obj));
@@ -358,10 +412,7 @@ impl<'a> JsonGen<'a> {
 
         if let Some(supports) = valuetype.supports {
             let mut supports_obj = BTreeMap::new();
-            Self::emit_type_info(
-                self.hir.context.definitions.get(supports.def_id),
-                &mut supports_obj,
-            );
+            self.emit_type_info(supports.def_id, &mut supports_obj);
             valuetype_obj.insert("supports".to_string(), Value::Object(supports_obj));
         }
 
@@ -447,11 +498,11 @@ impl<'a> JsonGen<'a> {
             if ann.args.is_empty() {
                 ann_obj.insert(scoped_name, Value::Object(BTreeMap::new()));
             } else if ann.args.len() == 1 {
-                ann_obj.insert(scoped_name, self.format_numeric(&ann.args[0].value));
+                ann_obj.insert(scoped_name, self.format_ann_value(&ann.args[0]));
             } else {
                 let mut args_obj = BTreeMap::new();
                 for arg in &ann.args {
-                    args_obj.insert(arg.ident.name.clone(), self.format_numeric(&arg.value));
+                    args_obj.insert(arg.ident.name.clone(), self.format_ann_value(arg));
                 }
                 ann_obj.insert(scoped_name, Value::Object(args_obj));
             }
@@ -460,6 +511,53 @@ impl<'a> JsonGen<'a> {
         if !ann_obj.is_empty() {
             obj.insert("annotations".to_string(), Value::Object(ann_obj));
         }
+    }
+
+    fn format_ann_value(&self, arg: &AnnArg) -> Value {
+        if let Some(token) = self.builtin_enum_token(arg) {
+            return Value::String(token);
+        }
+
+        self.format_numeric(&arg.value)
+    }
+
+    fn builtin_enum_token(&self, arg: &AnnArg) -> Option<String> {
+        let defs = &self.hir.context.definitions;
+
+        let enum_id = if let Some(TyKind::Adt(id)) = arg.ty.as_ref().map(|ty| &ty.kind) {
+            *id
+        } else {
+            let Numeric::Const(id) = &arg.value else {
+                return None;
+            };
+            let DefKind::Const(konst) = &defs.get(*id).kind else {
+                return None;
+            };
+            let TyKind::Adt(enum_id) = konst.ty.kind else {
+                return None;
+            };
+
+            enum_id
+        };
+
+        let enum_def = defs.get(enum_id);
+        let DefKind::Enum(enum_ty) = &enum_def.kind else {
+            return None;
+        };
+        if !enum_def.flags.contains(DefFlags::IS_BUILTIN) {
+            return None;
+        }
+
+        if let Numeric::Const(id) = &arg.value
+            && enum_ty.fields.contains(id)
+        {
+            return Some(defs.get(*id).ident.name.to_lowercase());
+        }
+
+        let ordinal = usize::try_from(self.hir.context.unsigned_value(&arg.value)).ok()?;
+        let field = enum_ty.fields.get(ordinal)?;
+
+        Some(defs.get(*field).ident.name.to_lowercase())
     }
 
     fn emit_type_ref(&self, ty: &Ty, obj: &mut BTreeMap<String, Value>) {
@@ -503,23 +601,27 @@ impl<'a> JsonGen<'a> {
                     obj.insert("map_max_length".to_string(), Value::Number((*b).into()));
                 }
             }
-            TyKind::Array { ty, len, .. } => {
+            TyKind::Array { .. } => {
+                let mut dims = Vec::new();
+                let elem = flatten_array(ty, &mut dims);
+
                 obj.insert("kind".to_string(), Value::String("array".to_string()));
-                obj.insert("type".to_string(), Value::String(self.type_to_string(ty)));
+                obj.insert("type".to_string(), Value::String(self.type_to_string(elem)));
                 obj.insert(
                     "array_dimensions".to_string(),
-                    Value::Array(vec![Value::Number((*len).into())]),
+                    Value::Array(dims.into_iter().map(|d| Value::Number(d.into())).collect()),
                 );
             }
             TyKind::Adt(def_id) => {
-                let def = self.hir.context.definitions.get(*def_id);
-                Self::emit_type_info(def, obj);
+                self.emit_type_info(*def_id, obj);
             }
             _ => {}
         }
     }
 
-    fn emit_type_info(def: &Def, obj: &mut BTreeMap<String, Value>) {
+    fn emit_type_info(&self, def_id: DefId, obj: &mut BTreeMap<String, Value>) {
+        let def = self.hir.context.definitions.get(def_id);
+
         let kind = match &def.kind {
             DefKind::Struct(_) => "struct",
             DefKind::Union(_) => "union",
@@ -534,21 +636,52 @@ impl<'a> JsonGen<'a> {
         };
 
         obj.insert("kind".to_string(), Value::String(kind.to_string()));
-        obj.insert("type".to_string(), Value::String(def.ident.name.clone()));
+        obj.insert(
+            "type".to_string(),
+            Value::String(self.make_scoped_name(def_id)),
+        );
     }
 
     fn type_to_string(&self, ty: &Ty) -> String {
         match &ty.kind {
             TyKind::Primitive(prim) => type_name(*prim).to_string(),
-            TyKind::String { wide, .. } => {
-                if *wide {
-                    "wstring".to_string()
-                } else {
-                    "string".to_string()
+            TyKind::String { wide, bound, .. } => {
+                let base = if *wide { "wstring" } else { "string" };
+                match bound {
+                    Some(b) => format!("{base}<{b}>"),
+                    None => base.to_string(),
                 }
             }
+            TyKind::Sequence { ty, bound, .. } => {
+                let elem = self.type_to_string(ty);
+                match bound {
+                    Some(b) => format!("sequence<{elem}, {b}>"),
+                    None => format!("sequence<{elem}>"),
+                }
+            }
+            TyKind::Map {
+                key, elem, bound, ..
+            } => {
+                let key = self.type_to_string(key);
+                let elem = self.type_to_string(elem);
+                match bound {
+                    Some(b) => format!("map<{key}, {elem}, {b}>"),
+                    None => format!("map<{key}, {elem}>"),
+                }
+            }
+            TyKind::Array { .. } => {
+                let mut dims = Vec::new();
+                let elem = flatten_array(ty, &mut dims);
+                let mut out = self.type_to_string(elem);
+                for dim in dims {
+                    let _ = write!(out, "[{dim}]");
+                }
+                out
+            }
             TyKind::Adt(def_id) => self.make_scoped_name(*def_id),
-            _ => "unknown".to_string(),
+            TyKind::Any => "any".to_string(),
+            TyKind::Fixed => "fixed".to_string(),
+            TyKind::Null => "null".to_string(),
         }
     }
 
@@ -582,12 +715,50 @@ impl<'a> JsonGen<'a> {
             Numeric::Double(v) => Value::Number((*v).into()),
             Numeric::String(value) | Numeric::WString(value) => Value::String(value.clone()),
             Numeric::Const(def_id) => Value::String(self.make_scoped_name(*def_id)),
-            Numeric::Null
-            | Numeric::Array { .. }
-            | Numeric::Sequence { .. }
-            | Numeric::Map { .. }
-            | Numeric::Struct { .. }
-            | Numeric::Union { .. } => Value::Null,
+            Numeric::Array { values, .. } | Numeric::Sequence { values, .. } => {
+                Value::Array(values.iter().map(|v| self.format_numeric(v)).collect())
+            }
+            Numeric::Map { entries, .. } => Value::Array(
+                entries
+                    .iter()
+                    .map(|(key, value)| {
+                        Value::Array(vec![self.format_numeric(key), self.format_numeric(value)])
+                    })
+                    .collect(),
+            ),
+            Numeric::Struct { ty, fields } => {
+                let def = self.hir.context.definitions.get(*ty);
+                let names = match &def.kind {
+                    DefKind::Struct(s) => s.members.iter().map(|m| m.ident.name.clone()).collect(),
+                    _ => Vec::new(),
+                };
+
+                let mut obj = BTreeMap::new();
+                for (index, field) in fields.iter().enumerate() {
+                    let name = names
+                        .get(index)
+                        .cloned()
+                        .unwrap_or_else(|| index.to_string());
+                    obj.insert(name, self.format_numeric(field));
+                }
+
+                Value::Object(obj)
+            }
+            Numeric::Union {
+                discriminant,
+                value,
+                ..
+            } => {
+                let mut obj = BTreeMap::new();
+                obj.insert(
+                    "discriminator".to_string(),
+                    self.format_numeric(discriminant),
+                );
+                obj.insert("value".to_string(), self.format_numeric(value));
+
+                Value::Object(obj)
+            }
+            Numeric::Null => Value::Null,
         }
     }
 
@@ -626,4 +797,13 @@ fn type_name(prim: PrimitiveTy) -> &'static str {
         PrimitiveTy::Float128 => "float128",
         PrimitiveTy::Void => "void",
     }
+}
+
+fn flatten_array<'t>(mut ty: &'t Ty, dims: &mut Vec<usize>) -> &'t Ty {
+    while let TyKind::Array { ty: elem, len, .. } = &ty.kind {
+        dims.push(*len);
+        ty = elem;
+    }
+
+    ty
 }

@@ -27,10 +27,23 @@
 
 import json
 from pathlib import Path
+from typing import Any
 
 import pytest
 
 from conftest import make_output_dir, run_codegen
+
+jsonschema = pytest.importorskip("jsonschema")
+
+SCHEMA_PATH = Path(__file__).parent.parent / "schemas" / "ic-json.schema.json"
+
+
+@pytest.fixture(scope="session")
+def validator() -> Any:
+    schema = json.loads(SCHEMA_PATH.read_text())
+    jsonschema.Draft7Validator.check_schema(schema)
+
+    return jsonschema.Draft7Validator(schema)
 
 
 @pytest.fixture
@@ -38,10 +51,22 @@ def json_output_dir(request: pytest.FixtureRequest) -> Path:
     return make_output_dir(request, "json")
 
 
-def test_json(idl_file: Path, idl_compiler: Path, json_output_dir: Path) -> None:
+def test_json(
+    idl_file: Path, idl_compiler: Path, json_output_dir: Path, validator: Any
+) -> None:
     json_files = run_codegen(idl_compiler, idl_file, json_output_dir, "json-out")
+
     for json_file in json_files:
         try:
-            json.loads(json_file.read_text())
+            doc = json.loads(json_file.read_text())
         except json.JSONDecodeError as e:
             raise AssertionError(f"JSON parse failed for {json_file.name}: {e}")
+
+        errors = sorted(validator.iter_errors(doc), key=lambda e: list(e.path))
+        if errors:
+            detail = "\n".join(
+                f"  {'/'.join(str(p) for p in e.path)}: {e.message}" for e in errors[:10]
+            )
+            raise AssertionError(
+                f"{json_file.name} does not match {SCHEMA_PATH.name}:\n{detail}"
+            )

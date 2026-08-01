@@ -1,0 +1,912 @@
+{
+	"$schema": "http://json-schema.org/draft-07/schema#",
+	"title": "JSON schema for IDL",
+	"description": "This schema defines the syntax to represent IDL types in JSON",
+	"definitions": {
+		"identifier": {
+			"type": "string",
+			"pattern": "^[A-Za-z_][A-Za-z0-9_]*$"
+		},
+		"scopedName": {
+			"type": "string"
+		},
+		"primitiveKind": {
+			"type": "string",
+			"enum": [
+				"boolean",
+				"byte",
+				"char8",
+				"char16",
+				"int8",
+				"uint8",
+				"int16",
+				"uint16",
+				"int32",
+				"uint32",
+				"int64",
+				"uint64",
+				"float32",
+				"float64",
+				"float128",
+				"void"
+			]
+		},
+		"stringKind": {
+			"type": "string",
+			"enum": [
+				"string",
+				"wstring"
+			]
+		},
+		"namedKind": {
+			"type": "string",
+			"enum": [
+				"struct",
+				"union",
+				"enum",
+				"bitmask",
+				"bitset",
+				"typedef",
+				"exception",
+				"valuetype",
+				"interface"
+			]
+		},
+		"bound": {
+			"type": [
+				"integer",
+				"string"
+			]
+		},
+		"annotations": {
+			"type": "object"
+		},
+		"typeRef": {
+			"oneOf": [
+				{
+					"$ref": "#/definitions/scopedName"
+				},
+				{
+					"$ref": "#/definitions/typeObject"
+				}
+			]
+		},
+		"typeObject": {
+			"type": "object",
+			"oneOf": [
+				{
+					"$ref": "#/definitions/primitiveTypeObject"
+				},
+				{
+					"$ref": "#/definitions/stringTypeObject"
+				},
+				{
+					"$ref": "#/definitions/namedTypeObject"
+				},
+				{
+					"$ref": "#/definitions/sequenceTypeObject"
+				},
+				{
+					"$ref": "#/definitions/arrayTypeObject"
+				},
+				{
+					"$ref": "#/definitions/mapTypeObject"
+				}
+			]
+		},
+		"primitiveTypeObject": {
+			"type": "object",
+			"properties": {
+				"kind": {
+					"$ref": "#/definitions/primitiveKind"
+				},
+				"annotations": {
+					"$ref": "#/definitions/annotations"
+				}
+			},
+			"required": [
+				"kind"
+			],
+			"additionalProperties": false
+		},
+		"stringTypeObject": {
+			"type": "object",
+			"properties": {
+				"kind": {
+					"$ref": "#/definitions/stringKind"
+				},
+				"string_max_length": {
+					"$ref": "#/definitions/bound"
+				},
+				"annotations": {
+					"$ref": "#/definitions/annotations"
+				}
+			},
+			"required": [
+				"kind"
+			],
+			"additionalProperties": false
+		},
+		"namedTypeObject": {
+			"type": "object",
+			"properties": {
+				"kind": {
+					"$ref": "#/definitions/namedKind"
+				},
+				"type": {
+					"$ref": "#/definitions/scopedName"
+				},
+				"annotations": {
+					"$ref": "#/definitions/annotations"
+				}
+			},
+			"required": [
+				"kind",
+				"type"
+			],
+			"additionalProperties": false
+		},
+		"sequenceTypeObject": {
+			"type": "object",
+			"properties": {
+				"kind": {
+					"type": "string",
+					"enum": [
+						"sequence"
+					]
+				},
+				"type": {
+					"$ref": "#/definitions/typeRef"
+				},
+				"sequence_max_length": {
+					"$ref": "#/definitions/bound"
+				},
+				"annotations": {
+					"$ref": "#/definitions/annotations"
+				}
+			},
+			"required": [
+				"kind",
+				"type"
+			],
+			"additionalProperties": false
+		},
+		"arrayTypeObject": {
+			"type": "object",
+			"properties": {
+				"kind": {
+					"type": "string",
+					"enum": [
+						"array"
+					]
+				},
+				"type": {
+					"$ref": "#/definitions/typeRef"
+				},
+				"array_dimensions": {
+					"type": "array",
+					"items": {
+						"$ref": "#/definitions/bound"
+					},
+					"minItems": 1
+				},
+				"annotations": {
+					"$ref": "#/definitions/annotations"
+				}
+			},
+			"required": [
+				"kind",
+				"type",
+				"array_dimensions"
+			],
+			"additionalProperties": false
+		},
+		"mapTypeObject": {
+			"type": "object",
+			"properties": {
+				"kind": {
+					"type": "string",
+					"enum": [
+						"map"
+					]
+				},
+				"key_type": {
+					"$ref": "#/definitions/typeRef"
+				},
+				"value_type": {
+					"$ref": "#/definitions/typeRef"
+				},
+				"map_max_length": {
+					"$ref": "#/definitions/bound"
+				},
+				"annotations": {
+					"$ref": "#/definitions/annotations"
+				}
+			},
+			"required": [
+				"kind",
+				"key_type",
+				"value_type"
+			],
+			"additionalProperties": false
+		},
+		"caseLabel": {
+			"type": [
+				"string",
+				"integer",
+				"boolean",
+				"array"
+			]
+		},
+		"member": {
+			"type": "object",
+			"oneOf": [
+				{
+					"$ref": "#/definitions/primitiveMember"
+				},
+				{
+					"$ref": "#/definitions/stringMember"
+				},
+				{
+					"$ref": "#/definitions/namedMember"
+				},
+				{
+					"$ref": "#/definitions/sequenceMember"
+				},
+				{
+					"$ref": "#/definitions/arrayMember"
+				},
+				{
+					"$ref": "#/definitions/mapMember"
+				}
+			]
+		},
+		"unionCase": {
+			"allOf": [
+				{
+					"$ref": "#/definitions/member"
+				},
+				{
+					"required": [
+						"case"
+					]
+				}
+			]
+		},
+		"primitiveMember": {
+			"type": "object",
+			"properties": {
+				"name": {
+					"$ref": "#/definitions/identifier"
+				},
+				"kind": {
+					"$ref": "#/definitions/primitiveKind"
+				},
+				"annotations": {
+					"$ref": "#/definitions/annotations"
+				},
+				"readonly": {
+					"type": "boolean"
+				},
+				"case": {
+					"$ref": "#/definitions/caseLabel"
+				}
+			},
+			"required": [
+				"name",
+				"kind"
+			],
+			"additionalProperties": false
+		},
+		"stringMember": {
+			"type": "object",
+			"properties": {
+				"name": {
+					"$ref": "#/definitions/identifier"
+				},
+				"kind": {
+					"$ref": "#/definitions/stringKind"
+				},
+				"string_max_length": {
+					"$ref": "#/definitions/bound"
+				},
+				"annotations": {
+					"$ref": "#/definitions/annotations"
+				},
+				"readonly": {
+					"type": "boolean"
+				},
+				"case": {
+					"$ref": "#/definitions/caseLabel"
+				}
+			},
+			"required": [
+				"name",
+				"kind"
+			],
+			"additionalProperties": false
+		},
+		"namedMember": {
+			"type": "object",
+			"properties": {
+				"name": {
+					"$ref": "#/definitions/identifier"
+				},
+				"kind": {
+					"$ref": "#/definitions/namedKind"
+				},
+				"type": {
+					"$ref": "#/definitions/scopedName"
+				},
+				"annotations": {
+					"$ref": "#/definitions/annotations"
+				},
+				"readonly": {
+					"type": "boolean"
+				},
+				"case": {
+					"$ref": "#/definitions/caseLabel"
+				}
+			},
+			"required": [
+				"name",
+				"kind",
+				"type"
+			],
+			"additionalProperties": false
+		},
+		"sequenceMember": {
+			"type": "object",
+			"properties": {
+				"name": {
+					"$ref": "#/definitions/identifier"
+				},
+				"kind": {
+					"type": "string",
+					"enum": [
+						"sequence"
+					]
+				},
+				"type": {
+					"$ref": "#/definitions/typeRef"
+				},
+				"sequence_max_length": {
+					"$ref": "#/definitions/bound"
+				},
+				"annotations": {
+					"$ref": "#/definitions/annotations"
+				},
+				"readonly": {
+					"type": "boolean"
+				},
+				"case": {
+					"$ref": "#/definitions/caseLabel"
+				}
+			},
+			"required": [
+				"name",
+				"kind",
+				"type"
+			],
+			"additionalProperties": false
+		},
+		"arrayMember": {
+			"type": "object",
+			"properties": {
+				"name": {
+					"$ref": "#/definitions/identifier"
+				},
+				"kind": {
+					"type": "string",
+					"enum": [
+						"array"
+					]
+				},
+				"type": {
+					"$ref": "#/definitions/typeRef"
+				},
+				"array_dimensions": {
+					"type": "array",
+					"items": {
+						"$ref": "#/definitions/bound"
+					},
+					"minItems": 1
+				},
+				"annotations": {
+					"$ref": "#/definitions/annotations"
+				},
+				"readonly": {
+					"type": "boolean"
+				},
+				"case": {
+					"$ref": "#/definitions/caseLabel"
+				}
+			},
+			"required": [
+				"name",
+				"kind",
+				"type",
+				"array_dimensions"
+			],
+			"additionalProperties": false
+		},
+		"mapMember": {
+			"type": "object",
+			"properties": {
+				"name": {
+					"$ref": "#/definitions/identifier"
+				},
+				"kind": {
+					"type": "string",
+					"enum": [
+						"map"
+					]
+				},
+				"key_type": {
+					"$ref": "#/definitions/typeRef"
+				},
+				"value_type": {
+					"$ref": "#/definitions/typeRef"
+				},
+				"map_max_length": {
+					"$ref": "#/definitions/bound"
+				},
+				"annotations": {
+					"$ref": "#/definitions/annotations"
+				},
+				"readonly": {
+					"type": "boolean"
+				},
+				"case": {
+					"$ref": "#/definitions/caseLabel"
+				}
+			},
+			"required": [
+				"name",
+				"kind",
+				"key_type",
+				"value_type"
+			],
+			"additionalProperties": false
+		},
+		"discriminator": {
+			"type": "object",
+			"properties": {
+				"kind": {
+					"type": "string"
+				},
+				"type": {
+					"$ref": "#/definitions/scopedName"
+				},
+				"annotations": {
+					"$ref": "#/definitions/annotations"
+				}
+			},
+			"required": [
+				"kind"
+			],
+			"additionalProperties": false
+		},
+		"enumerator": {
+			"type": "object",
+			"properties": {
+				"name": {
+					"$ref": "#/definitions/identifier"
+				},
+				"value": {
+					"type": "integer"
+				},
+				"default": {
+					"type": "boolean"
+				}
+			},
+			"required": [
+				"name"
+			],
+			"additionalProperties": false
+		},
+		"bitmaskFlag": {
+			"type": "object",
+			"properties": {
+				"name": {
+					"$ref": "#/definitions/identifier"
+				},
+				"position": {
+					"type": "integer",
+					"minimum": 0
+				},
+				"annotations": {
+					"$ref": "#/definitions/annotations"
+				}
+			},
+			"required": [
+				"name",
+				"position"
+			],
+			"additionalProperties": false
+		},
+		"bitfield": {
+			"type": "object",
+			"properties": {
+				"name": {
+					"$ref": "#/definitions/identifier"
+				},
+				"bits": {
+					"type": "integer",
+					"minimum": 1,
+					"maximum": 64
+				},
+				"type": {
+					"$ref": "#/definitions/primitiveKind"
+				},
+				"annotations": {
+					"$ref": "#/definitions/annotations"
+				}
+			},
+			"required": [
+				"name",
+				"bits"
+			],
+			"additionalProperties": false
+		},
+		"moduleDecl": {
+			"type": "object",
+			"properties": {
+				"kind": {
+					"type": "string",
+					"enum": [
+						"module"
+					]
+				},
+				"annotations": {
+					"$ref": "#/definitions/annotations"
+				}
+			},
+			"required": [
+				"kind"
+			],
+			"additionalProperties": {
+				"$ref": "#/definitions/moduleElement"
+			}
+		},
+		"structDecl": {
+			"type": "object",
+			"properties": {
+				"kind": {
+					"type": "string",
+					"enum": [
+						"struct"
+					]
+				},
+				"base_type": {
+					"$ref": "#/definitions/scopedName"
+				},
+				"members": {
+					"type": "array",
+					"items": {
+						"$ref": "#/definitions/member"
+					}
+				},
+				"annotations": {
+					"$ref": "#/definitions/annotations"
+				}
+			},
+			"required": [
+				"kind"
+			],
+			"additionalProperties": false
+		},
+		"exceptionDecl": {
+			"type": "object",
+			"properties": {
+				"kind": {
+					"type": "string",
+					"enum": [
+						"exception"
+					]
+				},
+				"members": {
+					"type": "array",
+					"items": {
+						"$ref": "#/definitions/member"
+					}
+				},
+				"annotations": {
+					"$ref": "#/definitions/annotations"
+				}
+			},
+			"required": [
+				"kind"
+			],
+			"additionalProperties": false
+		},
+		"unionDecl": {
+			"type": "object",
+			"properties": {
+				"kind": {
+					"type": "string",
+					"enum": [
+						"union"
+					]
+				},
+				"discriminator": {
+					"$ref": "#/definitions/discriminator"
+				},
+				"cases": {
+					"type": "array",
+					"items": {
+						"$ref": "#/definitions/unionCase"
+					}
+				},
+				"annotations": {
+					"$ref": "#/definitions/annotations"
+				}
+			},
+			"required": [
+				"kind"
+			],
+			"additionalProperties": false
+		},
+		"enumDecl": {
+			"type": "object",
+			"properties": {
+				"kind": {
+					"type": "string",
+					"enum": [
+						"enum"
+					]
+				},
+				"enumerators": {
+					"type": "array",
+					"items": {
+						"$ref": "#/definitions/enumerator"
+					}
+				},
+				"annotations": {
+					"$ref": "#/definitions/annotations"
+				}
+			},
+			"required": [
+				"kind"
+			],
+			"additionalProperties": false
+		},
+		"bitmaskDecl": {
+			"type": "object",
+			"properties": {
+				"kind": {
+					"type": "string",
+					"enum": [
+						"bitmask"
+					]
+				},
+				"flags": {
+					"type": "array",
+					"items": {
+						"$ref": "#/definitions/bitmaskFlag"
+					}
+				},
+				"annotations": {
+					"$ref": "#/definitions/annotations"
+				}
+			},
+			"required": [
+				"kind"
+			],
+			"additionalProperties": false
+		},
+		"bitsetDecl": {
+			"type": "object",
+			"properties": {
+				"kind": {
+					"type": "string",
+					"enum": [
+						"bitset"
+					]
+				},
+				"bitfields": {
+					"type": "array",
+					"items": {
+						"$ref": "#/definitions/bitfield"
+					}
+				},
+				"annotations": {
+					"$ref": "#/definitions/annotations"
+				}
+			},
+			"required": [
+				"kind"
+			],
+			"additionalProperties": false
+		},
+		"typedefDecl": {
+			"type": "object",
+			"properties": {
+				"kind": {
+					"type": "string",
+					"enum": [
+						"typedef"
+					]
+				},
+				"type": {
+					"$ref": "#/definitions/typeObject"
+				}
+			},
+			"required": [
+				"kind",
+				"type"
+			],
+			"additionalProperties": false
+		},
+		"constDecl": {
+			"type": "object",
+			"properties": {
+				"kind": {
+					"type": "string",
+					"enum": [
+						"const"
+					]
+				},
+				"type": {
+					"$ref": "#/definitions/typeObject"
+				},
+				"value": {
+					"type": [
+						"boolean",
+						"integer",
+						"number",
+						"string",
+						"array",
+						"object",
+						"null"
+					]
+				},
+				"annotations": {
+					"$ref": "#/definitions/annotations"
+				}
+			},
+			"required": [
+				"kind",
+				"type",
+				"value"
+			],
+			"additionalProperties": false
+		},
+		"annotationDecl": {
+			"type": "object",
+			"properties": {
+				"kind": {
+					"type": "string",
+					"enum": [
+						"annotation"
+					]
+				},
+				"annotations": {
+					"$ref": "#/definitions/annotations"
+				}
+			},
+			"required": [
+				"kind"
+			],
+			"additionalProperties": false
+		},
+		"interfaceDecl": {
+			"type": "object",
+			"properties": {
+				"kind": {
+					"type": "string",
+					"enum": [
+						"interface"
+					]
+				},
+				"base_type": {
+					"oneOf": [
+						{
+							"$ref": "#/definitions/scopedName"
+						},
+						{
+							"type": "array",
+							"items": {
+								"$ref": "#/definitions/scopedName"
+							}
+						}
+					]
+				},
+				"attributes": {
+					"type": "array",
+					"items": {
+						"$ref": "#/definitions/member"
+					}
+				},
+				"annotations": {
+					"$ref": "#/definitions/annotations"
+				}
+			},
+			"required": [
+				"kind"
+			],
+			"additionalProperties": false
+		},
+		"valuetypeDecl": {
+			"type": "object",
+			"properties": {
+				"kind": {
+					"type": "string",
+					"enum": [
+						"valuetype"
+					]
+				},
+				"base_type": {
+					"$ref": "#/definitions/scopedName"
+				},
+				"supports": {
+					"$ref": "#/definitions/typeObject"
+				},
+				"attributes": {
+					"type": "array",
+					"items": {
+						"$ref": "#/definitions/member"
+					}
+				},
+				"methods": {
+					"type": "array"
+				},
+				"annotations": {
+					"$ref": "#/definitions/annotations"
+				}
+			},
+			"required": [
+				"kind"
+			],
+			"additionalProperties": false
+		},
+		"moduleElement": {
+			"type": "object",
+			"anyOf": [
+				{
+					"$ref": "#/definitions/moduleDecl"
+				},
+				{
+					"$ref": "#/definitions/constDecl"
+				},
+				{
+					"$ref": "#/definitions/typedefDecl"
+				},
+				{
+					"$ref": "#/definitions/enumDecl"
+				},
+				{
+					"$ref": "#/definitions/bitmaskDecl"
+				},
+				{
+					"$ref": "#/definitions/bitsetDecl"
+				},
+				{
+					"$ref": "#/definitions/structDecl"
+				},
+				{
+					"$ref": "#/definitions/unionDecl"
+				},
+				{
+					"$ref": "#/definitions/exceptionDecl"
+				},
+				{
+					"$ref": "#/definitions/annotationDecl"
+				},
+				{
+					"$ref": "#/definitions/interfaceDecl"
+				},
+				{
+					"$ref": "#/definitions/valuetypeDecl"
+				}
+			]
+		}
+	},
+	"type": "object",
+	"patternProperties": {
+		"^[A-Za-z_][A-Za-z0-9_]*$": {
+			"$ref": "#/definitions/moduleElement"
+		}
+	},
+	"additionalProperties": false
+}

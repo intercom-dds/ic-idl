@@ -655,6 +655,10 @@ fn cast_value_to_type(
                 TyKind::Array { .. } | TyKind::Sequence { .. } | TyKind::Map { .. }
             ) {
                 Err(Error::TypeMismatch)
+            } else if let DefKind::Bitmask(b) = &ctx.definitions.get(*def_id).kind
+                && let Some((signed, rank)) = rank_for_primitive(b.ty)
+            {
+                ops::cast_to_int(v, rank, signed, strict_unsigned)
             } else {
                 Ok(v)
             }

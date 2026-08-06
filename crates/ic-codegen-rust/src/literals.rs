@@ -184,11 +184,7 @@ impl RustGen<'_> {
                 w!(w, val);
             }
             Numeric::Char(c) | Numeric::WChar(c) => {
-                if *c >= ' ' && *c <= '~' {
-                    w!(w, "'", c, "'");
-                } else {
-                    w!(w, format!("'\\x{:02X}'", *c as u8));
-                }
+                w!(w, "'", c.escape_default(), "'");
             }
             Numeric::Int8(v) => w!(w, format_integer(i128::from(*v))),
             Numeric::UInt8(v) => w!(w, format_integer(i128::from(*v))),

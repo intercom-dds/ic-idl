@@ -175,6 +175,11 @@ impl<'a, E: Endian> Serializer<'a> for &mut CdrWriter<E> {
     }
 
     #[inline]
+    fn encode_unit(self) -> Result<Self::Ok, Self::Error> {
+        Ok(())
+    }
+
+    #[inline]
     fn encode_option<T>(self, value: &Option<T>) -> Result<Self::Ok, Self::Error>
     where
         T: Marshal,

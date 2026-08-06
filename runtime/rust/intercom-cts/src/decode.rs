@@ -847,6 +847,16 @@ impl Unmarshal for f64 {
     }
 }
 
+impl Unmarshal for () {
+    #[inline]
+    fn unmarshal_mut<'a, D>(&mut self, _archive: D) -> Result<(), D::Error>
+    where
+        D: Deserializer<'a>,
+    {
+        Ok(())
+    }
+}
+
 impl Unmarshal for String {
     #[inline]
     fn unmarshal_mut<'a, D>(&mut self, archive: D) -> Result<(), D::Error>

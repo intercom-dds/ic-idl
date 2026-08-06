@@ -324,6 +324,24 @@ pub trait Serializer<'a>: Sized {
     /// ```
     fn encode_f64(self, value: f64) -> Result<Self::Ok, Self::Error>;
 
+    /// Serialize a unit-type/null value.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// # use intercom_cts::{encode::Serializer, Marshal};
+    ///
+    /// impl Marshal for Value {
+    ///     fn marshal<'a, S>(&self, archive: S) -> Result<S::Ok, S::Error>
+    ///     where
+    ///         S: Serializer<'a>,
+    ///     {
+    ///         archive.encode_unit()
+    ///     }
+    /// }
+    /// ```
+    fn encode_unit(self) -> Result<Self::Ok, Self::Error>;
+
     /// Serialize a `str` value.
     ///
     /// # Example
@@ -699,6 +717,16 @@ impl Marshal for f64 {
         S: Serializer<'a>,
     {
         archive.encode_f64(*self)
+    }
+}
+
+impl Marshal for () {
+    #[inline]
+    fn marshal<'a, S>(&self, archive: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer<'a>,
+    {
+        archive.encode_unit()
     }
 }
 

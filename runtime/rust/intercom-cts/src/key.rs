@@ -160,6 +160,11 @@ impl<'a, S: Serializer<'a>> Serializer<'a> for KeyAdapter<S> {
     }
 
     #[inline]
+    fn encode_unit(self) -> Result<Self::Ok, Self::Error> {
+        self.inner.encode_unit()
+    }
+
+    #[inline]
     fn encode_string(self, value: &str) -> Result<Self::Ok, Self::Error> {
         self.inner.encode_string(value)
     }

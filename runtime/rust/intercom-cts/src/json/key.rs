@@ -118,6 +118,10 @@ impl Serializer<'_> for KeySerializer {
         invalid()
     }
 
+    fn encode_unit(self) -> Result<Self::Ok, Self::Error> {
+        invalid()
+    }
+
     fn encode_option<T>(self, _: &Option<T>) -> Result<Self::Ok, Self::Error>
     where
         T: Marshal,

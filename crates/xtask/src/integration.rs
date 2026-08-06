@@ -106,9 +106,15 @@ fn run_python_tests(integration_dir: &Path) {
     run_command(cmd, "uv");
 }
 
+fn run_rust_tests(integration_dir: &Path) {
+    let mut cmd = Command::new("cargo");
+    cmd.current_dir(integration_dir.join("rust")).args(["test"]);
+    run_command(cmd, "cargo");
+}
+
 pub fn run(opts: &Options) {
     let integration_dir = git_root().join("integration-tests");
-    let all_languages = ["python", "typescript", "csharp", "cpp"];
+    let all_languages = ["python", "typescript", "csharp", "cpp", "rust"];
     let languages: HashSet<_> = if opts.lang.is_empty() || opts.lang.contains("all") {
         all_languages.iter().map(ToString::to_string).collect()
     } else {
@@ -121,6 +127,7 @@ pub fn run(opts: &Options) {
             "typescript" | "ts" => run_typescript_tests(&integration_dir),
             "csharp" | "cs" => run_csharp_tests(&integration_dir),
             "cpp" | "c++" => run_cpp_tests(&integration_dir),
+            "rust" | "rs" => run_rust_tests(&integration_dir),
             _ => {
                 eprintln!("error: unknown or unsupported language '{lang}'");
                 eprintln!("supported languages: python, typescript, csharp, cpp, all");

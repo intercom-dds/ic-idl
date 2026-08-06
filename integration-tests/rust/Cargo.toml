@@ -1,0 +1,11 @@
+[package]
+name = "integration-tests-rust"
+edition = "2024"
+
+[build-dependencies]
+intercom-build = { path = "../../runtime/rust/intercom-build"}
+
+[dependencies]
+intercom-cts = { path = "../../runtime/rust/intercom-cts", features = ["derive"] }
+
+[workspace]

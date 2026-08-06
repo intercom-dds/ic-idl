@@ -106,7 +106,7 @@ impl RustGen<'_> {
     fn emit_type_descriptor(def: &Def, w: &mut Twine) {
         w!(w, "impl ::intercom_cts::type_info::TypeDescriptor for ", def, " {\n");
         w!(w, "const TYPE_INFO: &'static ::intercom_cts::TypeInfo<'static> = &TYPE_INFO;\n");
-        w!(w, "const MEMBER_INFO: &'static [::intercom_cts::MemberInfo<'static>] = &MEMBER_INFO;\n");
+        w!(w, "const MEMBER_INFO: &'static [::intercom_cts::MemberInfo<'static>] = MEMBER_INFO;\n");
         w!(w, "}\n\n");
     }
 

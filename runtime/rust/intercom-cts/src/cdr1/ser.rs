@@ -317,6 +317,11 @@ impl<E: Endian> Serializer<'_> for &mut CdrWriter<'_, E> {
     }
 
     #[inline]
+    fn encode_unit(self) -> Result<Self::Ok, Self::Error> {
+        Ok(())
+    }
+
+    #[inline]
     fn encode_string(self, v: &str) -> Result<Self::Ok, Self::Error> {
         let len = v.len().checked_add(1).ok_or(Error::InvalidLen)?;
         self.write_len(len)?;

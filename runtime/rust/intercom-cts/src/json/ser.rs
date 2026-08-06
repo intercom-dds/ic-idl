@@ -260,6 +260,10 @@ impl<'a, W: Write> Serializer<'a> for &'a mut JsonWriter<W> {
         }
     }
 
+    fn encode_unit(self) -> Result<Self::Ok, Self::Error> {
+        self.null()
+    }
+
     fn encode_option<T>(self, value: &Option<T>) -> Result<Self::Ok, Self::Error>
     where
         T: Marshal,

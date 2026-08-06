@@ -435,6 +435,10 @@ impl Serializer<'_> for S {
         }
     }
 
+    fn encode_unit(self) -> Result<Self::Ok, Self::Error> {
+        Ok(Value::Null)
+    }
+
     fn encode_option<T>(self, value: &Option<T>) -> Result<Self::Ok, Self::Error>
     where
         T: Marshal,

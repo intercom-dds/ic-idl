@@ -337,9 +337,6 @@ impl Compiler {
             // Coerce @default annotation values to match their target types
             let hir = ic_hir_xform::default_annotation::transform(hir);
 
-            // Convert `@position` annotations to bitmask values
-            let hir = ic_hir_xform::position_annotation::transform(hir);
-
             // Mark types with `IS_TRIVIAL` and `TOTAL_ORDER` flags
             let hir = ic_hir_xform::type_flags::transform(hir);
 

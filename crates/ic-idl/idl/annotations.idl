@@ -86,7 +86,7 @@ module ext {
 
 @ext::annotation_target(ENUMERATOR)
 @annotation value {
-    any value;
+    int64 value;
 };
 
 @ext::annotation_target(STRUCT_DEF | UNION_DEF | EXCEPTION_DEF)

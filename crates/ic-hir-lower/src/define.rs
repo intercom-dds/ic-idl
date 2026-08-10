@@ -25,7 +25,7 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use ic_hir::hir::{Decl, Def, DefFlags, DefId, DefKind};
+use ic_hir::hir::{Ann, Decl, Def, DefFlags, DefId, DefKind};
 use ic_hir::scope::ScopeId;
 use ic_syntax::{Annotation, Ident, Span};
 
@@ -77,11 +77,10 @@ pub fn define_scoped_const(
     extra_scope: ScopeId,
     ident: &Ident,
     span: Span,
-    ast_annotations: &[Annotation],
+    annotations: Vec<Ann>,
     flags: DefFlags,
     build_kind: impl FnOnce(DefId) -> DefKind,
 ) -> DefId {
-    let annotations = convert_annotations(ctx, ast_annotations, scope);
     let def_id = ctx.context.definitions.alloc_with_id(|id| Def {
         id,
         ident: ident.clone(),

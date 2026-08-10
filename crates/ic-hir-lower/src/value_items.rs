@@ -28,11 +28,11 @@
 use ic_diagnostic::{Label, error_span};
 use ic_hir::Context;
 use ic_hir::hir::{
-    AnnParam, AnnotationTy, BitmaskTy, BitsetField, BitsetTy, ConstTy, Def, DefFlags, DefId,
-    DefKind, EnumTy, Numeric, PrimitiveTy, Ty, TyKind,
+    Ann, AnnArg, AnnParam, AnnotationTy, BitmaskTy, BitsetField, BitsetTy, ConstTy, Def, DefFlags,
+    DefId, DefKind, EnumTy, Numeric, PrimitiveTy, Ty, TyKind,
 };
 use ic_hir::scope::ScopeId;
-use ic_syntax::{AnnotationDef, BitmaskDef, BitsetDef, ConstDef, EnumDef};
+use ic_syntax::{Annotation, AnnotationDef, BitmaskDef, BitsetDef, ConstDef, EnumDef};
 
 use crate::LoweringContext;
 use crate::annotation::convert_annotations;
@@ -135,14 +135,22 @@ impl<'ctx> ValueItemProcessor<'ctx> {
         let mut last_value = -1i64;
 
         for enumerator in &e.enumerators {
-            let value = self.calculate_enumerator_value(enumerator, &mut last_value);
+            let (annotations, value_annotation) = extract_builtin_annotation(
+                self.ctx,
+                &enumerator.meta.annotations,
+                enum_scope,
+                "value",
+            );
+
+            let (is_explicit, value) =
+                self.calculate_enumerator_value(enumerator, value_annotation, &mut last_value);
             last_value = value;
-            let is_explicit = enumerator.value.is_some();
 
             fields.push(self.create_enumerator(
                 enumerator,
                 enum_id,
                 value,
+                annotations,
                 enum_scope,
                 is_explicit,
             ));
@@ -155,30 +163,33 @@ impl<'ctx> ValueItemProcessor<'ctx> {
     fn calculate_enumerator_value(
         &mut self,
         enumerator: &ic_syntax::Enumerator,
+        value_annotation: Option<AnnArg>,
         last_value: &mut i64,
-    ) -> i64 {
+    ) -> (bool, i64) {
         if let Some(ref expr) = enumerator.value {
-            let mut eval = ConstEvaluator::new(self.ctx, self.current_scope);
+            let mut eval: ConstEvaluator<'_> = ConstEvaluator::new(self.ctx, self.current_scope);
             if let Some(num) = eval.eval_numeric(expr) {
                 match num {
-                    Numeric::Int32(v) => i64::from(v),
-                    Numeric::Int64(v) => v,
-                    Numeric::UInt32(v) => i64::from(v),
-                    Numeric::UInt64(v) => v as i64,
+                    Numeric::Int32(v) => (true, i64::from(v)),
+                    Numeric::Int64(v) => (true, v),
+                    Numeric::UInt32(v) => (true, i64::from(v)),
+                    Numeric::UInt64(v) => (true, v as i64),
                     _ => {
                         self.ctx.diagnostics.error(
                             "enum value must be an integer".to_string(),
                             Label::new(expr.span).message("expected integer value"),
                         );
-                        0
+                        (true, 0)
                     }
                 }
             } else {
-                0
+                (true, 0)
             }
+        } else if let Some(arg) = value_annotation {
+            (true, self.ctx.context.integer_value(&arg.value))
         } else {
             *last_value += 1;
-            *last_value
+            (false, *last_value)
         }
     }
 
@@ -187,6 +198,7 @@ impl<'ctx> ValueItemProcessor<'ctx> {
         enumerator: &ic_syntax::Enumerator,
         enum_id: DefId,
         value: i64,
+        annotations: Vec<Ann>,
         enum_scope: ScopeId,
         is_explicit: bool,
     ) -> DefId {
@@ -195,13 +207,14 @@ impl<'ctx> ValueItemProcessor<'ctx> {
         } else {
             DefFlags::nil()
         };
+
         crate::define::define_scoped_const(
             self.ctx,
             self.current_scope,
             enum_scope,
             &enumerator.name,
             enumerator.name.span,
-            &enumerator.meta.annotations,
+            annotations,
             flags,
             |_| {
                 DefKind::Const(ConstTy {
@@ -223,15 +236,22 @@ impl<'ctx> ValueItemProcessor<'ctx> {
         bitmask_id: DefId,
         bitmask_scope: ScopeId,
     ) -> Option<DefId> {
-        let is_explicit = flag.value.is_some();
+        let (annotations, position_annotation) = extract_builtin_annotation(
+            self.ctx,
+            &flag.meta.annotations,
+            self.current_scope,
+            "position",
+        );
 
-        let bit_pos = if let Some(ref expr) = flag.value {
+        let (is_explicit, bit_pos) = if let Some(ref expr) = flag.value {
             let mut eval = ConstEvaluator::new(self.ctx, self.current_scope);
-            eval.eval_nonneg_bound(expr).unwrap_or(0) as u32
+            (true, eval.eval_nonneg_bound(expr).unwrap_or(0) as u32)
+        } else if let Some(arg) = position_annotation {
+            (true, self.ctx.context.unsigned_value(&arg.value) as u32)
         } else if i == 0 {
-            0
+            (false, 0)
         } else {
-            *last_bit + 1
+            (false, *last_bit + 1)
         };
 
         *last_bit = bit_pos;
@@ -262,7 +282,7 @@ impl<'ctx> ValueItemProcessor<'ctx> {
             bitmask_scope,
             &flag.name,
             flag.meta.span,
-            &flag.meta.annotations,
+            annotations,
             flags,
             |_| {
                 DefKind::Const(ConstTy {
@@ -736,16 +756,18 @@ fn numerics_equal(a: &Numeric, b: &Numeric, ctx: &Context) -> bool {
 
 fn enum_key(ctx: &Context, field: DefId) -> i64 {
     let def = ctx.definitions.get(field);
-    if let DefKind::Const(ref const_ty) = def.kind {
-        resolve_numeric_value(ctx, &const_ty.value)
+    if let DefKind::Const(ref const_ty) = def.kind
+        && let Some(value) = resolve_numeric_value(ctx, &const_ty.value)
+    {
+        value
     } else {
         0
     }
 }
 
 /// Recursively resolve a numeric value, following constant references
-fn resolve_numeric_value(ctx: &Context, value: &Numeric) -> i64 {
-    match value {
+fn resolve_numeric_value(ctx: &Context, value: &Numeric) -> Option<i64> {
+    Some(match value {
         Numeric::Int8(v) => i64::from(*v),
         Numeric::Int16(v) => i64::from(*v),
         Numeric::Int32(v) => i64::from(*v),
@@ -757,11 +779,39 @@ fn resolve_numeric_value(ctx: &Context, value: &Numeric) -> i64 {
         Numeric::Const(def_id) => {
             let def = ctx.definitions.get(*def_id);
             if let DefKind::Const(ref const_ty) = def.kind {
-                resolve_numeric_value(ctx, &const_ty.value)
-            } else {
-                0
+                return resolve_numeric_value(ctx, &const_ty.value);
             }
+
+            return None;
         }
-        _ => 0,
-    }
+        _ => return None,
+    })
+}
+
+fn extract_builtin_annotation(
+    ctx: &mut LoweringContext,
+    annotations: &[Annotation],
+    scope: ScopeId,
+    ident: &str,
+) -> (Vec<Ann>, Option<AnnArg>) {
+    let (annotations, builtin_annotation) = convert_annotations(ctx, annotations, scope)
+        .into_iter()
+        .partition(|ann| {
+            if let Some(def_id) = ann.def_id {
+                let def: &Def = ctx.context.type_of(def_id);
+                if def.flags.contains(DefFlags::IS_BUILTIN) && ident == def.ident.name {
+                    return false;
+                }
+            }
+
+            true
+        });
+
+    (
+        annotations,
+        builtin_annotation
+            .into_iter()
+            .next()
+            .and_then(|ann| ann.args.into_iter().next()),
+    )
 }

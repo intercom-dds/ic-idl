@@ -1,0 +1,23 @@
+---
+source: crates/ic-lint/tests/bounds_check.rs
+expression: test_lint_hir(source)
+---
+⨯ bounds-check: value violates bounds of type `string<4>`
+  @ test.idl:4:22
+
+ 2 │ union TestUnion switch(boolean) {
+ 3 │     case TRUE:
+ 4 │         @default("12345")
+   │                  ˆˆˆˆˆˆˆ value violates type bound
+ 5 │         string<4> my_string;
+ 6 │     case FALSE:
+
+⨯ bounds-check: value violates bounds of type `sequence<uint32, 1>`
+  @ test.idl:7:22
+
+ 5 │         string<4> my_string;
+ 6 │     case FALSE:
+ 7 │         @default({0, 1})
+   │                  ˆˆˆˆˆˆ value violates type bound
+ 8 │         sequence<uint32, 1> my_sequence;
+ 9 │ };

@@ -28,6 +28,7 @@
 pub mod ann_target;
 pub mod ann_template;
 pub mod bit_bound;
+pub mod bounds_check;
 pub mod conflicting_annotations;
 pub mod default_type_mismatch;
 pub mod derived_struct_key;

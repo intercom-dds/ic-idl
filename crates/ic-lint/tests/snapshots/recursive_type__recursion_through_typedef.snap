@@ -1,0 +1,15 @@
+---
+source: crates/ic-lint/tests/recursive_type.rs
+expression: output
+---
+⨯ recursive-type: type `AliasOfA` has infinite size
+  @ test.idl:3:17
+
+ 2 │ struct A;
+ 3 │ typedef A AliasOfA;
+   │         ˆ `AliasOfA` contains `A` here
+ 4 │ struct A { AliasOfA self; };
+   │                     ˆˆˆˆ `A` contains `AliasOfA` here
+
+  ? break the cycle with an indirection
+  * cycle: AliasOfA -> A -> AliasOfA

@@ -7,6 +7,6 @@ expression: output
 
  2 │ exception RecursiveError {
  3 │     string message;
- 4 │     RecursiveError cause;  // Error: direct recursion without indirection
+ 4 │     RecursiveError cause;
    │     ˆˆˆˆˆˆˆˆˆˆˆˆˆˆ unknown type
  5 │ };

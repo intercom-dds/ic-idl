@@ -2,12 +2,13 @@
 source: crates/ic-lint/tests/recursive_type.rs
 expression: output
 ---
-⨯ recursive-type: type `Node` contains itself without indirection
+⨯ recursive-type: type `Node` has infinite size
   @ test.idl:3:18
 
  2 │ struct Node {
- 3 │     Node items[10];  // Error: array doesn't provide indirection
-   │          ˆˆˆˆˆ recursive member here
+ 3 │     Node items[10];
+   │          ˆˆˆˆˆ `Node` contains `Node` here
  4 │ };
 
-  * recursive types must use indirection through sequences, maps, or @external annotations
+  ? break the cycle with an indirection
+  * cycle: Node -> Node

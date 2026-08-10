@@ -3,12 +3,12 @@ source: crates/ic-lint/tests/recursive_type.rs
 expression: output
 ---
 ⨯ recursive-type: type `Node` has infinite size
-  @ test.idl:4:18
+  @ test.idl:4:25
 
- 2 │ struct Node {
- 3 │     long value;
- 4 │     Node next;
-   │          ˆˆˆˆ `Node` contains `Node` here
+ 2 │ valuetype Node {
+ 3 │     public long value;
+ 4 │     public Node next;
+   │                 ˆˆˆˆ `Node` contains `Node` here
  5 │ };
 
   ? break the cycle with an indirection

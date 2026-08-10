@@ -35,7 +35,7 @@ fn direct_struct_recursion() {
         r"
         struct Node {
             long value;
-            Node next;  // Error: direct recursion without indirection
+            Node next;
         };
         ",
     );
@@ -48,46 +48,39 @@ fn struct_recursion_with_sequence() {
         r"
         struct Node {
             long value;
-            sequence<Node> children;  // OK: sequence provides indirection
+            sequence<Node> children;
         };
         ",
     );
-    assert!(
-        report.errors.is_empty(),
-        "Sequence should provide sufficient indirection"
-    );
+
+    assert!(report.errors.is_empty());
+    assert!(report.warnings.is_empty());
 }
 
 #[test]
-fn struct_recursion_with_shared() {
-    let report = common::lint_hir(
+fn shared_member_bounds_size_but_not_value() {
+    let output = common::test_lint_hir(
         r"
         struct Node {
             long value;
-            @shared Node next;  // OK: @shared provides indirection
+            @shared Node next;
         };
         ",
     );
-    assert!(
-        report.errors.is_empty(),
-        "@shared annotation should provide sufficient indirection"
-    );
+    assert_snapshot!(output);
 }
 
 #[test]
-fn struct_recursion_with_external() {
-    let report = common::lint_hir(
+fn external_member_bounds_size_but_not_value() {
+    let output = common::test_lint_hir(
         r"
         struct Node {
             long value;
-            @external Node next;  // OK: @external provides indirection
+            @external Node next;
         };
         ",
     );
-    assert!(
-        report.errors.is_empty(),
-        "@external annotation should provide sufficient indirection"
-    );
+    assert_snapshot!(output);
 }
 
 #[test]
@@ -96,7 +89,7 @@ fn exception_recursion() {
         r"
         exception RecursiveError {
             string message;
-            RecursiveError cause;  // Error: direct recursion without indirection
+            RecursiveError cause;
         };
         ",
     );
@@ -108,7 +101,7 @@ fn recursion_through_array() {
     let output = common::test_lint_hir(
         r"
         struct Node {
-            Node items[10];  // Error: array doesn't provide indirection
+            Node items[10];
         };
         ",
     );
@@ -120,14 +113,12 @@ fn recursion_through_map_key() {
     let report = common::lint_hir(
         r"
         struct Node {
-            map<Node, string> children;  // OK: map provides indirection
+            map<Node, string> children;
         };
         ",
     );
-    assert!(
-        report.errors.is_empty(),
-        "Map should provide sufficient indirection for key type"
-    );
+
+    assert!(report.errors.is_empty());
 }
 
 #[test]
@@ -135,14 +126,13 @@ fn recursion_through_map_value() {
     let report = common::lint_hir(
         r"
         struct Node {
-            map<string, Node> children;  // OK: map provides indirection
+            map<string, Node> children;
         };
         ",
     );
-    assert!(
-        report.errors.is_empty(),
-        "Map should provide sufficient indirection for value type"
-    );
+
+    assert!(report.errors.is_empty());
+    assert!(report.warnings.is_empty());
 }
 
 #[test]
@@ -150,14 +140,13 @@ fn recursion_in_sequence_element() {
     let report = common::lint_hir(
         r"
         struct Node {
-            sequence<Node> nodes;  // OK: sequence provides indirection
+            sequence<Node> nodes;
         };
         ",
     );
-    assert!(
-        report.errors.is_empty(),
-        "Recursion in sequence element should be allowed"
-    );
+
+    assert!(report.errors.is_empty());
+    assert!(report.warnings.is_empty());
 }
 
 #[test]
@@ -166,9 +155,9 @@ fn multiple_recursive_fields() {
         r"
         struct Tree {
             long value;
-            Tree left;   // Error
-            Tree right;  // Error
-            @shared Tree parent;  // OK
+            Tree left;
+            Tree right;
+            @shared Tree parent;
         };
         ",
     );
@@ -183,17 +172,16 @@ fn non_recursive_struct() {
             long x;
             long y;
         };
-        
+
         struct Rectangle {
             Point topLeft;
             Point bottomRight;
         };
         ",
     );
-    assert!(
-        report.errors.is_empty(),
-        "Non-recursive structs should not produce errors"
-    );
+
+    assert!(report.errors.is_empty());
+    assert!(report.warnings.is_empty());
 }
 
 #[test]
@@ -203,9 +191,286 @@ fn nested_struct_recursion() {
         module Nested {
             struct Node {
                 long value;
-                Node next;  // Error: direct recursion in nested struct
+                Node next;
             };
         };
+        ",
+    );
+    assert_snapshot!(output);
+}
+
+#[test]
+fn mutual_recursion_two_types() {
+    let output = common::test_lint_hir(
+        r"
+        struct B;
+        struct A { B b; };
+        struct B { A a; };
+        ",
+    );
+    assert_snapshot!(output);
+}
+
+#[test]
+fn mutual_recursion_three_types() {
+    let output = common::test_lint_hir(
+        r"
+        struct B;
+        struct C;
+        struct A { B b; };
+        struct B { C c; };
+        struct C { A a; };
+        ",
+    );
+    assert_snapshot!(output);
+}
+
+#[test]
+fn mutual_recursion_broken_by_sequence() {
+    let report = common::lint_hir(
+        r"
+        struct B;
+        struct A { B b; };
+        struct B { sequence<A> items; };
+        ",
+    );
+
+    assert!(report.errors.is_empty());
+    assert!(report.warnings.is_empty());
+}
+
+#[test]
+fn recursion_through_typedef() {
+    let output = common::test_lint_hir(
+        r"
+        struct A;
+        typedef A AliasOfA;
+        struct A { AliasOfA self; };
+        ",
+    );
+    assert_snapshot!(output);
+}
+
+#[test]
+fn recursion_through_inheritance() {
+    let output = common::test_lint_hir(
+        r"
+        struct B;
+        struct A { B b; };
+        struct B : A { };
+        ",
+    );
+    assert_snapshot!(output);
+}
+
+#[test]
+fn recursion_through_valuetype() {
+    let output = common::test_lint_hir(
+        r"
+        valuetype Node {
+            public long value;
+            public Node next;
+        };
+        ",
+    );
+    assert_snapshot!(output);
+}
+
+#[test]
+fn union_with_inline_recursive_branch() {
+    let output = common::test_lint_hir(
+        r"
+        struct A;
+        union U switch (long) {
+            case 1: A a;
+            case 2: long n;
+        };
+        struct A { U u; };
+        ",
+    );
+    assert_snapshot!(output);
+}
+
+#[test]
+fn union_with_external_branch_and_finite_case() {
+    let report = common::lint_hir(
+        r"
+        struct A;
+        union U switch (long) {
+            case 1: @external A a;
+            case 2: long n;
+        };
+        struct A { U u; };
+        ",
+    );
+
+    assert!(report.errors.is_empty());
+    assert!(report.warnings.is_empty());
+}
+
+#[test]
+fn union_with_sequence_branch() {
+    let report = common::lint_hir(
+        r"
+        struct A;
+        union U switch (long) {
+            case 1: sequence<A> items;
+            case 2: long n;
+        };
+        struct A { U u; };
+        ",
+    );
+
+    assert!(report.errors.is_empty());
+    assert!(report.warnings.is_empty());
+}
+
+#[test]
+fn exhaustive_bool_union_with_external_arms() {
+    let output = common::test_lint_hir(
+        r"
+        struct A;
+        union W switch (boolean) {
+            case TRUE:  @external A a;
+            case FALSE: @external A b;
+        };
+        struct A { W w; };
+        ",
+    );
+    assert_snapshot!(output);
+}
+
+#[test]
+fn exhaustive_enum_union_with_external_arms() {
+    let output = common::test_lint_hir(
+        r"
+        enum Choice { FIRST, SECOND };
+        struct A;
+        union W switch (Choice) {
+            case FIRST:  @external A a;
+            case SECOND: @external A b;
+        };
+        struct A { W w; };
+        ",
+    );
+    assert_snapshot!(output);
+}
+
+#[test]
+fn exhaustive_union_with_typedef_bool_discriminator() {
+    let output = common::test_lint_hir(
+        r"
+        typedef boolean Flag;
+        struct A;
+        union W switch (Flag) {
+            case TRUE:  @external A a;
+            case FALSE: @external A b;
+        };
+        struct A { W w; };
+        ",
+    );
+    assert_snapshot!(output);
+}
+
+#[test]
+fn exhaustive_union_with_typedef_enum_discriminator() {
+    let output = common::test_lint_hir(
+        r"
+        enum Choice { FIRST, SECOND };
+        typedef Choice Pick;
+        struct A;
+        union W switch (Pick) {
+            case FIRST:  @external A a;
+            case SECOND: @external A b;
+        };
+        struct A { W w; };
+        ",
+    );
+    assert_snapshot!(output);
+}
+
+#[test]
+fn non_exhaustive_union_with_typedef_discriminator() {
+    let report = common::lint_hir(
+        r"
+        typedef long Code;
+        struct A;
+        union V switch (Code) {
+            case 1: @external A a;
+            case 2: @external A b;
+        };
+        struct A { V v; };
+        ",
+    );
+
+    assert!(report.errors.is_empty());
+    assert!(report.warnings.is_empty());
+}
+
+#[test]
+fn non_exhaustive_union_with_recursive_arms() {
+    let report = common::lint_hir(
+        r"
+        struct A;
+        union V switch (long) {
+            case 1: @external A a;
+            case 2: @external A b;
+        };
+        struct A { V v; };
+        ",
+    );
+
+    assert!(report.errors.is_empty());
+    assert!(report.warnings.is_empty());
+}
+
+#[test]
+fn union_with_explicit_finite_default() {
+    let report = common::lint_hir(
+        r"
+        struct A;
+        union U switch (boolean) {
+            case TRUE: @external A a;
+            default:   long n;
+        };
+        struct A { U u; };
+        ",
+    );
+
+    assert!(report.errors.is_empty());
+    assert!(report.warnings.is_empty());
+}
+
+#[test]
+fn nested_sequence_recursion() {
+    let report = common::lint_hir(
+        r"
+        struct A { sequence<sequence<A> > nested; };
+        ",
+    );
+
+    assert!(report.errors.is_empty());
+    assert!(report.warnings.is_empty());
+}
+
+#[test]
+fn container_of_recursive_type_is_not_reported() {
+    let output = common::test_lint_hir(
+        r"
+        struct B;
+        struct A { B b; };
+        struct B { A a; };
+        struct Holder { A a; };
+        ",
+    );
+    assert_snapshot!(output);
+}
+
+#[test]
+fn direct_recursion_reports_size_error_only() {
+    let output = common::test_lint_hir(
+        r"
+        struct A { A a; };
         ",
     );
     assert_snapshot!(output);

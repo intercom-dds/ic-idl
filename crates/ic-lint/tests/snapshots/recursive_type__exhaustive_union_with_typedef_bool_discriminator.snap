@@ -1,0 +1,19 @@
+---
+source: crates/ic-lint/tests/recursive_type.rs
+expression: output
+---
+⨯ recursive-type: type `W` can never be finitely constructed
+  @ test.idl:5:37
+
+ 3 │ struct A;
+ 4 │ union W switch (Flag) {
+ 5 │     case TRUE:  @external A a;
+   │                             ˆ `W` contains `A` here
+ 6 │     case FALSE: @external A b;
+   │                             ˆ `W` contains `A` here
+ 7 │ };
+ 8 │ struct A { W w; };
+   │              ˆ `A` contains `W` here
+
+  ? break the cycle with an indirection that terminates
+  * cycle: W -> A -> W

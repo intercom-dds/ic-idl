@@ -2,36 +2,27 @@
 source: crates/ic-lint/tests/recursive_type.rs
 expression: output
 ---
-⨯ recursive-type: type `Tree` contains itself without indirection
+⨯ recursive-type: type `Tree` has infinite size
   @ test.idl:4:18
 
  2 │ struct Tree {
  3 │     long value;
- 4 │     Tree left;   // Error
-   │          ˆˆˆˆ recursive member here
- 5 │     Tree right;  // Error
- 6 │     @shared Tree parent;  // OK
-
-  * recursive types must use indirection through sequences, maps, or @external annotations
-
-⨯ recursive-type: type `Tree` contains itself without indirection
-  @ test.idl:5:18
-
- 3 │     long value;
- 4 │     Tree left;   // Error
- 5 │     Tree right;  // Error
-   │          ˆˆˆˆˆ recursive member here
- 6 │     @shared Tree parent;  // OK
+ 4 │     Tree left;
+   │          ˆˆˆˆ `Tree` contains `Tree` here
+ 5 │     Tree right;
+   │          ˆˆˆˆˆ `Tree` contains `Tree` here
+ 6 │     @shared Tree parent;
  7 │ };
 
-  * recursive types must use indirection through sequences, maps, or @external annotations
+  ? break the cycle with an indirection
+  * cycle: Tree -> Tree
 
 ! deprecated-ann: use of deprecated annotation `@shared`
   @ test.idl:6:14
 
- 4 │     Tree left;   // Error
- 5 │     Tree right;  // Error
- 6 │     @shared Tree parent;  // OK
+ 4 │     Tree left;
+ 5 │     Tree right;
+ 6 │     @shared Tree parent;
    │      ˆˆˆˆˆˆ deprecated annotation used here
  7 │ };
 

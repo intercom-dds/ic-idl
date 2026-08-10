@@ -1,0 +1,15 @@
+---
+source: crates/ic-lint/tests/recursive_type.rs
+expression: output
+---
+⨯ recursive-type: type `Node` can never be finitely constructed
+  @ test.idl:4:28
+
+ 2 │ struct Node {
+ 3 │     long value;
+ 4 │     @external Node next;
+   │                    ˆˆˆˆ `Node` contains `Node` here
+ 5 │ };
+
+  ? break the cycle with an indirection that terminates
+  * cycle: Node -> Node

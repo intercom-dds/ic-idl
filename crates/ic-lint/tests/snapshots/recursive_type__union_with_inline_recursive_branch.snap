@@ -1,0 +1,18 @@
+---
+source: crates/ic-lint/tests/recursive_type.rs
+expression: output
+---
+⨯ recursive-type: type `U` has infinite size
+  @ test.idl:4:23
+
+ 2 │ struct A;
+ 3 │ union U switch (long) {
+ 4 │     case 1: A a;
+   │               ˆ `U` contains `A` here
+ 5 │     case 2: long n;
+ 6 │ };
+ 7 │ struct A { U u; };
+   │              ˆ `A` contains `U` here
+
+  ? break the cycle with an indirection
+  * cycle: U -> A -> U

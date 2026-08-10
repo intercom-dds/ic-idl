@@ -1,0 +1,12 @@
+---
+source: crates/ic-lint/tests/recursive_type.rs
+expression: output
+---
+⨯ recursive-type: type `A` has infinite size
+  @ test.idl:2:22
+
+ 2 │ struct A { A a; };
+   │              ˆ `A` contains `A` here
+
+  ? break the cycle with an indirection
+  * cycle: A -> A

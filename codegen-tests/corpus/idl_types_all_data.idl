@@ -69,7 +69,7 @@ module IdlTypes2
    const float FloatPi = 22.0/7.0;
    const double DoublePi = 22.0/7.0;
 
-   @Extensibility(MUTABLE_EXTENSIBILITY)
+   @mutable
    struct AllData
    {
       @ID(1) IdlTypes::Primitives      primitives;

@@ -88,16 +88,16 @@ module advanced_annotations {
         };
     };
 
-    // @mustunderstand annotation
+    // @must_understand annotation
     module must_understand {
         @mutable struct MustUnderstandA {
-            @mustunderstand long critical_field;
+            @must_understand long critical_field;
             short optional_field;
         };
 
         @mutable struct MustUnderstandB {
             long field1;
-            @mustunderstand short critical_field;
+            @must_understand short critical_field;
         };
     };
 
@@ -137,7 +137,7 @@ module advanced_annotations {
     // Combination of annotations
     @mutable struct ComplexAnnotations {
         @key long id_;
-        @mustunderstand @try_construct(USE_DEFAULT) @default(1) long critical;
+        @must_understand @try_construct(USE_DEFAULT) @default(1) long critical;
         @non_serialized @optional string transient;
         @range(min=0, max=100) @default(50) short percentage;
     };

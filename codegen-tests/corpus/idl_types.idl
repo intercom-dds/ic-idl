@@ -109,7 +109,7 @@ module IdlTypes
    typedef map<short, string,5>  a_second_ShortStringMap5;
 
 
-   @Extensibility(MUTABLE_EXTENSIBILITY)
+   @mutable
    struct ArrayTypes
    {
       @ID(1)  string                str;
@@ -173,7 +173,7 @@ module IdlTypes
       MyChildEnumStruct MyChildStructMember;
    };
 
-   @Extensibility(FINAL_EXTENSIBILITY)
+   @final
    struct MyString5
    {
       string<5> value;
@@ -187,13 +187,12 @@ module IdlTypes
    };
 
 #ifndef IDLTYPES_SKIP_BITSET
-   @BitSet @BitBound(7)
-   enum MyBitset
+   @bit_bound(7)
+   bitmask MyBitset
    {
       MY_BITSET_FLAG_1,
       MY_BITSET_FLAG_2,
-      @Value(5)
-      MY_BITSET_FLAG_3,
+      @position(5) MY_BITSET_FLAG_3,
       MY_BITSET_FLAG_4
    };
 

@@ -92,30 +92,23 @@ module ext {
 @ext::annotation_target(STRUCT_DEF | UNION_DEF | EXCEPTION_DEF)
 @annotation empty {};
 
-@ext::annotation_target(STRUCT_DEF | UNION_DEF)
+@ext::annotation_target(STRUCT_DEF | UNION_DEF | ENUM_DEF)
 @annotation extensibility {
     enum ExtensibilityKind {
          FINAL,
          APPENDABLE,
          MUTABLE
     };
-
-    // For backwards compatibility with X-Types v1.1
-    const ExtensibilityKind EXTENSIBLE = APPENDABLE;
-    const ExtensibilityKind FINAL_EXTENSIBILITY = FINAL;
-    const ExtensibilityKind APPENDABLE_EXTENSIBILITY = APPENDABLE;
-    const ExtensibilityKind MUTABLE_EXTENSIBILITY = MUTABLE;
-    const ExtensibilityKind EXTENSIBLE_EXTENSIBILITY = APPENDABLE;
     ExtensibilityKind value;
 };
 
-@ext::annotation_target(STRUCT_DEF | UNION_DEF)
+@ext::annotation_target(STRUCT_DEF | UNION_DEF | ENUM_DEF)
 @annotation final {};
 
-@ext::annotation_target(STRUCT_DEF | UNION_DEF)
+@ext::annotation_target(STRUCT_DEF | UNION_DEF | ENUM_DEF)
 @annotation mutable {};
 
-@ext::annotation_target(STRUCT_DEF | UNION_DEF)
+@ext::annotation_target(STRUCT_DEF | UNION_DEF | ENUM_DEF)
 @annotation appendable {};
 
 @ext::annotation_target(ALL_MEMBERS | TYPE_ALIAS)
@@ -239,24 +232,6 @@ module ext {
     boolean value default TRUE;
 };
 
-// Old annotation for bitmask
-@annotation bitset {};
-
-// Old name for bit_bound
-@annotation bitbound {
-    unsigned short value;
-};
-
-// Old name for must_understand
-@annotation mustunderstand {
-    boolean value default TRUE;
-};
-
-// Old name for minimum_type_check
-@annotation minimumtypecheck {
-    boolean value default TRUE;
-};
-
 @ext::annotation_target(STRUCT_MEMBER | UNION_MEMBER)
 @annotation hashid {
     string value default "";
@@ -336,10 +311,6 @@ module ext {
         PlacementKind placement default BEFORE_DECLARATION;
     };
 
-    @annotation minimum_type_check {
-        boolean value default TRUE;
-    };
-
     @annotation suppress {
         boolean value default TRUE;
         string language default "*";
@@ -392,11 +363,6 @@ module ext {
 
     @annotation builder {
         string name default "";
-    };
-
-    @annotation string_constants {
-        boolean value default TRUE;
-        string namespace;
     };
 
     @annotation protobuf_type {

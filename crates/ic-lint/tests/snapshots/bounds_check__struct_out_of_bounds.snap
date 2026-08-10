@@ -1,0 +1,20 @@
+---
+source: crates/ic-lint/tests/bounds_check.rs
+expression: test_lint_hir(source)
+---
+⨯ bounds-check: value violates bounds of type `string<4>`
+  @ test.idl:3:18
+
+ 2 │ struct StringStruct {
+ 3 │     @default("12345")
+   │              ˆˆˆˆˆˆˆ value violates type bound
+ 4 │     string<4> my_string;
+ 5 │ };
+
+⨯ bounds-check: value violates bounds of type `StringStruct`
+  @ test.idl:6:5
+
+ 4 │     string<4> my_string;
+ 5 │ };
+ 6 │ const StringStruct const_struct = {"12345"};
+   │ ˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆ value violates type bound

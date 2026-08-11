@@ -25,24 +25,25 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::HashMap;
 use std::hash::Hash;
 
-use crate::index::{IndexMap, IndexSet};
+use crate::index::IndexMap;
 
-#[must_use]
-#[derive(Copy, Clone, Debug, Hash, Eq, PartialEq, Ord, PartialOrd)]
-pub struct VertexId(usize);
-
-/// A directed graph implementation.
 #[must_use]
 #[derive(Debug)]
-pub struct DiGraph<T> {
-    vertices: Vec<T>,
-    edges: IndexMap<VertexId, IndexSet<VertexId>>,
+pub struct DiGraph<T, E = ()> {
+    nodes: Vec<T>,
+    index: HashMap<T, u32>,
+    edges: Vec<IndexMap<u32, E>>,
 }
 
-impl<T> DiGraph<T>
+struct Csr {
+    offsets: Vec<u32>,
+    targets: Vec<u32>,
+}
+
+impl<T, E> DiGraph<T, E>
 where
     T: Hash + Eq + Clone,
 {
@@ -50,446 +51,618 @@ where
         Self::default()
     }
 
-    pub fn add_edge(&mut self, u: VertexId, v: VertexId) {
-        if let Some(entry) = self.edges.get_mut(&u) {
-            entry.insert(v);
-        } else {
-            let mut set = IndexSet::new();
-            set.insert(v);
-            self.edges.insert(u, set);
+    #[allow(clippy::cast_possible_truncation)]
+    pub fn add_node(&mut self, node: T) {
+        if self.index.contains_key(&node) {
+            return;
         }
+
+        self.index.insert(node.clone(), self.nodes.len() as u32);
+        self.nodes.push(node);
+        self.edges.push(IndexMap::new());
     }
 
-    /// Adds a vertex to the graph.
-    pub fn add_vertex(&mut self, vertex: T) -> VertexId {
-        let idx = self.vertices.len();
-        self.vertices.push(vertex);
-        VertexId(idx)
+    pub fn add_edge(&mut self, from: &T, to: &T, weight: E) -> bool {
+        let (Some(u), Some(v)) = (self.id_of(from), self.id_of(to)) else {
+            return false;
+        };
+
+        self.edges[u as usize].insert(v, weight);
+        true
     }
 
-    /// Returns the number of vertices in the graph.
+    pub fn edge_mut(&mut self, from: &T, to: &T) -> Option<&mut E> {
+        let u = self.id_of(from)?;
+        let v = self.id_of(to)?;
+        self.edges[u as usize].get_mut(&v)
+    }
+
+    pub fn edge_or_default(&mut self, from: &T, to: &T) -> Option<&mut E>
+    where
+        E: Default,
+    {
+        let u = self.id_of(from)?;
+        let v = self.id_of(to)?;
+
+        let adjacency = &mut self.edges[u as usize];
+        if !adjacency.contains_key(&v) {
+            adjacency.insert(v, E::default());
+        }
+
+        adjacency.get_mut(&v)
+    }
+
+    fn id_of(&self, node: &T) -> Option<u32> {
+        self.index.get(node).copied()
+    }
+
+    pub fn edge(&self, from: &T, to: &T) -> Option<&E> {
+        let u = self.id_of(from)?;
+        let v = self.id_of(to)?;
+        self.edges[u as usize].get(&v)
+    }
+
+    pub fn has_edge(&self, from: &T, to: &T) -> bool {
+        self.edge(from, to).is_some()
+    }
+
+    pub fn contains(&self, node: &T) -> bool {
+        self.index.contains_key(node)
+    }
+
     #[must_use]
     pub fn len(&self) -> usize {
-        self.vertices.len()
+        self.nodes.len()
     }
 
     #[must_use]
     pub fn is_empty(&self) -> bool {
-        self.vertices.is_empty()
+        self.nodes.is_empty()
     }
 
-    pub fn vertices(&self) -> impl Iterator<Item = (VertexId, &T)> {
-        self.vertices
-            .iter()
-            .enumerate()
-            .map(|(i, v)| (VertexId(i), v))
+    pub fn nodes(&self) -> impl Iterator<Item = &T> {
+        self.nodes.iter()
     }
 
-    pub fn neighbors(&self, v: VertexId) -> impl Iterator<Item = VertexId> + '_ {
-        self.edges
-            .get(&v)
-            .map(|set| set.iter().copied())
+    pub fn neighbors(&self, of: &T) -> impl Iterator<Item = (&T, &E)> {
+        self.index
+            .get(of)
+            .map(|u| self.edges[*u as usize].iter())
             .into_iter()
             .flatten()
+            .map(|(v, weight)| (&self.nodes[*v as usize], weight))
     }
 
     #[must_use]
-    pub fn scc_tarjan(&self) -> Vec<Vec<VertexId>> {
-        let mut state = TarjanState {
-            index: 0,
-            stack: vec![],
-            indices: IndexMap::new(),
-            lowlinks: IndexMap::new(),
-            on_stack: IndexSet::new(),
-            components: vec![],
-        };
-
-        for i in 0..self.vertices.len() {
-            let v = VertexId(i);
-            if !state.indices.contains_key(&v) {
-                self.strong_connect(v, &mut state);
-            }
-        }
-
-        state.components
+    pub fn scc_tarjan(&self) -> Vec<Vec<T>> {
+        let keep = vec![true; self.nodes.len()];
+        self.resolve(&tarjan(&self.csr(&keep), &keep))
     }
 
     #[must_use]
-    pub fn scc_kosaraju(&self) -> Vec<Vec<VertexId>> {
-        let mut visited = BTreeSet::new();
-        let mut post_order = vec![];
+    pub fn scc_kosaraju(&self) -> Vec<Vec<T>> {
+        let keep = vec![true; self.nodes.len()];
+        self.resolve(&kosaraju(&self.csr(&keep), &self.reverse_csr(&keep), &keep))
+    }
 
-        for i in 0..self.vertices.len() {
-            let v = VertexId(i);
-            if !visited.contains(&v) {
-                self.dfs_post_order(v, &mut visited, &mut post_order);
+    #[must_use]
+    pub fn cyclic_scc(&self) -> Vec<Vec<T>> {
+        let keep = vec![true; self.nodes.len()];
+        let csr = self.csr(&keep);
+
+        let cyclic: Vec<_> = tarjan(&csr, &keep)
+            .into_iter()
+            .filter(|component| is_cyclic(&csr, component))
+            .collect();
+
+        self.resolve(&cyclic)
+    }
+
+    pub fn cyclic_scc_where(&self, keep: impl Fn(&T) -> bool) -> Vec<Vec<T>> {
+        let keep: Vec<_> = self.nodes.iter().map(keep).collect();
+        let csr = self.csr(&keep);
+
+        let cyclic: Vec<_> = tarjan(&csr, &keep)
+            .into_iter()
+            .filter(|component| is_cyclic(&csr, component))
+            .collect();
+
+        self.resolve(&cyclic)
+    }
+
+    fn resolve(&self, components: &[Vec<u32>]) -> Vec<Vec<T>> {
+        components
+            .iter()
+            .map(|component| {
+                component
+                    .iter()
+                    .map(|id| self.nodes[*id as usize].clone())
+                    .collect()
+            })
+            .collect()
+    }
+
+    fn csr(&self, keep: &[bool]) -> Csr {
+        let mut offsets = Vec::with_capacity(self.nodes.len() + 1);
+        let mut targets = vec![];
+
+        for (u, adjacency) in self.edges.iter().enumerate() {
+            offsets.push(u32::try_from(targets.len()).expect("edge count exceeded u32::MAX"));
+
+            if !keep[u] {
+                continue;
+            }
+
+            for (v, _) in adjacency {
+                if keep[*v as usize] {
+                    targets.push(*v);
+                }
             }
         }
 
-        let mut reverse_map: BTreeMap<VertexId, Vec<VertexId>> = BTreeMap::new();
-        for (u, neighbors) in &self.edges {
-            for &v in neighbors {
-                reverse_map.entry(v).or_default().push(*u);
+        offsets.push(u32::try_from(targets.len()).expect("edge count exceeded u32::MAX"));
+        Csr { offsets, targets }
+    }
+
+    fn reverse_csr(&self, keep: &[bool]) -> Csr {
+        let mut degrees = vec![0u32; self.nodes.len()];
+        for (u, adjacency) in self.edges.iter().enumerate() {
+            if !keep[u] {
+                continue;
+            }
+            for (v, _) in adjacency {
+                if keep[*v as usize] {
+                    degrees[*v as usize] += 1;
+                }
             }
         }
 
-        visited.clear();
-        let mut components = vec![];
+        let mut offsets = Vec::with_capacity(self.nodes.len() + 1);
+        let mut total = 0u32;
+        for degree in &degrees {
+            offsets.push(total);
+            total += degree;
+        }
+        offsets.push(total);
 
-        for &v in post_order.iter().rev() {
-            if !visited.contains(&v) {
+        let mut cursors = offsets.clone();
+        let mut targets = vec![0u32; total as usize];
+        for (u, adjacency) in self.edges.iter().enumerate() {
+            if !keep[u] {
+                continue;
+            }
+            for (v, _) in adjacency {
+                if keep[*v as usize] {
+                    let slot = &mut cursors[*v as usize];
+                    targets[*slot as usize] = u32::try_from(u).expect("node id exceeded u32::MAX");
+                    *slot += 1;
+                }
+            }
+        }
+
+        Csr { offsets, targets }
+    }
+}
+
+impl Csr {
+    fn neighbors(&self, v: u32) -> &[u32] {
+        let start = self.offsets[v as usize] as usize;
+        let end = self.offsets[v as usize + 1] as usize;
+        &self.targets[start..end]
+    }
+}
+
+fn is_cyclic(csr: &Csr, component: &[u32]) -> bool {
+    if component.len() > 1 {
+        return true;
+    }
+
+    let v = component[0];
+    csr.neighbors(v).contains(&v)
+}
+
+fn tarjan(csr: &Csr, keep: &[bool]) -> Vec<Vec<u32>> {
+    const UNVISITED: u32 = u32::MAX;
+
+    let count = keep.len();
+    let mut index = vec![UNVISITED; count];
+    let mut low = vec![0u32; count];
+    let mut on_stack = vec![false; count];
+
+    let mut stack = vec![];
+    let mut frames = vec![];
+    let mut next = 0u32;
+    let mut components = vec![];
+
+    for root in 0..count {
+        if !keep[root] || index[root] != UNVISITED {
+            continue;
+        }
+
+        let root = u32::try_from(root).expect("node id exceeded u32::MAX");
+        visit(
+            root,
+            &mut index,
+            &mut low,
+            &mut on_stack,
+            &mut stack,
+            &mut next,
+        );
+        frames.push((root, 0));
+
+        while let Some((v, cursor)) = frames.last_mut() {
+            let v = *v;
+            let neighbors = csr.neighbors(v);
+
+            if *cursor < neighbors.len() {
+                let w = neighbors[*cursor];
+                *cursor += 1;
+
+                if index[w as usize] == UNVISITED {
+                    visit(
+                        w,
+                        &mut index,
+                        &mut low,
+                        &mut on_stack,
+                        &mut stack,
+                        &mut next,
+                    );
+                    frames.push((w, 0));
+                } else if on_stack[w as usize] {
+                    low[v as usize] = low[v as usize].min(index[w as usize]);
+                }
+
+                continue;
+            }
+
+            frames.pop();
+
+            if let Some((parent, _)) = frames.last() {
+                let parent = *parent as usize;
+                low[parent] = low[parent].min(low[v as usize]);
+            }
+
+            if low[v as usize] == index[v as usize] {
                 let mut component = vec![];
-                dfs_reverse(v, &reverse_map, &mut visited, &mut component);
+                loop {
+                    let w = stack.pop().expect("tarjan stack should not be empty");
+                    on_stack[w as usize] = false;
+                    component.push(w);
+                    if w == v {
+                        break;
+                    }
+                }
                 components.push(component);
             }
         }
-
-        components.reverse();
-        components
     }
 
-    fn dfs_post_order(
-        &self,
-        v: VertexId,
-        visited: &mut BTreeSet<VertexId>,
-        post_order: &mut Vec<VertexId>,
-    ) {
-        visited.insert(v);
-        for w in self.neighbors(v) {
-            if !visited.contains(&w) {
-                self.dfs_post_order(w, visited, post_order);
-            }
+    components
+}
+
+fn visit(
+    v: u32,
+    index: &mut [u32],
+    low: &mut [u32],
+    on_stack: &mut [bool],
+    stack: &mut Vec<u32>,
+    next: &mut u32,
+) {
+    index[v as usize] = *next;
+    low[v as usize] = *next;
+    *next += 1;
+    stack.push(v);
+    on_stack[v as usize] = true;
+}
+
+fn kosaraju(csr: &Csr, reverse: &Csr, keep: &[bool]) -> Vec<Vec<u32>> {
+    let count = keep.len();
+
+    let mut visited = vec![false; count];
+    let mut order = vec![];
+    let mut frames = vec![];
+
+    for root in 0..count {
+        if !keep[root] || visited[root] {
+            continue;
         }
-        post_order.push(v);
+
+        let root = u32::try_from(root).expect("node id exceeded u32::MAX");
+        visited[root as usize] = true;
+        frames.push((root, 0));
+
+        while let Some((v, cursor)) = frames.last_mut() {
+            let v = *v;
+            let neighbors = csr.neighbors(v);
+
+            if *cursor < neighbors.len() {
+                let w = neighbors[*cursor];
+                *cursor += 1;
+
+                if !visited[w as usize] {
+                    visited[w as usize] = true;
+                    frames.push((w, 0));
+                }
+
+                continue;
+            }
+
+            frames.pop();
+            order.push(v);
+        }
     }
 
-    fn strong_connect(&self, v: VertexId, state: &mut TarjanState) {
-        state.indices.insert(v, state.index);
-        state.lowlinks.insert(v, state.index);
-        state.index += 1;
-        state.stack.push(v);
-        state.on_stack.insert(v);
+    let mut assigned = vec![false; count];
+    let mut components = vec![];
 
-        for w in self.neighbors(v) {
-            if !state.indices.contains_key(&w) {
-                self.strong_connect(w, state);
-                let w_lowlink = *state.lowlinks.get(&w).unwrap();
-                let v_lowlink = *state.lowlinks.get(&v).unwrap();
-                state.lowlinks.insert(v, v_lowlink.min(w_lowlink));
-            } else if state.on_stack.contains(&w) {
-                let w_index = *state.indices.get(&w).unwrap();
-                let v_lowlink = *state.lowlinks.get(&v).unwrap();
-                state.lowlinks.insert(v, v_lowlink.min(w_index));
-            }
+    for root in order.iter().rev().copied() {
+        if assigned[root as usize] {
+            continue;
         }
 
-        let v_lowlink = *state.lowlinks.get(&v).unwrap();
-        let v_index = *state.indices.get(&v).unwrap();
-        if v_lowlink == v_index {
-            let mut component = vec![];
-            loop {
-                let w = state.stack.pop().expect("stack should not be empty");
-                state.on_stack.remove(&w);
-                component.push(w);
-                if w == v {
-                    break;
+        let mut component = vec![];
+        let mut pending = vec![root];
+        assigned[root as usize] = true;
+
+        while let Some(v) = pending.pop() {
+            component.push(v);
+
+            for w in reverse.neighbors(v).iter().copied() {
+                if !assigned[w as usize] {
+                    assigned[w as usize] = true;
+                    pending.push(w);
                 }
             }
-            state.components.push(component);
         }
+
+        components.push(component);
     }
+
+    components
 }
 
-struct TarjanState {
-    index: usize,
-    stack: Vec<VertexId>,
-    indices: IndexMap<VertexId, usize>,
-    lowlinks: IndexMap<VertexId, usize>,
-    on_stack: IndexSet<VertexId>,
-    components: Vec<Vec<VertexId>>,
-}
-
-fn dfs_reverse(
-    v: VertexId,
-    reverse_map: &BTreeMap<VertexId, Vec<VertexId>>,
-    visited: &mut BTreeSet<VertexId>,
-    component: &mut Vec<VertexId>,
-) {
-    visited.insert(v);
-    component.push(v);
-    if let Some(neighbors) = reverse_map.get(&v) {
-        for &w in neighbors {
-            if !visited.contains(&w) {
-                dfs_reverse(w, reverse_map, visited, component);
-            }
-        }
-    }
-}
-
-impl<T> Default for DiGraph<T> {
+impl<T, E> Default for DiGraph<T, E> {
     fn default() -> Self {
         Self {
-            vertices: vec![],
-            edges: IndexMap::new(),
+            nodes: vec![],
+            index: HashMap::new(),
+            edges: vec![],
         }
     }
 }
 
-pub fn post_order<T>(_graph: &DiGraph<T>) {}
+pub fn post_order<T, E>(_graph: &DiGraph<T, E>) {}
 
-pub fn topological_sort<T>(_graph: &DiGraph<T>) {}
+pub fn topological_sort<T, E>(_graph: &DiGraph<T, E>) {}
 
 #[cfg(test)]
 mod tests {
     use super::*;
 
+    fn graph_of(edges: &[(i32, i32)], isolated: &[i32]) -> DiGraph<i32> {
+        let mut graph = DiGraph::new();
+
+        for (from, to) in edges {
+            graph.add_node(*from);
+            graph.add_node(*to);
+        }
+
+        for node in isolated {
+            graph.add_node(*node);
+        }
+
+        for (from, to) in edges {
+            assert!(graph.add_edge(from, to, ()));
+        }
+
+        graph
+    }
+
+    fn normalize<T: Ord>(components: Vec<Vec<T>>) -> Vec<Vec<T>> {
+        let mut components: Vec<_> = components
+            .into_iter()
+            .map(|mut component| {
+                component.sort();
+                component
+            })
+            .collect();
+
+        components.sort();
+        components
+    }
+
+    fn sizes<T>(components: &[Vec<T>]) -> Vec<usize> {
+        let mut sizes: Vec<_> = components.iter().map(Vec::len).collect();
+        sizes.sort_unstable();
+        sizes
+    }
+
     #[test]
-    fn test_new() {
+    fn new_graph_is_empty() {
         let graph: DiGraph<i32> = DiGraph::new();
         assert_eq!(graph.len(), 0);
         assert!(graph.is_empty());
     }
 
     #[test]
-    fn test_default() {
-        let graph: DiGraph<i32> = DiGraph::default();
-        assert_eq!(graph.len(), 0);
-        assert!(graph.is_empty());
-    }
+    fn add_node_is_idempotent() {
+        let mut graph: DiGraph<&str> = DiGraph::new();
 
-    #[test]
-    fn test_add_vertex() {
-        let mut graph = DiGraph::new();
+        graph.add_node("A");
+        graph.add_node("A");
 
-        let v1 = graph.add_vertex(10);
         assert_eq!(graph.len(), 1);
-        assert!(!graph.is_empty());
-
-        let v2 = graph.add_vertex(20);
-        assert_eq!(graph.len(), 2);
-
-        let v3 = graph.add_vertex(30);
-        assert_eq!(graph.len(), 3);
-
-        // Verify IDs are sequential
-        assert_eq!(v1, VertexId(0));
-        assert_eq!(v2, VertexId(1));
-        assert_eq!(v3, VertexId(2));
+        assert!(graph.contains(&"A"));
     }
 
     #[test]
-    fn test_add_edge() {
-        let mut graph = DiGraph::new();
-        let v1 = graph.add_vertex("A");
-        let v2 = graph.add_vertex("B");
+    fn add_edge_records_direction_only() {
+        let graph = graph_of(&[(1, 2)], &[]);
 
-        // Add edge from v1 to v2
-        graph.add_edge(v1, v2);
-
-        // v1 should be the key and v2 should be in the set
-        assert!(graph.edges.contains_key(&v1));
-        assert!(graph.edges.get(&v1).unwrap().contains(&v2));
-        assert!(!graph.edges.contains_key(&v2));
+        assert!(graph.has_edge(&1, &2));
+        assert!(!graph.has_edge(&2, &1));
     }
 
     #[test]
-    fn test_vertex_id_traits() {
-        let id1 = VertexId(1);
-        let id2 = VertexId(2);
-        let id1_copy = VertexId(1);
+    fn add_edge_rejects_unknown_endpoints() {
+        let mut graph: DiGraph<&str> = DiGraph::new();
+        graph.add_node("A");
 
-        // Test Eq and PartialEq
-        assert_eq!(id1, id1_copy);
-        assert_ne!(id1, id2);
+        assert!(!graph.add_edge(&"A", &"missing", ()));
+        assert!(!graph.add_edge(&"missing", &"A", ()));
 
-        // Test Clone
-        let cloned = id1;
-        assert_eq!(id1, cloned);
-
-        // Test Copy
-        let copied = id1;
-        assert_eq!(id1, copied);
-
-        // Test Debug
-        let debug_str = format!("{id1:?}");
-        assert!(debug_str.contains("VertexId"));
-        assert!(debug_str.contains('1'));
-
-        // Test Hash
-        let mut set = BTreeSet::new();
-        set.insert(id1);
-        set.insert(id2);
-        set.insert(id1_copy);
-        assert_eq!(set.len(), 2);
+        assert_eq!(graph.len(), 1);
+        assert!(!graph.contains(&"missing"));
     }
 
     #[test]
-    fn test_multiple_vertices() {
-        let mut graph = DiGraph::new();
+    fn add_edge_replaces_the_weight() {
+        let mut graph: DiGraph<&str, u32> = DiGraph::new();
+        graph.add_node("A");
+        graph.add_node("B");
 
-        let vertices: Vec<_> = (0..10).map(|i| graph.add_vertex(i * 10)).collect();
+        graph.add_edge(&"A", &"B", 1);
+        graph.add_edge(&"A", &"B", 2);
 
-        assert_eq!(graph.len(), 10);
+        assert_eq!(graph.edge(&"A", &"B"), Some(&2));
+    }
 
-        for (i, &vid) in vertices.iter().enumerate() {
-            assert_eq!(vid, VertexId(i));
+    #[test]
+    fn edge_or_default_accumulates() {
+        let mut graph: DiGraph<&str, Vec<u32>> = DiGraph::new();
+        graph.add_node("A");
+        graph.add_node("B");
+
+        graph.edge_or_default(&"A", &"B").unwrap().push(1);
+        graph.edge_or_default(&"A", &"B").unwrap().push(2);
+
+        assert_eq!(graph.edge(&"A", &"B"), Some(&vec![1, 2]));
+    }
+
+    #[test]
+    fn edge_or_default_rejects_unknown_endpoints() {
+        let mut graph: DiGraph<&str, Vec<u32>> = DiGraph::new();
+        graph.add_node("A");
+
+        assert!(graph.edge_or_default(&"A", &"missing").is_none());
+        assert!(!graph.contains(&"missing"));
+    }
+
+    #[test]
+    fn edge_mut_does_not_insert() {
+        let mut graph: DiGraph<&str, u32> = DiGraph::new();
+        graph.add_node("A");
+        graph.add_node("B");
+
+        assert!(graph.edge_mut(&"A", &"B").is_none());
+        assert!(!graph.has_edge(&"A", &"B"));
+    }
+
+    #[test]
+    fn neighbors_yields_nodes_and_weights() {
+        let mut graph: DiGraph<&str, u32> = DiGraph::new();
+        for node in ["A", "B", "C"] {
+            graph.add_node(node);
         }
+        graph.add_edge(&"A", &"B", 7);
+        graph.add_edge(&"A", &"C", 9);
+
+        let found: Vec<_> = graph.neighbors(&"A").map(|(n, w)| (*n, *w)).collect();
+        assert_eq!(found, vec![("B", 7), ("C", 9)]);
     }
 
     #[test]
-    fn test_add_multiple_edges() {
-        let mut graph = DiGraph::new();
-        let v1 = graph.add_vertex("A");
-        let v2 = graph.add_vertex("B");
-        let v3 = graph.add_vertex("C");
+    fn chain_has_no_cyclic_components() {
+        let graph = graph_of(&[(1, 2), (2, 3), (3, 4)], &[]);
 
-        // Add edges
-        graph.add_edge(v1, v2);
-        graph.add_edge(v1, v3);
-        graph.add_edge(v2, v3);
-
-        // Check edges exist
-        assert_eq!(graph.edges.len(), 2); // v1 and v2 as keys
-        assert!(graph.edges.get(&v1).unwrap().contains(&v2));
-        assert!(graph.edges.get(&v1).unwrap().contains(&v3));
-        assert!(graph.edges.get(&v2).unwrap().contains(&v3));
+        assert_eq!(graph.scc_tarjan().len(), 4);
+        assert!(graph.cyclic_scc().is_empty());
     }
 
     #[test]
-    fn test_self_loop() {
-        let mut graph = DiGraph::new();
-        let v1 = graph.add_vertex("A");
+    fn simple_cycle_is_one_component() {
+        let graph = graph_of(&[(1, 2), (2, 3), (3, 1)], &[]);
 
-        // Add self-loop
-        graph.add_edge(v1, v1);
-
-        // v1 is both key and in the set
-        assert!(graph.edges.contains_key(&v1));
-        assert!(graph.edges.get(&v1).unwrap().contains(&v1));
+        assert_eq!(sizes(&graph.scc_tarjan()), vec![3]);
+        assert_eq!(sizes(&graph.cyclic_scc()), vec![3]);
     }
 
     #[test]
-    fn test_empty_graph_functions() {
-        let graph: DiGraph<i32> = DiGraph::new();
+    fn self_loop_is_cyclic_but_isolated_node_is_not() {
+        let graph = graph_of(&[(1, 1)], &[2]);
 
-        // These should not panic on empty graph
-        post_order(&graph);
-        topological_sort(&graph);
+        assert_eq!(graph.scc_tarjan().len(), 2);
+        assert_eq!(graph.cyclic_scc(), vec![vec![1]]);
     }
 
     #[test]
-    fn test_graph_with_edges_functions() {
-        let mut graph = DiGraph::new();
-        let v1 = graph.add_vertex(1);
-        let v2 = graph.add_vertex(2);
-        graph.add_edge(v1, v2);
+    fn multiple_components_are_separated() {
+        let graph = graph_of(&[(1, 2), (2, 1), (3, 4), (4, 3), (5, 6), (6, 5)], &[]);
 
-        // These should not panic
-        post_order(&graph);
-        topological_sort(&graph);
+        assert_eq!(sizes(&graph.scc_tarjan()), vec![2, 2, 2]);
     }
 
     #[test]
-    fn test_scc_no_cycles() {
-        let mut graph = DiGraph::new();
-        let v1 = graph.add_vertex(1);
-        let v2 = graph.add_vertex(2);
-        let v3 = graph.add_vertex(3);
-        let v4 = graph.add_vertex(4);
+    fn two_cycles_joined_by_a_bridge() {
+        let graph = graph_of(
+            &[(1, 2), (2, 3), (3, 1), (3, 4), (4, 5), (5, 6), (6, 4)],
+            &[],
+        );
 
-        graph.add_edge(v1, v2);
-        graph.add_edge(v2, v3);
-        graph.add_edge(v3, v4);
+        assert_eq!(sizes(&graph.scc_tarjan()), vec![3, 3]);
+    }
 
-        let sccs = graph.scc_tarjan();
-        assert_eq!(sccs.len(), 4);
-        for scc in &sccs {
-            assert_eq!(scc.len(), 1);
+    #[test]
+    fn isolated_node_forms_its_own_component() {
+        let graph = graph_of(&[(1, 2), (2, 1)], &[3]);
+
+        assert_eq!(sizes(&graph.scc_tarjan()), vec![1, 2]);
+    }
+
+    #[test]
+    fn tarjan_and_kosaraju_agree() {
+        let graph = graph_of(
+            &[
+                (1, 2),
+                (2, 3),
+                (3, 1),
+                (3, 4),
+                (4, 5),
+                (5, 4),
+                (5, 6),
+                (7, 7),
+            ],
+            &[8],
+        );
+
+        assert_eq!(
+            normalize(graph.scc_tarjan()),
+            normalize(graph.scc_kosaraju())
+        );
+    }
+
+    #[test]
+    fn cyclic_scc_where_uses_the_induced_subgraph() {
+        let graph = graph_of(&[(1, 2), (2, 1), (2, 3), (3, 2)], &[]);
+
+        assert_eq!(sizes(&graph.cyclic_scc()), vec![3]);
+
+        // Dropping 2 removes the only path between 1 and 3, so nothing cycles.
+        assert!(graph.cyclic_scc_where(|n| *n != 2).is_empty());
+    }
+
+    #[test]
+    fn deep_chain_does_not_overflow_the_stack() {
+        let mut graph: DiGraph<u32> = DiGraph::new();
+        for i in 0..=500_000 {
+            graph.add_node(i);
         }
-    }
+        for i in 0..500_000 {
+            graph.add_edge(&i, &(i + 1), ());
+        }
 
-    #[test]
-    fn test_scc_simple_cycle() {
-        let mut graph = DiGraph::new();
-        let v1 = graph.add_vertex(1);
-        let v2 = graph.add_vertex(2);
-        let v3 = graph.add_vertex(3);
-
-        graph.add_edge(v1, v2);
-        graph.add_edge(v2, v3);
-        graph.add_edge(v3, v1);
-
-        let sccs = graph.scc_tarjan();
-        assert_eq!(sccs.len(), 1);
-        assert_eq!(sccs[0].len(), 3);
-    }
-
-    #[test]
-    fn test_scc_multiple_components() {
-        let mut graph = DiGraph::new();
-        let v1 = graph.add_vertex(1);
-        let v2 = graph.add_vertex(2);
-        let v3 = graph.add_vertex(3);
-        let v4 = graph.add_vertex(4);
-        let v5 = graph.add_vertex(5);
-        let v6 = graph.add_vertex(6);
-
-        graph.add_edge(v1, v2);
-        graph.add_edge(v2, v1);
-        graph.add_edge(v3, v4);
-        graph.add_edge(v4, v3);
-        graph.add_edge(v5, v6);
-        graph.add_edge(v6, v5);
-
-        let sccs = graph.scc_tarjan();
-        assert_eq!(sccs.len(), 3);
-
-        let mut sizes: Vec<usize> = sccs.iter().map(Vec::len).collect();
-        sizes.sort_unstable();
-        assert_eq!(sizes, vec![2, 2, 2]);
-    }
-
-    #[test]
-    fn test_scc_complex_graph() {
-        let mut graph = DiGraph::new();
-        let v1 = graph.add_vertex(1);
-        let v2 = graph.add_vertex(2);
-        let v3 = graph.add_vertex(3);
-        let v4 = graph.add_vertex(4);
-        let v5 = graph.add_vertex(5);
-        let v6 = graph.add_vertex(6);
-
-        graph.add_edge(v1, v2);
-        graph.add_edge(v2, v3);
-        graph.add_edge(v3, v1);
-        graph.add_edge(v3, v4);
-        graph.add_edge(v4, v5);
-        graph.add_edge(v5, v6);
-        graph.add_edge(v6, v4);
-
-        let sccs = graph.scc_tarjan();
-        assert_eq!(sccs.len(), 2);
-
-        let mut sizes: Vec<usize> = sccs.iter().map(Vec::len).collect();
-        sizes.sort_unstable();
-        assert_eq!(sizes, vec![3, 3]);
-    }
-
-    #[test]
-    fn test_scc_with_isolated_vertex() {
-        let mut graph = DiGraph::new();
-        let v1 = graph.add_vertex(1);
-        let v2 = graph.add_vertex(2);
-        let _v3 = graph.add_vertex(3);
-
-        graph.add_edge(v1, v2);
-        graph.add_edge(v2, v1);
-
-        let sccs = graph.scc_tarjan();
-        assert_eq!(sccs.len(), 2);
-
-        let mut sizes: Vec<usize> = sccs.iter().map(Vec::len).collect();
-        sizes.sort_unstable();
-        assert_eq!(sizes, vec![1, 2]);
+        assert_eq!(graph.scc_tarjan().len(), 500_001);
+        assert_eq!(graph.scc_kosaraju().len(), 500_001);
+        assert!(graph.cyclic_scc().is_empty());
     }
 }

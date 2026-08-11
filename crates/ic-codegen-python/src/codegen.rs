@@ -109,6 +109,8 @@ fn sanitize_module_name(name: &str) -> String {
         .collect()
 }
 
+const ORDER_IGNORE: &str = "  # ty: ignore[subclass-of-dataclass-with-order]";
+
 pub struct PyGen<'a> {
     pub hir: &'a ResolvedGraph,
     source_map: &'a SourceMap,
@@ -333,9 +335,10 @@ impl<'a> PyGen<'a> {
         py!(w, "class ", def);
         if let Some(parent) = struct_ty.parent {
             let parent_name = self.py_def(w, parent.def_id);
-            py!(w, "(", parent_name, ")");
+            py!(w, "(", parent_name, "):", ORDER_IGNORE, "\n");
+        } else {
+            py!(w, ":\n");
         }
-        py!(w, ":\n");
 
         w.indent();
 
@@ -664,6 +667,8 @@ impl<'a> PyGen<'a> {
         py!(w, "@_dataclasses_.dataclass(slots=True, order=True)\n");
         if bases.is_empty() {
             py!(w, "class ", def, ":\n");
+        } else if value_ty.parent.is_some() {
+            py!(w, "class ", def, "(", bases.join(", "), "):", ORDER_IGNORE, "\n");
         } else {
             py!(w, "class ", def, "(", bases.join(", "), "):\n");
         }

@@ -178,14 +178,14 @@ def test_ushort_limits(generated_modules: dict[str, ModuleType]) -> None:
 
 def test_long_limits(generated_modules: dict[str, ModuleType]) -> None:
     li = generated_modules["large_integer_types"]
-    assert li.LONG_MAX == 2147483647
-    assert li.LONG_MIN == -2147483648
+    assert li.IDL_LONG_MAX == 2147483647
+    assert li.IDL_LONG_MIN == -2147483648
 
 
 def test_ulong_limits(generated_modules: dict[str, ModuleType]) -> None:
     li = generated_modules["large_integer_types"]
-    assert li.ULONG_MAX == 4294967295
-    assert li.ULONG_MIN == 0
+    assert li.IDL_ULONG_MAX == 4294967295
+    assert li.IDL_ULONG_MIN == 0
 
 
 def test_longlong_limits(generated_modules: dict[str, ModuleType]) -> None:

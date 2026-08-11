@@ -173,14 +173,14 @@ class ConstantsTests {
 
     @Test
     void long_limits() {
-        assertEquals(2147483647, LONG_MAX.value);
-        assertEquals(-2147483648, LONG_MIN.value);
+        assertEquals(2147483647, IDL_LONG_MAX.value);
+        assertEquals(-2147483648, IDL_LONG_MIN.value);
     }
 
     @Test
     void ulong_limits() {
-        assertEquals(4294967295L, ULONG_MAX.value);
-        assertEquals(0L, ULONG_MIN.value);
+        assertEquals(4294967295L, IDL_ULONG_MAX.value);
+        assertEquals(0L, IDL_ULONG_MIN.value);
     }
 
     @Test

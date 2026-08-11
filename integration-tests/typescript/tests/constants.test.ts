@@ -78,10 +78,10 @@ import {
   SHORT_MIN,
   USHORT_MAX,
   USHORT_MIN,
-  LONG_MAX,
-  LONG_MIN,
-  ULONG_MAX,
-  ULONG_MIN,
+  IDL_LONG_MAX,
+  IDL_LONG_MIN,
+  IDL_ULONG_MAX,
+  IDL_ULONG_MIN,
   LONGLONG_MAX,
   LONGLONG_MIN,
   ULONGLONG_MAX,
@@ -220,13 +220,13 @@ describe("large integer constants", () => {
     });
 
     test("long limits", () => {
-      expect(LONG_MAX).toBe(2147483647);
-      expect(LONG_MIN).toBe(-2147483648);
+      expect(IDL_LONG_MAX).toBe(2147483647);
+      expect(IDL_LONG_MIN).toBe(-2147483648);
     });
 
     test("ulong limits", () => {
-      expect(ULONG_MAX).toBe(4294967295);
-      expect(ULONG_MIN).toBe(0);
+      expect(IDL_ULONG_MAX).toBe(4294967295);
+      expect(IDL_ULONG_MIN).toBe(0);
     });
 
     test("longlong limits (as strings due to JS number limits)", () => {

@@ -205,15 +205,15 @@ public class ConstantsTests
     [Fact]
     public void LargeIntegers_LongBounds()
     {
-        Assert.Equal(2147483647, LargeIntegerTypes.Constants.LongMax);
-        Assert.Equal(-2147483648, LargeIntegerTypes.Constants.LongMin);
+        Assert.Equal(2147483647, LargeIntegerTypes.Constants.IdlLongMax);
+        Assert.Equal(-2147483648, LargeIntegerTypes.Constants.IdlLongMin);
     }
 
     [Fact]
     public void LargeIntegers_UlongBounds()
     {
-        Assert.Equal(4294967295u, LargeIntegerTypes.Constants.UlongMax);
-        Assert.Equal(0u, LargeIntegerTypes.Constants.UlongMin);
+        Assert.Equal(4294967295u, LargeIntegerTypes.Constants.IdlUlongMax);
+        Assert.Equal(0u, LargeIntegerTypes.Constants.IdlUlongMin);
     }
 
     [Fact]

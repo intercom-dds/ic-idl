@@ -159,13 +159,13 @@ TEST_CASE("ushort_limits" * doctest::test_suite("constants")) {
 }
 
 TEST_CASE("long_limits" * doctest::test_suite("constants")) {
-    CHECK(large_integer_types::LONG_MAX == 2147483647);
-    CHECK(large_integer_types::LONG_MIN == -2147483648);
+    CHECK(large_integer_types::IDL_LONG_MAX == 2147483647);
+    CHECK(large_integer_types::IDL_LONG_MIN == -2147483648);
 }
 
 TEST_CASE("ulong_limits" * doctest::test_suite("constants")) {
-    CHECK(large_integer_types::ULONG_MAX == 4294967295U);
-    CHECK(large_integer_types::ULONG_MIN == 0U);
+    CHECK(large_integer_types::IDL_ULONG_MAX == 4294967295U);
+    CHECK(large_integer_types::IDL_ULONG_MIN == 0U);
 }
 
 TEST_CASE("longlong_limits" * doctest::test_suite("constants")) {
@@ -208,7 +208,7 @@ TEST_CASE("large_int_struct" * doctest::test_suite("constants")) {
 
 TEST_CASE("derived_constants" * doctest::test_suite("constants")) {
     CHECK(large_integer_types::LONG_MAX_MINUS_ONE == 2147483646);
-    CHECK(large_integer_types::LONG_MAX_MINUS_ONE == large_integer_types::LONG_MAX - 1);
+    CHECK(large_integer_types::LONG_MAX_MINUS_ONE == large_integer_types::IDL_LONG_MAX - 1);
     CHECK(large_integer_types::LONGLONG_MAX_MINUS_ONE == 9223372036854775806LL);
     CHECK(large_integer_types::LONGLONG_MAX_MINUS_ONE == large_integer_types::LONGLONG_MAX - 1);
 }

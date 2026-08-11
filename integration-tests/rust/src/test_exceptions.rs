@@ -187,3 +187,9 @@ fn exception_swap_detailed() {
     assert_eq!(e2.details, "Details A");
     assert!(e2.recoverable);
 }
+
+#[test]
+fn exception_result_error_type() {
+    let r: exception_types::TResult<()> = Err(exception_types::T { code: 7 });
+    std::assert_matches!(r, Err(exception_types::T { code: 7 }));
+}

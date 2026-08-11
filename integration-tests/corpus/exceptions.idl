@@ -46,4 +46,8 @@ module exception_types {
         string error_message;
         long position;
     };
+
+    exception T {
+        long code;
+    };
 };

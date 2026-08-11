@@ -33,18 +33,18 @@
 
 namespace ic_cts {
 
-template <typename CharT, uint32_t N>
-template <uint32_t S>
+template <typename CharT, size_t N>
+template <size_t S>
 bounded_basic_string<CharT, N>::bounded_basic_string(const bounded_basic_string<CharT, S>& other)
     : std::basic_string<CharT>(other) {}
 
-template <typename CharT, uint32_t N>
-template <uint32_t S>
+template <typename CharT, size_t N>
+template <size_t S>
 bounded_basic_string<CharT, N>::bounded_basic_string(bounded_basic_string<CharT, S>&& other)
     : std::basic_string<CharT>(std::move(other)) {}
 
-template <typename CharT, uint32_t N>
-template <uint32_t S>
+template <typename CharT, size_t N>
+template <size_t S>
 bounded_basic_string<CharT, N>& bounded_basic_string<CharT, N>::operator=(
     const bounded_basic_string<CharT, S>& other
 ) {
@@ -52,8 +52,8 @@ bounded_basic_string<CharT, N>& bounded_basic_string<CharT, N>::operator=(
     return *this;
 }
 
-template <typename CharT, uint32_t N>
-template <uint32_t S>
+template <typename CharT, size_t N>
+template <size_t S>
 bounded_basic_string<CharT, N>& bounded_basic_string<CharT, N>::operator=(
     bounded_basic_string<CharT, S>&& other
 ) {
@@ -61,13 +61,13 @@ bounded_basic_string<CharT, N>& bounded_basic_string<CharT, N>::operator=(
     return *this;
 }
 
-template <typename CharT, uint32_t N>
+template <typename CharT, size_t N>
 bounded_basic_string<CharT, N>& bounded_basic_string<CharT, N>::operator=(const CharT* other) {
     std::basic_string<CharT>::operator=(other);
     return *this;
 }
 
-template <typename CharT, uint32_t N>
+template <typename CharT, size_t N>
 bounded_basic_string<CharT, N>& bounded_basic_string<CharT, N>::operator=(
     const std::basic_string<CharT>& other
 ) {
@@ -75,7 +75,7 @@ bounded_basic_string<CharT, N>& bounded_basic_string<CharT, N>::operator=(
     return *this;
 }
 
-template <typename CharT, uint32_t N>
+template <typename CharT, size_t N>
 bounded_basic_string<CharT, N>& bounded_basic_string<CharT, N>::operator=(
     std::basic_string<CharT>&& other
 ) {
@@ -83,97 +83,97 @@ bounded_basic_string<CharT, N>& bounded_basic_string<CharT, N>::operator=(
     return *this;
 }
 
-template <typename CharT, uint32_t N>
+template <typename CharT, size_t N>
 bounded_basic_string<CharT, N>::bounded_basic_string(const CharT* other)
     : std::basic_string<CharT>(other) {}
 
-template <typename CharT, uint32_t N>
+template <typename CharT, size_t N>
 bounded_basic_string<CharT, N>::bounded_basic_string(const std::basic_string<CharT>& other)
     : std::basic_string<CharT>(other) {}
 
-template <typename CharT, uint32_t N>
+template <typename CharT, size_t N>
 bounded_basic_string<CharT, N>::bounded_basic_string(std::basic_string<CharT>&& other)
     : std::basic_string<CharT>(std::move(other)) {}
 
-template <typename K, typename V, uint32_t N>
-template <uint32_t S>
+template <typename K, typename V, size_t N>
+template <size_t S>
 bounded_map<K, V, N>::bounded_map(const ic_cts::bounded_map<K, V, S>& other)
     : std::map<K, V>(other) {}
 
-template <typename K, typename V, uint32_t N>
-template <uint32_t S>
+template <typename K, typename V, size_t N>
+template <size_t S>
 bounded_map<K, V, N>::bounded_map(ic_cts::bounded_map<K, V, S>&& other)
     : std::map<K, V>(std::move(other)) {}
 
-template <typename K, typename V, uint32_t N>
-template <uint32_t S>
+template <typename K, typename V, size_t N>
+template <size_t S>
 bounded_map<K, V, N>& bounded_map<K, V, N>::operator=(const ic_cts::bounded_map<K, V, S>& other) {
     std::map<K, V>::operator=(other);
     return *this;
 }
 
-template <typename K, typename V, uint32_t N>
-template <uint32_t S>
+template <typename K, typename V, size_t N>
+template <size_t S>
 bounded_map<K, V, N>& bounded_map<K, V, N>::operator=(ic_cts::bounded_map<K, V, S>&& other) {
     std::map<K, V>::operator=(std::move(other));
     return *this;
 }
 
-template <typename K, typename V, uint32_t N>
+template <typename K, typename V, size_t N>
 bounded_map<K, V, N>::bounded_map(const std::map<K, V>& other) : std::map<K, V>(other) {}
 
-template <typename K, typename V, uint32_t N>
+template <typename K, typename V, size_t N>
 bounded_map<K, V, N>::bounded_map(std::map<K, V>&& other) : std::map<K, V>(std::move(other)) {}
 
-template <typename K, typename V, uint32_t N>
+template <typename K, typename V, size_t N>
 bounded_map<K, V, N>& bounded_map<K, V, N>::operator=(const std::map<K, V>& other) {
     std::map<K, V>::operator=(other);
     return *this;
 }
 
-template <typename K, typename V, uint32_t N>
+template <typename K, typename V, size_t N>
 bounded_map<K, V, N>& bounded_map<K, V, N>::operator=(std::map<K, V>&& other) {
     std::map<K, V>::operator=(std::move(other));
     return *this;
 }
 
-template <typename T, uint32_t N>
-template <uint32_t S>
+template <typename T, size_t N>
+template <size_t S>
 bounded_vector<T, N>::bounded_vector(const ic_cts::bounded_vector<T, S>& other)
     : std::vector<T>(other) {}
 
-template <typename T, uint32_t N>
-template <uint32_t S>
+template <typename T, size_t N>
+template <size_t S>
 bounded_vector<T, N>::bounded_vector(ic_cts::bounded_vector<T, S>&& other)
     : std::vector<T>(std::move(other)) {}
 
-template <typename T, uint32_t N>
-template <uint32_t S>
+template <typename T, size_t N>
+template <size_t S>
 bounded_vector<T, N>& bounded_vector<T, N>::operator=(const ic_cts::bounded_vector<T, S>& other) {
     std::vector<T>::operator=(other);
     return *this;
 }
 
-template <typename T, uint32_t N>
-template <uint32_t S>
+template <typename T, size_t N>
+template <size_t S>
 bounded_vector<T, N>& bounded_vector<T, N>::operator=(ic_cts::bounded_vector<T, S>&& other) {
     std::vector<T>::operator=(std::move(other));
     return *this;
 }
 
-template <typename T, uint32_t N>
+template <typename T, size_t N>
 bounded_vector<T, N>::bounded_vector(const std::vector<T>& other) : std::vector<T>(other) {}
 
-template <typename T, uint32_t N>
+template <typename T, size_t N>
 bounded_vector<T, N>::bounded_vector(std::vector<T>&& other) : std::vector<T>(std::move(other)) {}
 
-template <typename T, uint32_t N>
+template <typename T, size_t N>
 bounded_vector<T, N>& bounded_vector<T, N>::operator=(const std::vector<T>& other) {
     std::vector<T>::operator=(other);
     return *this;
 }
 
-template <typename T, uint32_t N>
+template <typename T, size_t N>
 bounded_vector<T, N>& bounded_vector<T, N>::operator=(std::vector<T>&& other) {
     std::vector<T>::operator=(std::move(other));
     return *this;
@@ -182,7 +182,7 @@ bounded_vector<T, N>& bounded_vector<T, N>::operator=(std::vector<T>&& other) {
 }  // namespace ic_cts
 
 namespace std {
-template <typename CharT, uint32_t N>
+template <typename CharT, size_t N>
 struct hash<ic_cts::bounded_basic_string<CharT, N>> {
   public:
     using argument_type = ic_cts::bounded_basic_string<CharT, N>;

@@ -121,12 +121,12 @@ struct TypeTraits<std::vector<T>> {
     using is_bounded = std::false_type;
 };
 
-template <typename T, uint32_t N>
+template <typename T, size_t N>
 struct TypeTraits<bounded_vector<T, N>> {
     using value_type = T;
     using element_traits = TypeTraits<value_type>;
     using is_bounded = std::true_type;
-    using bound = std::integral_constant<uint32_t, N>;
+    using bound = std::integral_constant<size_t, N>;
 };
 
 template <typename CharT>
@@ -136,12 +136,12 @@ struct TypeTraits<std::basic_string<CharT>> {
     using is_bounded = std::false_type;
 };
 
-template <typename T, uint32_t N>
+template <typename T, size_t N>
 struct TypeTraits<bounded_basic_string<T, N>> {
     using value_type = T;
     using element_traits = TypeTraits<value_type>;
     using is_bounded = std::true_type;
-    using bound = std::integral_constant<uint32_t, N>;
+    using bound = std::integral_constant<size_t, N>;
 };
 
 template <typename T, size_t N>
@@ -149,22 +149,26 @@ struct TypeTraits<std::array<T, N>> {
     using value_type = T;
     using element_traits = TypeTraits<value_type>;
     using dimensions = detail::array_dimensions<std::array<T, N>>;
-    using bound = std::integral_constant<uint32_t, N>;
+    using bound = std::integral_constant<size_t, N>;
 };
 
 template <typename K, typename V>
 struct TypeTraits<std::map<K, V>> {
+    using key_type = K;
+    using element_type = V;
     using key_traits = TypeTraits<K>;
     using value_traits = TypeTraits<V>;
     using is_bounded = std::false_type;
 };
 
-template <typename K, typename V, uint32_t N>
+template <typename K, typename V, size_t N>
 struct TypeTraits<bounded_map<K, V, N>> {
+    using key_type = K;
+    using element_type = V;
     using key_traits = TypeTraits<K>;
     using value_traits = TypeTraits<V>;
     using is_bounded = std::true_type;
-    using bound = std::integral_constant<uint32_t, N>;
+    using bound = std::integral_constant<size_t, N>;
 };
 
 }  // namespace ic_cts

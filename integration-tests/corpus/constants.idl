@@ -115,12 +115,12 @@ module large_integer_types {
     const unsigned short USHORT_MIN = 0;
 
     // 32-bit signed limits
-    const long LONG_MAX = 2147483647;
-    const long LONG_MIN = -2147483648;
+    const long IDL_LONG_MAX = 2147483647;
+    const long IDL_LONG_MIN = -2147483648;
 
     // 32-bit unsigned limits
-    const unsigned long ULONG_MAX = 4294967295;
-    const unsigned long ULONG_MIN = 0;
+    const unsigned long IDL_ULONG_MAX = 4294967295;
+    const unsigned long IDL_ULONG_MIN = 0;
 
     // 64-bit signed limits
     const long long LONGLONG_MAX = 9223372036854775807;

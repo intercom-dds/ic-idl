@@ -193,14 +193,14 @@ fn ushort_limits() {
 
 #[test]
 fn long_limits() {
-    assert_eq!(large_integer_types::LONG_MAX, i32::MAX);
-    assert_eq!(large_integer_types::LONG_MIN, i32::MIN);
+    assert_eq!(large_integer_types::IDL_LONG_MAX, i32::MAX);
+    assert_eq!(large_integer_types::IDL_LONG_MIN, i32::MIN);
 }
 
 #[test]
 fn ulong_limits() {
-    assert_eq!(large_integer_types::ULONG_MAX, u32::MAX);
-    assert_eq!(large_integer_types::ULONG_MIN, u32::MIN);
+    assert_eq!(large_integer_types::IDL_ULONG_MAX, u32::MAX);
+    assert_eq!(large_integer_types::IDL_ULONG_MIN, u32::MIN);
 }
 
 #[test]
@@ -254,7 +254,7 @@ fn derived_constants() {
     assert_eq!(large_integer_types::LONG_MAX_MINUS_ONE, 2147483646);
     assert_eq!(
         large_integer_types::LONG_MAX_MINUS_ONE,
-        large_integer_types::LONG_MAX - 1
+        large_integer_types::IDL_LONG_MAX - 1
     );
     assert_eq!(
         large_integer_types::LONGLONG_MAX_MINUS_ONE,

@@ -44,6 +44,10 @@ edition = "2024"
 intercom-cts = {{ path = "{cts_path}" }}
 """
 
+LIB_RS_TEMPLATE = """#[path = "idl/lib.rs"]
+pub mod idl;
+"""
+
 
 @pytest.fixture(scope="session")
 def cargo(request: pytest.FixtureRequest) -> str:
@@ -73,10 +77,14 @@ def test_rust(
 ) -> None:
     src_dir = rust_output_dir / "src"
     src_dir.mkdir(exist_ok=True)
+    idl_dir = src_dir / "idl"
+    idl_dir.mkdir(exist_ok=True)
 
-    rs_files = run_codegen(idl_compiler, idl_file, src_dir, "rust-out")
+    rs_files = run_codegen(idl_compiler, idl_file, idl_dir, "rust-out")
     if not rs_files:
         return
+
+    (src_dir / "lib.rs").write_text(LIB_RS_TEMPLATE)
 
     cargo_toml = rust_output_dir / "Cargo.toml"
     cargo_toml.write_text(CARGO_TOML_TEMPLATE.format(cts_path=cts_path))

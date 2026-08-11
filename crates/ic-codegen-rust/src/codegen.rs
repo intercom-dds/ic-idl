@@ -175,7 +175,7 @@ impl<'a> RustGen<'a> {
 
         let members = self.struct_members(struct_ty);
         for member in &members {
-            let member_ty = self.member_type(&member.ty);
+            let member_ty = self.member_type(&member.ty, def.id);
             let field_ty = if is_optional(member) {
                 format!("::std::option::Option<{member_ty}>")
             } else {
@@ -191,7 +191,7 @@ impl<'a> RustGen<'a> {
         w!(w, "pub struct ", def, " {\n");
 
         for member in &except_ty.members {
-            let member_ty = self.member_type(&member.ty);
+            let member_ty = self.member_type(&member.ty, def.id);
             let field_ty = if is_optional(member) {
                 format!("::std::option::Option<{member_ty}>")
             } else {
@@ -218,7 +218,7 @@ impl<'a> RustGen<'a> {
 
         let members = self.valuetype_members(value_ty);
         for member in &members {
-            let member_ty = self.member_type(&member.ty);
+            let member_ty = self.member_type(&member.ty, def.id);
             let field_ty = if is_optional(member) {
                 format!("::std::option::Option<{member_ty}>")
             } else {
@@ -360,7 +360,7 @@ impl<'a> RustGen<'a> {
             if variant.labels.is_empty() {
                 w!(w, variant.ident.name);
                 if !matches!(variant.ty.kind, TyKind::Null) {
-                    let member_ty = self.member_type(&variant.ty);
+                    let member_ty = self.member_type(&variant.ty, def.id);
                     w!(w, "(", member_ty, ")");
                 }
                 w!(w, ",\n");
@@ -369,7 +369,7 @@ impl<'a> RustGen<'a> {
                     let variant_name = self.union_variant_name(variant, label, union_ty);
                     w!(w, variant_name);
                     if !matches!(variant.ty.kind, TyKind::Null) {
-                        let member_ty = self.member_type(&variant.ty);
+                        let member_ty = self.member_type(&variant.ty, def.id);
                         w!(w, "(", member_ty, ")");
                     }
                     w!(w, ",\n");

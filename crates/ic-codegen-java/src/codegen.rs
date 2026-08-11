@@ -647,8 +647,10 @@ impl<'a> JavaGen<'a> {
             struct_ty.parent.map(|p| p.def_id),
             &struct_ty.members,
         );
-        if !struct_ty.members.is_empty() {
-            self.emit_arg_ctor(w, def.id, &struct_ty.members);
+
+        let inherited = self.inherited_members(struct_ty);
+        if !inherited.is_empty() || !struct_ty.members.is_empty() {
+            self.emit_arg_ctor(w, def.id, &inherited, &struct_ty.members);
         }
 
         w!(w, "@Override\n");
@@ -759,6 +761,9 @@ impl<'a> JavaGen<'a> {
             }
             TyKind::Map { key, elem, .. } => {
                 self.emit_map_deep_copy(w, name, key, elem, def_id);
+            }
+            TyKind::Adt(def_id) if self.is_bitmask(*def_id) => {
+                w!(w, "this.", name, " = (java.util.BitSet) other.", name, ".clone();\n");
             }
             TyKind::Adt(_) if self.is_cloneable_adt(ty) => {
                 let java_type = self.java_type(ty, def_id);
@@ -933,14 +938,36 @@ impl<'a> JavaGen<'a> {
         }
     }
 
-    fn emit_arg_ctor(&self, w: &mut Twine, def_id: DefId, members: &[Member]) {
+    fn inherited_members(&self, struct_ty: &StructTy) -> Vec<Member> {
+        let Some(parent) = struct_ty.parent else {
+            return vec![];
+        };
+
+        let parent_def = self.hir.context.type_of(parent.def_id);
+        let DefKind::Struct(parent_struct) = &parent_def.kind else {
+            return vec![];
+        };
+
+        let mut members = self.inherited_members(parent_struct);
+        members.extend(parent_struct.members.clone());
+        members
+    }
+
+    fn emit_arg_ctor(
+        &self,
+        w: &mut Twine,
+        def_id: DefId,
+        inherited: &[Member],
+        members: &[Member],
+    ) {
         let def = self.hir.context.type_of(def_id);
         w!(w, "public ", def.ident.name, "(");
 
-        for (i, member) in members.iter().enumerate() {
+        let total = inherited.len() + members.len();
+        for (i, member) in inherited.iter().chain(members).enumerate() {
             if i > 0 {
                 w!(w, ",\n");
-            } else if members.len() > 1 {
+            } else if total > 1 {
                 w!(w, "\n");
             }
 
@@ -949,6 +976,17 @@ impl<'a> JavaGen<'a> {
         }
 
         w!(w, "\n) {\n");
+
+        if !inherited.is_empty() {
+            w!(w, "super(");
+            for (i, member) in inherited.iter().enumerate() {
+                if i > 0 {
+                    w!(w, ", ");
+                }
+                w!(w, member.ident.name);
+            }
+            w!(w, ");\n");
+        }
 
         for member in members {
             w!(w, "this.", member.ident.name, " = ", member.ident.name, ";\n");
@@ -981,7 +1019,7 @@ impl<'a> JavaGen<'a> {
         self.emit_default_ctor(w, def.id, &except_ty.members);
         self.emit_copy_ctor(w, def, None, &except_ty.members);
         if !except_ty.members.is_empty() {
-            self.emit_arg_ctor(w, def.id, &except_ty.members);
+            self.emit_arg_ctor(w, def.id, &[], &except_ty.members);
         }
 
         self.emit_accessors(w, def.id, &except_ty.members);
@@ -1558,9 +1596,28 @@ impl<'a> JavaGen<'a> {
         w!(w, "}\n");
     }
 
+    fn emit_container_init(&self, w: &mut Twine, name: &str, ty: &Ty, def_id: DefId) {
+        let resolved = self.hir.context.resolve_ty(ty);
+        if matches!(
+            resolved.kind,
+            TyKind::Sequence { .. } | TyKind::Map { .. } | TyKind::Array { .. }
+        ) {
+            let default_val = self.default_value(ty, def_id);
+            w!(w, "this.", name, " = ", default_val, ";\n");
+        }
+    }
+
     fn emit_valuetype(&self, w: &mut Twine, def: &Def, value_ty: &ValueTy) {
         w!(w, "public class ", def, " extends ", def, "Abstract {\n");
-        w!(w, "public ", def, "() {}\n\n");
+
+        w!(w, "public ", def, "() {\n");
+        for attr in &value_ty.attributes {
+            self.emit_container_init(w, &attr.ident.name, &attr.ty, def.id);
+        }
+        for mem in &value_ty.members {
+            self.emit_container_init(w, &mem.ident.name, &mem.ty, def.id);
+        }
+        w!(w, "}\n\n");
 
         // Copy constructor
         w!(w, "public ", def, "(", def, " other) {\n");

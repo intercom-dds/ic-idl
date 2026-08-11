@@ -32,7 +32,7 @@ import static org.junit.jupiter.api.Assertions.*;
 import bitmask_types.*;
 import org.junit.jupiter.api.Test;
 
-class BitsetsTests {
+class BitmasksTests {
 
     @Test
     void permissions_values() {

@@ -123,12 +123,14 @@ impl ImportContext {
 
         for (depth, imports) in &relative_imports {
             let dots = ".".repeat(depth + 1);
-            for (module_name, alias) in imports {
-                if let Some(alias) = alias {
-                    py!(w, "from ", dots, " import ", *module_name, " as ", *alias, "\n");
-                } else {
-                    py!(w, "from ", dots, " import ", *module_name, "\n");
+            for &(module_name, alias) in imports {
+                py!(w, "from ", dots, " import ", module_name);
+                if let Some(alias) = alias
+                    && alias != module_name
+                {
+                    py!(w, " as ", alias);
                 }
+                py!(w, "\n");
             }
         }
 

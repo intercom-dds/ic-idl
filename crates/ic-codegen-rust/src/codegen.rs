@@ -201,7 +201,7 @@ impl<'a> RustGen<'a> {
         }
         w!(w, "}\n\n");
 
-        w!(w, "pub type ", def, "Result<T> = ::std::result::Result<T, ", def, ">;\n\n");
+        w!(w, "pub type ", def, "Result<T> = ::std::result::Result<T, self::", def, ">;\n\n");
 
         w!(w, "impl ::std::fmt::Display for ", def, " {\n");
         w!(w, "fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> ::std::fmt::Result {\n");

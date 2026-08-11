@@ -88,7 +88,7 @@ impl PyGen<'_> {
         }
     }
 
-    fn nested_type_path(&self, def_id: DefId) -> String {
+    pub(crate) fn nested_type_path(&self, def_id: DefId) -> String {
         let mut path = vec![];
         let mut current = Some(def_id);
 
@@ -134,7 +134,7 @@ impl PyGen<'_> {
                 if let Some(val) = self.adt_default(w, *def_id) {
                     val
                 } else {
-                    let type_name = self.py_type(w, ty);
+                    let type_name = self.value_type_name(w, ty, &resolved);
                     format!("{type_name}()")
                 }
             }
@@ -157,14 +157,26 @@ impl PyGen<'_> {
             }
             TyKind::Map { .. } => "_dataclasses_.field(default_factory=dict)".to_string(),
             TyKind::Adt(def_id) => {
-                if self.needs_lambda_default(w, *def_id) {
+                if self.needs_lambda_default(w, *def_id)
+                    || matches!(&ty.kind, TyKind::Adt(id) if w.deferred_aliases.contains(id))
+                {
                     let val = self.default_value(w, ty);
                     format!("_dataclasses_.field(default_factory=lambda: {val})")
                 } else {
-                    let type_name = self.py_type(w, ty);
+                    let type_name = self.value_type_name(w, ty, &resolved);
                     format!("_dataclasses_.field(default_factory={type_name})")
                 }
             }
+        }
+    }
+
+    fn value_type_name(&self, w: &PyWriter, ty: &Ty, resolved: &Ty) -> String {
+        if let TyKind::Adt(def_id) = &ty.kind
+            && w.deferred_aliases.contains(def_id)
+        {
+            self.py_type(w, resolved)
+        } else {
+            self.py_type(w, ty)
         }
     }
 

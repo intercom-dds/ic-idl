@@ -33,7 +33,7 @@ use ic_emit::File;
 use ic_hir::ResolvedGraph;
 use ic_hir::hir::{
     AliasTy, Ann, BitmaskTy, ConstTy, Def, DefFlags, DefId, DefKind, EnumTy, ExceptTy, InterfaceTy,
-    Numeric, ParamKind, ProtoTy, StructTy, TyKind, UnionTy, ValueTy,
+    Numeric, ParamKind, ProtoTy, StructTy, Ty, TyKind, UnionTy, ValueTy,
 };
 use ic_vfs::SourceMap;
 
@@ -110,6 +110,22 @@ fn sanitize_module_name(name: &str) -> String {
 }
 
 const ORDER_IGNORE: &str = "  # ty: ignore[subclass-of-dataclass-with-order]";
+
+fn collect_adt_refs(ty: &Ty, refs: &mut Vec<DefId>) {
+    match &ty.kind {
+        TyKind::Adt(def_id) => refs.push(*def_id),
+        TyKind::Array { ty, .. } | TyKind::Sequence { ty, .. } => collect_adt_refs(ty, refs),
+        TyKind::Map { key, elem, .. } => {
+            collect_adt_refs(key, refs);
+            collect_adt_refs(elem, refs);
+        }
+        TyKind::Primitive(_)
+        | TyKind::String { .. }
+        | TyKind::Any
+        | TyKind::Fixed
+        | TyKind::Null => {}
+    }
+}
 
 pub struct PyGen<'a> {
     pub hir: &'a ResolvedGraph,
@@ -317,6 +333,88 @@ impl<'a> PyGen<'a> {
 
         let key = (module_path, filename);
         groups.entry(key).or_default().push(def_id);
+    }
+
+    fn index_definitions(
+        &self,
+        def_id: DefId,
+        next: &mut usize,
+        order: &mut BTreeMap<DefId, usize>,
+        aliases: &mut Vec<(DefId, usize)>,
+    ) {
+        let def = self.hir.context.type_of(def_id);
+        let index = *next;
+        *next += 1;
+        order.insert(def_id, index);
+
+        match &def.kind {
+            DefKind::Alias(_) => aliases.push((def_id, index)),
+            DefKind::Interface(interface_ty) => {
+                for &nested_id in &interface_ty.definitions {
+                    self.index_definitions(nested_id, next, order, aliases);
+                }
+            }
+            DefKind::Valuetype(value_ty) => {
+                for &nested_id in &value_ty.definitions {
+                    self.index_definitions(nested_id, next, order, aliases);
+                }
+            }
+            _ => {}
+        }
+    }
+
+    fn path_root(&self, def_id: DefId) -> DefId {
+        let mut root = def_id;
+        let mut current = self.hir.context.type_of(def_id).parent;
+
+        while let Some(id) = current {
+            let def = self.hir.context.type_of(id);
+            if matches!(def.kind, DefKind::Module(_)) {
+                break;
+            }
+            root = id;
+            current = def.parent;
+        }
+
+        root
+    }
+
+    fn deferred_aliases(&self, defs: &[DefId]) -> Vec<DefId> {
+        let mut next = 0;
+        let mut order = BTreeMap::new();
+        let mut aliases = vec![];
+
+        for &def_id in defs {
+            self.index_definitions(def_id, &mut next, &mut order, &mut aliases);
+        }
+
+        let mut deferred = vec![];
+        let mut deferred_set = BTreeSet::new();
+
+        for (def_id, index) in aliases {
+            let DefKind::Alias(alias) = &self.hir.context.type_of(def_id).kind else {
+                continue;
+            };
+
+            let mut refs = vec![];
+            collect_adt_refs(&alias.ty, &mut refs);
+
+            let root = self.path_root(def_id);
+            let inside_class = root != def_id;
+
+            let is_deferred = refs.iter().any(|&id| {
+                deferred_set.contains(&id)
+                    || order.get(&id).is_some_and(|&target| target > index)
+                    || (inside_class && self.path_root(id) == root)
+            });
+
+            if is_deferred {
+                deferred_set.insert(def_id);
+                deferred.push(def_id);
+            }
+        }
+
+        deferred
     }
 
     fn is_optional(&self, annotations: &[Ann]) -> bool {
@@ -558,8 +656,33 @@ impl<'a> PyGen<'a> {
 
     fn emit_alias(&self, w: &mut PyWriter, def: &Def, alias: &AliasTy) {
         let ty_str = self.py_type(w, &alias.ty);
-        py!(w, def, ": _typing_.TypeAlias = ", ty_str, "\n");
+        if w.deferred_aliases.contains(&def.id) {
+            py!(w, def, ": _typing_.TypeAlias = \"", ty_str, "\"\n");
+        } else {
+            py!(w, def, ": _typing_.TypeAlias = ", ty_str, "\n");
+        }
         py!(w, "\n\n");
+    }
+
+    fn emit_alias_rebinds(&self, w: &mut PyWriter, deferred: &[DefId]) {
+        if deferred.is_empty() {
+            return;
+        }
+
+        py!(w, "if not _typing_.TYPE_CHECKING:\n");
+        w.indent();
+
+        for &def_id in deferred {
+            let DefKind::Alias(alias) = &self.hir.context.type_of(def_id).kind else {
+                continue;
+            };
+
+            let path = self.nested_type_path(def_id);
+            let ty_str = self.py_type(w, &alias.ty);
+            py!(w, path, " = ", ty_str, "\n");
+        }
+
+        w.dedent();
     }
 
     fn emit_const(&self, w: &mut PyWriter, def: &Def, const_ty: &ConstTy) {
@@ -732,7 +855,10 @@ impl<'a> PyGen<'a> {
             |id| self.source_filename(id),
         );
 
+        let deferred = self.deferred_aliases(defs);
+
         let mut w = PyWriter::new(imports.context);
+        w.deferred_aliases = deferred.iter().copied().collect();
         Self::emit_header(&mut w);
         imports.stdlib.emit(&mut w);
         w.emit_module_imports();
@@ -740,6 +866,8 @@ impl<'a> PyGen<'a> {
         for &def_id in defs {
             self.emit_definition(&mut w, def_id);
         }
+
+        self.emit_alias_rebinds(&mut w, &deferred);
 
         let mut path: PathBuf = module_path.iter().collect();
         path.push(format!("_{filename}.py"));

@@ -50,8 +50,12 @@ def test_python(
     if not py_files:
         return
 
+    ruff_args = ["uvx", "ruff", "check", str(output_dir)]
+    if "--no-rename" in extra_args:
+        ruff_args += ["--ignore", "PYI042,PYI047"]
+
     result = subprocess.run(
-        ["uvx", "ruff", "check", str(output_dir)],
+        ruff_args,
         capture_output=True,
         text=True,
         timeout=60,

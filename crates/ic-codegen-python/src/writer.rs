@@ -25,13 +25,17 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+use std::collections::BTreeSet;
+
 use ic_emit::printer::PrettyPrinter;
+use ic_hir::hir::DefId;
 
 use crate::imports::ImportContext;
 
 pub struct PyWriter {
     printer: PrettyPrinter,
     pub import_context: ImportContext,
+    pub deferred_aliases: BTreeSet<DefId>,
 }
 
 impl PyWriter {
@@ -39,6 +43,7 @@ impl PyWriter {
         Self {
             printer: PrettyPrinter::new(),
             import_context,
+            deferred_aliases: BTreeSet::new(),
         }
     }
 

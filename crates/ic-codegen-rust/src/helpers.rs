@@ -43,32 +43,45 @@ impl RustGen<'_> {
         self.original_hir.context.qualified_name(def_id)
     }
 
-    pub fn scoped_name(&self, target_def_id: DefId, _relative_to_def_id: DefId) -> String {
+    pub fn scoped_name(&self, target_def_id: DefId, relative_to_def_id: DefId) -> String {
         let def = self.hir.context.definitions.get(target_def_id);
-
-        let mut scope = Vec::new();
+        let mut target_modules = vec![];
+        let mut type_suffix = vec![];
         let mut current_id = def.parent;
 
         while let Some(id) = current_id {
             let parent_def = self.hir.context.definitions.get(id);
-            if matches!(
-                parent_def.kind,
-                DefKind::Module(_) | DefKind::Enum(_) | DefKind::Bitmask(_)
-            ) {
-                scope.push(parent_def.ident.name.clone());
+            match &parent_def.kind {
+                DefKind::Module(_) => target_modules.push(parent_def.ident.name.as_str()),
+                DefKind::Enum(_) | DefKind::Bitmask(_) => {
+                    type_suffix.push(parent_def.ident.name.as_str());
+                }
+                _ => {}
             }
             current_id = parent_def.parent;
         }
 
-        let mut path = String::from("crate");
-        for name in scope.iter().rev() {
-            path.push_str("::");
-            path.push_str(name);
-        }
-        path.push_str("::");
-        path.push_str(&def.ident.name);
+        target_modules.reverse();
+        type_suffix.reverse();
 
-        path
+        let ctx_modules = self.module_scope(relative_to_def_id);
+        relative_path(&target_modules, &ctx_modules, &type_suffix, &def.ident.name)
+    }
+
+    fn module_scope(&self, def_id: DefId) -> Vec<&str> {
+        let mut scope = vec![];
+        let mut current_id = self.hir.context.definitions.get(def_id).parent;
+
+        while let Some(id) = current_id {
+            let parent_def = self.hir.context.definitions.get(id);
+            if matches!(parent_def.kind, DefKind::Module(_)) {
+                scope.push(parent_def.ident.name.as_str());
+            }
+            current_id = parent_def.parent;
+        }
+
+        scope.reverse();
+        scope
     }
 
     pub(crate) fn struct_members(
@@ -101,8 +114,8 @@ impl RustGen<'_> {
         members
     }
 
-    pub fn member_type(&self, ty: &Ty) -> String {
-        self.rust_type(ty, self.hir.order[0])
+    pub fn member_type(&self, ty: &Ty, ctx: DefId) -> String {
+        self.rust_type(ty, ctx)
     }
 
     pub(crate) fn valuetype_members(
@@ -358,4 +371,108 @@ pub fn type_flags(ctx: &ic_hir::Context, def: &Def) -> String {
         _ = write!(result, ".union(::intercom_cts::TypeFlag::{flag})");
     }
     result
+}
+
+fn relative_path(
+    target_modules: &[&str],
+    ctx_modules: &[&str],
+    type_suffix: &[&str],
+    name: &str,
+) -> String {
+    let common = target_modules
+        .iter()
+        .zip(ctx_modules)
+        .take_while(|(target, ctx)| target == ctx)
+        .count();
+
+    let ups = ctx_modules.len() - common;
+    let downs = &target_modules[common..];
+    let mut segments = vec![];
+
+    if ups > 0 {
+        segments.extend(std::iter::repeat_n("super", ups));
+    } else if !downs.is_empty() {
+        segments.push("self");
+    }
+
+    segments.extend_from_slice(downs);
+    segments.extend_from_slice(type_suffix);
+    segments.push(name);
+    segments.join("::")
+}
+
+#[cfg(test)]
+mod tests {
+    use super::relative_path;
+
+    #[test]
+    fn same_module_is_bare() {
+        assert_eq!(relative_path(&["a"], &["a"], &[], "Foo"), "Foo");
+    }
+
+    #[test]
+    fn root_to_root_is_bare() {
+        assert_eq!(relative_path(&[], &[], &[], "Foo"), "Foo");
+    }
+
+    #[test]
+    fn parent_module_is_one_super() {
+        assert_eq!(relative_path(&["a"], &["a", "b"], &[], "Foo"), "super::Foo");
+    }
+
+    #[test]
+    fn root_from_nested_is_repeated_super() {
+        assert_eq!(
+            relative_path(&[], &["a", "b"], &[], "Foo"),
+            "super::super::Foo"
+        );
+    }
+
+    #[test]
+    fn child_module_descends_from_self() {
+        assert_eq!(
+            relative_path(&["a", "b"], &["a"], &[], "Foo"),
+            "self::b::Foo"
+        );
+    }
+
+    #[test]
+    fn nested_from_root_descends_from_self() {
+        assert_eq!(
+            relative_path(&["a", "b"], &[], &[], "Foo"),
+            "self::a::b::Foo"
+        );
+    }
+
+    #[test]
+    fn cousin_module_ascends_then_descends() {
+        assert_eq!(
+            relative_path(&["x", "y"], &["a", "b", "c"], &[], "Foo"),
+            "super::super::super::x::y::Foo"
+        );
+    }
+
+    #[test]
+    fn shared_prefix_is_not_re_descended() {
+        assert_eq!(
+            relative_path(&["a", "x"], &["a", "b", "c"], &[], "Foo"),
+            "super::super::x::Foo"
+        );
+    }
+
+    #[test]
+    fn type_suffix_in_same_module_is_bare() {
+        assert_eq!(
+            relative_path(&["a"], &["a"], &["MyEnum"], "Red"),
+            "MyEnum::Red"
+        );
+    }
+
+    #[test]
+    fn type_suffix_follows_module_path() {
+        assert_eq!(
+            relative_path(&["a"], &["b"], &["MyEnum"], "Red"),
+            "super::a::MyEnum::Red"
+        );
+    }
 }

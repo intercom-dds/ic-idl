@@ -25,9 +25,9 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use std::collections::{HashMap, HashSet};
+use std::collections::HashSet;
 
-use ic_alloc::graph::{DiGraph, VertexId};
+use ic_alloc::graph::DiGraph;
 use ic_hir::ResolvedGraph;
 use ic_hir::hir::{DefId, DefKind, PrimitiveTy, Ty, TyKind};
 
@@ -36,40 +36,24 @@ pub struct TypeGroup {
 }
 
 pub fn group_types_by_scc(hir: &ResolvedGraph, types: &[DefId]) -> Vec<TypeGroup> {
-    let mut graph = DiGraph::new();
-    let mut def_to_vertex: HashMap<DefId, VertexId> = HashMap::new();
-    let mut vertex_to_def: HashMap<VertexId, DefId> = HashMap::new();
+    let mut graph: DiGraph<DefId> = DiGraph::new();
 
     for &def_id in types {
-        let vertex = graph.add_vertex(def_id);
-        def_to_vertex.insert(def_id, vertex);
-        vertex_to_def.insert(vertex, def_id);
+        graph.add_node(def_id);
     }
 
     for &def_id in types {
-        let deps = collect_type_dependencies(hir, def_id);
-        let from_vertex = def_to_vertex[&def_id];
-
-        for dep_id in deps {
-            if let Some(&to_vertex) = def_to_vertex.get(&dep_id) {
-                graph.add_edge(from_vertex, to_vertex);
-            }
+        for dep_id in collect_type_dependencies(hir, def_id) {
+            graph.add_edge(&def_id, &dep_id, ());
         }
     }
 
-    let sccs = graph.scc_tarjan();
-    let mut groups = vec![];
-
-    for scc in sccs {
-        if scc.is_empty() {
-            continue;
-        }
-
-        let type_ids: Vec<DefId> = scc.iter().map(|&v| vertex_to_def[&v]).collect();
-        groups.push(TypeGroup { types: type_ids });
-    }
-
-    groups
+    graph
+        .scc_tarjan()
+        .into_iter()
+        .filter(|scc| !scc.is_empty())
+        .map(|types| TypeGroup { types })
+        .collect()
 }
 
 pub fn collect_type_dependencies(hir: &ResolvedGraph, def_id: DefId) -> HashSet<DefId> {

@@ -38,6 +38,9 @@
 #include "bounded.h"
 #include "member_info.h"
 #include "memory.h"
+#ifndef IC_NO_OMG_NAMESPACE
+#  include "omg_types.h"
+#endif
 #include "platform_config.h"
 #include "serialization.h"
 #include "span.h"

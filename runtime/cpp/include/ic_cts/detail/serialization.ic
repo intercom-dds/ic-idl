@@ -240,7 +240,7 @@ struct Serializer<Archive, std::string> {
     }
 };
 
-template <class Archive, typename CharT, uint32_t N>
+template <class Archive, typename CharT, size_t N>
 struct Serializer<Archive, ic_cts::bounded_basic_string<CharT, N>> {
     void operator()(Archive& a, std::basic_string<CharT>& value, const TypeInfo* type_info) {
         Serializer<Archive, std::basic_string<CharT>> serializer;
@@ -378,7 +378,7 @@ struct Serializer<Archive, std::vector<T, Alloc>> {
     }
 };
 
-template <class Archive, typename T, uint32_t L>
+template <class Archive, typename T, size_t L>
 struct Serializer<Archive, bounded_vector<T, L>> {
     void operator()(Archive& a, std::vector<T>& value, const TypeInfo* type_info) {
         Serializer<Archive, std::vector<T>> serializer;
@@ -405,7 +405,7 @@ struct Serializer<Archive, std::map<K, V, Comparator, Allocator>> {
     }
 };
 
-template <typename Archive, typename K, typename V, uint32_t N>
+template <typename Archive, typename K, typename V, size_t N>
 struct Serializer<Archive, bounded_map<K, V, N>> {
     void operator()(Archive& a, std::map<K, V>& value, const TypeInfo* type_info) {
         Serializer<Archive, std::map<K, V>> serializer;

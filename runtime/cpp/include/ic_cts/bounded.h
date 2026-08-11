@@ -36,21 +36,21 @@ namespace ic_cts {
 
 // NOLINTBEGIN(hicpp-explicit-conversions)
 
-template <typename CharT, uint32_t N>
+template <typename CharT, size_t N>
 class bounded_basic_string final : public std::basic_string<CharT> {
   public:
     using std::basic_string<CharT>::basic_string;
-    static constexpr uint32_t max_size() {
+    static constexpr size_t max_size() {
         return N;
     };
 
-    template <uint32_t S>
+    template <size_t S>
     bounded_basic_string(const bounded_basic_string<CharT, S>& other);
-    template <uint32_t S>
+    template <size_t S>
     bounded_basic_string(bounded_basic_string<CharT, S>&& other);
-    template <uint32_t S>
+    template <size_t S>
     bounded_basic_string& operator=(const bounded_basic_string<CharT, S>& other);
-    template <uint32_t S>
+    template <size_t S>
     bounded_basic_string& operator=(bounded_basic_string<CharT, S>&& other);
 
     bounded_basic_string() = default;
@@ -62,21 +62,21 @@ class bounded_basic_string final : public std::basic_string<CharT> {
     bounded_basic_string& operator=(std::basic_string<CharT>&& other);
 };
 
-template <typename K, typename V, uint32_t N>
+template <typename K, typename V, size_t N>
 class bounded_map final : public std::map<K, V> {
   public:
     using std::map<K, V>::map;
-    static constexpr uint32_t max_size() {
+    static constexpr size_t max_size() {
         return N;
     };
 
-    template <uint32_t S>
+    template <size_t S>
     bounded_map(const bounded_map<K, V, S>& other);
-    template <uint32_t S>
+    template <size_t S>
     bounded_map(bounded_map<K, V, S>&& other);
-    template <uint32_t S>
+    template <size_t S>
     bounded_map& operator=(const bounded_map<K, V, S>& other);
-    template <uint32_t S>
+    template <size_t S>
     bounded_map& operator=(bounded_map<K, V, S>&& other);
 
     bounded_map() = default;
@@ -86,21 +86,21 @@ class bounded_map final : public std::map<K, V> {
     bounded_map& operator=(std::map<K, V>&& other);
 };
 
-template <typename T, uint32_t N>
+template <typename T, size_t N>
 class bounded_vector final : public std::vector<T> {
   public:
     using std::vector<T>::vector;
-    static constexpr uint32_t max_size() {
+    static constexpr size_t max_size() {
         return N;
     };
 
-    template <uint32_t S>
+    template <size_t S>
     bounded_vector(const bounded_vector<T, S>& other);
-    template <uint32_t S>
+    template <size_t S>
     bounded_vector(bounded_vector<T, S>&& other);
-    template <uint32_t S>
+    template <size_t S>
     bounded_vector& operator=(const bounded_vector<T, S>& other);
-    template <uint32_t S>
+    template <size_t S>
     bounded_vector& operator=(bounded_vector<T, S>&& other);
 
     bounded_vector() = default;
@@ -110,16 +110,16 @@ class bounded_vector final : public std::vector<T> {
     bounded_vector& operator=(std::vector<T>&& other);
 };
 
-template <uint32_t N>
+template <size_t N>
 using bounded_string = bounded_basic_string<char, N>;
 
-template <uint32_t N>
+template <size_t N>
 using bounded_u16string = bounded_basic_string<char16_t, N>;
 
-template <uint32_t N>
+template <size_t N>
 using bounded_u32string = bounded_basic_string<char32_t, N>;
 
-template <uint32_t N>
+template <size_t N>
 using bounded_wstring = bounded_basic_string<wchar_t, N>;
 
 // NOLINTEND(hicpp-explicit-conversions)

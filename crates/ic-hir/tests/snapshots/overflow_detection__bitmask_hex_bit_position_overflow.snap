@@ -8,7 +8,7 @@ expression: test_overflow(source)
  3 │     LOW = 0x0001,
  4 │     MEDIUM = 0x0010,
  5 │     HIGH = 0x0100,
-   │     ˆˆˆˆˆˆˆˆˆˆˆˆˆ bit position 256 exceeds maximum of 63 for 64-bit bitmask
+   │     ˆˆˆˆˆˆˆˆˆˆˆˆˆ bit position 256 exceeds maximum of 31
  6 │     CRITICAL = 0x1000
  7 │ };
 ⨯: bitmask bit position out of range
@@ -17,5 +17,5 @@ expression: test_overflow(source)
  4 │     MEDIUM = 0x0010,
  5 │     HIGH = 0x0100,
  6 │     CRITICAL = 0x1000
-   │     ˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆ bit position 4096 exceeds maximum of 63 for 64-bit bitmask
+   │     ˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆ bit position 4096 exceeds maximum of 31
  7 │ };

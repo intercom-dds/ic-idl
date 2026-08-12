@@ -27,6 +27,7 @@
 
 #include <doctest/doctest.h>
 #include <ic_cts/member_info.h>
+#include <ic_cts/omg_types.h>
 
 #include "bitmasks.h"
 
@@ -119,4 +120,9 @@ TEST_CASE("bitmask_xor_operation" * doctest::test_suite("bitmasks")) {
 
     bitmask_types::Permissions same = bitmask_types::READ ^ bitmask_types::READ;
     CHECK(same == 0);
+}
+
+TEST_CASE("bitmask_bit_bound" * doctest::test_suite("bitmasks")) {
+    CHECK(omg::types::bit_bound_v<bitmask_types::BitBoundFlagsBits>() == 7);
+    CHECK(std::is_same_v<omg::types::underlying_type_t<bitmask_types::BitBoundFlagsBits>, uint8_t>);
 }

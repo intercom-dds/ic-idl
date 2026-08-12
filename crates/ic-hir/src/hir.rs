@@ -97,6 +97,18 @@ impl PrimitiveTy {
             PrimitiveTy::Float128 => "long double",
         }
     }
+
+    #[must_use]
+    pub fn size(&self) -> usize {
+        match self {
+            PrimitiveTy::Void => 0,
+            PrimitiveTy::Bool | PrimitiveTy::Char | PrimitiveTy::Int8 | PrimitiveTy::UInt8 => 1,
+            PrimitiveTy::WChar | PrimitiveTy::Int16 | PrimitiveTy::UInt16 => 2,
+            PrimitiveTy::Int32 | PrimitiveTy::UInt32 | PrimitiveTy::Float32 => 4,
+            PrimitiveTy::Int64 | PrimitiveTy::UInt64 | PrimitiveTy::Float64 => 8,
+            PrimitiveTy::Float128 => 16,
+        }
+    }
 }
 
 intercom_cts::bitmask! {

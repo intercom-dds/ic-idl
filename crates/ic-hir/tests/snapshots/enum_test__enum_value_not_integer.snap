@@ -2,20 +2,21 @@
 source: crates/ic-hir/tests/enum_test.rs
 expression: errors
 ---
-⨯: enum value must be an integer
-  @ test.idl:3:17
+⨯: string value cannot be assigned to type int32
+  @ test.idl:4:17
 
  2 │ enum TestEnum {
  3 │     A = 'A',
-   │         ˆˆˆ expected integer value
- 4 │     @value("abc")
- 5 │     B
+ 4 │     B = "bbb",
+   │         ˆˆˆˆˆ incompatible types
+ 5 │     @value("ccc")
+ 6 │     C
 ⨯: string value cannot be assigned to type int64
-  @ test.idl:4:20
+  @ test.idl:5:20
 
- 2 │ enum TestEnum {
  3 │     A = 'A',
- 4 │     @value("abc")
+ 4 │     B = "bbb",
+ 5 │     @value("ccc")
    │            ˆˆˆˆˆ incompatible types
- 5 │     B
- 6 │ };
+ 6 │     C
+ 7 │ };

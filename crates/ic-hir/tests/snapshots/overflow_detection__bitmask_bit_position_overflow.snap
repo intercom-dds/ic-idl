@@ -6,7 +6,7 @@ expression: test_overflow(source)
   @ test.idl:5:5
 
  3 │     A = 0,
- 4 │     B = 63,
- 5 │     C = 64
-   │     ˆˆˆˆˆˆ bit position 64 exceeds maximum of 63 for 64-bit bitmask
+ 4 │     B = 31,
+ 5 │     C = 32
+   │     ˆˆˆˆˆˆ bit position 32 exceeds maximum of 31
  6 │ };

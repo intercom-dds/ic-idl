@@ -233,14 +233,42 @@ fn test_enum_value_not_integer() {
     let input = r#"
         enum TestEnum {
             A = 'A',
-            @value("abc")
-            B
+            B = "bbb",
+            @value("ccc")
+            C
         };
     "#;
 
     let errors = common::parse_and_expect_errors(input);
 
     insta::assert_snapshot!(errors);
+}
+
+#[test]
+fn test_enum_counter_overflow() {
+    let input = r"
+        @bit_bound(8)
+        enum Test {
+            A = 127,
+            B
+        };
+    ";
+
+    insta::assert_snapshot!(common::parse_and_expect_errors(input));
+}
+
+#[test]
+fn test_enum_value_out_of_bounds() {
+    let input = r"
+        @bit_bound(8)
+        enum Test {
+            A,
+            B,
+            C = 128
+        };
+    ";
+
+    insta::assert_snapshot!(common::parse_and_expect_errors(input));
 }
 
 #[macro_export]

@@ -1,0 +1,12 @@
+---
+source: crates/ic-hir/tests/enum_test.rs
+expression: "common::parse_and_expect_errors(input)"
+---
+⨯: integer value out of range for 'int8'
+  @ test.idl:6:17
+
+ 4 │     A,
+ 5 │     B,
+ 6 │     C = 128
+   │         ˆˆˆ out of range
+ 7 │ };

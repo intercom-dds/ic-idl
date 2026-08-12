@@ -76,6 +76,8 @@ impl InvalidEnumValue<'_> {
 
             if let DefKind::Const(const_ty) = &field_def.kind {
                 let value = match const_ty.value {
+                    Numeric::Int8(v) => i64::from(v),
+                    Numeric::Int16(v) => i64::from(v),
                     Numeric::Int32(v) => i64::from(v),
                     Numeric::Int64(v) => v,
                     _ => continue,

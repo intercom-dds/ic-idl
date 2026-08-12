@@ -49,8 +49,8 @@ fn test_bitmask_bit_position_overflow() {
     let source = r"
 bitmask Flags {
     A = 0,
-    B = 63,
-    C = 64
+    B = 31,
+    C = 32
 };
 ";
 
@@ -62,7 +62,7 @@ fn test_bitmask_bit_position_max_valid() {
     let source = r"
 bitmask Flags {
     LOW = 0,
-    HIGH = 63
+    HIGH = 31
 };
 ";
 
@@ -73,10 +73,10 @@ bitmask Flags {
 
 #[test]
 fn test_bitmask_auto_increment_overflow() {
-    // Auto-increment starting at 63 should overflow on the next flag
+    // Auto-increment starting at 31 should overflow on the next flag
     let source = r"
 bitmask Flags {
-    LAST_VALID = 63,
+    LAST_VALID = 31,
     OVERFLOW
 };
 ";

@@ -91,7 +91,7 @@ impl<'ctx> ValueItemProcessor<'ctx> {
     }
 
     pub fn process_enum(&mut self, e: &EnumDef) -> DefId {
-        let enum_id = self.create_enum_definition(e);
+        let (enum_ty, enum_id) = self.create_enum_definition(e);
 
         let enum_scope = self.ctx.context.scopes.create_child_scope(
             self.current_scope,
@@ -99,7 +99,7 @@ impl<'ctx> ValueItemProcessor<'ctx> {
             Some(enum_id),
         );
 
-        let fields = self.process_enumerators(e, enum_id, enum_scope);
+        let fields = self.process_enumerators(e, enum_id, enum_scope, enum_ty);
 
         if let DefKind::Enum(ref mut enum_ty) = self.ctx.context.definitions.get_mut(enum_id).kind {
             enum_ty.fields = fields;
@@ -108,20 +108,32 @@ impl<'ctx> ValueItemProcessor<'ctx> {
         enum_id
     }
 
-    fn create_enum_definition(&mut self, e: &EnumDef) -> DefId {
+    fn create_enum_definition(&mut self, e: &EnumDef) -> (PrimitiveTy, DefId) {
+        let annotations = convert_annotations(self.ctx, &e.meta.annotations, self.current_scope);
+        let bit_bound = get_builtin_annotation_value(self.ctx, &annotations, "bit_bound")
+            .map(|n| self.ctx.context.unsigned_value(n) as u16);
+
         let enum_ty = EnumTy {
             fields: Vec::new(),
-            ty: PrimitiveTy::Int32,
+            ty: match bit_bound {
+                Some(1..=8) => PrimitiveTy::Int8,
+                Some(9..=16) => PrimitiveTy::Int16,
+                Some(33..=64) => PrimitiveTy::Int64,
+                _ => PrimitiveTy::Int32,
+            },
         };
 
-        crate::define::define(
-            self.ctx,
-            self.current_scope,
-            &e.name,
-            e.meta.span,
-            &e.meta.annotations,
-            DefKindTag::Enum,
-            |_| DefKind::Enum(enum_ty),
+        (
+            enum_ty.ty,
+            crate::define::define_with_annotations(
+                self.ctx,
+                self.current_scope,
+                &e.name,
+                e.meta.span,
+                annotations,
+                DefKindTag::Enum,
+                |_| DefKind::Enum(enum_ty),
+            ),
         )
     }
 
@@ -130,6 +142,7 @@ impl<'ctx> ValueItemProcessor<'ctx> {
         e: &EnumDef,
         enum_id: DefId,
         enum_scope: ScopeId,
+        ty: PrimitiveTy,
     ) -> Vec<DefId> {
         let mut fields = Vec::new();
         let mut last_value = -1i64;
@@ -143,7 +156,7 @@ impl<'ctx> ValueItemProcessor<'ctx> {
             );
 
             let (is_explicit, value) =
-                self.calculate_enumerator_value(enumerator, value_annotation, &mut last_value);
+                self.calculate_enumerator_value(enumerator, ty, value_annotation, &mut last_value);
             last_value = value;
 
             fields.push(self.create_enumerator(
@@ -152,6 +165,7 @@ impl<'ctx> ValueItemProcessor<'ctx> {
                 value,
                 annotations,
                 enum_scope,
+                ty,
                 is_explicit,
             ));
         }
@@ -163,25 +177,20 @@ impl<'ctx> ValueItemProcessor<'ctx> {
     fn calculate_enumerator_value(
         &mut self,
         enumerator: &ic_syntax::Enumerator,
+        ty: PrimitiveTy,
         value_annotation: Option<AnnArg>,
         last_value: &mut i64,
     ) -> (bool, i64) {
         if let Some(ref expr) = enumerator.value {
             let mut eval: ConstEvaluator<'_> = ConstEvaluator::new(self.ctx, self.current_scope);
-            if let Some(num) = eval.eval_numeric(expr) {
-                match num {
-                    Numeric::Int32(v) => (true, i64::from(v)),
-                    Numeric::Int64(v) => (true, v),
-                    Numeric::UInt32(v) => (true, i64::from(v)),
-                    Numeric::UInt64(v) => (true, v as i64),
-                    _ => {
-                        self.ctx.diagnostics.error(
-                            "enum value must be an integer".to_string(),
-                            Label::new(expr.span).message("expected integer value"),
-                        );
-                        (true, 0)
-                    }
-                }
+            if let Some(num) = eval.eval_for_type(
+                expr,
+                &Ty {
+                    span: expr.span,
+                    kind: TyKind::Primitive(ty),
+                },
+            ) {
+                (true, self.ctx.context.integer_value(&num))
             } else {
                 (true, 0)
             }
@@ -193,6 +202,23 @@ impl<'ctx> ValueItemProcessor<'ctx> {
         }
     }
 
+    fn enum_value_cast<T>(&mut self, value: i64, span: ic_syntax::Span, ty_name: &str) -> T
+    where
+        T: std::convert::TryFrom<i64> + Default,
+    {
+        if let Ok(value) = T::try_from(value) {
+            value
+        } else {
+            self.ctx.diagnostics.error(
+                format!("enum value {value} is outside the range of the underlying type {ty_name}"),
+                Label::new(span).message("value out of range"),
+            );
+
+            Default::default()
+        }
+    }
+
+    #[allow(clippy::too_many_arguments)]
     fn create_enumerator(
         &mut self,
         enumerator: &ic_syntax::Enumerator,
@@ -200,12 +226,26 @@ impl<'ctx> ValueItemProcessor<'ctx> {
         value: i64,
         annotations: Vec<Ann>,
         enum_scope: ScopeId,
+        ty: PrimitiveTy,
         is_explicit: bool,
     ) -> DefId {
         let flags = if is_explicit {
             DefFlags::IS_ENUMERATED
         } else {
             DefFlags::nil()
+        };
+
+        let value = match ty {
+            PrimitiveTy::Int64 => Numeric::Int64(value),
+            PrimitiveTy::Int8 => {
+                Numeric::Int8(self.enum_value_cast::<i8>(value, enumerator.name.span, ty.name()))
+            }
+            PrimitiveTy::Int16 => {
+                Numeric::Int16(self.enum_value_cast::<i16>(value, enumerator.name.span, ty.name()))
+            }
+            _ => {
+                Numeric::Int32(self.enum_value_cast::<i32>(value, enumerator.name.span, ty.name()))
+            }
         };
 
         crate::define::define_scoped_const(
@@ -222,7 +262,7 @@ impl<'ctx> ValueItemProcessor<'ctx> {
                         span: enumerator.name.span,
                         kind: TyKind::Adt(enum_id),
                     },
-                    value: Numeric::Int32(value as i32),
+                    value,
                 })
             },
         )
@@ -235,6 +275,7 @@ impl<'ctx> ValueItemProcessor<'ctx> {
         last_bit: &mut u32,
         bitmask_id: DefId,
         bitmask_scope: ScopeId,
+        bits: u32,
     ) -> Option<DefId> {
         let (annotations, position_annotation) = extract_builtin_annotation(
             self.ctx,
@@ -256,15 +297,16 @@ impl<'ctx> ValueItemProcessor<'ctx> {
 
         *last_bit = bit_pos;
 
-        let Some(value) = 1u64.checked_shl(bit_pos) else {
+        if bit_pos >= bits {
+            let max = bits - 1;
             self.ctx.diagnostics.errors.push(error_span(
                 "bitmask bit position out of range",
-                Label::new(flag.meta.span).message(format!(
-                    "bit position {bit_pos} exceeds maximum of 63 for 64-bit bitmask"
-                )),
+                Label::new(flag.meta.span)
+                    .message(format!("bit position {bit_pos} exceeds maximum of {max}")),
             ));
             return None;
-        };
+        }
+        let value = 1u64 << bit_pos;
 
         let flag_ty = Ty {
             span: flag.name.span,
@@ -295,17 +337,27 @@ impl<'ctx> ValueItemProcessor<'ctx> {
     }
 
     pub fn process_bitmask(&mut self, b: &BitmaskDef) -> DefId {
+        let annotations = convert_annotations(self.ctx, &b.meta.annotations, self.current_scope);
+        let bit_bound = get_builtin_annotation_value(self.ctx, &annotations, "bit_bound")
+            .map(|n| self.ctx.context.unsigned_value(n) as u16);
+
+        let (ty, bits) = match bit_bound {
+            Some(1..=8) => (PrimitiveTy::UInt8, 8),
+            Some(9..=16) => (PrimitiveTy::UInt16, 16),
+            Some(33..=64) => (PrimitiveTy::UInt64, 64),
+            _ => (PrimitiveTy::UInt32, 32),
+        };
         let bitmask_ty = BitmaskTy {
-            ty: PrimitiveTy::UInt32,
+            ty,
             flags: Vec::new(),
         };
 
-        let bitmask_id = crate::define::define(
+        let bitmask_id = crate::define::define_with_annotations(
             self.ctx,
             self.current_scope,
             &b.name,
             b.meta.span,
-            &b.meta.annotations,
+            annotations,
             DefKindTag::Bitmask,
             |_| DefKind::Bitmask(bitmask_ty),
         );
@@ -320,7 +372,7 @@ impl<'ctx> ValueItemProcessor<'ctx> {
         let mut last_bit = 0u32;
         for (i, flag) in b.bits.iter().enumerate() {
             if let Some(flag_id) =
-                self.process_bitmask_flag(flag, i, &mut last_bit, bitmask_id, bitmask_scope)
+                self.process_bitmask_flag(flag, i, &mut last_bit, bitmask_id, bitmask_scope, bits)
             {
                 flag_ids.push(flag_id);
             }
@@ -786,6 +838,26 @@ fn resolve_numeric_value(ctx: &Context, value: &Numeric) -> Option<i64> {
         }
         _ => return None,
     })
+}
+
+fn get_builtin_annotation_value<'a>(
+    ctx: &mut LoweringContext,
+    annotations: &'a [Ann],
+    ident: &str,
+) -> Option<&'a Numeric> {
+    annotations
+        .iter()
+        .find(|ann| {
+            if let Some(def_id) = ann.def_id {
+                let def: &Def = ctx.context.type_of(def_id);
+                if def.flags.contains(DefFlags::IS_BUILTIN) && ident == def.ident.name {
+                    return true;
+                }
+            }
+
+            false
+        })
+        .and_then(|ann| ann.args.first().map(|a| &a.value))
 }
 
 fn extract_builtin_annotation(

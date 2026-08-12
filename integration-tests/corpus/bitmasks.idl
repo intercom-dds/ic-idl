@@ -60,4 +60,11 @@ module bitmask_types {
         AUTO_FIVE,
         AUTO_SIX
     };
+
+    @bit_bound(7)
+    bitmask BitBoundFlags {
+        ONE,
+        TWO,
+        THREE
+    };
 };

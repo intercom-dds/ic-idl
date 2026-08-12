@@ -63,7 +63,7 @@ impl<'a> ic_hir::visit::Visitor<'a> for InvalidInheritance<'a> {
 
     fn visit_struct(&mut self, def: &'a hir::Def, data: &'a hir::StructTy) {
         if let Some(parent) = data.parent {
-            let parent_def = self.hir.context.definitions.get(parent.def_id);
+            let parent_def = self.hir.context.base_def_of(parent.def_id);
             if !matches!(&parent_def.kind, DefKind::Struct(_)) {
                 self.ctx.report(
                     InvalidInheritance::name(),
@@ -75,7 +75,7 @@ impl<'a> ic_hir::visit::Visitor<'a> for InvalidInheritance<'a> {
                         parent_def.ident.name
                     ))
                     .label(
-                        Label::new(def.ident.span)
+                        Label::new(parent.span)
                             .message("structs can only inherit from other structs")
                             .color(Color::Red),
                     ),
@@ -86,7 +86,7 @@ impl<'a> ic_hir::visit::Visitor<'a> for InvalidInheritance<'a> {
 
     fn visit_interface(&mut self, def: &'a hir::Def, data: &'a hir::InterfaceTy) {
         for parent in &data.parents {
-            let parent_def = self.hir.context.definitions.get(parent.def_id);
+            let parent_def = self.hir.context.base_def_of(parent.def_id);
             if !matches!(&parent_def.kind, DefKind::Interface(_)) {
                 self.ctx.report(
                     InvalidInheritance::name(),
@@ -98,7 +98,7 @@ impl<'a> ic_hir::visit::Visitor<'a> for InvalidInheritance<'a> {
                         parent_def.ident.name
                     ))
                     .label(
-                        Label::new(def.ident.span)
+                        Label::new(parent.span)
                             .message("interfaces can only inherit from other interfaces")
                             .color(Color::Red),
                     ),
@@ -109,7 +109,7 @@ impl<'a> ic_hir::visit::Visitor<'a> for InvalidInheritance<'a> {
 
     fn visit_valuetype(&mut self, def: &'a hir::Def, data: &'a hir::ValueTy) {
         if let Some(parent) = data.parent {
-            let parent_def = self.hir.context.definitions.get(parent.def_id);
+            let parent_def = self.hir.context.base_def_of(parent.def_id);
             if !matches!(&parent_def.kind, DefKind::Valuetype(_)) {
                 self.ctx.report(
                     InvalidInheritance::name(),
@@ -121,7 +121,7 @@ impl<'a> ic_hir::visit::Visitor<'a> for InvalidInheritance<'a> {
                         parent_def.ident.name
                     ))
                     .label(
-                        Label::new(def.ident.span)
+                        Label::new(parent.span)
                             .message("valuetypes can only inherit from other valuetypes")
                             .color(Color::Red),
                     ),
@@ -130,7 +130,7 @@ impl<'a> ic_hir::visit::Visitor<'a> for InvalidInheritance<'a> {
         }
 
         if let Some(supports) = data.supports {
-            let supports_def = self.hir.context.definitions.get(supports.def_id);
+            let supports_def = self.hir.context.base_def_of(supports.def_id);
             if !matches!(&supports_def.kind, DefKind::Interface(_)) {
                 self.ctx.report(
                     InvalidInheritance::name(),
@@ -142,7 +142,7 @@ impl<'a> ic_hir::visit::Visitor<'a> for InvalidInheritance<'a> {
                         supports_def.ident.name
                     ))
                     .label(
-                        Label::new(def.ident.span)
+                        Label::new(supports.span)
                             .message("valuetypes can only support interfaces")
                             .color(Color::Red),
                     ),
@@ -153,7 +153,7 @@ impl<'a> ic_hir::visit::Visitor<'a> for InvalidInheritance<'a> {
 
     fn visit_bitset(&mut self, def: &'a hir::Def, data: &'a hir::BitsetTy) {
         if let Some(parent) = data.parent {
-            let parent_def = self.hir.context.definitions.get(parent.def_id);
+            let parent_def = self.hir.context.base_def_of(parent.def_id);
             if !matches!(&parent_def.kind, DefKind::Bitset(_)) {
                 self.ctx.report(
                     InvalidInheritance::name(),
@@ -165,7 +165,7 @@ impl<'a> ic_hir::visit::Visitor<'a> for InvalidInheritance<'a> {
                         parent_def.ident.name
                     ))
                     .label(
-                        Label::new(def.ident.span)
+                        Label::new(parent.span)
                             .message("bitsets can only inherit from other bitsets")
                             .color(Color::Red),
                     ),

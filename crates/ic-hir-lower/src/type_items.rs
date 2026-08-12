@@ -383,34 +383,18 @@ impl<'ctx> TypeItemProcessor<'ctx> {
         let mut resolver = TypeResolver::new(self.ctx, self.current_scope);
         resolver.resolve_path_type(supports_type).and_then(|ty| {
             if let Some(supports_id) = ty.as_adt() {
-                // Accept both a complete interface and a forward-declared
-                // one, validate_parent_inheritance rejects the latter
-                // with a clear "incomplete type" diagnostic.
-                let def = self.ctx.context.definitions.get(supports_id);
-                let is_interface_shaped = matches!(
-                    &def.kind,
-                    DefKind::Interface(_) | DefKind::Decl(Decl::Interface)
-                );
-                if is_interface_shaped {
-                    validate_parent_inheritance(
-                        self.ctx,
-                        supports_id,
-                        "valuetype",
-                        &v.name.name,
-                        "support",
-                        path_span,
-                    )
-                    .map(|value| Spanned {
-                        def_id: value,
-                        span: path_span,
-                    })
-                } else {
-                    self.ctx.diagnostics.error(
-                        "supports must be an interface type".to_string(),
-                        ic_diagnostic::Label::new(path_span).message("expected interface type"),
-                    );
-                    None
-                }
+                validate_parent_inheritance(
+                    self.ctx,
+                    supports_id,
+                    "valuetype",
+                    &v.name.name,
+                    "support",
+                    path_span,
+                )
+                .map(|value| Spanned {
+                    def_id: value,
+                    span: path_span,
+                })
             } else {
                 None
             }

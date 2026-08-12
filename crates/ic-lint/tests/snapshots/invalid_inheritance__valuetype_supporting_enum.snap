@@ -2,11 +2,11 @@
 source: crates/ic-lint/tests/invalid_inheritance.rs
 expression: "common::test_lint_hir(idl)"
 ---
-⨯: supports must be an interface type
+⨯ invalid-inheritance: valuetype `BadValue` cannot support enum `State`
   @ test.idl:3:37
 
  2 │ enum State { ON, OFF };
  3 │ valuetype BadValue supports State {
-   │                             ˆˆˆˆˆ expected interface type
+   │                             ˆˆˆˆˆ valuetypes can only support interfaces
  4 │     public long x;
  5 │ };

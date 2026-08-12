@@ -233,7 +233,7 @@ template <typename T>
 JsonNode json_consume_number(T& data);
 
 template <typename T>
-inline JsonNode json_parse(T& data, int level = 0) {
+inline JsonNode json_parse(T& data, int level = 0, bool strict = false) {
     JsonNode res;
     if (level < 1024) {
         json_consume_ws(data);
@@ -263,6 +263,14 @@ inline JsonNode json_parse(T& data, int level = 0) {
     } else {
         res = json_error(data, "Nesting too deep");
     }
+
+    if (strict) {
+        json_consume_ws(data);
+        if (data.peek() != EOF) {
+            res = json_error(data, "End of file expected");
+        }
+    }
+
     return res;
 }
 
@@ -485,17 +493,17 @@ inline char32_t JsonData::read_unicode() {
     return detail::read_unicode(*this);
 }
 
-inline JsonNode JsonNode::from_data(std::string_view str) {
+inline JsonNode JsonNode::from_data(std::string_view str, bool strict) {
     JsonData data(str.data(), str.length());
-    return detail::json_parse(data);
+    return detail::json_parse(data, 0, strict);
 }
 
-inline JsonNode JsonNode::from_data(JsonData& data) {
-    return detail::json_parse(data);
+inline JsonNode JsonNode::from_data(JsonData& data, bool strict) {
+    return detail::json_parse(data, 0, strict);
 }
 
-inline JsonNode JsonNode::from_data(JsonStream& data) {
-    return detail::json_parse(data);
+inline JsonNode JsonNode::from_data(JsonStream& data, bool strict) {
+    return detail::json_parse(data, 0, strict);
 }
 
 inline bool JsonNode::get_array(std::vector<JsonNode>& value) const {
@@ -1597,7 +1605,7 @@ inline JsonReader::JsonReader(std::string_view a_text, SerializerFlags a_flags)
 
 inline JsonReader::JsonReader(const char* a_text, uint32_t a_length, SerializerFlags a_flags)
     : m_data(new JsonData(a_text, a_length)), m_flags(a_flags) {
-    m_type_stack[0].current = JsonNode::from_data(*m_data);
+    m_type_stack[0].current = JsonNode::from_data(*m_data, (m_flags & SERIALIZER_STRICT) != 0);
     m_type_stack[0].info = NULL_TYPE_INFO;
     if (m_type_stack[0].current.get_type() == JSON_PARSE_ERROR) {
         throw std::runtime_error("Invalid JSON data supplied to JsonReader");
@@ -1606,7 +1614,7 @@ inline JsonReader::JsonReader(const char* a_text, uint32_t a_length, SerializerF
 
 inline JsonReader::JsonReader(std::istream& a_stream, SerializerFlags a_flags)
     : m_stream(new JsonStream(a_stream)), m_flags(a_flags) {
-    m_type_stack[0].current = JsonNode::from_data(*m_stream);
+    m_type_stack[0].current = JsonNode::from_data(*m_stream, (m_flags & SERIALIZER_STRICT) != 0);
     m_type_stack[0].info = NULL_TYPE_INFO;
     if (m_type_stack[0].current.get_type() == JSON_PARSE_ERROR) {
         throw std::runtime_error("Invalid JSON data supplied to JsonReader");

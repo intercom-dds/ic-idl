@@ -177,11 +177,11 @@ class JsonNode {
     JsonNode(JsonType type, const JsonData& data, size_t value_count)
         : m_type(type), m_data(data), m_value_count(value_count) {}
 
-    static JsonNode from_data(std::string_view str);
+    static JsonNode from_data(std::string_view str, bool strict = false);
 
-    static JsonNode from_data(JsonData& data);
+    static JsonNode from_data(JsonData& data, bool strict = false);
 
-    static JsonNode from_data(JsonStream& data);
+    static JsonNode from_data(JsonStream& data, bool strict = false);
 
     template <typename T>
     bool get_string(T& value) const {

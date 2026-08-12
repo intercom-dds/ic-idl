@@ -3,10 +3,10 @@ source: crates/ic-lint/tests/invalid_inheritance.rs
 expression: "common::test_lint_hir(idl)"
 ---
 ⨯ invalid-inheritance: valuetype `BadValue` cannot inherit from enum `Priority`
-  @ test.idl:3:19
+  @ test.idl:3:30
 
  2 │ enum Priority { LOW, MEDIUM, HIGH };
  3 │ valuetype BadValue : Priority {
-   │           ˆˆˆˆˆˆˆˆ valuetypes can only inherit from other valuetypes
+   │                      ˆˆˆˆˆˆˆˆ valuetypes can only inherit from other valuetypes
  4 │     public long x;
  5 │ };

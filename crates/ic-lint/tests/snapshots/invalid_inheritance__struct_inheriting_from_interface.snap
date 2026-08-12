@@ -3,11 +3,11 @@ source: crates/ic-lint/tests/invalid_inheritance.rs
 expression: "common::test_lint_hir(idl)"
 ---
 ⨯ invalid-inheritance: struct `BadStruct` cannot inherit from interface `IBase`
-  @ test.idl:5:16
+  @ test.idl:5:28
 
  3 │     void method();
  4 │ };
  5 │ struct BadStruct : IBase {
-   │        ˆˆˆˆˆˆˆˆˆ structs can only inherit from other structs
+   │                    ˆˆˆˆˆ structs can only inherit from other structs
  6 │     long field;
  7 │ };

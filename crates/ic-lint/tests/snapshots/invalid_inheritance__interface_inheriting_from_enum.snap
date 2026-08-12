@@ -3,10 +3,10 @@ source: crates/ic-lint/tests/invalid_inheritance.rs
 expression: "common::test_lint_hir(idl)"
 ---
 ⨯ invalid-inheritance: interface `BadInterface` cannot inherit from enum `Status`
-  @ test.idl:3:19
+  @ test.idl:3:34
 
  2 │ enum Status { ACTIVE, INACTIVE };
  3 │ interface BadInterface : Status {
-   │           ˆˆˆˆˆˆˆˆˆˆˆˆ interfaces can only inherit from other interfaces
+   │                          ˆˆˆˆˆˆ interfaces can only inherit from other interfaces
  4 │     void method();
  5 │ };

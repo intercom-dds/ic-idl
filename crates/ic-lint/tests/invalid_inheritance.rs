@@ -230,3 +230,125 @@ fn multiple_invalid_inheritance() {
     ";
     insta::assert_snapshot!(common::test_lint_hir(idl));
 }
+
+#[test]
+fn struct_inheriting_from_typedef_to_enum() {
+    let idl = r"
+        enum Color { RED, GREEN, BLUE };
+        typedef Color ColorRef;
+        struct BadStruct : ColorRef {
+            long field;
+        };
+    ";
+    insta::assert_snapshot!(common::test_lint_hir(idl));
+}
+
+#[test]
+fn interface_inheriting_from_typedef_to_struct() {
+    let idl = r"
+        struct BaseStruct {
+            long x;
+        };
+        typedef BaseStruct StructRef;
+        interface BadInterface : StructRef {
+            void method();
+        };
+    ";
+    insta::assert_snapshot!(common::test_lint_hir(idl));
+}
+
+#[test]
+fn valuetype_inheriting_from_typedef_to_struct() {
+    let idl = r"
+        struct BaseStruct {
+            long x;
+        };
+        typedef BaseStruct StructRef;
+        valuetype BadValue : StructRef {
+            public long y;
+        };
+    ";
+    insta::assert_snapshot!(common::test_lint_hir(idl));
+}
+
+#[test]
+fn valuetype_supporting_typedef_to_struct() {
+    let idl = r"
+        struct SomeStruct {
+            long x;
+        };
+        typedef SomeStruct StructRef;
+        valuetype BadValue supports StructRef {
+            public long y;
+        };
+    ";
+    insta::assert_snapshot!(common::test_lint_hir(idl));
+}
+
+#[test]
+fn bitset_inheriting_from_typedef_to_enum() {
+    let idl = r"
+        enum Color { RED, GREEN, BLUE };
+        typedef Color ColorRef;
+        bitset BadBits : ColorRef {
+            bitfield<1> BIT0;
+            bitfield<1> BIT1;
+        };
+    ";
+    insta::assert_snapshot!(common::test_lint_hir(idl));
+}
+
+#[test]
+fn inheritance_through_typedef() {
+    let idl = r"
+        struct BaseStruct {
+            long x;
+        };
+
+        typedef BaseStruct StructRef;
+        struct DerivedStruct : StructRef {
+            long y;
+        };
+
+        interface IBase {
+            void method1();
+        };
+
+        typedef IBase IBaseRef;
+        interface IDerived : IBaseRef {
+            void method2();
+        };
+
+        valuetype BaseValue {
+            public long x;
+        };
+
+        typedef BaseValue ValueRef;
+        valuetype DerivedValue : ValueRef {
+            public long y;
+        };
+
+        valuetype ValueWithSupports supports IBaseRef {
+            public long z;
+        };
+
+        bitset BaseBits {
+            bitfield<1> BIT0;
+            bitfield<1> BIT1;
+        };
+
+        typedef BaseBits BitsRef;
+        typedef BitsRef BitsRefRef;
+        bitset DerivedBits : BitsRefRef {
+            bitfield<1> BIT2;
+            bitfield<1> BIT3;
+        };
+    ";
+
+    let report = common::lint_hir(idl);
+    assert!(
+        report.errors.is_empty(),
+        "Expected no errors, but got: {:?}",
+        report.errors
+    );
+}

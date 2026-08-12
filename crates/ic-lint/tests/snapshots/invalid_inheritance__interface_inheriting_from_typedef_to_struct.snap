@@ -1,0 +1,13 @@
+---
+source: crates/ic-lint/tests/invalid_inheritance.rs
+expression: "common::test_lint_hir(idl)"
+---
+⨯ invalid-inheritance: interface `BadInterface` cannot inherit from struct `BaseStruct`
+  @ test.idl:6:34
+
+ 4 │ };
+ 5 │ typedef BaseStruct StructRef;
+ 6 │ interface BadInterface : StructRef {
+   │                          ˆˆˆˆˆˆˆˆˆ interfaces can only inherit from other interfaces
+ 7 │     void method();
+ 8 │ };

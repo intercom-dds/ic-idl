@@ -3,12 +3,12 @@ source: crates/ic-lint/tests/invalid_inheritance.rs
 expression: "common::test_lint_hir(idl)"
 ---
 ⨯ invalid-inheritance: bitset `BadBits` cannot inherit from struct `BaseStruct`
-  @ test.idl:5:16
+  @ test.idl:5:26
 
  3 │     long x;
  4 │ };
  5 │ bitset BadBits : BaseStruct {
-   │        ˆˆˆˆˆˆˆ bitsets can only inherit from other bitsets
+   │                  ˆˆˆˆˆˆˆˆˆˆ bitsets can only inherit from other bitsets
  6 │     bitfield<1> BIT0;
  7 │     bitfield<1> BIT1;
 

@@ -379,6 +379,11 @@ impl<'a> PyGen<'a> {
         root
     }
 
+    fn valuetype_parent(&self, def: &Def) -> Option<DefId> {
+        def.parent
+            .filter(|&id| matches!(self.hir.context.type_of(id).kind, DefKind::Valuetype(_)))
+    }
+
     fn deferred_aliases(&self, defs: &[DefId]) -> Vec<DefId> {
         let mut next = 0;
         let mut order = BTreeMap::new();
@@ -392,7 +397,8 @@ impl<'a> PyGen<'a> {
         let mut deferred_set = BTreeSet::new();
 
         for (def_id, index) in aliases {
-            let DefKind::Alias(alias) = &self.hir.context.type_of(def_id).kind else {
+            let def = self.hir.context.type_of(def_id);
+            let DefKind::Alias(alias) = &def.kind else {
                 continue;
             };
 
@@ -402,11 +408,12 @@ impl<'a> PyGen<'a> {
             let root = self.path_root(def_id);
             let inside_class = root != def_id;
 
-            let is_deferred = refs.iter().any(|&id| {
-                deferred_set.contains(&id)
-                    || order.get(&id).is_some_and(|&target| target > index)
-                    || (inside_class && self.path_root(id) == root)
-            });
+            let is_deferred = self.valuetype_parent(def).is_some()
+                || refs.iter().any(|&id| {
+                    deferred_set.contains(&id)
+                        || order.get(&id).is_some_and(|&target| target > index)
+                        || (inside_class && self.path_root(id) == root)
+                });
 
             if is_deferred {
                 deferred_set.insert(def_id);
@@ -655,6 +662,17 @@ impl<'a> PyGen<'a> {
     }
 
     fn emit_alias(&self, w: &mut PyWriter, def: &Def, alias: &AliasTy) {
+        if let Some(parent) = self.valuetype_parent(def) {
+            let ty_str = self.py_type_relative_to(w, &alias.ty, Some(parent));
+
+            py!(w, "if _typing_.TYPE_CHECKING:\n");
+            w.indent();
+            py!(w, def, ": _typing_.TypeAlias = \"", ty_str, "\"\n");
+            w.dedent();
+            py!(w, "\n\n");
+            return;
+        }
+
         let ty_str = self.py_type(w, &alias.ty);
         if w.deferred_aliases.contains(&def.id) {
             py!(w, def, ": _typing_.TypeAlias = \"", ty_str, "\"\n");
@@ -677,7 +695,7 @@ impl<'a> PyGen<'a> {
                 continue;
             };
 
-            let path = self.nested_type_path(def_id);
+            let path = self.nested_type_path(def_id, None);
             let ty_str = self.py_type(w, &alias.ty);
             py!(w, path, " = ", ty_str, "\n");
         }
@@ -804,7 +822,12 @@ impl<'a> PyGen<'a> {
         {
             py!(w, "pass\n");
         } else {
-            for &nested_id in &value_ty.definitions {
+            let (nested_aliases, nested_defs): (Vec<DefId>, Vec<DefId>) =
+                value_ty.definitions.iter().copied().partition(|&id| {
+                    matches!(self.hir.context.type_of(id).kind, DefKind::Alias(_))
+                });
+
+            for nested_id in nested_defs.into_iter().chain(nested_aliases) {
                 self.emit_definition(w, nested_id);
             }
 

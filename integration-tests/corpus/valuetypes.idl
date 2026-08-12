@@ -69,4 +69,16 @@ module valuetype_types {
     valuetype FullValue : SimpleValue supports Identifiable {
         public string extra;
     };
+
+    valuetype WithNestedAlias {
+        struct Nested;
+        typedef Nested NestedType;
+        struct Nested {
+            long value;
+        };
+    };
+
+    valuetype WithSelfAlias {
+        typedef WithSelfAlias SelfType;
+    };
 };

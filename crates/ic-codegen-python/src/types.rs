@@ -69,6 +69,15 @@ fn primitive_default(prim: PrimitiveTy) -> &'static str {
 
 impl PyGen<'_> {
     pub fn py_def(&self, w: &PyWriter, def_id: DefId) -> String {
+        self.py_def_relative_to(w, def_id, None)
+    }
+
+    fn py_def_relative_to(
+        &self,
+        w: &PyWriter,
+        def_id: DefId,
+        relative_to: Option<DefId>,
+    ) -> String {
         if let Some(file_import) = w.import_context.file_imports.get(&def_id) {
             return file_import
                 .alias
@@ -77,7 +86,7 @@ impl PyGen<'_> {
                 .clone();
         }
 
-        let type_path = self.nested_type_path(def_id);
+        let type_path = self.nested_type_path(def_id, relative_to);
         if let Some(module_id) = parent_module(self.hir, def_id)
             && let Some(style) = w.import_context.module_imports.get(&module_id)
         {
@@ -88,11 +97,15 @@ impl PyGen<'_> {
         }
     }
 
-    pub(crate) fn nested_type_path(&self, def_id: DefId) -> String {
+    pub(crate) fn nested_type_path(&self, def_id: DefId, relative_to: Option<DefId>) -> String {
         let mut path = vec![];
         let mut current = Some(def_id);
 
         while let Some(id) = current {
+            if relative_to == Some(id) && !path.is_empty() {
+                break;
+            }
+
             let def = self.hir.context.type_of(id);
             match &def.kind {
                 DefKind::Module(_) => break,
@@ -106,17 +119,26 @@ impl PyGen<'_> {
     }
 
     pub fn py_type(&self, w: &PyWriter, ty: &Ty) -> String {
+        self.py_type_relative_to(w, ty, None)
+    }
+
+    pub(crate) fn py_type_relative_to(
+        &self,
+        w: &PyWriter,
+        ty: &Ty,
+        relative_to: Option<DefId>,
+    ) -> String {
         match &ty.kind {
             TyKind::Primitive(prim) => primitive_type(*prim).to_string(),
             TyKind::String { .. } => "str".to_string(),
-            TyKind::Adt(def_id) => self.py_def(w, *def_id),
+            TyKind::Adt(def_id) => self.py_def_relative_to(w, *def_id, relative_to),
             TyKind::Array { ty, .. } | TyKind::Sequence { ty, .. } => {
-                let inner = self.py_type(w, ty);
+                let inner = self.py_type_relative_to(w, ty, relative_to);
                 format!("list[{inner}]")
             }
             TyKind::Map { key, elem, .. } => {
-                let key_ty = self.py_type(w, key);
-                let elem_ty = self.py_type(w, elem);
+                let key_ty = self.py_type_relative_to(w, key, relative_to);
+                let elem_ty = self.py_type_relative_to(w, elem, relative_to);
                 format!("dict[{key_ty}, {elem_ty}]")
             }
             TyKind::Any => "_typing_.Any".to_string(),

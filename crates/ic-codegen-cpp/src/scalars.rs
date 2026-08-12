@@ -41,11 +41,12 @@ impl CppGen<'_> {
 
     pub fn emit_enum(&self, decl_w: &mut Twine, impl_w: &mut Twine, def: &Def, enum_ty: &EnumTy) {
         let enum_name = &def.ident.name;
+        let underlying_type = cpp_primitive(enum_ty.ty);
 
         if self.options.scoped_enums {
-            w!(decl_w, "enum class ", enum_name, " : int32_t {\n");
+            w!(decl_w, "enum class ", enum_name, " : ", underlying_type, " {\n");
         } else {
-            w!(decl_w, "enum ", enum_name, " : int32_t {\n");
+            w!(decl_w, "enum ", enum_name, " : ", underlying_type, " {\n");
         }
 
         for (i, &field_id) in enum_ty.fields.iter().enumerate() {
@@ -71,16 +72,16 @@ impl CppGen<'_> {
         w!(decl_w, "};\n\n");
 
         self.emit_type_traits(impl_w, def);
-        self.emit_enum_serializer(impl_w, def);
+        self.emit_enum_serializer(impl_w, def, enum_ty);
     }
 
-    fn emit_enum_serializer(&self, w: &mut Twine, def: &Def) {
+    fn emit_enum_serializer(&self, w: &mut Twine, def: &Def, enum_ty: &EnumTy) {
         let qualified_name = self.scoped_name(def.id, None);
 
         w!(w, "template <class Archive>\n");
         w!(w, "struct ic_cts::Serializer<Archive, ", qualified_name, "> {\n");
         w!(w, "void operator()(Archive& a_archive, ", qualified_name, "& a_value, const ::ic_cts::TypeInfo* a_info) {\n");
-        w!(w, "auto integer_value = static_cast<int32_t>(a_value);\n");
+        w!(w, "auto integer_value = static_cast<", cpp_primitive(enum_ty.ty), ">(a_value);\n");
         w!(w, "a_archive.primitive_io(integer_value, a_info ? a_info : &::ic_cts::TypeTraits<", qualified_name, ">::type_info);\n");
         w!(w, "a_value = static_cast<", qualified_name, ">(integer_value);\n");
         w!(w, "}\n");

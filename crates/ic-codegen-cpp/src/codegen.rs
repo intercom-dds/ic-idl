@@ -289,6 +289,14 @@ impl<'a> CppGen<'a> {
             .is_some_and(|opt| opt.value)
     }
 
+    pub fn bit_bound(annotations: &[Ann]) -> Option<&Numeric> {
+        annotations
+            .iter()
+            .find(|ann| ann.ident.name == "bit_bound")
+            .and_then(|ann| ann.args.first())
+            .map(|arg| &arg.value)
+    }
+
     pub fn default_value(annotations: &[Ann]) -> Option<&Numeric> {
         annotations
             .iter()
@@ -534,8 +542,27 @@ impl<'a> CppGen<'a> {
         match &def.kind {
             DefKind::Struct(_) => w!(w, "static constexpr bool is_struct = true;\n"),
             DefKind::Union(_) => w!(w, "static constexpr bool is_union = true;\n"),
-            DefKind::Enum(_) => w!(w, "static constexpr bool is_enum = true;\n"),
-            DefKind::Bitmask(_) => w!(w, "static constexpr bool is_bitmask = true;\n"),
+            DefKind::Enum(enum_ty) => {
+                w!(w, "static constexpr bool is_enum = true;\n");
+                if let Some(bit_bound) = Self::bit_bound(&def.annotations) {
+                    w!(w, "using bit_bound = std::integral_constant<uint32_t, ");
+                    self.emit_numeric_value(w, bit_bound, def.id);
+                    w!(w, ">;\n");
+                    w!(w, "using underlying_type = ", cpp_primitive(enum_ty.ty), ";\n");
+                }
+            }
+            DefKind::Bitmask(bitmask) => {
+                w!(w, "static constexpr bool is_bitmask = true;\n");
+                w!(w, "using bit_bound = std::integral_constant<uint32_t, ");
+                self.emit_numeric_value(
+                    w,
+                    Self::bit_bound(&def.annotations)
+                        .unwrap_or(&Numeric::UInt64((bitmask.ty.size() * 8) as u64)),
+                    def.id,
+                );
+                w!(w, ">;\n");
+                w!(w, "using underlying_type = ", cpp_primitive(bitmask.ty), ";\n");
+            }
             DefKind::Valuetype(_) => w!(w, "static constexpr bool is_struct = true;\n"),
             _ => {}
         }

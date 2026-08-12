@@ -224,6 +224,21 @@ fn test_bitmask_value_non_standard() {
     assert!(!field_def_d.flags.contains(DefFlags::IS_ENUMERATED));
 }
 
+#[test]
+fn test_bitmask_out_of_bounds() {
+    let input = r"
+        @bit_bound(8)
+        bitmask TestBitMask {
+            A = 7,
+            B = 8,
+            @value(9)
+            C
+        };
+    ";
+
+    insta::assert_snapshot!(common::parse_and_expect_errors(input));
+}
+
 #[macro_export]
 macro_rules! expect_matches {
     ($expr:expr, $pattern:path) => {

@@ -43,6 +43,19 @@ pub fn define(
     build_kind: impl FnOnce(DefId) -> DefKind,
 ) -> DefId {
     let annotations = convert_annotations(ctx, ast_annotations, scope);
+
+    define_with_annotations(ctx, scope, ident, span, annotations, kind_tag, build_kind)
+}
+
+pub fn define_with_annotations(
+    ctx: &mut LoweringContext,
+    scope: ScopeId,
+    ident: &Ident,
+    span: Span,
+    annotations: Vec<Ann>,
+    kind_tag: DefKindTag,
+    build_kind: impl FnOnce(DefId) -> DefKind,
+) -> DefId {
     let def_id = ctx.context.definitions.alloc_with_id(|id| Def {
         id,
         ident: ident.clone(),

@@ -1,0 +1,12 @@
+---
+source: crates/ic-hir/tests/enum_test.rs
+expression: "common::parse_and_expect_errors(input)"
+---
+⨯: enum value 128 is outside the range of the underlying type int8
+  @ test.idl:5:13
+
+ 3 │ enum Test {
+ 4 │     A = 127,
+ 5 │     B
+   │     ˆ value out of range
+ 6 │ };

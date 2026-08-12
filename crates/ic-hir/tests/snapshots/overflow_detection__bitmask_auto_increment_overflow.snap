@@ -6,7 +6,7 @@ expression: test_overflow(source)
   @ test.idl:4:5
 
  2 │ bitmask Flags {
- 3 │     LAST_VALID = 63,
+ 3 │     LAST_VALID = 31,
  4 │     OVERFLOW
-   │     ˆˆˆˆˆˆˆˆ bit position 64 exceeds maximum of 63 for 64-bit bitmask
+   │     ˆˆˆˆˆˆˆˆ bit position 32 exceeds maximum of 31
  5 │ };

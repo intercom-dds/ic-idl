@@ -1,0 +1,21 @@
+---
+source: crates/ic-hir/tests/bitmask_test.rs
+expression: "common::parse_and_expect_errors(input)"
+---
+⨯: bitmask bit position out of range
+  @ test.idl:5:13
+
+ 3 │ bitmask TestBitMask {
+ 4 │     A = 7,
+ 5 │     B = 8,
+   │     ˆˆˆˆˆ bit position 8 exceeds maximum of 7
+ 6 │     @value(9)
+ 7 │     C
+⨯: bitmask bit position out of range
+  @ test.idl:7:13
+
+ 5 │     B = 8,
+ 6 │     @value(9)
+ 7 │     C
+   │     ˆ bit position 9 exceeds maximum of 7
+ 8 │ };

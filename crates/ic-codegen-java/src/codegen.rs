@@ -305,6 +305,10 @@ impl<'a> JavaGen<'a> {
         &self.hir.context.type_of(def_id).ident.name
     }
 
+    fn java_base(&self, def_id: DefId) -> &str {
+        self.java_name(self.hir.context.base_id_of(def_id))
+    }
+
     fn file_path(&self, def: &Def, suffix: impl Into<Option<&'a str>>) -> PathBuf {
         let mut path = PathBuf::new();
 
@@ -633,7 +637,7 @@ impl<'a> JavaGen<'a> {
             w!(w, "public class ", def);
         }
         if let Some(parent) = struct_ty.parent {
-            let parent = self.java_name(parent.def_id);
+            let parent = self.java_base(parent.def_id);
             w!(w, " extends ", parent);
         }
         w!(w, " implements java.io.Serializable {\n");
@@ -644,7 +648,9 @@ impl<'a> JavaGen<'a> {
         self.emit_copy_ctor(
             w,
             def,
-            struct_ty.parent.map(|p| p.def_id),
+            struct_ty
+                .parent
+                .map(|p| self.hir.context.base_id_of(p.def_id)),
             &struct_ty.members,
         );
 
@@ -1521,7 +1527,7 @@ impl<'a> JavaGen<'a> {
         let parents = interface_ty
             .parents
             .iter()
-            .map(|v| self.java_name(v.def_id))
+            .map(|v| self.java_base(v.def_id))
             .collect::<Vec<_>>()
             .join(", ");
 
@@ -1559,13 +1565,13 @@ impl<'a> JavaGen<'a> {
         w!(w, "public abstract class ", def, "Abstract");
 
         if let Some(extends) = value_ty.parent {
-            let name = self.java_name(extends.def_id);
+            let name = self.java_base(extends.def_id);
             w!(w, " extends ", name);
         }
 
         w!(w, " implements Cloneable");
         if let Some(supports) = value_ty.supports {
-            let name = self.java_name(supports.def_id);
+            let name = self.java_base(supports.def_id);
             w!(w, ", ", name);
         }
         w!(w, " {\n");
@@ -1635,7 +1641,9 @@ impl<'a> JavaGen<'a> {
         w!(w, "return (", def, ") super.clone();\n");
         w!(w, "}\n\n");
 
-        for proto in &value_ty.prototypes {
+        let supported = self.hir.context.supported_prototypes(value_ty);
+
+        for proto in value_ty.prototypes.iter().chain(supported) {
             w!(w, "@Override\n");
             self.emit_proto(w, def, proto, false);
             w!(w, "\n{\n");

@@ -108,4 +108,41 @@ module forward_declarations {
         long value;
         sequence<BinaryNode, 2> children;
     };
+
+    struct FwdBase;
+    typedef FwdBase FwdBaseRef;
+
+    struct FwdBase {
+        long base_value;
+    };
+
+    struct DerivedViaTypedef : FwdBaseRef {
+        long derived_value;
+    };
+
+    interface FwdFace;
+    typedef FwdFace FwdFaceRef;
+
+    interface FwdFace {
+        void op();
+    };
+
+    interface DerivedFaceViaTypedef : FwdFaceRef {
+        void extra();
+    };
+
+    valuetype FwdValue;
+    typedef FwdValue FwdValueRef;
+
+    valuetype FwdValue {
+        public long x;
+    };
+
+    valuetype DerivedValueViaTypedef : FwdValueRef {
+        public long y;
+    };
+
+    valuetype SupportsViaTypedef supports FwdFaceRef {
+        public long z;
+    };
 };

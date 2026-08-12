@@ -25,7 +25,7 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use std::collections::HashSet;
+use std::collections::{HashSet, VecDeque};
 
 use ic_alloc::arena::Arena;
 
@@ -105,6 +105,36 @@ impl Context {
     /// `Context`s whose arenas have been mixed up.
     pub fn type_of(&self, id: DefId) -> &Def {
         self.definitions.get(id)
+    }
+
+    /// Iterates over the operations a valuetype has to implement on behalf of
+    /// the interface it supports, including those inherited by that interface.
+    pub fn supported_prototypes<'a>(
+        &'a self,
+        value_ty: &hir::ValueTy,
+    ) -> impl Iterator<Item = &'a hir::ProtoTy> + 'a {
+        value_ty
+            .supports
+            .into_iter()
+            .flat_map(move |s| self.hierarchy_of(s.def_id))
+            .filter_map(|def| match &def.kind {
+                DefKind::Interface(ty) => Some(ty.prototypes.iter()),
+                _ => None,
+            })
+            .flatten()
+    }
+
+    /// Iterates over the given definition and everything it inherits from,
+    /// nearest first.
+    ///
+    /// Typedefs are resolved at every step, and each definition is yielded
+    /// once even when reached through several paths.
+    pub fn hierarchy_of(&self, id: DefId) -> Hierarchy<'_> {
+        Hierarchy {
+            ctx: self,
+            pending: VecDeque::from([self.base_id_of(id)]),
+            seen: HashSet::new(),
+        }
     }
 
     /// Similar to `type_of`, but will resolve the underlying type.
@@ -338,6 +368,20 @@ impl Context {
         self.deps_where(def_id, |_| true)
     }
 
+    /// Returns the `DefId`s referenced by a definition in type positions.
+    ///
+    /// Unlike [`Context::deps`], references that name a definition directly,
+    /// such as parent types, supported interfaces and raises clauses, are
+    /// excluded.
+    #[must_use]
+    pub fn ty_deps(&self, def_id: DefId) -> HashSet<DefId> {
+        DepCollector {
+            ctx: self,
+            direct_refs: false,
+        }
+        .deps_where(def_id, |_| true)
+    }
+
     /// Returns all `DefId`s referenced by a definition, filtered by a predicate.
     ///
     /// Only includes references where `include(def)` returns true. This allows
@@ -347,12 +391,17 @@ impl Context {
     where
         F: Fn(&Def) -> bool,
     {
-        DepCollector { ctx: self }.deps_where(def_id, include)
+        DepCollector {
+            ctx: self,
+            direct_refs: true,
+        }
+        .deps_where(def_id, include)
     }
 }
 
 struct DepCollector<'a> {
     ctx: &'a Context,
+    direct_refs: bool,
 }
 
 impl DepCollector<'_> {
@@ -450,6 +499,10 @@ impl DepCollector<'_> {
         I: IntoIterator<Item = &'a crate::hir::Spanned<DefId>>,
         F: Fn(&Def) -> bool,
     {
+        if !self.direct_refs {
+            return;
+        }
+
         for def_id in refs {
             if include(self.ctx.type_of(def_id.def_id)) {
                 deps.insert(def_id.def_id);
@@ -517,5 +570,50 @@ impl DepCollector<'_> {
             }
             _ => {}
         }
+    }
+}
+
+/// Iterator over a definition and everything it inherits from.
+///
+/// Created by [`Context::hierarchy_of`].
+#[must_use]
+pub struct Hierarchy<'a> {
+    ctx: &'a Context,
+    pending: VecDeque<DefId>,
+    seen: HashSet<DefId>,
+}
+
+impl<'a> Iterator for Hierarchy<'a> {
+    type Item = &'a Def;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let ctx = self.ctx;
+
+        while let Some(id) = self.pending.pop_front() {
+            if !self.seen.insert(id) {
+                continue;
+            }
+
+            let def = ctx.type_of(id);
+            match &def.kind {
+                DefKind::Struct(ty) => self
+                    .pending
+                    .extend(ty.parent.map(|p| ctx.base_id_of(p.def_id))),
+                DefKind::Valuetype(ty) => self
+                    .pending
+                    .extend(ty.parent.map(|p| ctx.base_id_of(p.def_id))),
+                DefKind::Bitset(ty) => self
+                    .pending
+                    .extend(ty.parent.map(|p| ctx.base_id_of(p.def_id))),
+                DefKind::Interface(ty) => self
+                    .pending
+                    .extend(ty.parents.iter().map(|p| ctx.base_id_of(p.def_id))),
+                _ => {}
+            }
+
+            return Some(def);
+        }
+
+        None
     }
 }

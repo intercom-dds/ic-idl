@@ -244,6 +244,13 @@ impl<'a> CSharpGen<'a> {
         path
     }
 
+    fn base_scoped_name(&self, target_def_id: DefId, relative_to_def_id: DefId) -> String {
+        self.scoped_name(
+            self.hir.context.base_id_of(target_def_id),
+            relative_to_def_id,
+        )
+    }
+
     fn scoped_name(&self, target_def_id: DefId, relative_to_def_id: DefId) -> String {
         let target_def = self.hir.context.type_of(target_def_id);
         let type_name = &target_def.ident.name;
@@ -433,17 +440,14 @@ impl<'a> CSharpGen<'a> {
 
     fn collect_members(&self, struct_def_id: DefId) -> Vec<(String, Ty)> {
         let mut members = Vec::new();
-        let mut current_id = Some(struct_def_id);
 
-        while let Some(id) = current_id {
-            let def = self.hir.context.type_of(id);
-            if let DefKind::Struct(struct_ty) = &def.kind {
-                for member in struct_ty.members.iter().rev() {
-                    members.push((member.ident.name.clone(), member.ty.clone()));
-                }
-                current_id = struct_ty.parent.map(|p| p.def_id);
-            } else {
+        for def in self.hir.context.hierarchy_of(struct_def_id) {
+            let DefKind::Struct(struct_ty) = &def.kind else {
                 break;
+            };
+
+            for member in struct_ty.members.iter().rev() {
+                members.push((member.ident.name.clone(), member.ty.clone()));
             }
         }
 
@@ -456,7 +460,7 @@ impl<'a> CSharpGen<'a> {
 
         w!(w, "public partial class ", def.ident.name);
         if let Some(parent) = struct_ty.parent {
-            let parent_name = self.scoped_name(parent.def_id, def.id);
+            let parent_name = self.base_scoped_name(parent.def_id, def.id);
             w!(w, " : ", parent_name);
         } else {
             w!(w, " : IComparable<", def, ">, IEquatable<", def, ">");
@@ -1013,7 +1017,7 @@ impl<'a> CSharpGen<'a> {
                 if i > 0 {
                     w!(w, ", ");
                 }
-                let parent_name = self.scoped_name(parent.def_id, def.id);
+                let parent_name = self.base_scoped_name(parent.def_id, def.id);
                 w!(w, "I", parent_name);
             }
         }
@@ -1077,15 +1081,15 @@ impl<'a> CSharpGen<'a> {
 
         // Handle inheritance
         if let Some(parent) = valuetype.parent {
-            let parent_name = self.scoped_name(parent.def_id, def.id);
+            let parent_name = self.base_scoped_name(parent.def_id, def.id);
             w!(w, " : ", parent_name);
 
             if let Some(supports) = valuetype.supports {
-                let supports_name = self.scoped_name(supports.def_id, def.id);
+                let supports_name = self.base_scoped_name(supports.def_id, def.id);
                 w!(w, ", I", supports_name);
             }
         } else if let Some(supports) = valuetype.supports {
-            let supports_name = self.scoped_name(supports.def_id, def.id);
+            let supports_name = self.base_scoped_name(supports.def_id, def.id);
             w!(w, " : I", supports_name);
         }
 
@@ -1110,7 +1114,9 @@ impl<'a> CSharpGen<'a> {
         }
 
         // Emit abstract methods
-        for proto in &valuetype.prototypes {
+        let supported = self.hir.context.supported_prototypes(valuetype);
+
+        for proto in valuetype.prototypes.iter().chain(supported) {
             w!(w, "\n");
             w!(w, "public abstract ");
             let ret_ty = self.csharp_type(&proto.ty, def.id);

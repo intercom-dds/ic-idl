@@ -40,12 +40,13 @@ impl CppGen<'_> {
     ) {
         let valuetype_name = &def.ident.name;
 
-        w!(decl_w, "struct ", valuetype_name);
+        w!(decl_w, "class ", valuetype_name);
         if let Some(parent) = valuetype_ty.parent {
             w!(decl_w, " : public ", self.scoped_name(parent.def_id, def.id));
         }
 
         w!(decl_w, " {\n");
+        w!(decl_w, "public:\n");
 
         self.emit_valuetype_constructors(decl_w, def, valuetype_ty);
         Self::emit_valuetype_comparison_operators(decl_w, valuetype_name);

@@ -44,7 +44,12 @@ use ic_hir::{Context, ResolvedGraph};
 use ic_hir_analysis::annotation::is_external;
 use tracing::{debug, debug_span};
 
-fn analyze_def(def_id: DefId, context: &mut Context, seen: &mut HashSet<DefId>) {
+fn analyze_def(
+    def_id: DefId,
+    context: &mut Context,
+    seen: &mut HashSet<DefId>,
+    changed: &mut bool,
+) {
     if !seen.insert(def_id) {
         return;
     }
@@ -55,13 +60,6 @@ fn analyze_def(def_id: DefId, context: &mut Context, seen: &mut HashSet<DefId>) 
         // Skip built-in types
         if def.flags.contains(DefFlags::IS_BUILTIN) {
             return;
-        }
-
-        def.flags.set(DefFlags::IS_TRIVIAL);
-        def.flags.set(DefFlags::TOTAL_ORDER);
-
-        if def.flags.contains(DefFlags::IS_CIRCULAR) {
-            def.flags.unset(DefFlags::IS_TRIVIAL);
         }
     }
 
@@ -104,21 +102,21 @@ fn analyze_def(def_id: DefId, context: &mut Context, seen: &mut HashSet<DefId>) 
 
     // Indirect members imply heap allocation, so the type is not trivial
     if has_indirect {
-        context
-            .definitions
-            .get_mut(def_id)
-            .flags
-            .unset(DefFlags::IS_TRIVIAL);
+        let current_def = context.definitions.get_mut(def_id);
+        if current_def.flags.contains(DefFlags::IS_TRIVIAL) {
+            current_def.flags.unset(DefFlags::IS_TRIVIAL);
+            *changed = true;
+        }
     }
 
     // Analyze parent types and propagate flags
     for parent_id in parents {
-        check_def(parent_id, def_id, context, seen);
+        check_def(parent_id, def_id, context, seen, changed);
     }
 
     // Analyze member types and propagate flags
     for ty in types {
-        analyze_type(&ty, def_id, context, seen);
+        analyze_type(&ty, def_id, context, seen, changed);
     }
 }
 
@@ -127,68 +125,77 @@ fn check_def(
     parent_def_id: DefId,
     context: &mut Context,
     seen: &mut HashSet<DefId>,
+    changed: &mut bool,
 ) {
-    analyze_def(ref_def_id, context, seen);
+    analyze_def(ref_def_id, context, seen, changed);
 
     let ref_def = context.definitions.get(ref_def_id);
     let ref_is_trivial = ref_def.flags.contains(DefFlags::IS_TRIVIAL);
     let ref_total_order = ref_def.flags.contains(DefFlags::TOTAL_ORDER);
     let parent_def = context.definitions.get_mut(parent_def_id);
 
-    if !ref_is_trivial {
+    if !ref_is_trivial && parent_def.flags.contains(DefFlags::IS_TRIVIAL) {
         parent_def.flags.unset(DefFlags::IS_TRIVIAL);
+        *changed = true;
     }
-    if !ref_total_order {
+    if !ref_total_order && parent_def.flags.contains(DefFlags::TOTAL_ORDER) {
         parent_def.flags.unset(DefFlags::TOTAL_ORDER);
+        *changed = true;
     }
 }
 
-fn analyze_type(ty: &Ty, parent_def_id: DefId, context: &mut Context, seen: &mut HashSet<DefId>) {
+fn analyze_type(
+    ty: &Ty,
+    parent_def_id: DefId,
+    context: &mut Context,
+    seen: &mut HashSet<DefId>,
+    changed: &mut bool,
+) {
     match &ty.kind {
         TyKind::Primitive(prim) => match prim {
             PrimitiveTy::Float32 | PrimitiveTy::Float64 | PrimitiveTy::Float128 => {
-                context
-                    .definitions
-                    .get_mut(parent_def_id)
-                    .flags
-                    .unset(DefFlags::TOTAL_ORDER);
+                let def = context.definitions.get_mut(parent_def_id);
+                if def.flags.contains(DefFlags::TOTAL_ORDER) {
+                    def.flags.unset(DefFlags::TOTAL_ORDER);
+                    *changed = true;
+                }
             }
             _ => {}
         },
 
         TyKind::Any | TyKind::String { .. } => {
-            context
-                .definitions
-                .get_mut(parent_def_id)
-                .flags
-                .unset(DefFlags::IS_TRIVIAL);
+            let def = context.definitions.get_mut(parent_def_id);
+            if def.flags.contains(DefFlags::IS_TRIVIAL) {
+                def.flags.unset(DefFlags::IS_TRIVIAL);
+                *changed = true;
+            }
         }
 
         TyKind::Sequence { ty: inner, .. } => {
-            context
-                .definitions
-                .get_mut(parent_def_id)
-                .flags
-                .unset(DefFlags::IS_TRIVIAL);
-            analyze_type(inner, parent_def_id, context, seen);
+            let def = context.definitions.get_mut(parent_def_id);
+            if def.flags.contains(DefFlags::IS_TRIVIAL) {
+                def.flags.unset(DefFlags::IS_TRIVIAL);
+                *changed = true;
+            }
+            analyze_type(inner, parent_def_id, context, seen, changed);
         }
 
         TyKind::Array { ty: inner, .. } => {
-            analyze_type(inner, parent_def_id, context, seen);
+            analyze_type(inner, parent_def_id, context, seen, changed);
         }
 
         TyKind::Map { key, elem, .. } => {
-            context
-                .definitions
-                .get_mut(parent_def_id)
-                .flags
-                .unset(DefFlags::IS_TRIVIAL);
-            analyze_type(key, parent_def_id, context, seen);
-            analyze_type(elem, parent_def_id, context, seen);
+            let def = context.definitions.get_mut(parent_def_id);
+            if def.flags.contains(DefFlags::IS_TRIVIAL) {
+                def.flags.unset(DefFlags::IS_TRIVIAL);
+                *changed = true;
+            }
+            analyze_type(key, parent_def_id, context, seen, changed);
+            analyze_type(elem, parent_def_id, context, seen, changed);
         }
 
         TyKind::Adt(ref_def_id) => {
-            check_def(*ref_def_id, parent_def_id, context, seen);
+            check_def(*ref_def_id, parent_def_id, context, seen, changed);
         }
 
         TyKind::Fixed | TyKind::Null => {}
@@ -202,10 +209,33 @@ pub fn transform(mut hir: ResolvedGraph) -> ResolvedGraph {
     debug!("applying transform");
 
     let def_ids: Vec<DefId> = hir.context.definitions.iter().map(|(id, _)| id).collect();
-    let mut seen = HashSet::new();
 
-    for def_id in def_ids {
-        analyze_def(def_id, &mut hir.context, &mut seen);
+    // Set flags opimistically once so we don't overwrite computed `false` states during iteration.
+    for def_id in &def_ids {
+        let def = hir.context.definitions.get_mut(*def_id);
+        if !def.flags.contains(DefFlags::IS_BUILTIN) {
+            def.flags.set(DefFlags::IS_TRIVIAL);
+            def.flags.set(DefFlags::TOTAL_ORDER);
+
+            if def.flags.contains(DefFlags::IS_CIRCULAR) {
+                def.flags.unset(DefFlags::IS_TRIVIAL);
+            }
+        }
     }
+
+    // Iterate over types as long as flags change
+    let mut changed = true;
+    while changed {
+        changed = false;
+        // The seen set is reset for each full iteration over the graph.
+        // This allows cyclic dependencies to be re-evaluated against the newest flag states
+        // while still preventing infinite recursion within a single depth-first chain.
+        let mut seen = HashSet::new();
+
+        for def_id in &def_ids {
+            analyze_def(*def_id, &mut hir.context, &mut seen, &mut changed);
+        }
+    }
+
     hir
 }

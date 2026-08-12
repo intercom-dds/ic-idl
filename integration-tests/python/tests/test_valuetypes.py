@@ -123,3 +123,19 @@ def test_valuetype_derived_field_types(
     vt = generated_modules["valuetype_types"]
     annotations = vt.DerivedValue.__annotations__
     assert annotations["description"] == "str"
+
+
+def test_valuetype_nested_alias_is_not_a_field(
+    generated_modules: dict[str, ModuleType],
+) -> None:
+    vt = generated_modules["valuetype_types"]
+    assert vt.WithNestedAlias.NestedType is vt.WithNestedAlias.Nested
+    assert "NestedType" not in vt.WithNestedAlias.__dataclass_fields__
+    assert vt.WithNestedAlias() == vt.WithNestedAlias()
+
+
+def test_valuetype_self_alias(generated_modules: dict[str, ModuleType]) -> None:
+    vt = generated_modules["valuetype_types"]
+    assert vt.WithSelfAlias.SelfType is vt.WithSelfAlias
+    assert "SelfType" not in vt.WithSelfAlias.__dataclass_fields__
+    assert vt.WithSelfAlias() == vt.WithSelfAlias()

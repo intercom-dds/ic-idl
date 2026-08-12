@@ -25,7 +25,7 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::{BTreeMap, BTreeSet, HashSet};
 
 use ic_hir::hir::{DefFlags, DefId, DefKind, PrimitiveTy, Ty, TyKind};
 use ic_hir::visit::Visitor;
@@ -266,14 +266,45 @@ struct ImportCollectorCtx<'a> {
     types_filename: &'a str,
 }
 
+fn resolve_deferred_aliases(
+    hir: &ResolvedGraph,
+    def_id: DefId,
+    deferred: &BTreeSet<DefId>,
+    dep_ids: &mut HashSet<DefId>,
+) {
+    let aliases: Vec<DefId> = dep_ids
+        .iter()
+        .filter(|id| deferred.contains(id))
+        .copied()
+        .collect();
+
+    if aliases.is_empty() {
+        return;
+    }
+
+    let ty_deps = hir.context.ty_deps(def_id);
+
+    for alias_id in aliases {
+        dep_ids.insert(hir.context.base_id_of(alias_id));
+
+        if !ty_deps.contains(&alias_id) {
+            dep_ids.remove(&alias_id);
+        }
+    }
+}
+
 fn collect_module_imports(
     ctx: &ImportCollectorCtx,
     def_id: DefId,
+    deferred: &BTreeSet<DefId>,
     module_path_fn: &impl Fn(DefId) -> Vec<String>,
     source_filename_fn: &impl Fn(DefId) -> Option<String>,
     context: &mut ImportContext,
 ) {
-    for dep_id in ctx.hir.context.deps(def_id) {
+    let mut dep_ids = ctx.hir.context.deps(def_id);
+    resolve_deferred_aliases(ctx.hir, def_id, deferred, &mut dep_ids);
+
+    for dep_id in dep_ids {
         if !is_exportable(ctx.hir, dep_id) {
             continue;
         }
@@ -407,6 +438,7 @@ pub fn collect_imports(
     defs: &[DefId],
     current_module: &[String],
     types_filename: &str,
+    deferred: &BTreeSet<DefId>,
     module_path_fn: impl Fn(DefId) -> Vec<String>,
     source_filename_fn: impl Fn(DefId) -> Option<String>,
 ) -> Imports {
@@ -424,6 +456,7 @@ pub fn collect_imports(
         collect_module_imports(
             &ctx,
             def_id,
+            deferred,
             &module_path_fn,
             &source_filename_fn,
             &mut imports.context,

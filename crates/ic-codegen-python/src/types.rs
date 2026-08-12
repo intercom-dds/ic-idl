@@ -72,6 +72,12 @@ impl PyGen<'_> {
         self.py_def_relative_to(w, def_id, None)
     }
 
+    pub(crate) fn is_imported(&self, w: &PyWriter, def_id: DefId) -> bool {
+        w.import_context.file_imports.contains_key(&def_id)
+            || parent_module(self.hir, def_id)
+                .is_some_and(|module_id| w.import_context.module_imports.contains_key(&module_id))
+    }
+
     fn py_def_relative_to(
         &self,
         w: &PyWriter,

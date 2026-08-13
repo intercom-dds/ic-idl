@@ -35,6 +35,19 @@ use tracing::{debug, debug_span};
 /// Function type for preprocessing names before case conversion
 pub type NamePreprocessor = fn(&str) -> String;
 
+/// The kind of structural type holding the member being renamed.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum MemberKind {
+    /// Member of Struct type
+    Struct,
+
+    /// Valuetype
+    Valuetype,
+
+    /// Exception type
+    Exception,
+}
+
 /// The kind of identifier being renamed.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum IdentifierKind {
@@ -69,7 +82,7 @@ pub enum IdentifierKind {
     Annotation,
 
     /// Member of struct, exception, or valuetype
-    Member,
+    Member(MemberKind),
 
     /// Union variant
     Variant,
@@ -635,7 +648,7 @@ fn rename_members(target: &Target, mut def: hir::Def) -> hir::Def {
             rename_items(
                 &mut s.members,
                 target.convention.member,
-                IdentifierKind::Member,
+                IdentifierKind::Member(MemberKind::Struct),
                 |m| &mut m.ident,
                 target,
             );
@@ -644,7 +657,7 @@ fn rename_members(target: &Target, mut def: hir::Def) -> hir::Def {
             rename_items(
                 &mut e.members,
                 target.convention.member,
-                IdentifierKind::Member,
+                IdentifierKind::Member(MemberKind::Exception),
                 |m| &mut m.ident,
                 target,
             );
@@ -706,7 +719,7 @@ fn rename_members(target: &Target, mut def: hir::Def) -> hir::Def {
             rename_items_with_occupied(
                 &mut v.members,
                 target.convention.member,
-                IdentifierKind::Member,
+                IdentifierKind::Member(MemberKind::Valuetype),
                 |m| &mut m.ident,
                 &mut occupied,
                 target,

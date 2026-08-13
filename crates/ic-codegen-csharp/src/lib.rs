@@ -96,7 +96,7 @@ fn escape_csharp(ctx: rename::RenameContext) -> Option<String> {
     }
 
     match ctx.kind {
-        rename::IdentifierKind::Member
+        rename::IdentifierKind::Member(_)
         | rename::IdentifierKind::Variant
         | rename::IdentifierKind::Operation
         | rename::IdentifierKind::Attribute

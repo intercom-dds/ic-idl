@@ -49,10 +49,11 @@ TEST_CASE("exception_instantiation" * doctest::test_suite("exceptions")) {
 
 TEST_CASE("exception_raise_and_catch" * doctest::test_suite("exceptions")) {
     try {
-        throw exception_types::SimpleError(500, "Internal error");
+        throw exception_types::SimpleError(500, "Internal error", "Internal error");
     } catch (const exception_types::SimpleError& e) {
         CHECK(e.error_code == 500);
         CHECK(e.message == "Internal error");
+        CHECK(e.what() == std::string("Internal error"));
     } catch (...) {
         FAIL("Exception not caught properly");
     }
@@ -75,12 +76,22 @@ TEST_CASE("exception_catch_as_base" * doctest::test_suite("exceptions")) {
 
 TEST_CASE("empty_exception" * doctest::test_suite("exceptions")) {
     exception_types::EmptyError empty;
+    exception_types::EmptyError empty2("empty_error");
     CHECK((std::is_base_of_v<std::exception, exception_types::EmptyError>));
 
     try {
         throw empty;
-    } catch (const exception_types::EmptyError&) {
+    } catch (const exception_types::EmptyError& e) {
         CHECK(true);
+        CHECK(e.what() == std::string("EmptyError"));
+    } catch (...) {
+        FAIL("Exception not caught properly");
+    }
+
+    try {
+        throw empty2;
+    } catch (const exception_types::EmptyError& e) {
+        CHECK(e.what() == std::string("empty_error"));
     } catch (...) {
         FAIL("Exception not caught properly");
     }

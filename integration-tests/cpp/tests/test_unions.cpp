@@ -223,3 +223,13 @@ TEST_CASE("union_implicit_enum_discriminator_default" * doctest::test_suite("uni
     u._default();
     REQUIRE(u._d() == union_types::ValueKind::STRING_KIND);
 }
+
+TEST_CASE("union_default_case_external_variant" * doctest::test_suite("unions")) {
+    union_types::DefaultCaseExternalVariant u;
+    REQUIRE(u._d() == 0);
+
+    auto ptr = std::make_unique<bool>(true);
+    u.other(std::move(ptr), 10);
+    REQUIRE(u._d() == 10);
+    REQUIRE(*u.other().get() == true);
+}

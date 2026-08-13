@@ -91,4 +91,13 @@ module union_types {
     case FLOAT_KIND:
         double float_val;
     };
+
+    union DefaultCaseExternalVariant switch (long) {
+    case 1:
+    case 0:
+        long value;
+    default:
+        @external
+        boolean other;
+    };
 };

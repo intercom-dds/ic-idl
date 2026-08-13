@@ -98,11 +98,40 @@ TEST_CASE("nested_struct" * doctest::test_suite("annotations")) {
 }
 
 TEST_CASE("shared_refs_struct" * doctest::test_suite("annotations")) {
-    annotation_types::NestedStruct nested(5, 10);
-    annotation_types::SharedRefs sr("shared", nested);
-    CHECK(sr.shared_string == "shared");
-    CHECK(sr.shared_struct.x == 5);
-    CHECK(sr.shared_struct.y == 10);
+    annotation_types::SharedRefs sr(std::make_unique<std::string>("shared"), std::make_unique<annotation_types::NestedStruct>(5, 10));
+    CHECK(*sr.shared_string.get() == "shared");
+    CHECK(sr.shared_struct->x == 5);
+    CHECK(sr.shared_struct->y == 10);
+}
+
+TEST_CASE("shared_refs_default_initialized" * doctest::test_suite("annotations")) {
+    annotation_types::SharedRefs sr;
+    CHECK(sr.shared_string.get() != nullptr);
+    CHECK(sr.shared_struct.get() != nullptr);
+}
+
+TEST_CASE("shared_refs_copy" * doctest::test_suite("annotations")) {
+    annotation_types::SharedRefs sr;
+    CHECK(sr.shared_string.get() != nullptr);
+    CHECK(sr.shared_struct.get() != nullptr);
+
+    annotation_types::SharedRefs sr2 = sr;
+    CHECK(sr.shared_string.get() != nullptr);
+    CHECK(sr.shared_struct.get() != nullptr);
+    CHECK(sr2.shared_string.get() != nullptr);
+    CHECK(sr2.shared_struct.get() != nullptr);
+}
+
+TEST_CASE("shared_refs_move" * doctest::test_suite("annotations")) {
+    annotation_types::SharedRefs sr;
+    CHECK(sr.shared_string.get() != nullptr);
+    CHECK(sr.shared_struct.get() != nullptr);
+
+    annotation_types::SharedRefs sr2 = std::move(sr);
+    CHECK(sr.shared_string.get() == nullptr);
+    CHECK(sr.shared_struct.get() == nullptr);
+    CHECK(sr2.shared_string.get() != nullptr);
+    CHECK(sr2.shared_struct.get() != nullptr);
 }
 
 TEST_CASE("combined_annotations" * doctest::test_suite("annotations")) {

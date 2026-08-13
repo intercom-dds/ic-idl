@@ -157,17 +157,17 @@ fn shared_refs_struct() {
 fn combined_annotations() {
     let ca = annotation_types::CombinedAnnotations {
         id: 99,
-        maybe_shared_name: Some(Box::new("combined".into())),
+        maybe_shared_name: Some("combined".into()),
     };
 
     assert_eq!(ca.id, 99);
     assert_eq!(
-        ca.maybe_shared_name.as_deref().map(String::as_str),
-        Some("combined")
+        ca.maybe_shared_name,
+        Some("combined".into())
     );
     assert_eq!(
         std::any::type_name_of_val(&ca.maybe_shared_name),
-        std::any::type_name::<Option<Box<String>>>()
+        std::any::type_name::<Option<String>>()
     );
 }
 

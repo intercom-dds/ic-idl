@@ -185,13 +185,18 @@ impl CppGen<'_> {
     }
 
     fn string_literal_ty(&self, const_ty: &ConstTy) -> &str {
-        if matches!(
-            self.hir.context.resolve_ty(&const_ty.ty).kind,
-            TyKind::String { wide: true, .. }
-        ) {
-            "char16_t"
+        let resolved_ty = self.hir.context.resolve_ty(&const_ty.ty);
+        let wide = matches!(resolved_ty.kind, TyKind::String { wide: true, .. });
+        if self.options.char_ptr_constants {
+            if wide {
+                "const char16_t*"
+            } else {
+                "const char*"
+            }
+        } else if wide {
+            "::std::u16string_view"
         } else {
-            "char"
+            "::std::string_view"
         }
     }
 
@@ -211,16 +216,15 @@ impl CppGen<'_> {
 
         match &const_ty.value {
             Numeric::String(_) | Numeric::WString(_) => {
-                if self.options.char_ptr_constants {
-                    let string_ty = self.string_literal_ty(const_ty);
-                    w!(decl_w, "inline ", static_keyword, "constexpr const ", string_ty, "* ", const_name, " = ");
-                } else if matches!(const_ty.value, Numeric::WString(_)) {
-                    w!(decl_w, "inline ", static_keyword, "constexpr ::std::u16string_view ", const_name, " = ");
-                } else {
-                    w!(decl_w, "inline ", static_keyword, "constexpr ::std::string_view ", const_name, " = ");
-                }
-
-                self.emit_numeric_value_with_ty(decl_w, &const_ty.value, &const_ty.ty, def.id);
+                let string_ty = self.string_literal_ty(const_ty);
+                w!(decl_w, "inline ", static_keyword, "constexpr ", string_ty, " ", const_name, " = ");
+                self.emit_numeric_value_with_ty(
+                    decl_w,
+                    &const_ty.value,
+                    &const_ty.ty,
+                    def.id,
+                    false,
+                );
                 w!(decl_w, ";\n\n");
             }
             Numeric::Const(const_def_id) => {
@@ -231,13 +235,7 @@ impl CppGen<'_> {
                 let scoped_name = self.scoped_name(*const_def_id, def.id);
 
                 let ty_str = if matches!(const_def_ty.kind, TyKind::String { .. }) {
-                    if self.options.char_ptr_constants {
-                        "const char*".into()
-                    } else if matches!(const_def_ty.kind, TyKind::String { wide: true, .. }) {
-                        "::std::u16string_view".into()
-                    } else {
-                        "::std::string_view".into()
-                    }
+                    self.string_literal_ty(const_ty).into()
                 } else {
                     self.cpp_type(&const_ty.ty, def.id)
                 };
@@ -250,11 +248,23 @@ impl CppGen<'_> {
                 let is_array = matches!(const_ty.value, Numeric::Array { .. });
                 if is_array {
                     w!(decl_w, "inline ", static_keyword, constness, " ", ty_str, " ", const_name);
-                    self.emit_numeric_value_with_ty(decl_w, &const_ty.value, &const_ty.ty, def.id);
+                    self.emit_numeric_value_with_ty(
+                        decl_w,
+                        &const_ty.value,
+                        &const_ty.ty,
+                        def.id,
+                        false,
+                    );
                     w!(decl_w, ";\n\n");
                 } else {
                     w!(decl_w, "inline ", static_keyword, constness, " ", ty_str, " ", const_name, "{");
-                    self.emit_numeric_value_with_ty(decl_w, &const_ty.value, &const_ty.ty, def.id);
+                    self.emit_numeric_value_with_ty(
+                        decl_w,
+                        &const_ty.value,
+                        &const_ty.ty,
+                        def.id,
+                        false,
+                    );
                     w!(decl_w, "};\n\n");
                 }
             }

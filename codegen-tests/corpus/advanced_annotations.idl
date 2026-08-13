@@ -119,6 +119,7 @@ module advanced_annotations {
     // @external annotation
     struct ExternalData {
         @external long external_field;
+        @external int32 external_array_field[10];
         string normal_field;
     };
 

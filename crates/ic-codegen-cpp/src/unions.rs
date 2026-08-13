@@ -26,8 +26,8 @@
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use ic_emit::printer::{Twine, w};
-use ic_hir::hir::{Def, DefId, DefKind, Ty, TyKind, UnionTy, Variant};
-use ic_hir_analysis::annotation::default_value;
+use ic_hir::hir::{Def, DefId, DefKind, Label, Ty, TyKind, UnionTy, Variant};
+use ic_hir_analysis::annotation::{default_value, is_external};
 use ic_hir_analysis::enum_value::default_enumerator;
 use ic_hir_analysis::union_case::{
     default_discriminator, default_union_case, unused_discriminator,
@@ -81,7 +81,7 @@ impl CppGen<'_> {
         w!(decl_w, "~ICUnionType_() {}\n");
         for variant in &union_ty.variants {
             if !matches!(variant.ty.kind, TyKind::Null) {
-                let member_type = self.cpp_type(&variant.ty, def.id);
+                let member_type = self.member_cpp_type(&variant.ty, variant, def.id);
                 w!(decl_w, member_type, " ", variant.ident.name, ";\n");
             }
         }
@@ -130,9 +130,9 @@ impl CppGen<'_> {
         variant: &Variant,
         disc_type: &str,
     ) {
-        let member_type = self.cpp_type(&variant.ty, def.id);
+        let member_type = self.member_cpp_type(&variant.ty, variant, def.id);
         let member_name = &variant.ident.name;
-        let is_complex = self.should_use_move(&variant.ty);
+        let is_complex = self.should_use_move(&variant.ty, Some(variant));
 
         if is_complex {
             // Getter (reference)
@@ -141,8 +141,10 @@ impl CppGen<'_> {
             // Getter (const reference)
             w!(w, "[[nodiscard]] const ", member_type, "& ", member_name, "() const;\n");
 
-            // Setter (const reference)
-            w!(w, "void ", member_name, "(const ", member_type, "& a_value);\n");
+            if !is_external(&self.hir.context, variant) {
+                // Setter (const reference)
+                w!(w, "void ", member_name, "(const ", member_type, "& a_value);\n");
+            }
 
             // Move setter
             w!(w, "void ", member_name, "(", member_type, "&& a_value);\n");
@@ -235,10 +237,11 @@ impl CppGen<'_> {
         w: &mut Twine,
         variant: &Variant,
         union_ty: &UnionTy,
+        disc_label: Option<&Label>,
         def_id: DefId,
     ) {
         w!(w, UNION_DISC_FIELD, " = ");
-        if let Some(first_label) = variant.labels.first() {
+        if let Some(first_label) = disc_label.or(variant.labels.first()) {
             self.emit_numeric_value(w, &first_label.value, def_id);
         } else if let Some(discriminator) = unused_discriminator(&self.hir.context, union_ty) {
             self.emit_numeric_value(w, &discriminator, def_id);
@@ -250,8 +253,12 @@ impl CppGen<'_> {
     }
 
     fn emit_variant_init(&self, w: &mut Twine, variant: &Variant, value_expr: &str) {
-        if self.should_use_move(&variant.ty) {
-            w!(w, "::ic_cts::construct_at(&ic_union_value_.", variant.ident.name, ", ", value_expr, ");\n");
+        if self.should_use_move(&variant.ty, Some(variant)) {
+            if is_external(&self.hir.context, variant) {
+                w!(w, "::ic_cts::construct_at(&ic_union_value_.", variant.ident.name, ", new ", self.cpp_type(&variant.ty, None), "(", value_expr, "));\n");
+            } else {
+                w!(w, "::ic_cts::construct_at(&ic_union_value_.", variant.ident.name, ", ", value_expr, ");\n");
+            }
         } else {
             w!(w, "ic_union_value_.", variant.ident.name, " = ", value_expr, ";\n");
         }
@@ -260,7 +267,7 @@ impl CppGen<'_> {
     fn get_variant_default_expr(&self, variant: &Variant, def_id: DefId) -> String {
         if let Some(default) = default_value(&self.hir.context, variant) {
             let mut w = ic_emit::printer::Twine::new();
-            self.emit_numeric_value_with_ty(&mut w, default, &variant.ty, def_id);
+            self.emit_numeric_value_with_ty(&mut w, default, &variant.ty, def_id, false);
             w.finish()
         } else {
             self.get_default_value_expr(&variant.ty, def_id)
@@ -394,15 +401,26 @@ impl CppGen<'_> {
 
         self.emit_union_switch(w, union_ty, UNION_DISC_FIELD, |w, variant| {
             if !matches!(variant.ty.kind, TyKind::Null) {
-                if self.should_use_move(&variant.ty) {
-                    w!(
-                        w,
-                        "::ic_cts::construct_at(&ic_union_value_.",
-                        variant.ident.name,
-                        ", a_other.ic_union_value_.",
-                        variant.ident.name,
-                        ");\n",
-                    );
+                if self.should_use_move(&variant.ty, Some(variant)) {
+                    if is_external(&self.hir.context, variant) {
+                        w!(
+                            w,
+                            "::ic_cts::construct_at(&ic_union_value_.",
+                            variant.ident.name,
+                            ", new ", self.cpp_type(&variant.ty, None),"( *a_other.ic_union_value_.",
+                            variant.ident.name,
+                            "));\n",
+                        );
+                    } else {
+                        w!(
+                            w,
+                            "::ic_cts::construct_at(&ic_union_value_.",
+                            variant.ident.name,
+                            ", a_other.ic_union_value_.",
+                            variant.ident.name,
+                            ");\n",
+                        );
+                    }
                 } else {
                     w!(
                         w,
@@ -435,15 +453,26 @@ impl CppGen<'_> {
 
         self.emit_union_switch(w, union_ty, UNION_DISC_FIELD, |w, variant| {
             if !matches!(variant.ty.kind, TyKind::Null) {
-                if self.should_use_move(&variant.ty) {
-                    w!(
-                        w,
-                        "::ic_cts::construct_at(&ic_union_value_.",
-                        variant.ident.name,
-                        ", a_other.ic_union_value_.",
-                        variant.ident.name,
-                        ");\n",
-                    );
+                if self.should_use_move(&variant.ty, Some(variant)) {
+                    if is_external(&self.hir.context, variant) {
+                        w!(
+                            w,
+                            "::ic_cts::construct_at(&ic_union_value_.",
+                            variant.ident.name,
+                            ", new ", self.cpp_type(&variant.ty, None),"( *a_other.ic_union_value_.",
+                            variant.ident.name,
+                            "));\n",
+                        );
+                    } else {
+                        w!(
+                            w,
+                            "::ic_cts::construct_at(&ic_union_value_.",
+                            variant.ident.name,
+                            ", a_other.ic_union_value_.",
+                            variant.ident.name,
+                            ");\n",
+                        );
+                    }
                 } else {
                     w!(
                         w,
@@ -476,7 +505,7 @@ impl CppGen<'_> {
 
         self.emit_union_switch(w, union_ty, UNION_DISC_FIELD, |w, variant| {
             if !matches!(variant.ty.kind, TyKind::Null) {
-                if self.should_use_move(&variant.ty) {
+                if self.should_use_move(&variant.ty, Some(variant)) {
                     w!(w, "::ic_cts::construct_at(&ic_union_value_.", variant.ident.name, ", std::move(a_other.ic_union_value_.", variant.ident.name, "));\n");
                 } else {
                     w!(w, "ic_union_value_.", variant.ident.name, " = a_other.ic_union_value_.", variant.ident.name, ";\n");
@@ -503,7 +532,7 @@ impl CppGen<'_> {
 
         self.emit_union_switch(w, union_ty, UNION_DISC_FIELD, |w, variant| {
             if !matches!(variant.ty.kind, TyKind::Null) {
-                if self.should_use_move(&variant.ty) {
+                if self.should_use_move(&variant.ty, Some(variant)) {
                     w!(w, "::ic_cts::construct_at(&ic_union_value_.", variant.ident.name, ", std::move(a_other.ic_union_value_.", variant.ident.name, "));\n");
                 } else {
                     w!(w, "ic_union_value_.", variant.ident.name, " = a_other.ic_union_value_.", variant.ident.name, ";\n");
@@ -653,7 +682,7 @@ impl CppGen<'_> {
         variant: &Variant,
     ) {
         let qualified_name = self.scoped_name(def.id, None);
-        let member_type = self.cpp_type(&variant.ty, None);
+        let member_type = self.member_cpp_type(&variant.ty, variant, None);
         let member_name = &variant.ident.name;
 
         // Reference getter
@@ -669,7 +698,7 @@ impl CppGen<'_> {
         w!(w, "}\n\n");
 
         // Const getter (by reference for complex, by value for primitive)
-        if self.should_use_move(&variant.ty) {
+        if self.should_use_move(&variant.ty, Some(variant)) {
             w!(w, "inline const ", member_type, "& ", qualified_name, "::", member_name, "() const {\n");
         } else {
             w!(w, "inline ", member_type, " ", qualified_name, "::", member_name, "() const {\n");
@@ -693,12 +722,14 @@ impl CppGen<'_> {
         variant: &Variant,
         disc_type: &str,
     ) {
-        let member_type = self.cpp_type(&variant.ty, None);
+        let member_type = self.member_cpp_type(&variant.ty, variant, None);
         let member_name = &variant.ident.name;
 
-        self.emit_variant_copy_setter(w, def, union_ty, variant, &member_type, member_name);
+        if !is_external(&self.hir.context, variant) {
+            self.emit_variant_copy_setter(w, def, union_ty, variant, &member_type, member_name);
+        }
 
-        if self.should_use_move(&variant.ty) {
+        if self.should_use_move(&variant.ty, Some(variant)) {
             self.emit_variant_move_setter(w, def, union_ty, variant, &member_type, member_name);
         }
 
@@ -708,6 +739,7 @@ impl CppGen<'_> {
                 def,
                 union_ty,
                 disc_type,
+                variant,
                 &member_type,
                 member_name,
             );
@@ -724,7 +756,7 @@ impl CppGen<'_> {
         member_name: &str,
     ) {
         let qualified_name = self.scoped_name(def.id, None);
-        if self.should_use_move(&variant.ty) {
+        if self.should_use_move(&variant.ty, Some(variant)) {
             w!(w, "inline void ", qualified_name, "::", member_name, "(const ", member_type, "& a_value) {\n");
         } else {
             w!(w, "inline void ", qualified_name, "::", member_name, "(", member_type, " a_value) {\n");
@@ -733,15 +765,15 @@ impl CppGen<'_> {
         self.emit_variant_check_condition(w, union_ty, variant);
         w!(w, ") {\n");
         w!(w, "free_union_();\n");
-        self.emit_set_discriminator_to_variant(w, variant, union_ty, def.id);
+        self.emit_set_discriminator_to_variant(w, variant, union_ty, None, def.id);
 
-        if self.should_use_move(&variant.ty) {
+        if self.should_use_move(&variant.ty, Some(variant)) {
             w!(w, "::ic_cts::construct_at(&ic_union_value_.", member_name, ", a_value);\n");
             w!(w, "} else {\n");
             w!(w, "ic_union_value_.", member_name, " = a_value;\n");
         }
         w!(w, "}\n");
-        if !self.should_use_move(&variant.ty) {
+        if !self.should_use_move(&variant.ty, Some(variant)) {
             w!(w, "ic_union_value_.", member_name, " = a_value;\n");
         }
         w!(w, "}\n\n");
@@ -762,7 +794,7 @@ impl CppGen<'_> {
         self.emit_variant_check_condition(w, union_ty, variant);
         w!(w, ") {\n");
         w!(w, "free_union_();\n");
-        self.emit_set_discriminator_to_variant(w, variant, union_ty, def.id);
+        self.emit_set_discriminator_to_variant(w, variant, union_ty, None, def.id);
         w!(w, "::ic_cts::construct_at(&ic_union_value_.", member_name, ", std::move(a_value));\n");
         w!(w, "} else {\n");
         w!(w, "ic_union_value_.", member_name, " = std::move(a_value);\n");
@@ -770,16 +802,19 @@ impl CppGen<'_> {
         w!(w, "}\n\n");
     }
 
+    #[allow(clippy::too_many_arguments)]
     fn emit_variant_default_setter(
         &self,
         w: &mut Twine,
         def: &Def,
         union_ty: &UnionTy,
         disc_type: &str,
+        variant: &Variant,
         member_type: &str,
         member_name: &str,
     ) {
         let qualified_name = self.scoped_name(def.id, None);
+
         w!(w, "inline void ", qualified_name, "::", member_name, "(", member_type, " a_value, ", disc_type, " discriminator) {\n");
 
         let has_non_default = union_ty.variants.iter().any(|v| !v.is_default);
@@ -792,13 +827,14 @@ impl CppGen<'_> {
                 member_name, " of union ", def, "\");\n",
             );
             w!(w, "}\n");
-
-            self.emit_default_discriminator_check(w, union_ty, UNION_DISC_FIELD);
-            w!(w, "free_union_();\n");
-            w!(w, "}\n");
         }
 
-        w!(w, "ic_union_value_.", member_name, " = a_value;\n");
+        w!(w, "free_union_();\n");
+        if self.should_use_move(&variant.ty, Some(variant)) {
+            w!(w, "::ic_cts::construct_at(&ic_union_value_.", member_name, ", std::move(a_value));\n");
+        } else {
+            w!(w, "ic_union_value_.", member_name, " = a_value;\n");
+        }
         w!(w, UNION_DISC_FIELD, " = discriminator;\n");
         w!(w, "}\n\n");
     }
@@ -808,7 +844,9 @@ impl CppGen<'_> {
         w!(w, "inline void ", qualified_name, "::free_union_() {\n");
 
         self.emit_union_switch(w, union_ty, UNION_DISC_FIELD, |w, variant| {
-            if !matches!(variant.ty.kind, TyKind::Null) && self.should_use_move(&variant.ty) {
+            if !matches!(variant.ty.kind, TyKind::Null)
+                && self.should_use_move(&variant.ty, Some(variant))
+            {
                 w!(w, "std::destroy_at(&ic_union_value_.", variant.ident.name, ");\n");
             }
             true
@@ -835,8 +873,11 @@ impl CppGen<'_> {
 
             if !matches!(variant.ty.kind, TyKind::Null) {
                 let member_idx = union_ty.variants.iter().position(|v| v.ident.name == variant.ident.name).unwrap() + 1;
-                w!(w, "serializer.io(a_info->members[", member_idx.to_string(), "], a_value.", variant.ident.name, "());\n");
+
+                let ptr = if is_external(&self.hir.context, variant)  { "*" } else { "" };
+                w!(w, "serializer.io(a_info->members[", member_idx.to_string(), "], ", ptr, "a_value.", variant.ident.name, "());\n");
             }
+
             true
         });
 

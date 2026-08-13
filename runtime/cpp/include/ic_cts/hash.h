@@ -31,6 +31,7 @@
 #include <cstddef>
 #include <functional>
 #include <map>
+#include <memory>
 #include <optional>
 #include <vector>
 
@@ -54,6 +55,9 @@ inline void hash_combine(std::size_t& seed, const std::map<K, V>& x);
 
 template <class T>
 inline void hash_combine(std::size_t& seed, const std::optional<T>& x);
+
+template <class T>
+inline void hash_combine(std::size_t& seed, const std::unique_ptr<T>& x);
 
 template <typename CharT, size_t N>
 inline void hash_combine(std::size_t& seed, const ic_cts::bounded_basic_string<CharT, N>& x);
@@ -106,6 +110,14 @@ template <class T>
 inline void hash_combine(std::size_t& seed, const std::optional<T>& x) {
     hash_combine(seed, x.has_value());
     if (x.has_value()) {
+        hash_combine(seed, *x);
+    }
+}
+
+template <class T>
+inline void hash_combine(std::size_t& seed, const std::unique_ptr<T>& x) {
+    hash_combine(seed, x.get() != nullptr);
+    if (x.get() != nullptr) {
         hash_combine(seed, *x);
     }
 }

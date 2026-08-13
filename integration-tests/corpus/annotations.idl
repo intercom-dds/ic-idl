@@ -58,7 +58,7 @@ module annotation_types {
 
     struct CombinedAnnotations {
         @key long id;
-        @optional @external string maybe_shared_name;
+        @optional string maybe_shared_name;
     };
 
     interface AnnotatedInterface {

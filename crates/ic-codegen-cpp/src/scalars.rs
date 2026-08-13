@@ -179,7 +179,13 @@ impl CppGen<'_> {
             Numeric::String(_) | Numeric::WString(_) => {
                 let string_ty = self.string_literal_ty(const_ty);
                 w!(decl_w, "inline ", static_keyword, "constexpr const ", string_ty, "* ", const_name, " = ");
-                self.emit_numeric_value_with_ty(decl_w, &const_ty.value, &const_ty.ty, def.id);
+                self.emit_numeric_value_with_ty(
+                    decl_w,
+                    &const_ty.value,
+                    &const_ty.ty,
+                    def.id,
+                    false,
+                );
                 w!(decl_w, ";\n\n");
             }
             Numeric::Const(const_def_id) => {
@@ -204,11 +210,23 @@ impl CppGen<'_> {
                 let is_array = matches!(const_ty.value, Numeric::Array { .. });
                 if is_array {
                     w!(decl_w, "inline ", static_keyword, constness, " ", ty_str, " ", const_name);
-                    self.emit_numeric_value_with_ty(decl_w, &const_ty.value, &const_ty.ty, def.id);
+                    self.emit_numeric_value_with_ty(
+                        decl_w,
+                        &const_ty.value,
+                        &const_ty.ty,
+                        def.id,
+                        false,
+                    );
                     w!(decl_w, ";\n\n");
                 } else {
                     w!(decl_w, "inline ", static_keyword, constness, " ", ty_str, " ", const_name, "{");
-                    self.emit_numeric_value_with_ty(decl_w, &const_ty.value, &const_ty.ty, def.id);
+                    self.emit_numeric_value_with_ty(
+                        decl_w,
+                        &const_ty.value,
+                        &const_ty.ty,
+                        def.id,
+                        false,
+                    );
                     w!(decl_w, "};\n\n");
                 }
             }

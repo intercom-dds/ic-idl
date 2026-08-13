@@ -130,6 +130,11 @@ TEST_CASE("array_default_values" * doctest::test_suite("defaults")) {
     CHECK(a.array_partial.size() == 2U);
     CHECK(a.array_partial[0] == 10);
     CHECK(a.array_partial[1] == 20);
+    CHECK(a.array_external->size() == 3U);
+    const auto& array_external{*a.array_external};
+    CHECK(array_external[0] == 1);
+    CHECK(array_external[1] == 2);
+    CHECK(array_external[2] == 3);
     CHECK(a.string_array_empty.size() == 2U);
     CHECK(a.string_array_empty[0] == "");
     CHECK(a.string_array_empty[1] == "");
@@ -169,4 +174,15 @@ TEST_CASE("map_default_values" * doctest::test_suite("defaults")) {
 TEST_CASE("enum_field_default" * doctest::test_suite("defaults")) {
     default_types::EnumDefaults e;
     CHECK(e.priority_high == default_types::Priority::HIGH);
+}
+
+TEST_CASE("union_default_discriminator_external_variant_default" * doctest::test_suite("defaults")) {
+    default_types::UnionExternalDefault u;
+    CHECK(u.my_int().get() != nullptr);
+    CHECK(*u.my_int() == 42);
+}
+
+TEST_CASE("union_default_discriminator_two_cases_default" * doctest::test_suite("defaults")) {
+    default_types::UnionDefaultTwoCases u;
+    CHECK(u._d() == 2);
 }

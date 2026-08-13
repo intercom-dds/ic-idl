@@ -52,6 +52,8 @@ module default_types {
         long array_empty[3];
         @default({1, 2, 3}) long array_values[3];
         @default({10, 20}) long array_partial[2];
+        
+        @default({1, 2, 3}) @external long array_external[3];
 
         string string_array_empty[2];
         @default({"foo", "bar"}) string string_array_values[2];
@@ -108,5 +110,18 @@ module default_types {
     struct ComplexDefaults {
         @default({{1, 2}, {3, 4}}) sequence<sequence<long>> nested_seq;
         @default({{"a", {1, 2}}, {"b", {3, 4}}}) map<string, sequence<long>> map_of_seq;
+    };
+
+    union UnionExternalDefault switch(@default(1) octet) {
+    case 1:
+        @default(42) @external int32 my_int;
+    default:
+        @external string my_str;
+    };
+
+    union UnionDefaultTwoCases switch (@default(2) long) {
+    case 1:
+    case 2:
+        long value;
     };
 };

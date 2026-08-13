@@ -130,6 +130,11 @@ TEST_CASE("array_default_values" * doctest::test_suite("defaults")) {
     CHECK(a.array_partial.size() == 2U);
     CHECK(a.array_partial[0] == 10);
     CHECK(a.array_partial[1] == 20);
+    CHECK(a.array_external->size() == 3U);
+    const auto& array_external{*a.array_external};
+    CHECK(array_external[0] == 1);
+    CHECK(array_external[1] == 2);
+    CHECK(array_external[2] == 3);
     CHECK(a.string_array_empty.size() == 2U);
     CHECK(a.string_array_empty[0] == "");
     CHECK(a.string_array_empty[1] == "");

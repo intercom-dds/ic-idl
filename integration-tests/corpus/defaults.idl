@@ -52,6 +52,8 @@ module default_types {
         long array_empty[3];
         @default({1, 2, 3}) long array_values[3];
         @default({10, 20}) long array_partial[2];
+        
+        @default({1, 2, 3}) @external long array_external[3];
 
         string string_array_empty[2];
         @default({"foo", "bar"}) string string_array_values[2];

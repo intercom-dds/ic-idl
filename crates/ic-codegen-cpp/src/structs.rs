@@ -27,6 +27,7 @@
 
 use ic_emit::printer::{Twine, w};
 use ic_hir::hir::{Def, StructTy};
+use ic_hir_analysis::annotation::is_external;
 
 use crate::codegen::CppGen;
 
@@ -38,6 +39,11 @@ impl CppGen<'_> {
         def: &Def,
         struct_ty: &StructTy,
     ) {
+        let all_members = self.collect_all_members(def.id);
+        let external_member = all_members
+            .iter()
+            .any(|m| is_external(&self.hir.context, m));
+
         w!(decl_w, "struct ", def);
         if let Some(parent) = struct_ty.parent {
             w!(decl_w, " : public ", self.scoped_name(parent.def_id, def.id));
@@ -45,7 +51,7 @@ impl CppGen<'_> {
 
         w!(decl_w, " {\n");
 
-        self.emit_struct_like_constructors(decl_w, def);
+        self.emit_struct_like_constructors(decl_w, def, external_member);
         self.emit_struct_like_comparison_operators(decl_w, def);
 
         w!(decl_w, "\n");
@@ -60,9 +66,11 @@ impl CppGen<'_> {
         self.emit_serializer_specialization(impl_w, def);
         self.emit_formatter_specialization(impl_w, def);
 
-        let all_members = self.collect_all_members(def.id);
         if !all_members.is_empty() {
             self.emit_struct_like_constructor_impl(impl_w, def);
+        }
+        if external_member {
+            self.emit_struct_like_copy_constructor_and_operator_impl(impl_w, def, &all_members);
         }
         self.emit_struct_like_comparison_impl(impl_w, def, &all_members);
     }
@@ -74,12 +82,17 @@ impl CppGen<'_> {
         def: &Def,
         except_ty: &ic_hir::hir::ExceptTy,
     ) {
+        let all_members = self.collect_all_members(def.id);
+        let external_member = all_members
+            .iter()
+            .any(|m| is_external(&self.hir.context, m));
+
         let exception_name = &def.ident.name;
 
         w!(decl_w, "struct ", exception_name, " : std::runtime_error\n");
         w!(decl_w, " {\n");
 
-        self.emit_exception_constructors(decl_w, impl_w, def, &except_ty.members);
+        self.emit_exception_constructors(decl_w, impl_w, def, &except_ty.members, external_member);
         self.emit_struct_like_comparison_operators(decl_w, def);
 
         w!(decl_w, "\n");
@@ -94,6 +107,9 @@ impl CppGen<'_> {
         self.emit_formatter_specialization(impl_w, def);
 
         let all_members = self.collect_all_members(def.id);
+        if external_member {
+            self.emit_struct_like_copy_constructor_and_operator_impl(impl_w, def, &all_members);
+        }
         self.emit_struct_like_comparison_impl(impl_w, def, &all_members);
     }
 
@@ -109,12 +125,20 @@ impl CppGen<'_> {
         impl_w: &mut Twine,
         def: &Def,
         members: &[ic_hir::hir::Member],
+        external_member: bool,
     ) {
         let exception_name = &def.ident.name;
 
         w!(decl_w, exception_name, "();\n");
-        w!(decl_w, exception_name, "(const ", exception_name, "&) = default;\n");
-        w!(decl_w, exception_name, "& operator=(const ", exception_name, "&) = default;\n");
+
+        if external_member {
+            w!(decl_w, exception_name, "(const ", exception_name, "&);\n");
+            w!(decl_w, exception_name, "& operator=(const ", exception_name, "&);\n");
+        } else {
+            w!(decl_w, exception_name, "(const ", exception_name, "&) = default;\n");
+            w!(decl_w, exception_name, "& operator=(const ", exception_name, "&) = default;\n");
+        }
+
         w!(decl_w, exception_name, "(", exception_name, "&&) = default;\n");
         w!(decl_w, exception_name, "& operator=(", exception_name, "&&) = default;\n");
 
@@ -128,7 +152,7 @@ impl CppGen<'_> {
             }
             w!(decl_w, exception_name, "(\n");
             for member in members {
-                let ty_str = self.cpp_type(&member.ty, def.id);
+                let ty_str = self.member_cpp_type(&member.ty, member, def.id);
                 w!(decl_w, ty_str, " a_", member.ident.name, ",\n");
             }
             w!(decl_w, "const char* what = \"", exception_name, "\"\n");
@@ -148,7 +172,7 @@ impl CppGen<'_> {
         } else {
             w!(impl_w, "inline ", qualified_name, "::", exception_name, "(\n");
             for member in members {
-                let ty_str = self.cpp_type(&member.ty, def.id);
+                let ty_str = self.member_cpp_type(&member.ty, member, def.id);
                 w!(impl_w, ty_str, " a_", member.ident.name, ",\n");
             }
             w!(impl_w, "const char* _what\n");
@@ -156,7 +180,7 @@ impl CppGen<'_> {
             w!(impl_w, "std::runtime_error(_what),\n");
 
             for (i, member) in members.iter().enumerate() {
-                if self.should_use_move(&member.ty) {
+                if self.should_use_move(&member.ty, Some(member)) {
                     w!(impl_w, member.ident.name, "(std::move(a_", member.ident.name, "))");
                 } else {
                     w!(impl_w, member.ident.name, "(a_", member.ident.name, ")");
@@ -169,12 +193,17 @@ impl CppGen<'_> {
         }
     }
 
-    fn emit_struct_like_constructors(&self, w: &mut Twine, def: &Def) {
+    fn emit_struct_like_constructors(&self, w: &mut Twine, def: &Def, external_member: bool) {
         let struct_name = &def.ident.name;
 
         w!(w, struct_name, "() = default;\n");
-        w!(w, struct_name, "(const ", struct_name, "&) = default;\n");
-        w!(w, struct_name, "& operator=(const ", struct_name, "&) = default;\n");
+        if external_member {
+            w!(w, struct_name, "(const ", struct_name, "&);\n");
+            w!(w, struct_name, "& operator=(const ", struct_name, "&);\n");
+        } else {
+            w!(w, struct_name, "(const ", struct_name, "&) = default;\n");
+            w!(w, struct_name, "& operator=(const ", struct_name, "&) = default;\n");
+        }
         w!(w, struct_name, "(", struct_name, "&&) = default;\n");
         w!(w, struct_name, "& operator=(", struct_name, "&&) = default;\n");
 
@@ -186,7 +215,7 @@ impl CppGen<'_> {
             }
             w!(w, struct_name, "(\n");
             for (i, member) in all_members.iter().enumerate() {
-                let ty_str = self.cpp_type(&member.ty, def.id);
+                let ty_str = self.member_cpp_type(&member.ty, member, def.id);
                 w!(w, ty_str, " a_", member.ident.name);
                 if i < all_members.len() - 1 {
                     w!(w, ",\n");
@@ -214,7 +243,7 @@ impl CppGen<'_> {
 
         w!(w, "inline ", qualified_name, "::", struct_name, "(\n");
         for (i, member) in all_members.iter().enumerate() {
-            let ty_str = self.cpp_type(&member.ty, def.id);
+            let ty_str = self.member_cpp_type(&member.ty, member, def.id);
             w!(w, ty_str, " a_", member.ident.name);
             if i < all_members.len() - 1 {
                 w!(w, ",\n");
@@ -233,7 +262,7 @@ impl CppGen<'_> {
 
             w!(w, parent_name, "(");
             for (i, member) in parent_all_members.iter().enumerate() {
-                if self.should_use_move(&member.ty) {
+                if self.should_use_move(&member.ty, Some(member)) {
                     w!(w, "std::move(a_", member.ident.name, ")");
                 } else {
                     w!(w, "a_", member.ident.name);
@@ -251,7 +280,7 @@ impl CppGen<'_> {
                 if has_parent || i > 0 {
                     w!(w, ",\n\t");
                 }
-                if self.should_use_move(&member.ty) {
+                if self.should_use_move(&member.ty, Some(member)) {
                     w!(w, member.ident.name, "(std::move(a_", member.ident.name, "))");
                 } else {
                     w!(w, member.ident.name, "(a_", member.ident.name, ")");
@@ -281,11 +310,20 @@ impl CppGen<'_> {
         } else {
             for (i, member) in all_members.iter().enumerate() {
                 let member_name = &member.ident.name;
-                if i < all_members.len() - 1 {
-                    w!(w, "if (this->", member_name, " < a_other.", member_name, ") { return true; }\n");
-                    w!(w, "if (a_other.", member_name, " < this->", member_name, ") { return false; }\n");
+                if is_external(&self.hir.context, member) {
+                    if i < all_members.len() - 1 {
+                        w!(w, "if (*this->", member_name, " < *a_other.", member_name, ") { return true; }\n");
+                        w!(w, "if (*a_other.", member_name, " < *this->", member_name, ") { return false; }\n");
+                    } else {
+                        w!(w, "return *this->", member_name, " < *a_other.", member_name, ";\n");
+                    }
                 } else {
-                    w!(w, "return this->", member_name, " < a_other.", member_name, ";\n");
+                    if i < all_members.len() - 1 {
+                        w!(w, "if (this->", member_name, " < a_other.", member_name, ") { return true; }\n");
+                        w!(w, "if (a_other.", member_name, " < this->", member_name, ") { return false; }\n");
+                    } else {
+                        w!(w, "return this->", member_name, " < a_other.", member_name, ";\n");
+                    }
                 }
             }
         }
@@ -294,7 +332,11 @@ impl CppGen<'_> {
         w!(w, "inline bool ", qualified_name, "::operator==(const ", qualified_name, "&", param, ") const {\n");
         for member in all_members {
             let member_name = &member.ident.name;
-            w!(w, "if (!(this->", member_name, " == a_other.", member_name, ")) { return false; }\n");
+            if is_external(&self.hir.context, member) {
+                w!(w, "if (!(*this->", member_name, " == *a_other.", member_name, ")) { return false; }\n");
+            } else {
+                w!(w, "if (!(this->", member_name, " == a_other.", member_name, ")) { return false; }\n");
+            }
         }
         w!(w, "return true;\n");
         w!(w, "}\n\n");
@@ -318,10 +360,52 @@ impl CppGen<'_> {
 
         for (i, member) in all_members.iter().enumerate() {
             let member_name = &member.ident.name;
-            w!(w, "serializer.io(a_info->members[", i.to_string(), "], a_value.", member_name, ");\n");
+            if is_external(&self.hir.context, member) {
+                w!(w, "serializer.io(a_info->members[", i.to_string(), "], *a_value.", member_name, ");\n");
+            } else {
+                w!(w, "serializer.io(a_info->members[", i.to_string(), "], a_value.", member_name, ");\n");
+            }
         }
 
         w!(w, "}\n");
         w!(w, "};\n\n");
+    }
+
+    fn emit_struct_like_copy_constructor_and_operator_impl(
+        &self,
+        w: &mut Twine,
+        def: &Def,
+        all_members: &[ic_hir::hir::Member],
+    ) {
+        let struct_name = self.scoped_name(def.id, None);
+        let is_except = matches!(def.kind, ic_hir::hir::DefKind::Except(_));
+
+        if is_except {
+            w!(w, "inline ", struct_name, "::", def, "(const ", struct_name, "& a_other) : ::std::runtime_error(a_other) {\n");
+        } else {
+            w!(w, "inline ", struct_name, "::", def, "(const ", struct_name, "& a_other) {\n");
+        }
+        for member in all_members {
+            if is_external(&self.hir.context, member) {
+                w!(w, member.ident.name, " = std::make_unique<", self.cpp_type(&member.ty, None), ">(*a_other.", member.ident.name, ");\n");
+            } else {
+                w!(w, member.ident.name, " = a_other.", member.ident.name, ";\n");
+            }
+        }
+        w!(w, "}\n");
+
+        w!(w, "inline ", struct_name, "& ", struct_name,"::operator=(const ", struct_name, "& a_other) {\n");
+        if is_except {
+            w!(w, "::std::runtime_error::operator=(a_other);\n");
+        }
+        for member in all_members {
+            if is_external(&self.hir.context, member) {
+                w!(w, member.ident.name, " = std::make_unique<", self.cpp_type(&member.ty, None), ">(*a_other.", member.ident.name, ");\n");
+            } else {
+                w!(w, member.ident.name, " = a_other.", member.ident.name, ";\n");
+            }
+        }
+        w!(w, "return *this;\n");
+        w!(w, "}\n\n");
     }
 }

@@ -315,6 +315,7 @@ impl Context {
             Numeric::Int16(v) => i64::from(*v) as u64,
             Numeric::Int32(v) => i64::from(*v) as u64,
             Numeric::Int64(v) => *v as u64,
+            Numeric::Char(c) | Numeric::WChar(c) => u64::from(*c as u32),
             Numeric::Const(def_id) => {
                 let def = self.type_of(*def_id);
                 if let DefKind::Const(const_def) = &def.kind {

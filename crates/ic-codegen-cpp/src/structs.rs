@@ -113,18 +113,20 @@ impl CppGen<'_> {
         w!(decl_w, exception_name, "(", exception_name, "&&) = default;\n");
         w!(decl_w, exception_name, "& operator=(", exception_name, "&&) = default;\n");
 
-        if !members.is_empty() {
+        if members.is_empty() {
+            w!(decl_w, "explicit ", exception_name, "(\n");
+            w!(decl_w, "const char* what\n");
+            w!(decl_w, ");\n");
+        } else {
             if members.len() == 1 {
                 w!(decl_w, "explicit ");
             }
             w!(decl_w, exception_name, "(\n");
-            for (i, member) in members.iter().enumerate() {
+            for member in members {
                 let ty_str = self.cpp_type(&member.ty, def.id);
-                w!(decl_w, ty_str, " a_", member.ident.name);
-                if i < members.len() - 1 {
-                    w!(decl_w, ",\n");
-                }
+                w!(decl_w, ty_str, " a_", member.ident.name, ",\n");
             }
+            w!(decl_w, "const char* what = \"", exception_name, "\"\n");
             w!(decl_w, ");\n");
         }
 
@@ -132,17 +134,21 @@ impl CppGen<'_> {
         w!(impl_w, "inline ", qualified_name, "::", exception_name, "()  :\n");
         w!(impl_w, "std::runtime_error(\"", exception_name, "\") {}\n\n");
 
-        if !members.is_empty() {
+        if members.is_empty() {
             w!(impl_w, "inline ", qualified_name, "::", exception_name, "(\n");
-            for (i, member) in members.iter().enumerate() {
-                let ty_str = self.cpp_type(&member.ty, def.id);
-                w!(impl_w, ty_str, " a_", member.ident.name);
-                if i < members.len() - 1 {
-                    w!(impl_w, ",\n");
-                }
-            }
+            w!(impl_w, "const char* _what\n");
             w!(impl_w, ") :\n");
-            w!(impl_w, "std::runtime_error(\"", exception_name, "\"),\n");
+            w!(impl_w, "std::runtime_error(_what)\n");
+            w!(impl_w, " {}\n\n");
+        } else {
+            w!(impl_w, "inline ", qualified_name, "::", exception_name, "(\n");
+            for member in members {
+                let ty_str = self.cpp_type(&member.ty, def.id);
+                w!(impl_w, ty_str, " a_", member.ident.name, ",\n");
+            }
+            w!(impl_w, "const char* _what\n");
+            w!(impl_w, ") :\n");
+            w!(impl_w, "std::runtime_error(_what),\n");
 
             for (i, member) in members.iter().enumerate() {
                 if self.should_use_move(&member.ty) {

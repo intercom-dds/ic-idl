@@ -29,7 +29,7 @@
 
 use ic_cli::Command;
 use ic_emit::File;
-use ic_hir_xform::rename::{self, Target};
+use ic_hir_xform::rename::{self, IdentifierKind, MemberKind, Target};
 
 mod codegen;
 mod deps;
@@ -96,6 +96,10 @@ fn escape_cpp_keyword(ctx: rename::RenameContext) -> Option<String> {
     if KEYWORDS.contains(&ctx.name) {
         Some(format!("{}_", ctx.name))
     } else {
+        if ctx.kind == IdentifierKind::Member(MemberKind::Exception) && ctx.name == "what" {
+            return Some("what_".into());
+        }
+
         None
     }
 }

@@ -52,6 +52,7 @@ module exceptions {
         string<15> bounded_baz;
         double value;
         boolean flag;
+        string what;
     };
 
     module scope1 {

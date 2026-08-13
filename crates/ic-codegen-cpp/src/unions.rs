@@ -41,7 +41,8 @@ impl CppGen<'_> {
         union_ty: &UnionTy,
     ) {
         let disc_type = self.cpp_type(&union_ty.disc.ty, def.id);
-        w!(decl_w, "struct ", def, " {\n");
+        w!(decl_w, "class ", def, " {\n");
+        w!(decl_w, "public:\n");
 
         // Constructor declarations
         w!(decl_w, def, "();\n");
@@ -57,6 +58,9 @@ impl CppGen<'_> {
         // Discriminator accessors
         w!(decl_w, "[[nodiscard]]", disc_type, " _d() const { return ", UNION_DISC_FIELD, "; }\n");
         w!(decl_w, "void _d(", disc_type, " discriminator);\n\n");
+        if has_implicit_default_variant(union_ty).is_some() {
+            w!(decl_w, "void _default();\n\n");
+        }
 
         // Member accessors
         for variant in &union_ty.variants {
@@ -606,6 +610,19 @@ impl CppGen<'_> {
 
         w!(w, UNION_DISC_FIELD, " = discriminator;\n");
         w!(w, "}\n\n");
+
+        // IDL4-CPP 7.2.4.3.2 Unions
+        if let Some(variant) = has_implicit_default_variant(union_ty) {
+            w!(w, "inline void ", qualified_name, "::_default() {\n");
+            if let Some(first_label) = variant.labels.first() {
+                w!(w, "_d(");
+                self.emit_numeric_value(w, &first_label.value, def.id);
+                w!(w, ");\n");
+            } else {
+                w!(w, "_d(", self.get_default_value_expr(&union_ty.disc.ty, def.id), ");\n");
+            }
+            w!(w, "}\n\n");
+        }
     }
 
     fn emit_union_member_impl(
@@ -821,4 +838,11 @@ impl CppGen<'_> {
         w!(w, "}\n");
         w!(w, "};\n\n");
     }
+}
+
+fn has_implicit_default_variant(union_ty: &UnionTy) -> Option<&Variant> {
+    union_ty
+        .variants
+        .iter()
+        .find(|v| v.is_default && v.ty.kind == TyKind::Null)
 }

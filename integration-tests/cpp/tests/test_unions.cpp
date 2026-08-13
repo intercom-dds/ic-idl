@@ -194,3 +194,25 @@ TEST_CASE("union_swap_same_discriminator" * doctest::test_suite("unions")) {
     REQUIRE(tv2._d() == union_types::INT_KIND);
     REQUIRE(tv2.int_value() == 100);
 }
+
+TEST_CASE("union_implicit_primitive_discriminator_default" * doctest::test_suite("unions")) {
+    union_types::ImplicitPrimitiveDisc u;
+    REQUIRE(u._d() == 0);
+
+    u.long_val(123);
+    REQUIRE(u._d() != 0);
+
+    u._default();
+    REQUIRE(u._d() == 0);
+}
+
+TEST_CASE("union_implicit_enum_discriminator_default" * doctest::test_suite("unions")) {
+    union_types::ImplicitEnumDisc u;
+    REQUIRE(u._d() == union_types::STRING_KIND);
+
+    u.int_val(123);
+    REQUIRE(u._d() == union_types::INT_KIND);
+
+    u._default();
+    REQUIRE(u._d() == union_types::STRING_KIND);
+}

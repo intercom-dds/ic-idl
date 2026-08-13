@@ -703,10 +703,10 @@ impl<'a> CppGen<'a> {
 
     fn emit_forward_decl(&self, w: &mut Twine, def: &Def, decl: Decl) {
         match decl {
-            Decl::Struct | Decl::Union => {
+            Decl::Struct => {
                 w!(w, "struct ", def.ident.name, ";\n");
             }
-            Decl::Interface | Decl::Valuetype => {
+            Decl::Interface | Decl::Valuetype | Decl::Union => {
                 w!(w, "class ", def.ident.name, ";\n");
             }
             Decl::Native => {}

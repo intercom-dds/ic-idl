@@ -68,4 +68,19 @@ module union_types {
     default:
         boolean flag;
     };
+
+    union ImplicitPrimitiveDisc switch (long) {
+    case 1:
+        long long_val;
+    case 2:
+    case 3:
+        short short_val;
+    };
+
+    union ImplicitEnumDisc switch (ValueKind) {
+    case INT_KIND:
+        long int_val;
+    case FLOAT_KIND:
+        double float_val;
+    };
 };

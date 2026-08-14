@@ -40,6 +40,8 @@ env:
   CARGO_INCREMENTAL: 0
   RUST_BACKTRACE: 1
   RUST_VERSION: "1.97"
+  DOTNET_NOLOGO: "1"
+  DOTNET_CLI_TELEMETRY_OPTOUT: "1"
 
 jobs:
   build:
@@ -104,6 +106,10 @@ jobs:
       - name: install protoc
         if: matrix.lang == 'protobuf'
         run: sudo apt-get update && sudo apt-get install -y protobuf-compiler
+
+      - name: warm up dotnet
+        if: matrix.lang == 'csharp'
+        run: dotnet --info
       - run: cargo xtask codegen --lang ${{ matrix.lang }} --strict-skip
 
   integration:
@@ -148,4 +154,8 @@ jobs:
         if: matrix.lang == 'rust'
         with:
           tool: cargo-nextest
+
+      - name: warm up dotnet
+        if: matrix.lang == 'csharp'
+        run: dotnet --info
       - run: cargo xtask integration --lang ${{ matrix.lang }}

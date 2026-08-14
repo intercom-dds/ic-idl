@@ -949,7 +949,7 @@ impl<'a> JavaGen<'a> {
             return vec![];
         };
 
-        let parent_def = self.hir.context.type_of(parent.def_id);
+        let parent_def = self.hir.context.base_def_of(parent.def_id);
         let DefKind::Struct(parent_struct) = &parent_def.kind else {
             return vec![];
         };

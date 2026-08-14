@@ -616,7 +616,8 @@ impl<'a> TsGen<'a> {
     fn emit_valuetype(&self, w: &mut Twine, def: &Def, value_ty: &ValueTy) {
         w!(w, "export interface ", def.ident.name, "Data");
         if let Some(parent) = value_ty.parent {
-            let parent_name = self.scoped_name(parent.def_id, def.id);
+            let parent_id = self.hir.context.base_id_of(parent.def_id);
+            let parent_name = self.scoped_name(parent_id, def.id);
             w!(w, " extends ", parent_name, "Data");
         }
         w!(w, " {\n");

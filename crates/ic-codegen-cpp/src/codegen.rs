@@ -253,22 +253,60 @@ impl<'a> CppGen<'a> {
         let relative_def_opt = relative_def.into();
         match &ty.kind {
             TyKind::Primitive(prim) => cpp_primitive(*prim).to_string(),
-            TyKind::String { wide, .. } => {
+            TyKind::String {
+                wide, bound: None, ..
+            } => {
                 if *wide {
                     "::std::wstring".to_string()
                 } else {
                     "::std::string".to_string()
                 }
             }
+            TyKind::String {
+                wide,
+                bound: Some(bound),
+                ..
+            } => {
+                if *wide {
+                    format!("::ic_cts::bounded_wstring<{bound}>")
+                } else {
+                    format!("::ic_cts::bounded_string<{bound}>")
+                }
+            }
             TyKind::Adt(def_id) => self.scoped_name(*def_id, relative_def_opt),
-            TyKind::Sequence { ty, .. } => {
+            TyKind::Sequence {
+                ty, bound: None, ..
+            } => {
                 let inner = self.cpp_type(ty, relative_def_opt);
                 format!("::std::vector<{inner}>")
             }
-            TyKind::Map { key, elem, .. } => {
+            TyKind::Sequence {
+                ty,
+                bound: Some(bound),
+                ..
+            } => {
+                let inner = self.cpp_type(ty, relative_def_opt);
+                format!("::ic_cts::bounded_vector<{inner}, {bound}>")
+            }
+            TyKind::Map {
+                key,
+                elem,
+                bound: None,
+                ..
+            } => {
                 let key_ty = self.cpp_type(key, relative_def_opt);
                 let elem_ty = self.cpp_type(elem, relative_def_opt);
                 format!("::std::map<{key_ty}, {elem_ty}>")
+            }
+            TyKind::Map {
+                key,
+                elem,
+                bound: Some(bound),
+                ..
+            } => {
+                let key_ty = self.cpp_type(key, relative_def_opt);
+                let elem_ty = self.cpp_type(elem, relative_def_opt);
+                format!("::ic_cts::bounded_map<{key_ty}, {elem_ty}, {bound}>")
             }
             TyKind::Array { ty, len, .. } => {
                 let inner = self.cpp_type(ty, relative_def_opt);

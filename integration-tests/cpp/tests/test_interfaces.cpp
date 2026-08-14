@@ -106,7 +106,7 @@ TEST_CASE("interface_calculator_all_signatures" * doctest::test_suite("interface
 }
 
 TEST_CASE("interface_writer_parameter_types" * doctest::test_suite("interfaces")) {
-    using WriteMemberFunc = void (interface_types::Writer::*)(std::string);
+    using WriteMemberFunc = void (interface_types::Writer::*)(std::string_view);
     WriteMemberFunc write_ptr = &interface_types::Writer::write;
     CHECK(write_ptr != nullptr);
 }

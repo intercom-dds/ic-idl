@@ -318,7 +318,17 @@ impl<'a> CppGen<'a> {
     }
 
     pub fn should_use_move(&self, ty: &Ty) -> bool {
-        !matches!(&ty.kind, TyKind::Primitive(_))
+        if let TyKind::Adt(def_id) = &ty.kind {
+            let def = self.hir.context.definitions.get(def_id);
+
+            match &def.kind {
+                DefKind::Bitmask(_) | DefKind::Enum(_) => false,
+                DefKind::Alias(alias_ty) => self.should_use_move(&alias_ty.ty),
+                _ => true,
+            }
+        } else {
+            !matches!(&ty.kind, TyKind::Primitive(_))
+        }
     }
 
     pub fn is_optional(member: &Member) -> bool {
@@ -758,15 +768,41 @@ impl<'a> CppGen<'a> {
         w!(w, "virtual ", return_ty_str, " ", method_name, "(\n");
 
         for (i, param) in proto.params.iter().enumerate() {
-            let ty_str = self.cpp_type(&param.ty, interface_def.id);
+            let resolved_ty = self.hir.context.resolve_ty(&param.ty);
+            let (pass_by_value, ty_str) = if let TyKind::Adt(def_id) = resolved_ty.kind
+                && let def = self.hir.context.definitions.get(def_id)
+                && matches!(def.kind, DefKind::Interface(_))
+            {
+                (
+                    true,
+                    format!("{}*", self.cpp_type(&param.ty, interface_def.id)),
+                )
+            } else if let TyKind::String { wide, .. } = &resolved_ty.kind
+                && param.kind == ParamKind::In
+            {
+                (
+                    true,
+                    if *wide {
+                        "::std::wstring_view".into()
+                    } else {
+                        "::std::string_view".into()
+                    },
+                )
+            } else {
+                (false, self.cpp_type(&param.ty, interface_def.id))
+            };
             let param_name = &param.ident.name;
 
-            let param_mode = match param.kind {
-                ParamKind::In => "",
-                ParamKind::Out | ParamKind::InOut => "&",
-            };
-
-            w!(w, ty_str, param_mode, " a_", param_name);
+            match param.kind {
+                ParamKind::In => {
+                    if self.should_use_move(&resolved_ty) && !pass_by_value {
+                        w!(w, "const ", ty_str, "& a_", param_name);
+                    } else {
+                        w!(w, ty_str, " a_", param_name);
+                    }
+                }
+                ParamKind::Out | ParamKind::InOut => w!(w, ty_str, "& a_", param_name),
+            }
 
             if i < proto.params.len() - 1 {
                 w!(w, ",\n");
@@ -897,6 +933,7 @@ impl<'a> CppGen<'a> {
             w!(header, "#include <memory>\n");
             w!(header, "#include <optional>\n");
             w!(header, "#include <string>\n");
+            w!(header, "#include <string_view>\n");
             w!(header, "#include <vector>\n\n");
             w!(header, "#include <ic_cts/any.h>\n");
             w!(header, "#include <ic_cts/member_info.h>\n");

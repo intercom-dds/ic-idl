@@ -121,7 +121,7 @@ inline void hash_combine(std::size_t& seed, const ic_cts::bounded_basic_string<C
 template <typename T, size_t N>
 inline void hash_combine(std::size_t& seed, const ic_cts::bounded_vector<T, N>& x) {
     hash_combine(seed, x.size());
-    for (const auto& elem : x) {
+    for (const T& elem : x) {
         hash_combine(seed, elem);
     }
 }

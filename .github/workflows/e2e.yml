@@ -1,0 +1,151 @@
+# Copyright 2024 KONGSBERG
+#
+# Redistribution and use in source and binary forms, with or without
+# modification, are permitted provided that the following conditions are met:
+#
+# 1. Redistributions of source code must retain the above copyright notice,
+#    this list of conditions and the following disclaimer.
+#
+# 2. Redistributions in binary form must reproduce the above copyright notice,
+#    this list of conditions and the following disclaimer in the documentation
+#    and/or other materials provided with the distribution.
+#
+# 3. Neither the name of the copyright holder nor the names of its contributors
+#    may be used to endorse or promote products derived from this software
+#    without specific prior written permission.
+#
+# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
+# ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+# WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+# DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
+# FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+# DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+# SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+# CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+# OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+# OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+name: e2e
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  CARGO_INCREMENTAL: 0
+  RUST_BACKTRACE: 1
+  RUST_VERSION: "1.97"
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: ${{ env.RUST_VERSION }}
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo build -p ic-idl --bin ic-idl
+      - uses: actions/upload-artifact@v7
+        with:
+          name: ic-idl
+          path: target/debug/ic-idl
+
+  codegen:
+    needs: build
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        lang:
+          - cpp
+          - csharp
+          - java
+          - protobuf
+          # - python
+          - rust
+          - typescript
+          - json
+          - json-schema
+          - xml
+          - idl
+
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/download-artifact@v7
+        with:
+          name: ic-idl
+          path: target/debug
+      - run: chmod +x target/debug/ic-idl
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: ${{ env.RUST_VERSION }}
+      - uses: Swatinem/rust-cache@v2
+      - uses: astral-sh/setup-uv@v7
+      - uses: actions/setup-java@v5
+        if: matrix.lang == 'java'
+        with:
+          distribution: temurin
+          java-version: "11"
+      - uses: actions/setup-dotnet@v6
+        if: matrix.lang == 'csharp'
+        with:
+          dotnet-version: "8.0.x"
+
+      - name: install typescript
+        if: matrix.lang == 'typescript'
+        run: npm install -g typescript
+
+      - name: install protoc
+        if: matrix.lang == 'protobuf'
+        run: sudo apt-get update && sudo apt-get install -y protobuf-compiler
+      - run: cargo xtask codegen --lang ${{ matrix.lang }} --strict-skip
+
+  integration:
+    needs: build
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        lang:
+          # - python
+          - typescript
+          - csharp
+          - cpp
+          - java
+          - rust
+
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/download-artifact@v7
+        with:
+          name: ic-idl
+          path: target/debug
+      - run: chmod +x target/debug/ic-idl
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: ${{ env.RUST_VERSION }}
+      - uses: Swatinem/rust-cache@v2
+      - uses: astral-sh/setup-uv@v7
+        if: matrix.lang == 'python'
+      - uses: oven-sh/setup-bun@v2
+        if: matrix.lang == 'typescript'
+      - uses: actions/setup-dotnet@v6
+        if: matrix.lang == 'csharp'
+        with:
+          dotnet-version: "8.0.x"
+      - uses: actions/setup-java@v5
+        if: matrix.lang == 'java'
+        with:
+          distribution: temurin
+          java-version: "11"
+      - uses: taiki-e/install-action@v2
+        if: matrix.lang == 'rust'
+        with:
+          tool: cargo-nextest
+      - run: cargo xtask integration --lang ${{ matrix.lang }}

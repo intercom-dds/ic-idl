@@ -72,7 +72,7 @@ authors = ["KONGSBERG <DDS-InterCOM@kda.kongsberg.com>"]
 criterion = "0.8"
 proc-macro2 = "1.0.106"
 quote = "1.0.45"
-syn = "2.0.117"
+syn = "3.0.3"
 tracing = "0.1.44"
 intercom-cts = { path = "runtime/rust/intercom-cts", features = ["derive"] }
 

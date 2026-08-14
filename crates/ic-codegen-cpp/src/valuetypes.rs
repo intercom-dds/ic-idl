@@ -48,6 +48,10 @@ impl CppGen<'_> {
         w!(decl_w, " {\n");
         w!(decl_w, "public:\n");
 
+        for &nested_id in &valuetype_ty.definitions {
+            self.emit_definition(decl_w, impl_w, nested_id);
+        }
+
         self.emit_valuetype_constructors(decl_w, def, valuetype_ty);
         Self::emit_valuetype_comparison_operators(decl_w, valuetype_name);
 

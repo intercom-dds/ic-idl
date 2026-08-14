@@ -790,7 +790,7 @@ impl<'a> CppGen<'a> {
         }
     }
 
-    fn emit_definition(&self, decl_w: &mut Twine, impl_w: &mut Twine, def_id: DefId) {
+    pub(crate) fn emit_definition(&self, decl_w: &mut Twine, impl_w: &mut Twine, def_id: DefId) {
         let def = self.hir.context.definitions.get(def_id);
 
         match &def.kind {

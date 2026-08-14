@@ -85,6 +85,10 @@ TEST_CASE("enum_default_literal_exists" * doctest::test_suite("defaults")) {
     CHECK(default_types::Priority::HIGH == 2);
 }
 
+TEST_CASE("enum_default_literal_value" * doctest::test_suite("defaults")) {
+    CHECK(default_types::EnumDefaults().priority_empty == default_types::Priority::MEDIUM);
+}
+
 TEST_CASE("primitive_bool_default" * doctest::test_suite("defaults")) {
     default_types::PrimitiveDefaults p;
     CHECK(p.bool_empty == false);

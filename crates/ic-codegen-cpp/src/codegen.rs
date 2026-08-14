@@ -497,11 +497,23 @@ impl<'a> CppGen<'a> {
             TyKind::Array { .. } => w!(w, "{}"),
             TyKind::Adt(def_id) => {
                 let def = self.hir.context.definitions.get(*def_id);
-                if let DefKind::Enum(enum_ty) = &def.kind
-                    && let Some(first) = enum_ty.fields.first()
-                {
-                    let name = self.scoped_name(*first, None);
-                    w!(w, name);
+                if let DefKind::Enum(enum_ty) = &def.kind {
+                    if let Some(default_member) = enum_ty
+                        .fields
+                        .iter()
+                        .map(|f| self.hir.context.definitions.get(f))
+                        .find(|f| {
+                            f.annotations
+                                .iter()
+                                .any(|a| a.ident.name == "default_literal")
+                        })
+                    {
+                        let name = self.scoped_name(default_member.id, None);
+                        w!(w, name);
+                    } else if let Some(first) = enum_ty.fields.first() {
+                        let name = self.scoped_name(*first, None);
+                        w!(w, name);
+                    }
                 }
             }
             _ => {}

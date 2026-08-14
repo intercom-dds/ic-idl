@@ -34,30 +34,30 @@
 TEST_CASE("bounded_string_typedef_maps_to_str" * doctest::test_suite("bounded_types")) {
     bounded_types::ShortString short_str = "Hello";
     CHECK(short_str == "Hello");
-    CHECK((std::is_same_v<bounded_types::ShortString, std::string>));
+    CHECK((std::is_same_v<bounded_types::ShortString, ic_cts::bounded_string<32>>));
 
     bounded_types::MediumString medium_str = "This is a medium length string";
     CHECK(medium_str.length() == 30);
-    CHECK((std::is_same_v<bounded_types::MediumString, std::string>));
+    CHECK((std::is_same_v<bounded_types::MediumString, ic_cts::bounded_string<256>>));
 
     bounded_types::LongString long_str =
         "This is a very long string that could contain a lot of text";
     CHECK(long_str.length() > 0);
-    CHECK((std::is_same_v<bounded_types::LongString, std::string>));
+    CHECK((std::is_same_v<bounded_types::LongString, ic_cts::bounded_string<4096>>));
 }
 
 TEST_CASE("bounded_sequence_typedef_maps_to_list" * doctest::test_suite("bounded_types")) {
     bounded_types::SmallIntList small_list = {1, 2, 3, 4, 5};
     CHECK(small_list.size() == 5);
-    CHECK((std::is_same_v<bounded_types::SmallIntList, std::vector<int32_t>>));
+    CHECK((std::is_same_v<bounded_types::SmallIntList, ic_cts::bounded_vector<int32_t, 10>>));
 
     bounded_types::StringList100 string_list = {"one", "two", "three"};
     CHECK(string_list.size() == 3);
-    CHECK((std::is_same_v<bounded_types::StringList100, std::vector<std::string>>));
+    CHECK((std::is_same_v<bounded_types::StringList100, ic_cts::bounded_vector<std::string, 100>>));
 
     bounded_types::LargeDoubleList double_list = {1.1, 2.2, 3.3};
     CHECK(double_list.size() == 3);
-    CHECK((std::is_same_v<bounded_types::LargeDoubleList, std::vector<double>>));
+    CHECK((std::is_same_v<bounded_types::LargeDoubleList, ic_cts::bounded_vector<double, 1000>>));
 }
 
 TEST_CASE("bounded_fields_struct" * doctest::test_suite("bounded_types")) {
@@ -71,15 +71,24 @@ TEST_CASE("bounded_fields_struct" * doctest::test_suite("bounded_types")) {
 }
 
 TEST_CASE("bounded_fields_annotations" * doctest::test_suite("bounded_types")) {
-    CHECK((std::is_same_v<decltype(bounded_types::BoundedFields::name), std::string>));
-    CHECK((std::is_same_v<decltype(bounded_types::BoundedFields::description), std::string>));
-    CHECK((std::is_same_v<decltype(bounded_types::BoundedFields::values), std::vector<int32_t>>));
-    CHECK((std::is_same_v<decltype(bounded_types::BoundedFields::tags), std::vector<std::string>>));
+    CHECK((std::is_same_v<decltype(bounded_types::BoundedFields::name), ic_cts::bounded_string<64>>)
+    );
+    CHECK((std::is_same_v<
+           decltype(bounded_types::BoundedFields::description),
+           ic_cts::bounded_string<256>>));
+    CHECK((std::is_same_v<
+           decltype(bounded_types::BoundedFields::values),
+           ic_cts::bounded_vector<int32_t, 50>>));
+    CHECK((std::is_same_v<
+           decltype(bounded_types::BoundedFields::tags),
+           ic_cts::bounded_vector<ic_cts::bounded_string<32>, 10>>));
 }
 
 TEST_CASE("nested_bounded_struct" * doctest::test_suite("bounded_types")) {
-    std::vector<std::vector<int32_t>> matrix = {{1, 2}, {3, 4}};
-    std::map<std::string, std::vector<int32_t>> indexed = {{"key", {5, 6}}};
+    ic_cts::bounded_vector<ic_cts::bounded_vector<int32_t, 10>, 5> matrix = {{1, 2}, {3, 4}};
+    std::map<ic_cts::bounded_string<32>, ic_cts::bounded_vector<int32_t, 100>> indexed = {
+        {"key", {5, 6}}
+    };
     bounded_types::NestedBounded nb(matrix, indexed);
     CHECK(nb.matrix.size() == 2);
     CHECK(nb.matrix[0][1] == 2);
@@ -89,20 +98,21 @@ TEST_CASE("nested_bounded_struct" * doctest::test_suite("bounded_types")) {
 TEST_CASE("nested_bounded_annotations" * doctest::test_suite("bounded_types")) {
     CHECK((std::is_same_v<
            decltype(bounded_types::NestedBounded::matrix),
-           std::vector<std::vector<int32_t>>>));
+           ic_cts::bounded_vector<ic_cts::bounded_vector<int32_t, 10>, 5>>));
     CHECK((std::is_same_v<
            decltype(bounded_types::NestedBounded::indexed_lists),
-           std::map<std::string, std::vector<int32_t>>>));
+           std::map<ic_cts::bounded_string<32>, ic_cts::bounded_vector<int32_t, 100>>>));
 }
 
 TEST_CASE("typedef_chain_with_bounds" * doctest::test_suite("bounded_types")) {
     bounded_types::Name name = "Alice";
     CHECK(name == "Alice");
-    CHECK((std::is_same_v<bounded_types::Name, std::string>));
+    CHECK((std::is_same_v<bounded_types::Name, ic_cts::bounded_string<100>>));
 
     bounded_types::NameList names = {"Alice", "Bob", "Charlie"};
     CHECK(names.size() == 3);
-    CHECK((std::is_same_v<bounded_types::NameList, std::vector<bounded_types::Name>>));
+    CHECK((std::is_same_v<bounded_types::NameList, ic_cts::bounded_vector<bounded_types::Name, 50>>)
+    );
 
     bounded_types::NameMap name_map = {{"group1", {"Alice", "Bob"}}};
     CHECK(name_map.size() == 1);
@@ -120,10 +130,13 @@ TEST_CASE("mixed_bounds_struct" * doctest::test_suite("bounded_types")) {
 }
 
 TEST_CASE("mixed_bounds_annotations" * doctest::test_suite("bounded_types")) {
-    CHECK((std::is_same_v<decltype(bounded_types::MixedBounds::bounded_string), std::string>));
+    CHECK((std::is_same_v<
+           decltype(bounded_types::MixedBounds::bounded_string),
+           ic_cts::bounded_string<100>>));
     CHECK((std::is_same_v<decltype(bounded_types::MixedBounds::unbounded_string), std::string>));
-    CHECK((std::is_same_v<decltype(bounded_types::MixedBounds::bounded_seq), std::vector<int32_t>>)
-    );
+    CHECK((std::is_same_v<
+           decltype(bounded_types::MixedBounds::bounded_seq),
+           ic_cts::bounded_vector<int32_t, 10>>));
     CHECK(
         (std::is_same_v<decltype(bounded_types::MixedBounds::unbounded_seq), std::vector<int32_t>>)
     );

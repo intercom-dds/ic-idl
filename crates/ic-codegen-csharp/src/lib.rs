@@ -100,6 +100,10 @@ fn escape_csharp(ctx: rename::RenameContext) -> Option<String> {
         | rename::IdentifierKind::Variant
         | rename::IdentifierKind::Operation
         | rename::IdentifierKind::Attribute
+        | rename::IdentifierKind::Struct
+        | rename::IdentifierKind::Union
+        | rename::IdentifierKind::Valuetype
+        | rename::IdentifierKind::Exception
             if RESERVED_MEMBER_NAMES.contains(&name) =>
         {
             return Some(format!("{name}_"));

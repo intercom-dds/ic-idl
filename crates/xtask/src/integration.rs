@@ -36,10 +36,6 @@ pub struct Options {
     /// Languages to test: python, typescript, csharp, cpp, java, rust
     #[option(short, long, arg = "lang")]
     pub lang: HashSet<String>,
-
-    /// Use release build of ic-idl
-    #[option(short, long)]
-    pub release: bool,
 }
 
 fn git_root() -> PathBuf {

@@ -94,11 +94,23 @@ impl<'a> CGen<'a> {
         }
     }
 
-    fn c_member(&self, ty: &Ty, name: impl std::fmt::Display) -> String {
+    fn c_declaration(&self, ty: &Ty, name: impl std::fmt::Display, is_const: bool) -> String {
         match &ty.kind {
-            TyKind::Array { ty, len, .. } => self.c_member(ty, format!("{name}[{len}]")),
+            TyKind::Array { ty, len, .. } => {
+                self.c_declaration(ty, format!("{name}[{len}]"), is_const)
+            }
+            TyKind::String { .. } | TyKind::Sequence { .. } | TyKind::Map { .. } | TyKind::Any
+                if is_const =>
+            {
+                format!("{} const {name}", self.c_type(ty))
+            }
+            _ if is_const => format!("const {} {name}", self.c_type(ty)),
             _ => format!("{} {name}", self.c_type(ty)),
         }
+    }
+
+    fn c_member(&self, ty: &Ty, name: impl std::fmt::Display) -> String {
+        self.c_declaration(ty, name, false)
     }
 
     fn is_optional(&self, member: &Member) -> bool {
@@ -161,30 +173,47 @@ impl<'a> CGen<'a> {
         }
     }
 
-    fn c_input_type(&self, ty: &Ty) -> String {
+    fn is_array(&self, ty: &Ty) -> bool {
+        match &ty.kind {
+            TyKind::Array { .. } => true,
+            TyKind::Adt(def_id) => match &self.hir.context.base_def_of(*def_id).kind {
+                DefKind::Alias(alias) => self.is_array(&alias.ty),
+                _ => false,
+            },
+            _ => false,
+        }
+    }
+
+    fn c_input_member(&self, ty: &Ty, name: impl std::fmt::Display) -> String {
         if self.is_scalar(ty) {
-            return self.c_type(ty);
+            return format!("{} {name}", self.c_type(ty));
         }
 
         match &ty.kind {
             TyKind::Sequence { .. } | TyKind::Map { .. } | TyKind::Any => {
-                format!("const {}", self.c_type(ty))
+                format!("const {} {name}", self.c_type(ty))
             }
-            _ => format!("const {}*", self.c_type(ty)),
+            TyKind::Array { .. } => self.c_declaration(ty, name, true),
+            _ if self.is_array(ty) => format!("const {} {name}", self.c_type(ty)),
+            _ => format!("const {}* {name}", self.c_type(ty)),
         }
     }
 
-    fn c_output_type(&self, ty: &Ty) -> String {
-        format!("{}*", self.c_type(ty))
+    fn c_output_member(&self, ty: &Ty, name: impl std::fmt::Display) -> String {
+        match &ty.kind {
+            TyKind::Array { .. } => self.c_member(ty, name),
+            _ if self.is_array(ty) => format!("{} {name}", self.c_type(ty)),
+            _ => format!("{}* {name}", self.c_type(ty)),
+        }
     }
 
     fn c_parameter(&self, parameter: &Parameter) -> String {
-        let ty = match parameter.kind {
-            ParamKind::In => self.c_input_type(&parameter.ty),
-            ParamKind::Out | ParamKind::InOut => self.c_output_type(&parameter.ty),
-        };
-
-        format!("{ty} {}", parameter.ident.name)
+        match parameter.kind {
+            ParamKind::In => self.c_input_member(&parameter.ty, &parameter.ident.name),
+            ParamKind::Out | ParamKind::InOut => {
+                self.c_output_member(&parameter.ty, &parameter.ident.name)
+            }
+        }
     }
 
     fn format_numeric(&self, value: &Numeric) -> String {
@@ -259,7 +288,7 @@ impl<'a> CGen<'a> {
 
     fn emit_prototype(&self, w: &mut Twine, proto: &ProtoTy) {
         w!(w, "idl_status_t (*", proto.ident.name, ")(\n");
-        w!(w, "void*,\n");
+        w!(w, "void* _self,\n");
 
         for parameter in &proto.params {
             w!(w, self.c_parameter(parameter), ",\n");
@@ -269,25 +298,25 @@ impl<'a> CGen<'a> {
             proto.ty.kind,
             TyKind::Primitive(PrimitiveTy::Void) | TyKind::Null
         ) {
-            w!(w, self.c_output_type(&proto.ty), ",\n");
+            w!(w, self.c_output_member(&proto.ty, "_result"), ",\n");
         }
 
-        w!(w, "idl_error_t*\n");
+        w!(w, "idl_error_t* _error\n");
         w!(w, ");\n");
     }
 
     fn emit_attribute(&self, w: &mut Twine, attribute: &Attribute) {
         w!(w, "idl_status_t (*get_", attribute.ident.name, ")(\n");
-        w!(w, "void*,\n");
-        w!(w, self.c_output_type(&attribute.ty), ",\n");
-        w!(w, "idl_error_t*\n");
+        w!(w, "void* _self,\n");
+        w!(w, self.c_output_member(&attribute.ty, "_value"), ",\n");
+        w!(w, "idl_error_t* _error\n");
         w!(w, ");\n");
 
         if !attribute.is_readonly {
             w!(w, "idl_status_t (*set_", attribute.ident.name, ")(\n");
-            w!(w, "void*,\n");
-            w!(w, self.c_input_type(&attribute.ty), ",\n");
-            w!(w, "idl_error_t*\n");
+            w!(w, "void* _self,\n");
+            w!(w, self.c_input_member(&attribute.ty, "_value"), ",\n");
+            w!(w, "idl_error_t* _error\n");
             w!(w, ");\n");
         }
     }

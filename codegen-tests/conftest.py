@@ -77,7 +77,7 @@ def pytest_addoption(parser: pytest.Parser) -> None:
     parser.addoption(
         "--c-compiler",
         action="store",
-        default="cc",
+        default=None,
         help="Path to C compiler",
     )
     parser.addoption(
@@ -160,6 +160,7 @@ def run_codegen(
 
     result = subprocess.run(
         base_args + ["-l", str(idl_file)],
+        check=False,
         capture_output=True,
         text=True,
         timeout=60,
@@ -173,6 +174,7 @@ def run_codegen(
 
     result = subprocess.run(
         base_args + [str(idl_file)],
+        check=False,
         capture_output=True,
         text=True,
         timeout=60,

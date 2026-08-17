@@ -33,7 +33,7 @@ import {
   SingleFlag,
   MixedFlags,
   type FileInfo,
-} from "../generated/bitmask_types";
+} from "@generated/bitmask_types";
 
 describe("bitmasks", () => {
   test("Permissions has power-of-2 values", () => {

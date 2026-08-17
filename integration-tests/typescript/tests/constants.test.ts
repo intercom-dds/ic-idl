@@ -70,7 +70,7 @@ import {
   PAREN_C,
   MOD_A,
   MOD_B,
-} from "../generated/constant_types";
+} from "@generated/constant_types";
 import {
   OCTET_MAX,
   OCTET_MIN,
@@ -92,8 +92,8 @@ import {
   OCTAL_777,
   LONG_MAX_MINUS_ONE,
   LONGLONG_MAX_MINUS_ONE,
-} from "../generated/large_integer_types";
-import type { LargeIntFields } from "../generated/large_integer_types";
+} from "@generated/large_integer_types";
+import type { LargeIntFields } from "@generated/large_integer_types";
 
 describe("constants", () => {
   describe("primitive constants", () => {

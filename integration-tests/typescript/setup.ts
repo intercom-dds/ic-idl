@@ -33,7 +33,13 @@ const thisDir = import.meta.dir;
 const integrationTestsDir = dirname(thisDir);
 const rootDir = dirname(integrationTestsDir);
 const corpusDir = join(integrationTestsDir, "corpus");
-const generatedDir = join(thisDir, "generated");
+const generatedDir = join(
+  rootDir,
+  "target",
+  "integration-tests",
+  "typescript",
+  "generated",
+);
 
 const exeName = process.platform === "win32" ? "ic-idl.exe" : "ic-idl";
 const compilerPath =

@@ -69,6 +69,7 @@ def test_csharp(
     result = subprocess.run(
         [dotnet, "build", "--nologo", "-v", "quiet", "-clp:ErrorsOnly"],
         cwd=csharp_output_dir,
+        check=False,
         capture_output=True,
         text=True,
         timeout=120,

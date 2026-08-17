@@ -46,6 +46,7 @@ def test_idl(idl_file: Path, idl_compiler: Path, idl_output_dir: Path) -> None:
     for generated_file in generated_idl_files:
         result = subprocess.run(
             [str(idl_compiler), str(generated_file)],
+            check=False,
             capture_output=True,
             text=True,
             timeout=60,

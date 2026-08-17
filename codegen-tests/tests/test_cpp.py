@@ -164,6 +164,7 @@ def test_cpp(
 
         result = subprocess.run(
             cmd,
+            check=False,
             capture_output=True,
             text=True,
             timeout=60,

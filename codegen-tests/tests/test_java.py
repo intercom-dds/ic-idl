@@ -62,6 +62,7 @@ def test_java(
 
     result = subprocess.run(
         [java_compiler, "-d", str(java_output_dir)] + [str(f) for f in java_files],
+        check=False,
         capture_output=True,
         text=True,
         timeout=60,

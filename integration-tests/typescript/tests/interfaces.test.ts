@@ -36,8 +36,8 @@ import type {
   WithOutParams,
   WithRaises,
   CombinedFeatures,
-} from "../generated/interface_types";
-import { OperationFailed, InvalidInput } from "../generated/interface_types";
+} from "@generated/interface_types";
+import { OperationFailed, InvalidInput } from "@generated/interface_types";
 
 describe("interfaces", () => {
   test("Reader interface can be implemented", () => {

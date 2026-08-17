@@ -33,8 +33,8 @@ import {
   DEFAULT_INNER,
   NESTED_INNER,
   Priority,
-} from "../generated/default_types";
-import type { Inner, OptionalFields } from "../generated/default_types";
+} from "@generated/default_types";
+import type { Inner, OptionalFields } from "@generated/default_types";
 
 describe("defaults", () => {
   describe("constants", () => {

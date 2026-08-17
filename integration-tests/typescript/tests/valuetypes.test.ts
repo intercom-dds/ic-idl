@@ -37,7 +37,7 @@ import type {
   NamedValue,
   FullValue,
   ValueWithPrivate,
-} from "../generated/valuetype_types";
+} from "@generated/valuetype_types";
 
 describe("valuetypes", () => {
   describe("SimpleValue", () => {

@@ -29,6 +29,7 @@ mod common;
 
 use ic_emit::case::Case;
 use ic_hir::hir::DefKind;
+use ic_hir_xform::flatten;
 use ic_hir_xform::rename::{self, Convention, Target, strip_common_suffixes};
 
 fn test_rust_target() -> Target {
@@ -129,6 +130,62 @@ fn test_same_namespace_collision() {
     struct_names.sort();
 
     assert_eq!(struct_names, vec!["MyStruct", "MyStruct_"]);
+}
+
+#[test]
+fn moved_nested_module_does_not_take_interface_name() {
+    let idl = r"
+        module qux {
+            interface quux {
+                struct zork {};
+            };
+        };
+    ";
+
+    let hir = common::parse_and_resolve(idl);
+    let (hir, moved_defs) = ic_hir_xform::move_nested::transform(hir);
+    let hir = ic_hir_xform::squash_modules::transform(hir);
+    let mut target = test_rust_target();
+    target.convention.interface = Some(Case::Pascal);
+    target.moved_defs = moved_defs;
+    let renamed = rename::transform(hir, &target);
+
+    let interface = renamed
+        .context
+        .definitions
+        .iter()
+        .find_map(|(_, def)| matches!(def.kind, DefKind::Interface(_)).then_some(def))
+        .unwrap();
+
+    assert_eq!(interface.ident.name, "Quux");
+}
+
+#[test]
+fn forward_declaration_and_definition_share_moved_name() {
+    let idl = r"
+        module outer {
+            struct Value;
+            struct Value {
+                long data;
+            };
+        };
+    ";
+
+    let hir = common::parse_and_resolve(idl);
+    let flattened = flatten::transform(hir, "_");
+    let target = Target {
+        moved_defs: flattened.moved_defs,
+        ..Default::default()
+    };
+    let renamed = rename::transform(flattened.hir, &target);
+
+    let names: Vec<_> = renamed
+        .iter()
+        .filter(|def| matches!(def.kind, DefKind::Decl(_) | DefKind::Struct(_)))
+        .map(|def| def.ident.name.as_str())
+        .collect();
+
+    assert_eq!(names, vec!["outer_Value", "outer_Value"]);
 }
 
 #[test]

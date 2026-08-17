@@ -33,6 +33,7 @@
 
 // pub mod nested;
 pub mod default_annotation;
+pub mod flatten;
 pub mod implicit_default;
 pub mod move_constants;
 pub mod move_nested;

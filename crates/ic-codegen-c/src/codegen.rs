@@ -201,12 +201,12 @@ impl<'a> CGen<'a> {
             Numeric::Int64(value) => format!("INT64_C({value})"),
             Numeric::UInt64(value) => format!("UINT64_C({value})"),
             Numeric::Const(def_id) => self.hir.context.type_of(*def_id).to_string(),
-            Numeric::Char(value) => format!("'{}'", value.escape_default()),
-            Numeric::WChar(value) => format!("u'{}'", value.escape_default()),
-            Numeric::Float(value) => format!("{value}F"),
-            Numeric::Double(value) => value.to_string(),
-            Numeric::String(value) => format!("\"{}\"", value.escape_default()),
-            Numeric::WString(value) => format!("u\"{}\"", value.escape_default()),
+            Numeric::Char(value) => format!("'{}'", escape_char(*value)),
+            Numeric::WChar(value) => format!("u'{}'", escape_char(*value)),
+            Numeric::Float(value) => format!("{value:.7e}F"),
+            Numeric::Double(value) => format!("{value:.16e}"),
+            Numeric::String(value) => format!("\"{}\"", escape_string(value)),
+            Numeric::WString(value) => format!("u\"{}\"", escape_string(value)),
             Numeric::Array { values, .. } => {
                 let values = values
                     .iter()
@@ -488,4 +488,25 @@ impl<'a> CGen<'a> {
 
         result
     }
+}
+
+fn escape_char(value: char) -> String {
+    match value {
+        '\'' => "\\'".to_string(),
+        '"' => "\\\"".to_string(),
+        '\\' => "\\\\".to_string(),
+        '?' => "\\?".to_string(),
+        value if value.is_ascii_graphic() || value == ' ' => value.to_string(),
+        value if value.is_ascii() => format!("\\{:03o}", u32::from(value)),
+        value if u32::from(value) <= 0xFFFF => format!("\\u{:04X}", u32::from(value)),
+        value => format!("\\U{:08X}", u32::from(value)),
+    }
+}
+
+fn escape_string(value: &str) -> String {
+    let mut escaped = String::new();
+    for value in value.chars() {
+        escaped.push_str(&escape_char(value));
+    }
+    escaped
 }

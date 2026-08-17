@@ -75,6 +75,12 @@ def pytest_addoption(parser: pytest.Parser) -> None:
         help="Path to Rust package manager (cargo)",
     )
     parser.addoption(
+        "--c-compiler",
+        action="store",
+        default="cc",
+        help="Path to C compiler",
+    )
+    parser.addoption(
         "--cpp-compiler",
         action="store",
         default=None,

@@ -65,7 +65,8 @@ def test_json(
         errors = sorted(validator.iter_errors(doc), key=lambda e: list(e.path))
         if errors:
             detail = "\n".join(
-                f"  {'/'.join(str(p) for p in e.path)}: {e.message}" for e in errors[:10]
+                f"  {'/'.join(str(p) for p in e.path)}: {e.message}"
+                for e in errors[:10]
             )
             raise AssertionError(
                 f"{json_file.name} does not match {SCHEMA_PATH.name}:\n{detail}"

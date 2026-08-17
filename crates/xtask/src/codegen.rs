@@ -67,6 +67,10 @@ pub struct Options {
     #[option(long, arg = "path")]
     pub cargo: Option<String>,
 
+    /// Path to C compiler
+    #[option(long, arg = "path")]
+    pub c_compiler: Option<String>,
+
     /// Path to C++ compiler
     #[option(long, arg = "path")]
     pub cpp_compiler: Option<String>,
@@ -105,6 +109,7 @@ fn lang_to_test_file(lang: &str) -> Option<&'static str> {
         "xml" => Some("tests/test_xml.py"),
         "idl" => Some("tests/test_idl.py"),
         "rust" | "rs" => Some("tests/test_rust.py"),
+        "c" => Some("tests/test_c.py"),
         "cpp" | "c++" => Some("tests/test_cpp.py"),
         _ => None,
     }
@@ -144,8 +149,8 @@ pub fn run(opts: Options) {
             } else {
                 eprintln!("error: unknown or unsupported language '{lang}'");
                 eprintln!(
-                    "supported languages: cpp, csharp, java, protobuf, python, rust, typescript, \
-                     json, json-schema, xml, idl, all"
+                    "supported languages: c, cpp, csharp, java, protobuf, python, rust, \
+                     typescript, json, json-schema, xml, idl, all"
                 );
                 std::process::exit(1);
             }
@@ -179,6 +184,9 @@ pub fn run(opts: Options) {
     }
     if let Some(cargo) = &opts.cargo {
         cmd.arg(format!("--cargo={cargo}"));
+    }
+    if let Some(c) = &opts.c_compiler {
+        cmd.arg(format!("--c-compiler={c}"));
     }
     if let Some(cpp) = &opts.cpp_compiler {
         cmd.arg(format!("--cpp-compiler={cpp}"));

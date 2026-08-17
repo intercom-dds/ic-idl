@@ -555,13 +555,20 @@ fn collect_forward_groups(
 }
 
 fn is_enum_constant(hir: &ResolvedGraph, const_id: hir::DefId) -> bool {
-    for (_, def) in &hir.context.definitions {
-        if let DefKind::Enum(enum_ty) = &def.kind
-            && enum_ty.fields.contains(&const_id)
-        {
-            return true;
-        }
+    if let Some(parent_def_id) = hir.context.definitions.get(const_id).parent {
+        let parent_def = hir.context.definitions.get(parent_def_id);
+        return matches!(parent_def.kind, DefKind::Enum(_));
     }
+
+    false
+}
+
+fn is_bitflag_constant(hir: &ResolvedGraph, const_id: hir::DefId) -> bool {
+    if let Some(parent_def_id) = hir.context.definitions.get(const_id).parent {
+        let parent_def = hir.context.definitions.get(parent_def_id);
+        return matches!(parent_def.kind, DefKind::Bitmask(_));
+    }
+
     false
 }
 
@@ -606,6 +613,8 @@ fn rename_breadth(hir: &mut ResolvedGraph, def_ids: &[hir::DefId], target: &Targ
         let (case, kind) = if matches!(def.kind, hir::DefKind::Const(_)) {
             if is_enum_constant(hir, id) {
                 (target.convention.enumerator, IdentifierKind::Enumerator)
+            } else if is_bitflag_constant(hir, id) {
+                (target.convention.bit_flag, IdentifierKind::BitFlag)
             } else {
                 (target.convention.constant, IdentifierKind::Constant)
             }

@@ -27,7 +27,7 @@
 
 # User Documentation:
 
-# Passing LANGUAGE <CPP|PYTHON|RUST|IDL|PROTOBUf> to idl_generate() will cause
+# Passing LANGUAGE <C|CPP|PYTHON|RUST|IDL|PROTOBUF> to idl_generate() will cause
 # that language to be generated. If no LANGUAGE is specified CPP will be
 # generated. Multiple languages in the same statement is not supported.
 #
@@ -128,6 +128,11 @@ function(IDL_GENERATE)
     if( _IC_GENERATE_LANGUAGE STREQUAL "RUST" )
         list( APPEND _IC_GENERATE_FLAGS --rust-out ${_ABS_DESTINATION} )
         list( APPEND _OUTPUT_SUFFIXES .rs )
+    endif()
+
+    if( _IC_GENERATE_LANGUAGE STREQUAL "C" )
+        list( APPEND _IC_GENERATE_FLAGS --c-out ${_ABS_DESTINATION} )
+        list( APPEND _OUTPUT_SUFFIXES .h )
     endif()
 
     if( _IC_GENERATE_LANGUAGE STREQUAL "CPP" )

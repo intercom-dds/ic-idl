@@ -498,6 +498,62 @@ fn strip_bitmask_prefixes(hir: &mut ResolvedGraph) {
     }
 }
 
+fn matches_forward_declaration(decl: Decl, kind: &DefKind) -> bool {
+    matches!(
+        (decl, kind),
+        (
+            Decl::Struct,
+            DefKind::Decl(Decl::Struct) | DefKind::Struct(_)
+        ) | (Decl::Union, DefKind::Decl(Decl::Union) | DefKind::Union(_))
+            | (
+                Decl::Interface,
+                DefKind::Decl(Decl::Interface) | DefKind::Interface(_)
+            )
+            | (
+                Decl::Valuetype,
+                DefKind::Decl(Decl::Valuetype) | DefKind::Valuetype(_)
+            )
+    )
+}
+
+fn collect_forward_groups(
+    hir: &ResolvedGraph,
+    def_ids: &[hir::DefId],
+) -> HashMap<String, Vec<hir::DefId>> {
+    let mut groups = HashMap::new();
+
+    for &id in def_ids {
+        let def = hir.context.type_of(id);
+        let DefKind::Decl(decl) = def.kind else {
+            continue;
+        };
+
+        if decl == Decl::Native {
+            continue;
+        }
+
+        let group: Vec<_> = def_ids
+            .iter()
+            .copied()
+            .filter(|&candidate_id| {
+                let candidate = hir.context.type_of(candidate_id);
+                candidate.ident.name == def.ident.name
+                    && matches_forward_declaration(decl, &candidate.kind)
+            })
+            .collect();
+
+        let has_definition = group.iter().any(|&candidate_id| {
+            !matches!(hir.context.type_of(candidate_id).kind, DefKind::Decl(_))
+        });
+
+        if has_definition {
+            groups.insert(def.ident.name.clone(), group);
+        }
+    }
+
+    groups
+}
+
 fn is_enum_constant(hir: &ResolvedGraph, const_id: hir::DefId) -> bool {
     for (_, def) in &hir.context.definitions {
         if let DefKind::Enum(enum_ty) = &def.kind
@@ -512,6 +568,7 @@ fn is_enum_constant(hir: &ResolvedGraph, const_id: hir::DefId) -> bool {
 fn rename_breadth(hir: &mut ResolvedGraph, def_ids: &[hir::DefId], target: &Target) {
     let mut renames = Vec::new();
     let mut module_groups: HashMap<String, Vec<hir::DefId>> = HashMap::new();
+    let forward_groups = collect_forward_groups(hir, def_ids);
 
     // First, group modules by their original name
     for &id in def_ids {
@@ -524,12 +581,25 @@ fn rename_breadth(hir: &mut ResolvedGraph, def_ids: &[hir::DefId], target: &Targ
         }
     }
 
+    let groups: HashMap<_, _> = module_groups
+        .into_values()
+        .chain(forward_groups.into_values())
+        .filter_map(|group| {
+            group
+                .first()
+                .copied()
+                .map(|representative| (representative, group))
+        })
+        .collect();
+
+    let grouped_defs_to_skip: HashSet<_> = groups
+        .values()
+        .flat_map(|group| group.iter().skip(1).copied())
+        .collect();
+
     for &id in def_ids {
         let def = hir.context.type_of(id);
-        if let DefKind::Module(_) = &def.kind
-            && let Some(group) = module_groups.get(&def.ident.name)
-            && group[0] != id
-        {
+        if grouped_defs_to_skip.contains(&id) {
             continue;
         }
 
@@ -573,7 +643,7 @@ fn rename_breadth(hir: &mut ResolvedGraph, def_ids: &[hir::DefId], target: &Targ
         // Add to renames if:
         // 1. The name changed (for any reason: case, preprocessor, or keyword)
         // 2. We're doing case conversion (even if unchanged, for collision detection)
-        if original != desired || case.is_some() {
+        if original != desired || case.is_some() || !target.moved_defs.is_empty() {
             renames.push(NodeRename {
                 def_id: id,
                 original,
@@ -584,7 +654,7 @@ fn rename_breadth(hir: &mut ResolvedGraph, def_ids: &[hir::DefId], target: &Targ
     }
 
     // Apply collision-aware renaming at this breadth level
-    apply_renames_with_collision_handling(hir, &renames, &module_groups);
+    apply_renames_with_collision_handling(hir, &renames, &groups);
 
     // Rename members within each definition at this level
     for &id in def_ids {
@@ -862,27 +932,17 @@ fn process_priority2_renames(
 fn apply_final_renames(
     hir: &mut ResolvedGraph,
     final_assignments: &HashMap<hir::DefId, String>,
-    renames: &[NodeRename],
-    module_groups: &HashMap<String, Vec<hir::DefId>>,
+    groups: &HashMap<hir::DefId, Vec<hir::DefId>>,
 ) {
     for (def_id, new_name) in final_assignments {
-        let def = hir.context.type_of(*def_id);
-        if let DefKind::Module(_) = &def.kind {
-            let original_name = renames
-                .iter()
-                .find(|r| r.def_id == *def_id)
-                .map(|r| &r.original)
-                .unwrap();
-
-            if let Some(group_ids) = module_groups.get(original_name) {
-                for &module_id in group_ids {
-                    hir.context
-                        .definitions
-                        .get_mut(module_id)
-                        .ident
-                        .name
-                        .clone_from(new_name);
-                }
+        if let Some(group_ids) = groups.get(def_id) {
+            for &group_id in group_ids {
+                hir.context
+                    .definitions
+                    .get_mut(group_id)
+                    .ident
+                    .name
+                    .clone_from(new_name);
             }
         } else {
             hir.context
@@ -898,7 +958,7 @@ fn apply_final_renames(
 fn apply_renames_with_collision_handling(
     hir: &mut ResolvedGraph,
     renames: &[NodeRename],
-    module_groups: &HashMap<String, Vec<hir::DefId>>,
+    groups: &HashMap<hir::DefId, Vec<hir::DefId>>,
 ) {
     // Categorize nodes by priority
     let (priority1, priority2, moved_nodes) = categorize_renames(renames);
@@ -946,5 +1006,5 @@ fn apply_renames_with_collision_handling(
     );
 
     // Apply all the renames
-    apply_final_renames(hir, &final_assignments, renames, module_groups);
+    apply_final_renames(hir, &final_assignments, groups);
 }

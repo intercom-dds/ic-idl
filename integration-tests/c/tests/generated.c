@@ -110,6 +110,31 @@ _Static_assert(
 );
 
 _Static_assert(
+    _Generic(
+        ((interface_types_WithAliasedCollections*)0)->consume_items,
+        idl_status_t (*)(void*, const idl_sequence_t*, idl_error_t*): true,
+        default: false
+    ),
+    "sequence alias input must use the sequence handle ABI"
+);
+_Static_assert(
+    _Generic(
+        ((interface_types_WithAliasedCollections*)0)->set_lookup,
+        idl_status_t (*)(void*, const idl_map_t*, idl_error_t*): true,
+        default: false
+    ),
+    "map alias setter must use the map handle ABI"
+);
+_Static_assert(
+    _Generic(
+        ((interface_types_WithAliasedCollections*)0)->set_payload,
+        idl_status_t (*)(void*, const idl_any_t*, idl_error_t*): true,
+        default: false
+    ),
+    "any alias setter must use the any handle ABI"
+);
+
+_Static_assert(
     _Generic(((annotation_types_OptionalStruct*)0)->optional_int, int32_t*: true, default: false),
     "optional integer must be a pointer"
 );

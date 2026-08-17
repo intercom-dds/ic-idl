@@ -125,16 +125,10 @@ impl<'a> CGen<'a> {
     }
 
     fn is_pointer_type(&self, ty: &Ty) -> bool {
-        match &ty.kind {
-            TyKind::String { .. } | TyKind::Sequence { .. } | TyKind::Map { .. } | TyKind::Any => {
-                true
-            }
-            TyKind::Adt(def_id) => match &self.hir.context.type_of(*def_id).kind {
-                DefKind::Alias(alias) => self.is_pointer_type(&alias.ty),
-                _ => false,
-            },
-            _ => false,
-        }
+        matches!(
+            self.hir.context.resolve_ty(ty).kind,
+            TyKind::String { .. } | TyKind::Sequence { .. } | TyKind::Map { .. } | TyKind::Any
+        )
     }
 
     fn c_optional_member(&self, ty: &Ty, name: impl std::fmt::Display) -> String {
@@ -158,13 +152,14 @@ impl<'a> CGen<'a> {
     }
 
     fn is_scalar(&self, ty: &Ty) -> bool {
-        match &ty.kind {
+        match &self.hir.context.resolve_ty(ty).kind {
             TyKind::Primitive(_) | TyKind::String { .. } | TyKind::Fixed => true,
-            TyKind::Adt(def_id) => match &self.hir.context.base_def_of(*def_id).kind {
-                DefKind::Alias(alias) => self.is_scalar(&alias.ty),
-                DefKind::Enum(_) | DefKind::Bitmask(_) => true,
-                _ => false,
-            },
+            TyKind::Adt(def_id) => {
+                matches!(
+                    self.hir.context.type_of(*def_id).kind,
+                    DefKind::Enum(_) | DefKind::Bitmask(_)
+                )
+            }
             TyKind::Array { .. }
             | TyKind::Sequence { .. }
             | TyKind::Map { .. }
@@ -174,25 +169,28 @@ impl<'a> CGen<'a> {
     }
 
     fn is_array(&self, ty: &Ty) -> bool {
-        match &ty.kind {
-            TyKind::Array { .. } => true,
-            TyKind::Adt(def_id) => match &self.hir.context.base_def_of(*def_id).kind {
-                DefKind::Alias(alias) => self.is_array(&alias.ty),
-                _ => false,
-            },
-            _ => false,
-        }
+        matches!(self.hir.context.resolve_ty(ty).kind, TyKind::Array { .. })
+    }
+
+    fn collection_type(&self, ty: &Ty) -> Option<Ty> {
+        let ty = self.hir.context.resolve_ty(ty);
+        matches!(
+            ty.kind,
+            TyKind::Sequence { .. } | TyKind::Map { .. } | TyKind::Any
+        )
+        .then_some(ty)
     }
 
     fn c_input_member(&self, ty: &Ty, name: impl std::fmt::Display) -> String {
+        if let Some(ty) = self.collection_type(ty) {
+            return format!("const {} {name}", self.c_type(&ty));
+        }
+
         if self.is_scalar(ty) {
             return format!("{} {name}", self.c_type(ty));
         }
 
         match &ty.kind {
-            TyKind::Sequence { .. } | TyKind::Map { .. } | TyKind::Any => {
-                format!("const {} {name}", self.c_type(ty))
-            }
             TyKind::Array { .. } => self.c_declaration(ty, name, true),
             _ if self.is_array(ty) => format!("const {} {name}", self.c_type(ty)),
             _ => format!("const {}* {name}", self.c_type(ty)),

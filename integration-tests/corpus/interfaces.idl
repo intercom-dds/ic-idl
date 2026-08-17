@@ -27,6 +27,9 @@
 
 module interface_types {
     typedef long LongArray[4];
+    typedef sequence<long> Items;
+    typedef map<string, long> Lookup;
+    typedef any Payload;
 
     interface Reader {
         string read();
@@ -78,6 +81,12 @@ module interface_types {
         void update(inout long values[2][3]);
         void strings(in string values[4]);
         attribute LongArray items;
+    };
+
+    interface WithAliasedCollections {
+        void consume_items(in Items items);
+        attribute Lookup lookup;
+        attribute Payload payload;
     };
 
     interface WithRaises {

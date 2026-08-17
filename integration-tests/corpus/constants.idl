@@ -73,6 +73,7 @@ module constant_types {
     const long BITS_SHIFT_RIGHT = 256 >> 4;
 
     // Float chains
+    const float FLOAT_INTEGRAL = 2.0;
     const double FLOAT_A = 1.0;
     const double FLOAT_B = FLOAT_A + 0.5;
     const double FLOAT_C = FLOAT_B * 2.0;

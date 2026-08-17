@@ -44,6 +44,22 @@
 #include "unions.h"
 #include "valuetypes.h"
 
+char16_t unicode_character_constant(void) {
+    return char_wstring_types_WCHAR_OMEGA;
+}
+
+const char* unicode_string_constant(void) {
+    return unicode_types_JAPANESE unicode_types_EMOJI;
+}
+
+const char16_t* wide_string_constant(void) {
+    return char_wstring_types_WSTRING_UNICODE char_wstring_types_WSTRING_EMOJI;
+}
+
+float integral_float_constant(void) {
+    return constant_types_FLOAT_INTEGRAL;
+}
+
 _Static_assert(
     _Generic(((annotation_types_OptionalStruct*)0)->optional_int, int32_t*: true, default: false),
     "optional integer must be a pointer"

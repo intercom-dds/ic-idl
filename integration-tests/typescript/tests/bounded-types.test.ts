@@ -39,7 +39,7 @@ import type {
   NameList,
   NameMap,
   MixedBounds,
-} from "../generated/bounded_types";
+} from "@generated/bounded_types";
 
 describe("bounded types", () => {
   describe("bounded string typedefs", () => {

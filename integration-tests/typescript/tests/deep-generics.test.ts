@@ -43,7 +43,7 @@ import type {
   ArrayOfSeq,
   SeqOfArray,
   MapOfArray,
-} from "../generated/deep_generic_types";
+} from "@generated/deep_generic_types";
 
 describe("deep generics", () => {
   describe("nested sequences", () => {

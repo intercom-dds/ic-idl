@@ -26,18 +26,18 @@
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 import { describe, expect, test } from "bun:test";
-import type { StructA1, StructA2, StructA3 } from "../generated/module_a";
+import type { StructA1, StructA2, StructA3 } from "@generated/module_a";
 import {
   CONST_A1,
   CONST_A2,
   CONST_A3,
   EnumA,
   EnumA2,
-} from "../generated/module_a";
-import type { StructB1, StructB2 } from "../generated/module_b";
-import { CONST_B1, CONST_B2 } from "../generated/module_b";
-import { C1, C2, C3 } from "../generated/constants_only";
-import { Color, Size } from "../generated/enums_only";
+} from "@generated/module_a";
+import type { StructB1, StructB2 } from "@generated/module_b";
+import { CONST_B1, CONST_B2 } from "@generated/module_b";
+import { C1, C2, C3 } from "@generated/constants_only";
+import { Color, Size } from "@generated/enums_only";
 
 describe("multi module", () => {
   describe("module_a", () => {

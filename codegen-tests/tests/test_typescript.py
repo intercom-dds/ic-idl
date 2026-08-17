@@ -70,6 +70,7 @@ def test_typescript(
             "ESNext",
             *[str(f) for f in ts_files],
         ],
+        check=False,
         capture_output=True,
         text=True,
         timeout=60,

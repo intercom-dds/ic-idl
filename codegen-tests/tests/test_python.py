@@ -57,6 +57,7 @@ def test_python(
 
     result = subprocess.run(
         ruff_args,
+        check=False,
         capture_output=True,
         text=True,
         timeout=60,
@@ -71,6 +72,7 @@ def test_python(
             f"--extra-search-path={output_dir.parent}",
             str(output_dir),
         ],
+        check=False,
         capture_output=True,
         text=True,
         timeout=60,

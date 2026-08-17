@@ -3,10 +3,14 @@
     "target": "ESNext",
     "module": "ESNext",
     "moduleResolution": "bundler",
+    "baseUrl": ".",
+    "paths": {
+      "@generated/*": ["../../target/integration-tests/typescript/generated/*"]
+    },
     "strict": true,
     "skipLibCheck": true,
     "noEmit": true,
     "types": ["bun"]
   },
-  "include": ["tests/**/*", "generated/**/*"]
+  "include": ["tests/**/*"]
 }

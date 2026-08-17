@@ -41,13 +41,13 @@ import {
   WSTRING_UNICODE,
   WSTRING_EMOJI,
   WSTRING_EMPTY,
-} from "../generated/char_wstring_types";
+} from "@generated/char_wstring_types";
 import type {
   CharFields,
   WstringFields,
   CharSequences,
   MixedCharTypes,
-} from "../generated/char_wstring_types";
+} from "@generated/char_wstring_types";
 import {
   FRENCH,
   GERMAN,
@@ -71,8 +71,8 @@ import {
   MATH,
   CURRENCY,
   ARROWS,
-} from "../generated/unicode_types";
-import type { UnicodeData } from "../generated/unicode_types";
+} from "@generated/unicode_types";
+import type { UnicodeData } from "@generated/unicode_types";
 
 describe("char and wstring types", () => {
   describe("char constants", () => {

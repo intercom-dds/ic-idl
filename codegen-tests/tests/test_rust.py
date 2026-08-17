@@ -92,6 +92,7 @@ def test_rust(
     result = subprocess.run(
         [cargo, "check", "--quiet", "--target-dir=target"],
         cwd=rust_output_dir,
+        check=False,
         capture_output=True,
         text=True,
         timeout=120,

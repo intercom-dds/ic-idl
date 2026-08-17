@@ -25,17 +25,21 @@
 # OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+from __future__ import annotations
+
 import importlib
 import subprocess
 import sys
 import sysconfig
 import tempfile
-from collections.abc import Generator
 from pathlib import Path
-from types import ModuleType
-from typing import NoReturn
+from typing import TYPE_CHECKING, NoReturn
 
 import pytest
+
+if TYPE_CHECKING:
+    from collections.abc import Generator
+    from types import ModuleType
 
 
 def pytest_addoption(parser: pytest.Parser) -> None:
@@ -80,7 +84,7 @@ def corpus_dir(request: pytest.FixtureRequest) -> Path:
 def generated_modules(
     idl_compiler: Path,
     corpus_dir: Path,
-) -> Generator[dict[str, ModuleType], None, None]:
+) -> Generator[dict[str, ModuleType | _FailedModule], None, None]:
     with tempfile.TemporaryDirectory(prefix="ic-idl-integ-") as tmpdir:
         output_dir = Path(tmpdir)
         idl_files = sorted(corpus_dir.glob("*.idl"))

@@ -65,6 +65,7 @@ def test_protobuf(
             f"--descriptor_set_out={os.devnull}",
         ]
         + [str(f) for f in proto_files],
+        check=False,
         capture_output=True,
         text=True,
         timeout=60,

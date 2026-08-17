@@ -37,7 +37,7 @@ import type {
   TopicMessage,
   MutableStruct,
   FinalStruct,
-} from "../generated/annotation_types";
+} from "@generated/annotation_types";
 
 describe("annotations", () => {
   test("KeyedStruct can be instantiated", () => {

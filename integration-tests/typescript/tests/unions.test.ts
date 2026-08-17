@@ -31,8 +31,8 @@ import type {
   TypedValue,
   BoolSwitch,
   MultiCase,
-} from "../generated/union_types";
-import { ValueKind } from "../generated/union_types";
+} from "@generated/union_types";
+import { ValueKind } from "@generated/union_types";
 
 describe("unions", () => {
   describe("IntOrString", () => {

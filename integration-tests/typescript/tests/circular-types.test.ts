@@ -33,7 +33,7 @@ import type {
   MapSelfRef,
   ComplexSelfRef,
   NestedSelfRef,
-} from "../generated/circular_types";
+} from "@generated/circular_types";
 
 describe("circular types", () => {
   describe("TreeNode", () => {

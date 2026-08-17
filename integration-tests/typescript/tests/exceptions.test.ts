@@ -31,7 +31,7 @@ import {
   EmptyError,
   DetailedError,
   ValidationError,
-} from "../generated/exception_types";
+} from "@generated/exception_types";
 
 describe("exceptions", () => {
   test("exception inherits from Error", () => {

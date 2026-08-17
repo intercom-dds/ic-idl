@@ -58,7 +58,7 @@ import type {
   Measurement,
   WithArrayTypedef,
   DeepChainStruct,
-} from "../generated/typedef_types";
+} from "@generated/typedef_types";
 
 describe("typedefs", () => {
   describe("primitive typedefs", () => {

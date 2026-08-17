@@ -36,7 +36,7 @@ import type {
   WithArray,
   WithMap,
   Empty,
-} from "../generated/struct_types";
+} from "@generated/struct_types";
 
 describe("structs", () => {
   describe("Point", () => {

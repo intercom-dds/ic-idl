@@ -72,66 +72,74 @@ fn run_typescript_tests(integration_dir: &Path) {
     run_command(cmd, "bun");
 }
 
-fn run_csharp_tests(integration_dir: &Path) {
+fn run_csharp_tests(integration_dir: &Path, build_dir: &Path) {
     let mut cmd = Command::new("dotnet");
     cmd.current_dir(integration_dir.join("csharp"))
-        .args(["test", "--verbosity", "minimal"]);
+        .args(["test", "--verbosity", "minimal", "--artifacts-path"])
+        .arg(build_dir.join("csharp"));
     run_command(cmd, "dotnet");
 }
 
-fn run_c_tests(integration_dir: &Path) {
+fn run_cmake_tests(source_dir: &Path, build_dir: &Path) {
     let jobs = std::thread::available_parallelism()
         .map_or(4, NonZero::get)
         .to_string();
 
-    let c_dir = integration_dir.join("c");
     let mut cmd = Command::new("cmake");
-    cmd.current_dir(&c_dir).args(["-S", ".", "-B", "build"]);
+    cmd.current_dir(source_dir)
+        .args(["-S", ".", "-B"])
+        .arg(build_dir);
     run_command(cmd, "cmake");
 
     let mut cmd = Command::new("cmake");
-    cmd.current_dir(&c_dir)
-        .args(["--build", "build", "--target", "test", "-j", &jobs]);
-    run_command(cmd, "cmake");
-}
-
-fn run_cpp_tests(integration_dir: &Path) {
-    let jobs = std::thread::available_parallelism()
-        .map_or(4, NonZero::get)
-        .to_string();
-
-    let cpp_dir = integration_dir.join("cpp");
-    let mut cmd = Command::new("cmake");
-    cmd.current_dir(&cpp_dir).args(["-S", ".", "-B", "build"]);
-    run_command(cmd, "cmake");
-
-    let mut cmd = Command::new("cmake");
-    cmd.current_dir(&cpp_dir)
-        .args(["--build", "build", "--target", "test", "-j", &jobs]);
+    cmd.current_dir(source_dir)
+        .arg("--build")
+        .arg(build_dir)
+        .args(["--target", "test", "-j", &jobs]);
     run_command(cmd, "cmake");
 }
 
-fn run_python_tests(integration_dir: &Path) {
+fn run_python_tests(integration_dir: &Path, build_dir: &Path) {
+    let build_dir = build_dir.join("python");
+    std::fs::create_dir_all(&build_dir).unwrap();
+
     let mut cmd = Command::new("uv");
     cmd.current_dir(integration_dir.join("python"))
-        .args(["run", "pytest", "-n", "auto"]);
+        .env("TMPDIR", &build_dir)
+        .env("PYTHONPYCACHEPREFIX", build_dir.join("pycache"))
+        .args(["run", "pytest", "-n", "auto"])
+        .arg(format!("--basetemp={}", build_dir.join("tmp").display()))
+        .args(["-o"])
+        .arg(format!(
+            "cache_dir={}",
+            build_dir.join("pytest-cache").display()
+        ));
     run_command(cmd, "uv");
 }
 
-fn run_java_tests(integration_dir: &Path) {
+fn run_java_tests(integration_dir: &Path, build_dir: &Path) {
     let mut cmd = Command::new("mvn");
-    cmd.current_dir(integration_dir.join("java")).args(["test"]);
+    cmd.current_dir(integration_dir.join("java"))
+        .arg(format!(
+            "-Dintegration.build.directory={}",
+            build_dir.join("java").display()
+        ))
+        .arg("test");
     run_command(cmd, "mvn");
 }
 
-fn run_rust_tests(integration_dir: &Path) {
+fn run_rust_tests(integration_dir: &Path, build_dir: &Path) {
     let mut cmd = Command::new("cargo");
-    cmd.current_dir(integration_dir.join("rust")).args(["test"]);
+    cmd.current_dir(integration_dir.join("rust"))
+        .env("CARGO_TARGET_DIR", build_dir.join("rust"))
+        .arg("test");
     run_command(cmd, "cargo");
 }
 
 pub fn run(opts: &Options) {
-    let integration_dir = git_root().join("integration-tests");
+    let root = git_root();
+    let integration_dir = root.join("integration-tests");
+    let build_dir = root.join("target/integration-tests");
     let all_languages = ["c", "python", "typescript", "csharp", "cpp", "java", "rust"];
     let languages: HashSet<_> = if opts.lang.is_empty() || opts.lang.contains("all") {
         all_languages.iter().map(ToString::to_string).collect()
@@ -141,13 +149,15 @@ pub fn run(opts: &Options) {
 
     for lang in &languages {
         match lang.as_str() {
-            "c" => run_c_tests(&integration_dir),
-            "python" | "py" => run_python_tests(&integration_dir),
+            "c" => run_cmake_tests(&integration_dir.join("c"), &build_dir.join("c")),
+            "python" | "py" => run_python_tests(&integration_dir, &build_dir),
             "typescript" | "ts" => run_typescript_tests(&integration_dir),
-            "csharp" | "cs" => run_csharp_tests(&integration_dir),
-            "cpp" | "c++" => run_cpp_tests(&integration_dir),
-            "java" => run_java_tests(&integration_dir),
-            "rust" | "rs" => run_rust_tests(&integration_dir),
+            "csharp" | "cs" => run_csharp_tests(&integration_dir, &build_dir),
+            "cpp" | "c++" => {
+                run_cmake_tests(&integration_dir.join("cpp"), &build_dir.join("cpp"));
+            }
+            "java" => run_java_tests(&integration_dir, &build_dir),
+            "rust" | "rs" => run_rust_tests(&integration_dir, &build_dir),
             _ => {
                 eprintln!("error: unknown or unsupported language '{lang}'");
                 eprintln!(

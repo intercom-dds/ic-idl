@@ -33,7 +33,7 @@ import {
   NegativeEnum,
   MixedEnum,
   ENUM_CONST,
-} from "../generated/enum_types";
+} from "@generated/enum_types";
 
 describe("enums", () => {
   test("Color enum has correct members", () => {

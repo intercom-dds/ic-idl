@@ -29,8 +29,8 @@ import { describe, expect, test } from "bun:test";
 import type {
   TopLevelStruct,
   TopUsingNested,
-} from "../generated/nested_module_types";
-import { TopLevelEnum, level1, sibling } from "../generated/nested_module_types";
+} from "@generated/nested_module_types";
+import { TopLevelEnum, level1, sibling } from "@generated/nested_module_types";
 
 describe("nested modules", () => {
   describe("top level types", () => {

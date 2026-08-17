@@ -57,7 +57,7 @@ const RUST_CONVENTION: rename::Convention = rename::Convention {
     member: Some(Case::Snake),
     variant: Some(Case::Pascal),
     enumerator: Some(Case::Pascal),
-    bit_flag: Some(Case::Snake),
+    bit_flag: Some(Case::UpperSnake),
     bitset_field: Some(Case::Snake),
     constant: Some(Case::UpperSnake),
     module: Some(Case::Snake),

@@ -313,14 +313,8 @@ impl CppGen<'_> {
         let resolved = self.hir.context.resolve_ty(ty);
         match &resolved.kind {
             TyKind::Adt(def_id) => {
-                let def = self.hir.context.definitions.get(*def_id);
                 let type_name = self.scoped_name(*def_id, None);
-                match &def.kind {
-                    DefKind::Bitmask(_) => {
-                        format!("&::ic_cts::TypeTraits<{type_name}Bits>::type_info")
-                    }
-                    _ => format!("&::ic_cts::TypeTraits<{type_name}>::type_info"),
-                }
+                format!("&::ic_cts::TypeTraits<{type_name}>::type_info")
             }
             TyKind::Primitive(p) => format!("&{}", primitive_type_info(*p)),
             _ => "nullptr".to_string(),
@@ -669,10 +663,6 @@ impl CppGen<'_> {
         };
 
         let scoped_name = self.scoped_name(def.id, None);
-        let qualified_name = match def_kind {
-            DefKind::Bitmask(_) => format!("{scoped_name}Bits"),
-            _ => scoped_name.clone(),
-        };
 
         let kind = type_kind_name(def_kind).to_string();
 
@@ -740,7 +730,7 @@ impl CppGen<'_> {
             members,
         };
 
-        w!(w, "const ::ic_cts::TypeInfo ic_cts::TypeTraits<", qualified_name, ">::type_info = ");
+        w!(w, "const ::ic_cts::TypeInfo ic_cts::TypeTraits<", scoped_name, ">::type_info = ");
         info.emit(w);
         w!(w, ";\n");
     }

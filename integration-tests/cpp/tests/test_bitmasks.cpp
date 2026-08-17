@@ -32,14 +32,14 @@
 #include "bitmasks.h"
 
 TEST_CASE("bitmask_is_flag_type" * doctest::test_suite("bitmasks")) {
-    CHECK(ic_cts::TypeTraits<bitmask_types::PermissionsBits>::is_bitmask);
+    CHECK(ic_cts::TypeTraits<bitmask_types::Permissions>::is_bitmask);
 }
 
 TEST_CASE("bitmask_members_exist" * doctest::test_suite("bitmasks")) {
-    bitmask_types::PermissionsBits read = bitmask_types::READ;
-    bitmask_types::PermissionsBits write = bitmask_types::WRITE;
-    bitmask_types::PermissionsBits execute = bitmask_types::EXECUTE;
-    bitmask_types::PermissionsBits del = bitmask_types::DELETE;
+    bitmask_types::Permissions read = bitmask_types::Permissions::READ;
+    bitmask_types::Permissions write = bitmask_types::Permissions::WRITE;
+    bitmask_types::Permissions execute = bitmask_types::Permissions::EXECUTE;
+    bitmask_types::Permissions del = bitmask_types::Permissions::DELETE;
     (void)read;
     (void)write;
     (void)execute;
@@ -47,82 +47,82 @@ TEST_CASE("bitmask_members_exist" * doctest::test_suite("bitmasks")) {
 }
 
 TEST_CASE("bitmask_auto_values" * doctest::test_suite("bitmasks")) {
-    CHECK(static_cast<uint32_t>(bitmask_types::READ) == 1);
-    CHECK(static_cast<uint32_t>(bitmask_types::WRITE) == 2);
-    CHECK(static_cast<uint32_t>(bitmask_types::EXECUTE) == 4);
-    CHECK(static_cast<uint32_t>(bitmask_types::DELETE) == 8);
+    CHECK(static_cast<uint32_t>(bitmask_types::Permissions::READ) == 1);
+    CHECK(static_cast<uint32_t>(bitmask_types::Permissions::WRITE) == 2);
+    CHECK(static_cast<uint32_t>(bitmask_types::Permissions::EXECUTE) == 4);
+    CHECK(static_cast<uint32_t>(bitmask_types::Permissions::DELETE) == 8);
 }
 
 TEST_CASE("bitmask_explicit_values" * doctest::test_suite("bitmasks")) {
-    CHECK(static_cast<uint32_t>(bitmask_types::FLAG_A) == 2);
-    CHECK(static_cast<uint32_t>(bitmask_types::FLAG_B) == 4);
-    CHECK(static_cast<uint32_t>(bitmask_types::FLAG_C) == 16);
-    CHECK(static_cast<uint32_t>(bitmask_types::FLAG_D) == 256);
+    CHECK(static_cast<uint32_t>(bitmask_types::ExplicitFlags::FLAG_A) == 2);
+    CHECK(static_cast<uint32_t>(bitmask_types::ExplicitFlags::FLAG_B) == 4);
+    CHECK(static_cast<uint32_t>(bitmask_types::ExplicitFlags::FLAG_C) == 16);
+    CHECK(static_cast<uint32_t>(bitmask_types::ExplicitFlags::FLAG_D) == 256);
 }
 
 TEST_CASE("bitmask_or_operation" * doctest::test_suite("bitmasks")) {
-    bitmask_types::Permissions combined = bitmask_types::READ | bitmask_types::WRITE;
+    bitmask_types::Permissions combined = bitmask_types::Permissions::READ | bitmask_types::Permissions::WRITE;
     CHECK(combined == 3);
-    CHECK((combined & bitmask_types::READ) != 0);
-    CHECK((combined & bitmask_types::WRITE) != 0);
+    CHECK((combined & bitmask_types::Permissions::READ) != 0);
+    CHECK((combined & bitmask_types::Permissions::WRITE) != 0);
 }
 
 TEST_CASE("bitmask_and_operation" * doctest::test_suite("bitmasks")) {
     bitmask_types::Permissions combined =
-        bitmask_types::READ | bitmask_types::WRITE | bitmask_types::EXECUTE;
-    bitmask_types::Permissions result = combined & bitmask_types::READ;
-    CHECK(result == static_cast<uint32_t>(bitmask_types::READ));
+        bitmask_types::Permissions::READ | bitmask_types::Permissions::WRITE | bitmask_types::Permissions::EXECUTE;
+    bitmask_types::Permissions result = combined & bitmask_types::Permissions::READ;
+    CHECK(result == static_cast<uint32_t>(bitmask_types::Permissions::READ));
 }
 
 TEST_CASE("bitmask_in_struct" * doctest::test_suite("bitmasks")) {
-    bitmask_types::FileInfo file_info("test.txt", bitmask_types::READ | bitmask_types::WRITE);
+    bitmask_types::FileInfo file_info("test.txt", bitmask_types::Permissions::READ | bitmask_types::Permissions::WRITE);
     CHECK(file_info.path == "test.txt");
-    CHECK((file_info.perms & bitmask_types::READ) != 0);
-    CHECK((file_info.perms & bitmask_types::WRITE) != 0);
+    CHECK((file_info.perms & bitmask_types::Permissions::READ) != 0);
+    CHECK((file_info.perms & bitmask_types::Permissions::WRITE) != 0);
 }
 
 TEST_CASE("bitmask_none_value" * doctest::test_suite("bitmasks")) {
     bitmask_types::Permissions none = 0;
     CHECK(none == 0);
-    CHECK_FALSE((none & bitmask_types::READ) != 0);
-    CHECK_FALSE((none & bitmask_types::WRITE) != 0);
+    CHECK_FALSE((none & bitmask_types::Permissions::READ) != 0);
+    CHECK_FALSE((none & bitmask_types::Permissions::WRITE) != 0);
 }
 
 TEST_CASE("bitmask_all_combined" * doctest::test_suite("bitmasks")) {
     bitmask_types::Permissions all =
-        bitmask_types::READ | bitmask_types::WRITE | bitmask_types::EXECUTE | bitmask_types::DELETE;
+        bitmask_types::Permissions::READ | bitmask_types::Permissions::WRITE | bitmask_types::Permissions::EXECUTE | bitmask_types::Permissions::DELETE;
     CHECK(all == 15);
-    CHECK((all & bitmask_types::READ) != 0);
-    CHECK((all & bitmask_types::WRITE) != 0);
-    CHECK((all & bitmask_types::EXECUTE) != 0);
-    CHECK((all & bitmask_types::DELETE) != 0);
+    CHECK((all & bitmask_types::Permissions::READ) != 0);
+    CHECK((all & bitmask_types::Permissions::WRITE) != 0);
+    CHECK((all & bitmask_types::Permissions::EXECUTE) != 0);
+    CHECK((all & bitmask_types::Permissions::DELETE) != 0);
 }
 
 TEST_CASE("bitmask_gapped_positions" * doctest::test_suite("bitmasks")) {
-    CHECK(static_cast<uint32_t>(bitmask_types::LOW) == 1);
-    CHECK(static_cast<uint32_t>(bitmask_types::HIGH) == 128);
+    CHECK(static_cast<uint32_t>(bitmask_types::GappedFlags::LOW) == 1);
+    CHECK(static_cast<uint32_t>(bitmask_types::GappedFlags::HIGH) == 128);
 }
 
 TEST_CASE("bitmask_single_flag" * doctest::test_suite("bitmasks")) {
-    CHECK(static_cast<uint32_t>(bitmask_types::ONLY) == 1);
+    CHECK(static_cast<uint32_t>(bitmask_types::SingleFlag::ONLY) == 1);
 }
 
 TEST_CASE("bitmask_mixed_explicit_auto" * doctest::test_suite("bitmasks")) {
-    CHECK(static_cast<uint32_t>(bitmask_types::AUTO_FIRST) == 1);
-    CHECK(static_cast<uint32_t>(bitmask_types::EXPLICIT_FOUR) == 16);
-    CHECK(static_cast<uint32_t>(bitmask_types::AUTO_FIVE) == 32);
-    CHECK(static_cast<uint32_t>(bitmask_types::AUTO_SIX) == 64);
+    CHECK(static_cast<uint32_t>(bitmask_types::MixedFlags::AUTO_FIRST) == 1);
+    CHECK(static_cast<uint32_t>(bitmask_types::MixedFlags::EXPLICIT_FOUR) == 16);
+    CHECK(static_cast<uint32_t>(bitmask_types::MixedFlags::AUTO_FIVE) == 32);
+    CHECK(static_cast<uint32_t>(bitmask_types::MixedFlags::AUTO_SIX) == 64);
 }
 
 TEST_CASE("bitmask_xor_operation" * doctest::test_suite("bitmasks")) {
-    bitmask_types::Permissions xor_result = bitmask_types::READ ^ bitmask_types::WRITE;
+    bitmask_types::Permissions xor_result = bitmask_types::Permissions::READ ^ bitmask_types::Permissions::WRITE;
     CHECK(xor_result == 3);
 
-    bitmask_types::Permissions same = bitmask_types::READ ^ bitmask_types::READ;
+    bitmask_types::Permissions same = bitmask_types::Permissions::READ ^ bitmask_types::Permissions::READ;
     CHECK(same == 0);
 }
 
 TEST_CASE("bitmask_bit_bound" * doctest::test_suite("bitmasks")) {
-    CHECK(omg::types::bit_bound_v<bitmask_types::BitBoundFlagsBits>() == 7);
-    CHECK(std::is_same_v<omg::types::underlying_type_t<bitmask_types::BitBoundFlagsBits>, uint8_t>);
+    CHECK(omg::types::bit_bound_v<bitmask_types::BitBoundFlags>() == 7);
+    CHECK(std::is_same_v<omg::types::underlying_type_t<bitmask_types::BitBoundFlags>, uint8_t>);
 }

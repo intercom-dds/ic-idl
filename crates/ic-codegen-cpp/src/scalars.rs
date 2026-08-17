@@ -95,11 +95,13 @@ impl CppGen<'_> {
         def: &Def,
         bitmask_ty: &BitmaskTy,
     ) {
+        let qualified_name = self.scoped_name(def.id, None);
         let bitmask_name = &def.ident.name;
         let underlying_type = cpp_primitive(bitmask_ty.ty);
 
-        w!(decl_w, "enum ", bitmask_name, "Bits : ", underlying_type, " {\n");
+        w!(decl_w, "struct ", bitmask_name, " {\n");
 
+        w!(decl_w, "enum : ", underlying_type, " {\n");
         for (i, &flag_id) in bitmask_ty.flags.iter().enumerate() {
             let flag_def = self.hir.context.definitions.get(flag_id);
             let flag_name = &flag_def.ident.name;
@@ -116,12 +118,42 @@ impl CppGen<'_> {
                 w!(decl_w, "\n");
             }
         }
+        w!(decl_w, "};\n\n");
+
+        w!(decl_w, bitmask_name, "() = default;\n");
+
+        w!(decl_w, bitmask_name, "(", underlying_type, " v);\n\n");
+        w!(impl_w, "inline ", qualified_name, "::", bitmask_name, "(", underlying_type, " v) : _value(v) {}\n");
+
+        w!(decl_w, bitmask_name, "& operator|=(",  underlying_type, " rhs);\n");
+        w!(impl_w, "inline ", qualified_name, "& ", qualified_name, "::operator|=(",  underlying_type, " rhs) {\n");
+        w!(impl_w, "_value |= rhs;\n");
+        w!(impl_w, "return *this;\n");
+        w!(impl_w, "}\n\n");
+
+        w!(decl_w, bitmask_name, "& operator&=(",  underlying_type, " rhs);\n");
+        w!(impl_w, "inline ", qualified_name, "& ", qualified_name, "::operator&=(",  underlying_type, " rhs) {\n");
+        w!(impl_w, "_value &= rhs;\n");
+        w!(impl_w, "return *this;\n");
+        w!(impl_w, "}\n\n");
+
+        w!(decl_w, bitmask_name, "& operator^=(",  underlying_type, " rhs);\n");
+        w!(impl_w, "inline ", qualified_name, "& ", qualified_name, "::operator^=(",  underlying_type, " rhs) {\n");
+        w!(impl_w, "_value ^= rhs;\n");
+        w!(impl_w, "return *this;\n");
+        w!(impl_w, "}\n\n");
+
+        w!(decl_w, "operator ", underlying_type, "() const;\n\n");
+        w!(impl_w, "inline ", qualified_name, "::operator ", underlying_type, "() const {\nreturn _value;\n}\n\n");
+
+        w!(decl_w, "private:\n");
+        w!(decl_w, underlying_type, " _value{0};\n");
 
         w!(decl_w, "};\n\n");
-        w!(decl_w, "using ", bitmask_name, " = ", underlying_type, ";\n\n");
 
-        self.emit_type_traits_with_suffix(impl_w, def, "Bits");
+        self.emit_type_traits_with_suffix(impl_w, def, "");
         self.emit_bitmask_serializer(impl_w, def, bitmask_ty);
+        self.emit_hash_declaration(impl_w, def);
     }
 
     fn emit_bitmask_serializer(&self, w: &mut Twine, def: &Def, bitmask_ty: &BitmaskTy) {
@@ -129,11 +161,11 @@ impl CppGen<'_> {
         let underlying_type = cpp_primitive(bitmask_ty.ty);
 
         w!(w, "template <class Archive>\n");
-        w!(w, "struct ic_cts::Serializer<Archive, ", qualified_name, "Bits> {\n");
-        w!(w, "void operator()(Archive& a_archive, ", qualified_name, "Bits& a_value, const ::ic_cts::TypeInfo* a_info) {\n");
+        w!(w, "struct ic_cts::Serializer<Archive, ", qualified_name, "> {\n");
+        w!(w, "void operator()(Archive& a_archive, ", qualified_name, "& a_value, const ::ic_cts::TypeInfo* a_info) {\n");
         w!(w, "auto integer_value = static_cast<", underlying_type, ">(a_value);\n");
-        w!(w, "a_archive.primitive_io(integer_value, a_info ? a_info : &::ic_cts::TypeTraits<", qualified_name, "Bits>::type_info);\n");
-        w!(w, "a_value = static_cast<", qualified_name, "Bits>(integer_value);\n");
+        w!(w, "a_archive.primitive_io(integer_value, a_info ? a_info : &::ic_cts::TypeTraits<", qualified_name, ">::type_info);\n");
+        w!(w, "a_value = static_cast<", qualified_name, ">(integer_value);\n");
         w!(w, "}\n");
         w!(w, "};\n\n");
     }

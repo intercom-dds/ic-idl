@@ -90,7 +90,9 @@ impl<'a> CppGen<'a> {
             ) {
                 return Some(current);
             }
-            if self.options.scoped_enums && matches!(def.kind, DefKind::Enum(_)) {
+            if self.options.scoped_enums && matches!(def.kind, DefKind::Enum(_))
+                || matches!(def.kind, DefKind::Bitmask(_))
+            {
                 return Some(current);
             }
             current = def.parent?;
@@ -642,7 +644,7 @@ impl<'a> CppGen<'a> {
             DefKind::Struct(_) | DefKind::Valuetype(_) | DefKind::Except(_) => {
                 !self.collect_all_members(def.id).is_empty()
             }
-            DefKind::Union(_) => true,
+            DefKind::Union(_) | DefKind::Bitmask(_) => true,
             _ => false,
         };
 
@@ -669,6 +671,11 @@ impl<'a> CppGen<'a> {
                 }
                 DefKind::Valuetype(valuetype_ty) => {
                     self.emit_hash_struct_members(w, def, &valuetype_ty.members);
+                }
+                DefKind::Bitmask(bitmask_ty) => {
+                    let underlying_type = cpp_primitive(bitmask_ty.ty);
+
+                    w!(w, "static_cast<", underlying_type, ">(s)\n");
                 }
                 _ => {}
             }
@@ -835,12 +842,12 @@ impl<'a> CppGen<'a> {
                 self.emit_member_info(w, def);
                 self.emit_type_info_definition(w, def);
             }
-            DefKind::Struct(_) | DefKind::Union(_) => {
+            DefKind::Struct(_) | DefKind::Union(_) | DefKind::Bitmask(_) => {
                 self.emit_hash_implementation(w, def);
                 self.emit_member_info(w, def);
                 self.emit_type_info_definition(w, def);
             }
-            DefKind::Enum(_) | DefKind::Bitmask(_) => {
+            DefKind::Enum(_) => {
                 self.emit_member_info(w, def);
                 self.emit_type_info_definition(w, def);
             }

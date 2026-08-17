@@ -116,4 +116,9 @@ module bitmasks {
         THIRD = 8,
         FOURTH = 16
     };
+
+    // Bitmask that contains values that conflicts with language mappings
+    bitmask ConflictBitmask {
+        _value = 1 // C++
+    };
 };

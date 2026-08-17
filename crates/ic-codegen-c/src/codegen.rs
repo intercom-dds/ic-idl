@@ -420,7 +420,7 @@ impl<'a> CGen<'a> {
         for &flag_id in &bitmask_ty.flags {
             let flag = self.hir.context.type_of(flag_id);
             if let DefKind::Const(const_ty) = &flag.kind {
-                let value = self.hir.context.unsigned_value(&const_ty.value);
+                let value = self.format_numeric(&const_ty.value);
                 w!(w, "#define ", flag, " ((", def, ")", value, ")\n");
             }
         }

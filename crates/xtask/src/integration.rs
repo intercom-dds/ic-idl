@@ -33,7 +33,7 @@ use std::process::Command;
 /// Run integration tests
 #[derive(ic_cli::Command, Default)]
 pub struct Options {
-    /// Languages to test: python, typescript, csharp, cpp, java, rust
+    /// Languages to test: c, python, typescript, csharp, cpp, java, rust
     #[option(short, long, arg = "lang")]
     pub lang: HashSet<String>,
 }
@@ -79,6 +79,22 @@ fn run_csharp_tests(integration_dir: &Path) {
     run_command(cmd, "dotnet");
 }
 
+fn run_c_tests(integration_dir: &Path) {
+    let jobs = std::thread::available_parallelism()
+        .map_or(4, NonZero::get)
+        .to_string();
+
+    let c_dir = integration_dir.join("c");
+    let mut cmd = Command::new("cmake");
+    cmd.current_dir(&c_dir).args(["-S", ".", "-B", "build"]);
+    run_command(cmd, "cmake");
+
+    let mut cmd = Command::new("cmake");
+    cmd.current_dir(&c_dir)
+        .args(["--build", "build", "--target", "test", "-j", &jobs]);
+    run_command(cmd, "cmake");
+}
+
 fn run_cpp_tests(integration_dir: &Path) {
     let jobs = std::thread::available_parallelism()
         .map_or(4, NonZero::get)
@@ -116,7 +132,7 @@ fn run_rust_tests(integration_dir: &Path) {
 
 pub fn run(opts: &Options) {
     let integration_dir = git_root().join("integration-tests");
-    let all_languages = ["python", "typescript", "csharp", "cpp", "java", "rust"];
+    let all_languages = ["c", "python", "typescript", "csharp", "cpp", "java", "rust"];
     let languages: HashSet<_> = if opts.lang.is_empty() || opts.lang.contains("all") {
         all_languages.iter().map(ToString::to_string).collect()
     } else {
@@ -125,6 +141,7 @@ pub fn run(opts: &Options) {
 
     for lang in &languages {
         match lang.as_str() {
+            "c" => run_c_tests(&integration_dir),
             "python" | "py" => run_python_tests(&integration_dir),
             "typescript" | "ts" => run_typescript_tests(&integration_dir),
             "csharp" | "cs" => run_csharp_tests(&integration_dir),
@@ -133,7 +150,9 @@ pub fn run(opts: &Options) {
             "rust" | "rs" => run_rust_tests(&integration_dir),
             _ => {
                 eprintln!("error: unknown or unsupported language '{lang}'");
-                eprintln!("supported languages: python, typescript, csharp, cpp, java, rust, all");
+                eprintln!(
+                    "supported languages: c, python, typescript, csharp, cpp, java, rust, all"
+                );
                 std::process::exit(1);
             }
         }

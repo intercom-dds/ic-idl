@@ -25,54 +25,57 @@
 # OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+import shutil
 import subprocess
 from pathlib import Path
 
 import pytest
 
-from conftest import run_codegen
+from conftest import make_output_dir, run_codegen
 
 
-@pytest.mark.parametrize(
-    "extra_args",
-    [
-        pytest.param([], id="default"),
-        pytest.param(["--no-rename"], id="no-rename"),
-        pytest.param(["--py-typed"], id="py-typed"),
-    ],
-)
-def test_python(
+@pytest.fixture(scope="session")
+def c_compiler(request: pytest.FixtureRequest) -> str:
+    path = request.config.getoption("--c-compiler")
+    if not shutil.which(path):
+        pytest.skip(f"C compiler not found: {path}")
+    return path
+
+
+@pytest.fixture
+def c_output_dir(request: pytest.FixtureRequest) -> Path:
+    return make_output_dir(request, "c")
+
+
+def test_c(
     idl_file: Path,
     idl_compiler: Path,
-    output_dir: Path,
-    extra_args: list[str],
+    c_compiler: str,
+    c_output_dir: Path,
 ) -> None:
-    py_files = run_codegen(idl_compiler, idl_file, output_dir, "python-out", extra_args)
-    if not py_files:
+    headers = run_codegen(idl_compiler, idl_file, c_output_dir, "c-out")
+    if not headers:
         return
 
-    ruff_args = ["uvx", "ruff", "check", str(output_dir)]
-    if "--no-rename" in extra_args:
-        ruff_args += ["--ignore", "PYI042,PYI047"]
-
-    result = subprocess.run(
-        ruff_args,
-        capture_output=True,
-        text=True,
-        timeout=60,
-    )
-    assert result.returncode == 0, f"ruff failed:\n{result.stdout}\n{result.stderr}"
+    check_file = c_output_dir / "check.c"
+    check_file.write_text("".join(f'#include "{header.name}"\n' for header in headers))
 
     result = subprocess.run(
         [
-            "uvx",
-            "ty",
-            "check",
-            f"--extra-search-path={output_dir.parent}",
-            str(output_dir),
+            c_compiler,
+            "-std=c11",
+            "-Wall",
+            "-Wextra",
+            "-Werror",
+            "-fsyntax-only",
+            f"-I{c_output_dir}",
+            f"-I{Path(__file__).resolve().parents[2] / 'runtime/c/include'}",
+            str(check_file),
         ],
         capture_output=True,
         text=True,
         timeout=60,
     )
-    assert result.returncode == 0, f"ty failed:\n{result.stdout}\n{result.stderr}"
+    assert result.returncode == 0, (
+        f"C compiler failed:\n{result.stdout}\n{result.stderr}"
+    )

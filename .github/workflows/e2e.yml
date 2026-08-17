@@ -65,17 +65,18 @@ jobs:
       fail-fast: false
       matrix:
         lang:
+          - c
           - cpp
           - csharp
+          - idl
           - java
+          - json
+          - json-schema
           - protobuf
           - python
           - rust
           - typescript
-          - json
-          - json-schema
           - xml
-          - idl
 
     steps:
       - uses: actions/checkout@v7
@@ -119,12 +120,13 @@ jobs:
       fail-fast: false
       matrix:
         lang:
-          - python
-          - typescript
-          - csharp
+          - c
           - cpp
+          - csharp
           - java
+          - python
           - rust
+          - typescript
 
     steps:
       - uses: actions/checkout@v7

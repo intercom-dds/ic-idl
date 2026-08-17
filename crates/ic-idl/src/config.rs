@@ -265,6 +265,10 @@ pub struct Options {
 #[derive(Command, Debug, Default)]
 #[allow(clippy::struct_field_names)]
 pub struct CodegenOptions {
+    /// Generate C files in <dir>
+    #[option(long, arg = "dir")]
+    pub c_out: Option<PathBuf>,
+
     /// Generate C++ files in <dir>
     #[option(long, arg = "dir")]
     pub cpp_out: Option<PathBuf>,

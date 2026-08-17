@@ -300,6 +300,7 @@ fn generate_code(
 
     backends! {
         generated, options;
+        c_out, "c" => ic_codegen_c::codegen_c(hir, vfs);
         cpp_out, "cpp" => ic_codegen_cpp::codegen_cpp(hir, vfs, options.cpp.clone());
         csharp_out, "csharp" => ic_codegen_csharp::codegen_csharp(hir, vfs, options.csharp);
         rust_out, "rust" => ic_codegen_rust::codegen_rust(hir, options.rust);

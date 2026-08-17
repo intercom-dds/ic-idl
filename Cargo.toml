@@ -31,6 +31,7 @@ members = [
     "crates/ic-alloc",
     "crates/ic-cli",
     "crates/ic-cli-derive",
+    "crates/ic-codegen-c",
     "crates/ic-codegen-cpp",
     "crates/ic-codegen-csharp",
     "crates/ic-codegen-idl",

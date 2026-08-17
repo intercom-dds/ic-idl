@@ -61,6 +61,55 @@ float integral_float_constant(void) {
 }
 
 _Static_assert(
+    _Generic(
+        ((interface_types_WithArrayParams*)0)->input,
+        idl_status_t (*)(void*, const int32_t*, idl_error_t*): true,
+        default: false
+    ),
+    "input array must decay to a const element pointer"
+);
+_Static_assert(
+    _Generic(
+        ((interface_types_WithArrayParams*)0)->output,
+        idl_status_t (*)(void*, int32_t*, idl_error_t*): true,
+        default: false
+    ),
+    "output array must decay to an element pointer"
+);
+_Static_assert(
+    _Generic(
+        ((interface_types_WithArrayParams*)0)->update,
+        idl_status_t (*)(void*, int32_t(*)[3], idl_error_t*): true,
+        default: false
+    ),
+    "multidimensional array must preserve inner dimensions"
+);
+_Static_assert(
+    _Generic(
+        ((interface_types_WithArrayParams*)0)->strings,
+        idl_status_t (*)(void*, const char* const*, idl_error_t*): true,
+        default: false
+    ),
+    "string array must not duplicate const qualification"
+);
+_Static_assert(
+    _Generic(
+        ((interface_types_WithArrayParams*)0)->get_items,
+        idl_status_t (*)(void*, int32_t*, idl_error_t*): true,
+        default: false
+    ),
+    "array attribute getter must accept an element pointer"
+);
+_Static_assert(
+    _Generic(
+        ((interface_types_WithArrayParams*)0)->set_items,
+        idl_status_t (*)(void*, const int32_t*, idl_error_t*): true,
+        default: false
+    ),
+    "array attribute setter must accept a const element pointer"
+);
+
+_Static_assert(
     _Generic(((annotation_types_OptionalStruct*)0)->optional_int, int32_t*: true, default: false),
     "optional integer must be a pointer"
 );

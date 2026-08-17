@@ -44,8 +44,13 @@ const KEYWORDS: &[&str] = &[
     "_Thread_local", "_BitInt", "_Generic", "_Bool", "_Imaginary", "_Complex",
 ];
 
+const RESERVED_PARAMETERS: &[&str] = &["_self", "_result", "_value", "_error"];
+
 fn escape_c_keyword(ctx: rename::RenameContext) -> Option<String> {
-    if KEYWORDS.contains(&ctx.name) {
+    let reserved = matches!(ctx.kind, rename::IdentifierKind::Parameter)
+        && RESERVED_PARAMETERS.contains(&ctx.name);
+
+    if KEYWORDS.contains(&ctx.name) || reserved {
         Some(format!("{}_", ctx.name))
     } else {
         None

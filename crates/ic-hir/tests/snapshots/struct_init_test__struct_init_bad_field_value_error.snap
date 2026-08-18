@@ -1,0 +1,12 @@
+---
+source: crates/ic-hir/tests/struct_init_test.rs
+expression: output
+---
+⨯: integer value out of range for 'uint8'
+  @ test.idl:9:17
+
+  7 │ const Point BAD = {
+  8 │     x = 1,
+  9 │     y = 256
+    │         ˆˆˆ out of range
+ 10 │ };

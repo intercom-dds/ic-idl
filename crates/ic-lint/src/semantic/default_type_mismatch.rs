@@ -30,7 +30,8 @@
 use ic_diagnostic::Label;
 use ic_hir::ResolvedGraph;
 use ic_hir::hir::{
-    Def, DefId, DefKind, EnumTy, Member, Numeric, PrimitiveTy, StructTy, Ty, TyKind,
+    AliasTy, Ann, AnnParam, Def, DefId, DefKind, EnumTy, Member, Numeric, PrimitiveTy, StructTy,
+    Ty, TyKind, UnionTy, Variant,
 };
 use ic_hir::visit::Visitor;
 
@@ -61,12 +62,8 @@ impl<'a> Lint<'a> for DefaultTypeMismatch<'a> {
 }
 
 impl DefaultTypeMismatch<'_> {
-    fn check_member(&self, member: &Member) {
-        let Some(default_ann) = member
-            .annotations
-            .iter()
-            .find(|a| a.ident.name == "default")
-        else {
+    fn check_default(&self, annotations: &[Ann], ty: &Ty) {
+        let Some(default_ann) = annotations.iter().find(|a| a.ident.name == "default") else {
             return;
         };
 
@@ -74,15 +71,26 @@ impl DefaultTypeMismatch<'_> {
             return;
         };
 
-        if !self.is_compatible(&arg.value, &member.ty) {
+        if !self.is_compatible(&arg.value, ty) {
             let diag = self.ctx.diag_span(
                 Self::name(),
                 Self::category(),
                 format!(
                     "@default value is not compatible with member type `{}`",
-                    self.hir.context.type_name(&member.ty),
+                    self.hir.context.type_name(ty),
                 ),
                 Label::new(arg.ident.span).message("incompatible default value"),
+            );
+            Self::report(self.ctx, diag);
+        } else if self.is_out_of_range(&arg.value, ty) {
+            let diag = self.ctx.diag_span(
+                Self::name(),
+                Self::category(),
+                format!(
+                    "integer value out of range for '{}'",
+                    self.hir.context.type_name(ty),
+                ),
+                Label::new(arg.ident.span).message("out of range"),
             );
             Self::report(self.ctx, diag);
         }
@@ -242,6 +250,52 @@ impl DefaultTypeMismatch<'_> {
         }
     }
 
+    fn is_out_of_range(&self, value: &Numeric, ty: &Ty) -> bool {
+        let Some(value) = Self::numeric_to_i128(value) else {
+            return false;
+        };
+
+        let resolved_ty = self.hir.context.resolve_ty(ty);
+        let prim = match &resolved_ty.kind {
+            TyKind::Primitive(prim) => *prim,
+            TyKind::Adt(def_id) => {
+                let DefKind::Bitmask(bitmask_ty) = &self.hir.context.type_of(*def_id).kind else {
+                    return false;
+                };
+                bitmask_ty.ty
+            }
+            _ => return false,
+        };
+
+        let (min, max) = match prim {
+            PrimitiveTy::Int8 => (i128::from(i8::MIN), i128::from(i8::MAX)),
+            PrimitiveTy::UInt8 => (0, i128::from(u8::MAX)),
+            PrimitiveTy::Int16 => (i128::from(i16::MIN), i128::from(i16::MAX)),
+            PrimitiveTy::UInt16 => (0, i128::from(u16::MAX)),
+            PrimitiveTy::Int32 => (i128::from(i32::MIN), i128::from(i32::MAX)),
+            PrimitiveTy::UInt32 => (0, i128::from(u32::MAX)),
+            PrimitiveTy::Int64 => (i128::from(i64::MIN), i128::from(i64::MAX)),
+            PrimitiveTy::UInt64 => (0, i128::from(u64::MAX)),
+            _ => return false,
+        };
+
+        !(min..=max).contains(&value)
+    }
+
+    fn numeric_to_i128(value: &Numeric) -> Option<i128> {
+        match value {
+            Numeric::Int8(v) => Some(i128::from(*v)),
+            Numeric::UInt8(v) => Some(i128::from(*v)),
+            Numeric::Int16(v) => Some(i128::from(*v)),
+            Numeric::UInt16(v) => Some(i128::from(*v)),
+            Numeric::Int32(v) => Some(i128::from(*v)),
+            Numeric::UInt32(v) => Some(i128::from(*v)),
+            Numeric::Int64(v) => Some(i128::from(*v)),
+            Numeric::UInt64(v) => Some(i128::from(*v)),
+            _ => None,
+        }
+    }
+
     fn is_primitive_compatible(value: &Numeric, prim: PrimitiveTy) -> bool {
         matches!(
             (prim, value),
@@ -297,10 +351,28 @@ impl<'a> Visitor<'a> for DefaultTypeMismatch<'a> {
         &self.hir.context
     }
 
-    fn visit_struct(&mut self, _def: &'a Def, data: &'a StructTy) {
-        for member in &data.members {
-            self.check_member(member);
-        }
-        ic_hir::visit::walk_struct(self, data);
+    fn visit_member(&mut self, member: &'a Member) {
+        self.check_default(&member.annotations, &member.ty);
+        ic_hir::visit::walk_member(self, member);
+    }
+
+    fn visit_variant(&mut self, variant: &'a Variant) {
+        self.check_default(&variant.annotations, &variant.ty);
+        ic_hir::visit::walk_variant(self, variant);
+    }
+
+    fn visit_ann_param(&mut self, param: &'a AnnParam) {
+        self.check_default(&param.annotations, &param.ty);
+        ic_hir::visit::walk_ann_param(self, param);
+    }
+
+    fn visit_union(&mut self, _def: &'a Def, data: &'a UnionTy) {
+        self.check_default(&data.disc.annotations, &data.disc.ty);
+        ic_hir::visit::walk_union(self, data);
+    }
+
+    fn visit_alias(&mut self, def: &'a Def, data: &'a AliasTy) {
+        self.check_default(&def.annotations, &data.ty);
+        ic_hir::visit::walk_alias(self, data);
     }
 }

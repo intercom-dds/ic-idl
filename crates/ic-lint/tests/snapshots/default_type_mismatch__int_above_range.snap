@@ -1,0 +1,13 @@
+---
+source: crates/ic-lint/tests/default_type_mismatch.rs
+assertion_line: 349
+expression: test_lint_hir(source)
+---
+⨯ default-type-mismatch: integer value out of range for 'uint8'
+  @ test.idl:3:14
+
+ 2 │ struct Bad {
+ 3 │     @default(300)
+   │              ˆˆˆ out of range
+ 4 │     uint8 my_byte;
+ 5 │ };

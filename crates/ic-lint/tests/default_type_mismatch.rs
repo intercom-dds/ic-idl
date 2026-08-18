@@ -336,3 +336,75 @@ struct Good {
     let output = test_lint_hir(source);
     assert!(output.is_empty(), "Expected no errors, but got: {output}");
 }
+
+#[test]
+fn int_above_range() {
+    let source = r"
+struct Bad {
+    @default(300)
+    uint8 my_byte;
+};
+";
+
+    assert_snapshot!(test_lint_hir(source));
+}
+
+#[test]
+fn int_below_range() {
+    let source = r"
+struct Bad {
+    @default(-1)
+    uint8 my_byte;
+};
+";
+
+    assert_snapshot!(test_lint_hir(source));
+}
+
+#[test]
+fn valid_int_at_range_bounds() {
+    let source = r"
+struct Good {
+    @default(255)
+    uint8 my_max;
+    @default(-128)
+    int8 my_min;
+    @default(18446744073709551615)
+    uint64 my_big;
+};
+";
+
+    let output = test_lint_hir(source);
+    assert!(output.is_empty(), "Expected no errors, but got: {output}");
+}
+
+#[test]
+fn int_above_range_on_every_target() {
+    let source = r"
+@default(300)
+typedef uint8 Byte;
+
+union BadUnion switch (@default(300) uint8) {
+case 1:
+    @default(300)
+    uint8 my_byte;
+};
+
+exception BadException {
+    @default(300)
+    uint8 my_byte;
+};
+
+valuetype BadValue {
+    @default(300)
+    public uint8 my_byte;
+};
+
+@annotation bad_annotation {
+    @default(300)
+    uint8 my_byte;
+};
+";
+
+    assert_snapshot!(test_lint_hir(source));
+}

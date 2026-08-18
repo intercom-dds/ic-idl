@@ -52,6 +52,18 @@ module MyModule {
 }
 
 #[test]
+fn invalid_identifier_start() {
+    let source = r"
+struct S {
+    string _123;
+    string _;
+};
+";
+
+    assert_snapshot!(test_lint(source));
+}
+
+#[test]
 fn non_ascii_identifier() {
     let source = r#"
 module MóduloEspañol {

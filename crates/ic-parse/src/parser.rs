@@ -392,7 +392,14 @@ impl<'a> Parser<'a> {
 
     pub(super) fn ident_text(&self, span: Span) -> String {
         let text = self.text(span);
-        text.strip_prefix('_').unwrap_or(text).to_owned()
+        let ident = text.strip_prefix('_').filter(|ident| {
+            ident
+                .chars()
+                .next()
+                .is_some_and(|c| c.is_ascii_alphabetic())
+        });
+
+        ident.unwrap_or(text).to_owned()
     }
 
     /// Peeks at the nth token ahead (0 = current token) without skimming.

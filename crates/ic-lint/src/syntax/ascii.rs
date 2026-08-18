@@ -50,6 +50,12 @@ impl<'a> Visitor<'a> for AsciiIdent<'_> {
                 Label::new(ident.span).message("non-ASCII identifier"),
             );
             Self::report(self.ctx, diag);
+        } else if !ident.name.starts_with(|c: char| c.is_ascii_alphabetic()) {
+            let diag = error_span(
+                "escaped identifiers must start with an ASCII letter",
+                Label::new(ident.span).message("invalid identifier"),
+            );
+            Self::report(self.ctx, diag);
         }
     }
 

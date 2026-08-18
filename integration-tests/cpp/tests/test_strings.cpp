@@ -232,8 +232,8 @@ TEST_CASE("char_type_annotations" * doctest::test_suite("strings")) {
 }
 
 TEST_CASE("string_type_annotations" * doctest::test_suite("strings")) {
-    CHECK((std::is_same_v<decltype(char_wstring_types::WSTRING_HELLO), const char16_t* const>));
-    CHECK((std::is_same_v<decltype(unicode_types::FRENCH), const char* const>));
+    CHECK((std::is_same_v<decltype(char_wstring_types::WSTRING_HELLO), std::u16string_view const>));
+    CHECK((std::is_same_v<decltype(unicode_types::FRENCH), std::string_view const>));
 }
 
 TEST_CASE("char_fields_type_annotations" * doctest::test_suite("strings")) {

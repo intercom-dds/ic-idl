@@ -75,6 +75,10 @@ pub struct CppOptions {
     #[option(long)]
     pub no_stream_op: bool,
 
+    /// Use const char* instead of `std::string_view` for constants
+    #[option(long)]
+    pub char_ptr_constants: bool,
+
     /// Generate formatting specializations for fmtlib
     #[option(long)]
     pub use_fmt: bool,

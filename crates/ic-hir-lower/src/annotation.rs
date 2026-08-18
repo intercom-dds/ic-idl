@@ -25,7 +25,7 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use ic_hir::hir::{Ann, AnnArg, AnnParam, DefId, DefKind, Ident};
+use ic_hir::hir::{Ann, AnnArg, AnnParam, DefId, DefKind, Ident, Ty, TyKind};
 use ic_hir::scope::ScopeId;
 use ic_syntax::util::{path_name, path_span};
 use ic_syntax::{Annotation, AnnotationArg};
@@ -53,14 +53,30 @@ pub fn convert_annotations(
     ast_annotations: &[Annotation],
     scope: ScopeId,
 ) -> Vec<Ann> {
+    convert_annotations_for(ctx, ast_annotations, scope, None)
+}
+
+/// Convert AST annotations to HIR annotations, evaluating untyped arguments
+/// against the type of the annotated item.
+pub fn convert_annotations_for(
+    ctx: &mut LoweringContext,
+    ast_annotations: &[Annotation],
+    scope: ScopeId,
+    target: Option<&Ty>,
+) -> Vec<Ann> {
     ast_annotations
         .iter()
-        .map(|ann_appl| convert_annotation(ctx, ann_appl, scope))
+        .map(|ann_appl| convert_annotation(ctx, ann_appl, scope, target))
         .collect()
 }
 
 /// Convert a single AST annotation to HIR annotation.
-fn convert_annotation(ctx: &mut LoweringContext, ann_appl: &Annotation, scope: ScopeId) -> Ann {
+fn convert_annotation(
+    ctx: &mut LoweringContext,
+    ann_appl: &Annotation,
+    scope: ScopeId,
+    target: Option<&Ty>,
+) -> Ann {
     let start = if ann_appl.path.leading_colons.is_some() {
         ctx.context.root_scope()
     } else {
@@ -90,7 +106,7 @@ fn convert_annotation(ctx: &mut LoweringContext, ann_appl: &Annotation, scope: S
 
     // Convert annotation arguments
     let span = path_span(&ann_appl.path);
-    let args = convert_annotation_args(ctx, &ann_appl.arguments, def_id, scope, span);
+    let args = convert_annotation_args(ctx, &ann_appl.arguments, def_id, scope, span, target);
 
     Ann {
         ident: Ident { name, span },
@@ -106,6 +122,7 @@ fn convert_annotation_args(
     def_id: Option<DefId>,
     scope: ScopeId,
     ann_span: ic_syntax::Span,
+    target: Option<&Ty>,
 ) -> Vec<AnnArg> {
     // Get the annotation definition parameters if available
     let ann_params = get_annotation_params(ctx, def_id);
@@ -114,9 +131,25 @@ fn convert_annotation_args(
     let has_named_args = ast_args.iter().any(|arg| arg.name.is_some());
 
     if has_named_args {
-        process_named_arguments(ctx, ast_args, ann_params.as_ref(), def_id, scope, ann_span)
+        process_named_arguments(
+            ctx,
+            ast_args,
+            ann_params.as_ref(),
+            def_id,
+            scope,
+            ann_span,
+            target,
+        )
     } else {
-        process_positional_arguments(ctx, ast_args, ann_params.as_ref(), def_id, scope, ann_span)
+        process_positional_arguments(
+            ctx,
+            ast_args,
+            ann_params.as_ref(),
+            def_id,
+            scope,
+            ann_span,
+            target,
+        )
     }
 }
 
@@ -140,6 +173,7 @@ fn process_named_arguments(
     def_id: Option<DefId>,
     scope: ScopeId,
     ann_span: ic_syntax::Span,
+    target: Option<&Ty>,
 ) -> Vec<AnnArg> {
     let mut args = Vec::new();
 
@@ -149,7 +183,9 @@ fn process_named_arguments(
 
         // Process each parameter and match with provided arguments
         for param in params {
-            if let Some(arg) = process_named_parameter(ctx, param, &named_args, def_id, scope) {
+            if let Some(arg) =
+                process_named_parameter(ctx, param, &named_args, def_id, scope, target)
+            {
                 args.push(arg);
             } else if let Some(arg) = create_default_argument(param) {
                 args.push(arg);
@@ -194,22 +230,49 @@ fn process_named_parameter(
     named_args: &std::collections::HashMap<String, &AnnotationArg>,
     def_id: Option<DefId>,
     scope: ScopeId,
+    target: Option<&Ty>,
 ) -> Option<AnnArg> {
     if let Some(arg) = named_args.get(&param.ident.name) {
+        let ty = argument_ty(ctx, param, arg, target).clone();
         let mut evaluator = evaluator_for_scope(ctx, scope, def_id);
 
         evaluator
-            .eval_for_type(&arg.value, &param.ty)
+            .eval_for_type(&arg.value, &ty)
             .map(|value| AnnArg {
                 ident: Ident {
                     name: param.ident.name.clone(),
                     span: arg.span,
                 },
                 value,
-                ty: Some(param.ty.clone()),
+                ty: Some(ty),
             })
     } else {
         None
+    }
+}
+
+/// Pick the type an argument is evaluated against.
+///
+/// An `any` parameter carries no type information, so an initializer list can
+/// only be shaped against the type of the annotated item. Scalar arguments stay
+/// untyped, leaving compatibility checks to the `default-type-mismatch` lint.
+fn argument_ty<'t>(
+    ctx: &LoweringContext,
+    param: &'t AnnParam,
+    arg: &AnnotationArg,
+    target: Option<&'t Ty>,
+) -> &'t Ty {
+    let Some(target) = target else {
+        return &param.ty;
+    };
+
+    if !matches!(ctx.context.resolve_ty(&param.ty).kind, TyKind::Any) {
+        return &param.ty;
+    }
+
+    match &arg.value.value {
+        ic_syntax::ExprKind::InitList(_) => target,
+        _ => &param.ty,
     }
 }
 
@@ -288,6 +351,7 @@ fn process_positional_arguments(
     def_id: Option<DefId>,
     scope: ScopeId,
     ann_span: ic_syntax::Span,
+    target: Option<&Ty>,
 ) -> Vec<AnnArg> {
     let mut args = Vec::new();
 
@@ -298,7 +362,8 @@ fn process_positional_arguments(
         // Process each positional argument
         for (i, arg) in ast_args.iter().enumerate() {
             if let Some(param) = params.get(i)
-                && let Some(processed_arg) = evaluate_argument(ctx, arg, param, def_id, scope)
+                && let Some(processed_arg) =
+                    evaluate_argument(ctx, arg, param, def_id, scope, target)
             {
                 args.push(processed_arg);
             }
@@ -352,18 +417,20 @@ fn evaluate_argument(
     param: &AnnParam,
     def_id: Option<DefId>,
     scope: ScopeId,
+    target: Option<&Ty>,
 ) -> Option<AnnArg> {
+    let ty = argument_ty(ctx, param, arg, target).clone();
     let mut evaluator = evaluator_for_scope(ctx, scope, def_id);
 
     evaluator
-        .eval_for_type(&arg.value, &param.ty)
+        .eval_for_type(&arg.value, &ty)
         .map(|value| AnnArg {
             ident: Ident {
                 name: String::new(), // Positional arguments have empty names
                 span: arg.span,
             },
             value,
-            ty: Some(param.ty.clone()),
+            ty: Some(ty),
         })
 }
 

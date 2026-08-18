@@ -27,14 +27,18 @@
 
 //! Coerce @default annotation values to match their target member types.
 //!
-//! The @default annotation value is initially evaluated without knowing the
-//! member's type, so `{1, 2, 3}` becomes a Sequence even when the target is
-//! an Array. This transformation coerces the Numeric values to match.
+//! Initializer lists are shaped during lowering, where the member type is
+//! known. Scalars are evaluated without a target type, so this transformation
+//! coerces the values that only a type can resolve: a float literal for a
+//! `float` member, and an integer literal for an enum member.
 
 use std::collections::HashMap;
 
 use ic_hir::fold::Fold;
-use ic_hir::hir::{DefId, DefKind, Member, Numeric, PrimitiveTy, StructTy, Ty, TyKind};
+use ic_hir::hir::{
+    Ann, AnnotationTy, Def, DefId, DefKind, Member, Numeric, PrimitiveTy, Ty, TyKind, UnionTy,
+    Variant,
+};
 use ic_hir::{Context, ResolvedGraph};
 use tracing::{debug, debug_span};
 
@@ -42,7 +46,6 @@ struct DefaultAnnotation {
     enum_fields: HashMap<DefId, Vec<(i64, DefId)>>,
     typedef_targets: HashMap<DefId, TyKind>,
     const_values: HashMap<DefId, Numeric>,
-    struct_members: HashMap<DefId, Vec<Member>>,
 }
 
 impl DefaultAnnotation {
@@ -50,13 +53,9 @@ impl DefaultAnnotation {
         let mut enum_fields = HashMap::new();
         let mut typedef_targets = HashMap::new();
         let mut const_values = HashMap::new();
-        let mut struct_members = HashMap::new();
 
         for (def_id, def) in &context.definitions {
             match &def.kind {
-                DefKind::Struct(struct_ty) => {
-                    struct_members.insert(def_id, Self::collect_struct_members(context, struct_ty));
-                }
                 DefKind::Enum(enum_ty) => {
                     enum_fields.insert(def_id, Self::collect_enum_fields(context, enum_ty));
                 }
@@ -75,32 +74,7 @@ impl DefaultAnnotation {
             enum_fields,
             typedef_targets,
             const_values,
-            struct_members,
         }
-    }
-
-    fn collect_struct_members(context: &Context, struct_ty: &StructTy) -> Vec<Member> {
-        let mut parents = vec![];
-        let mut parent = struct_ty.parent;
-        while let Some(parent_ref) = parent {
-            let parent_def = context.type_of(parent_ref.def_id);
-            if let DefKind::Struct(parent_struct) = &parent_def.kind {
-                parents.push(parent_ref.def_id);
-                parent = parent_struct.parent;
-            } else {
-                parent = None;
-            }
-        }
-
-        let mut members = vec![];
-        for parent_id in parents.into_iter().rev() {
-            let parent_def = context.type_of(parent_id);
-            if let DefKind::Struct(parent_struct) = &parent_def.kind {
-                members.extend(parent_struct.members.clone());
-            }
-        }
-        members.extend(struct_ty.members.clone());
-        members
     }
 
     fn collect_enum_fields(context: &Context, enum_ty: &ic_hir::hir::EnumTy) -> Vec<(i64, DefId)> {
@@ -131,83 +105,14 @@ impl DefaultAnnotation {
     fn coerce_numeric(&self, value: &Numeric, target_ty: &Ty) -> Option<Numeric> {
         let resolved_kind = self.resolve_ty_kind(&target_ty.kind);
         match (resolved_kind, value) {
-            (TyKind::Array { ty: elem_ty, .. }, Numeric::Sequence { values, .. }) => {
-                let coerced: Vec<_> = values
-                    .iter()
-                    .map(|v| self.coerce_numeric(v, elem_ty).unwrap_or_else(|| v.clone()))
-                    .collect();
-                Some(Numeric::Array {
-                    ty: (**elem_ty).clone(),
-                    values: coerced.into_boxed_slice(),
-                })
-            }
-
-            (TyKind::Map { key, elem, .. }, Numeric::Sequence { values, .. }) => {
-                let mut entries = Vec::new();
-                for entry in values {
-                    if let Numeric::Sequence { values: pair, .. } = entry
-                        && pair.len() >= 2
-                    {
-                        let k = self
-                            .coerce_numeric(&pair[0], key)
-                            .unwrap_or_else(|| pair[0].clone());
-                        let v = self
-                            .coerce_numeric(&pair[1], elem)
-                            .unwrap_or_else(|| pair[1].clone());
-                        entries.push((k, v));
-                    }
-                }
-                Some(Numeric::Map {
-                    key: (**key).clone(),
-                    value: (**elem).clone(),
-                    entries: entries.into_boxed_slice(),
-                })
-            }
-
             (TyKind::Primitive(PrimitiveTy::Float32), Numeric::Double(v)) => {
                 Some(Numeric::Float(*v as f32))
             }
-
-            (TyKind::Sequence { ty: elem_ty, .. }, Numeric::Sequence { values, .. }) => {
-                let coerced: Vec<_> = values
-                    .iter()
-                    .map(|v| self.coerce_numeric(v, elem_ty).unwrap_or_else(|| v.clone()))
-                    .collect();
-                Some(Numeric::Sequence {
-                    ty: (**elem_ty).clone(),
-                    values: coerced.into_boxed_slice(),
-                })
-            }
-
-            (TyKind::Adt(def_id), Numeric::Sequence { values, .. }) => self
-                .coerce_sequence_to_struct(values, *def_id)
-                .or_else(|| self.coerce_int_to_enum(value, *def_id)),
 
             (TyKind::Adt(def_id), _) => self.coerce_int_to_enum(value, *def_id),
 
             _ => None,
         }
-    }
-
-    fn coerce_sequence_to_struct(&self, values: &[Numeric], def_id: DefId) -> Option<Numeric> {
-        let members = self.struct_members.get(&def_id)?;
-        if values.len() != members.len() {
-            return None;
-        }
-
-        let coerced = values
-            .iter()
-            .zip(members)
-            .map(|(value, member)| {
-                self.coerce_numeric(value, &member.ty)
-                    .unwrap_or_else(|| value.clone())
-            })
-            .collect::<Vec<_>>();
-
-        Some(Numeric::Struct {
-            ty: def_id,
-            fields: coerced.into_boxed_slice(),
-        })
     }
 
     fn coerce_int_to_enum(&self, value: &Numeric, def_id: DefId) -> Option<Numeric> {
@@ -260,24 +165,50 @@ impl DefaultAnnotation {
         }
     }
 
-    fn process_member(&self, member: &mut Member) {
-        if let Some(default_ann) = member
-            .annotations
-            .iter_mut()
-            .find(|a| a.ident.name == "default")
+    fn process_annotations(&self, annotations: &mut [Ann], ty: &Ty) {
+        if let Some(default_ann) = annotations.iter_mut().find(|a| a.ident.name == "default")
             && let Some(arg) = default_ann.args.first_mut()
-            && let Some(coerced) = self.coerce_numeric(&arg.value, &member.ty)
+            && let Some(coerced) = self.coerce_numeric(&arg.value, ty)
         {
             arg.value = coerced;
-            arg.ty = Some(member.ty.clone());
+            arg.ty = Some(ty.clone());
         }
     }
 }
 
 impl Fold for DefaultAnnotation {
+    fn fold_def(&mut self, mut def: Def) -> Def {
+        if let DefKind::Alias(alias_ty) = &def.kind {
+            let ty = alias_ty.ty.clone();
+            self.process_annotations(&mut def.annotations, &ty);
+        }
+        ic_hir::fold::fold_def(self, def)
+    }
+
     fn fold_member(&mut self, mut member: Member) -> Member {
-        self.process_member(&mut member);
+        let ty = member.ty.clone();
+        self.process_annotations(&mut member.annotations, &ty);
         ic_hir::fold::fold_member(self, member)
+    }
+
+    fn fold_variant(&mut self, mut variant: Variant) -> Variant {
+        let ty = variant.ty.clone();
+        self.process_annotations(&mut variant.annotations, &ty);
+        ic_hir::fold::fold_variant(self, variant)
+    }
+
+    fn fold_union_ty(&mut self, mut union_ty: UnionTy) -> UnionTy {
+        let ty = union_ty.disc.ty.clone();
+        self.process_annotations(&mut union_ty.disc.annotations, &ty);
+        ic_hir::fold::fold_union_ty(self, union_ty)
+    }
+
+    fn fold_annotation_ty(&mut self, mut annotation_ty: AnnotationTy) -> AnnotationTy {
+        for param in &mut annotation_ty.params {
+            let ty = param.ty.clone();
+            self.process_annotations(&mut param.annotations, &ty);
+        }
+        ic_hir::fold::fold_annotation_ty(self, annotation_ty)
     }
 }
 

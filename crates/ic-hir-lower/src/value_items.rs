@@ -535,7 +535,7 @@ impl<'ctx> ValueItemProcessor<'ctx> {
 
                     let default = if let Some(ref default_expr) = member.default {
                         let mut evaluator = ConstEvaluator::new(self.ctx, scope);
-                        evaluator.eval_numeric(default_expr)
+                        evaluator.eval_for_type(default_expr, &ty)
                     } else {
                         None
                     };

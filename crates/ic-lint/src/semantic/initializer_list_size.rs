@@ -176,8 +176,9 @@ fn validate_struct_init(
     span: Span,
 ) {
     let struct_def = context.definitions.get(ty);
-    if let DefKind::Struct(struct_ty) = &struct_def.kind {
-        let expected_count = struct_ty.members.len();
+    if let DefKind::Struct(_) = &struct_def.kind {
+        let members = collect_members(context, ty);
+        let expected_count = members.len();
         if fields.len() != expected_count {
             ctx.report(
                 InitializerListSize::name(),
@@ -196,10 +197,28 @@ fn validate_struct_init(
             );
         }
         // Validate each field value against its expected type
-        for (value, member) in fields.iter().zip(struct_ty.members.iter()) {
+        for (value, member) in fields.iter().zip(members.iter()) {
             validate_init_list(ctx, context, value, &member.ty, span);
         }
     }
+}
+
+fn collect_members(context: &Context, ty: hir::DefId) -> Vec<hir::Member> {
+    let mut chain = vec![];
+    let mut next = Some(ty);
+    while let Some(def_id) = next {
+        let DefKind::Struct(struct_ty) = &context.definitions.get(def_id).kind else {
+            break;
+        };
+        chain.push(struct_ty);
+        next = struct_ty.parent.map(|parent| parent.def_id);
+    }
+
+    chain
+        .into_iter()
+        .rev()
+        .flat_map(|struct_ty| struct_ty.members.iter().cloned())
+        .collect()
 }
 
 fn validate_sequence_init(

@@ -251,3 +251,22 @@ fn test_struct_init_duplicate_field_error() {
 
     insta::assert_snapshot!(output);
 }
+
+#[test]
+fn test_struct_init_bad_field_value_error() {
+    let input = r"
+        struct Point {
+            uint8 x;
+            uint8 y;
+        };
+
+        const Point BAD = {
+            x = 1,
+            y = 256
+        };
+    ";
+
+    let (result, _, output) = common::parse_and_resolve(input);
+    assert_eq!(result.errors.len(), 1, "{output}");
+    insta::assert_snapshot!(output);
+}

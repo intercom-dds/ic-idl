@@ -160,7 +160,7 @@ impl<'a, 'b> InitializerEvaluator<'a, 'b> {
         for member in struct_members {
             if let Some(value) = value_map.remove(&member.ident.name) {
                 fields.push(value);
-            } else {
+            } else if !field_spans.contains_key(&member.ident.name) {
                 self.evaluator.diagnostics().error(
                     format!(
                         "missing initializer for field `{}` in struct `{struct_name}`",

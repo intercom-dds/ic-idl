@@ -68,14 +68,11 @@ fn is_key(member: &Member) -> bool {
 }
 
 fn is_optional(member: &Member) -> bool {
-    CppGen::is_optional(member)
+    CppGen::is_optional(&member.annotations)
 }
 
-fn is_shared(member: &Member) -> bool {
-    member
-        .annotations
-        .iter()
-        .any(|a| a.ident.name == "shared" || a.ident.name == "external")
+fn is_external(member: &Member) -> bool {
+    CppGen::is_external(&member.annotations)
 }
 
 fn is_must_understand(member: &Member) -> bool {
@@ -226,7 +223,7 @@ fn member_flags(member: &Member, has_key: bool) -> String {
     if is_optional(member) {
         add_flag(&mut flag, "::ic_cts::dcps::xtypes::IS_OPTIONAL");
     }
-    if is_shared(member) {
+    if is_external(member) {
         add_flag(&mut flag, "::ic_cts::dcps::xtypes::IS_EXTERNAL");
     }
     if is_must_understand(member) {

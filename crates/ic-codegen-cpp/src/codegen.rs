@@ -317,22 +317,38 @@ impl<'a> CppGen<'a> {
         }
     }
 
-    pub fn should_use_move(&self, ty: &Ty) -> bool {
-        if let TyKind::Adt(def_id) = &ty.kind {
-            let def = self.hir.context.definitions.get(def_id);
+    pub fn should_use_move(&self, ty: &Ty, annotations: &[Ann]) -> bool {
+        Self::is_external(annotations)
+            || if let TyKind::Adt(def_id) = &ty.kind {
+                let def = self.hir.context.definitions.get(def_id);
 
-            match &def.kind {
-                DefKind::Bitmask(_) | DefKind::Enum(_) => false,
-                DefKind::Alias(alias_ty) => self.should_use_move(&alias_ty.ty),
-                _ => true,
+                match &def.kind {
+                    DefKind::Bitmask(_) | DefKind::Enum(_) => false,
+                    DefKind::Alias(alias_ty) => self.should_use_move(&alias_ty.ty, annotations),
+                    _ => true,
+                }
+            } else {
+                !matches!(&ty.kind, TyKind::Primitive(_))
             }
+    }
+
+    pub fn member_cpp_type(
+        &self,
+        ty: &Ty,
+        annotations: &[Ann],
+        relative_def: impl Into<Option<DefId>>,
+    ) -> String {
+        if Self::is_optional(annotations) {
+            format!("::std::optional<{}>", self.cpp_type(ty, relative_def))
+        } else if Self::is_external(annotations) {
+            format!("::std::unique_ptr<{}>", self.cpp_type(ty, relative_def))
         } else {
-            !matches!(&ty.kind, TyKind::Primitive(_))
+            self.cpp_type(ty, relative_def)
         }
     }
 
-    pub fn is_optional(member: &Member) -> bool {
-        find_annotation::<Optional>(&member.annotations, "optional")
+    pub fn is_optional(annotations: &[Ann]) -> bool {
+        find_annotation::<Optional>(annotations, "optional")
             .and_then(Result::ok)
             .is_some_and(|opt| opt.value)
     }
@@ -345,6 +361,12 @@ impl<'a> CppGen<'a> {
             .map(|arg| &arg.value)
     }
 
+    pub fn is_external(annotations: &[Ann]) -> bool {
+        annotations
+            .iter()
+            .any(|a| a.ident.name == "shared" || a.ident.name == "external")
+    }
+
     pub fn default_value(annotations: &[Ann]) -> Option<&Numeric> {
         annotations
             .iter()
@@ -354,28 +376,41 @@ impl<'a> CppGen<'a> {
     }
 
     pub fn emit_member(&self, w: &mut Twine, member: &Member, def_id: DefId) {
-        let ty_str = self.cpp_type(&member.ty, def_id);
+        let ty_str = self.member_cpp_type(&member.ty, &member.annotations, def_id);
+        let external = Self::is_external(&member.annotations);
 
-        if Self::is_optional(member) {
-            w!(w, "::std::optional<", ty_str, "> ", member.ident.name, ";\n");
-        } else {
-            w!(w, ty_str, " ", member.ident.name);
+        w!(w, ty_str, " ", member.ident.name);
+        if !Self::is_optional(&member.annotations) {
+            let inner_ty = self.cpp_type(&member.ty, def_id);
+
             if let Some(default) = Self::default_value(&member.annotations) {
                 let is_array = matches!(default, Numeric::Array { .. });
-                if !is_array {
+                if !is_array || external {
                     w!(w, "{");
                 }
-                self.emit_numeric_value_with_ty(w, default, &member.ty, def_id);
-                if !is_array {
+                self.emit_numeric_value_with_ty(w, default, &member.ty, def_id, external);
+                if !is_array || external {
                     w!(w, "}");
                 }
             } else if self.has_default_value(&member.ty) {
-                w!(w, "{");
+                if external {
+                    w!(w, "{::std::make_unique<", inner_ty ,">(");
+                } else {
+                    w!(w, "{");
+                }
+
                 self.emit_default_initializer(w, &member.ty);
-                w!(w, "}");
+
+                if external {
+                    w!(w, ")}");
+                } else {
+                    w!(w, "}");
+                }
+            } else if external {
+                w!(w, "{::std::make_unique<", inner_ty ,">(", inner_ty, "())}");
             }
-            w!(w, ";\n");
         }
+        w!(w, ";\n");
     }
 
     pub fn collect_all_members(&self, def_id: DefId) -> Vec<Member> {
@@ -410,7 +445,7 @@ impl<'a> CppGen<'a> {
         value: &Numeric,
         relative_def: impl Into<Option<DefId>>,
     ) {
-        self.emit_numeric_value_impl(w, value, relative_def, None, false);
+        self.emit_numeric_value_impl(w, value, relative_def, None, false, false);
     }
 
     pub fn emit_numeric_value_with_ty(
@@ -419,10 +454,12 @@ impl<'a> CppGen<'a> {
         value: &Numeric,
         ty: &Ty,
         relative_def: impl Into<Option<DefId>>,
+        external: bool,
     ) {
-        self.emit_numeric_value_impl(w, value, relative_def, Some(ty), false);
+        self.emit_numeric_value_impl(w, value, relative_def, Some(ty), false, external);
     }
 
+    #[allow(clippy::too_many_lines)]
     fn emit_numeric_value_impl(
         &self,
         w: &mut Twine,
@@ -430,8 +467,16 @@ impl<'a> CppGen<'a> {
         relative_def: impl Into<Option<DefId>>,
         expected_ty: Option<&Ty>,
         emit_type_for_struct: bool,
+        external: bool,
     ) {
         let relative_def_opt = relative_def.into();
+
+        if let Some(ty) = expected_ty
+            && external
+        {
+            w!(w, "::std::make_unique<", self.cpp_type(ty, relative_def_opt), ">(");
+        }
+
         match value {
             Numeric::Null => w!(w, "nullptr"),
             Numeric::Bool(v) => w!(w, if *v { "true" } else { "false" }),
@@ -477,14 +522,20 @@ impl<'a> CppGen<'a> {
                 w!(w, "}");
             }
             Numeric::Array { values, .. } => {
-                w!(w, "{{");
+                if let Some(ty) = expected_ty
+                    && external
+                {
+                    w!(w, self.cpp_type(ty, relative_def_opt), " ");
+                }
+
+                w!(w, if external { "{" } else { "{{" });
                 for (i, elem) in values.iter().enumerate() {
                     self.emit_numeric_value(w, elem, relative_def_opt);
                     if i < values.len() - 1 {
                         w!(w, ", ");
                     }
                 }
-                w!(w, "}}");
+                w!(w, if external { "}" } else { "}}" });
             }
             Numeric::Struct {
                 fields,
@@ -498,8 +549,23 @@ impl<'a> CppGen<'a> {
                     };
                     w!(w, type_name, "{");
                 }
+
+                let def = self.hir.context.type_of(*struct_def_id);
+
+                let members = self.collect_all_members(def.id);
+
                 for (i, value) in fields.iter().enumerate() {
-                    self.emit_numeric_value_impl(w, value, relative_def_opt, None, true);
+                    let member = members.get(i);
+                    let external = member.is_some_and(|m| Self::is_external(&m.annotations));
+
+                    self.emit_numeric_value_impl(
+                        w,
+                        value,
+                        relative_def_opt,
+                        member.map(|m| &m.ty),
+                        true,
+                        external,
+                    );
                     if i < fields.len() - 1 {
                         w!(w, ", ");
                     }
@@ -528,6 +594,10 @@ impl<'a> CppGen<'a> {
                 w!(w, " }");
             }
         }
+
+        if expected_ty.is_some() && external {
+            w!(w, ")");
+        }
     }
 
     pub fn primitive_default(prim: PrimitiveTy) -> &'static str {
@@ -550,7 +620,7 @@ impl<'a> CppGen<'a> {
         };
         match &resolved.kind {
             TyKind::Primitive(prim) => w!(w, Self::primitive_default(*prim)),
-            TyKind::Array { .. } => w!(w, "{}"),
+            TyKind::Array { .. } => w!(w, ""),
             TyKind::Adt(def_id) => {
                 let def = self.hir.context.definitions.get(*def_id);
                 if let DefKind::Enum(enum_ty) = &def.kind {
@@ -795,7 +865,7 @@ impl<'a> CppGen<'a> {
 
             match param.kind {
                 ParamKind::In => {
-                    if self.should_use_move(&resolved_ty) && !pass_by_value {
+                    if self.should_use_move(&resolved_ty, &[]) && !pass_by_value {
                         w!(w, "const ", ty_str, "& a_", param_name);
                     } else {
                         w!(w, ty_str, " a_", param_name);

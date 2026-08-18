@@ -102,7 +102,7 @@ impl CppGen<'_> {
             }
             w!(w, valuetype_name, "(\n");
             for (i, member) in all_members.iter().enumerate() {
-                let ty_str = self.cpp_type(&member.ty, def.id);
+                let ty_str = self.member_cpp_type(&member.ty, &member.annotations, def.id);
                 w!(w, ty_str, " a_", member.ident.name);
                 if i < all_members.len() - 1 {
                     w!(w, ",\n");
@@ -126,7 +126,7 @@ impl CppGen<'_> {
         w!(w, return_type, " ", proto.ident.name, "(\n");
 
         for (i, param) in proto.params.iter().enumerate() {
-            let param_type = self.cpp_type(&param.ty, def.id);
+            let param_type = self.member_cpp_type(&param.ty, &proto.annotations, def.id);
             w!(w, param_type, " a_", param.ident.name);
             if i < proto.params.len() - 1 {
                 w!(w, ",\n");
@@ -174,7 +174,7 @@ impl CppGen<'_> {
 
         w!(w, "inline ", qualified_name, "::", valuetype_name, "(\n");
         for (i, member) in all_members.iter().enumerate() {
-            let ty_str = self.cpp_type(&member.ty, def.id);
+            let ty_str = self.member_cpp_type(&member.ty, &member.annotations, def.id);
             w!(w, ty_str, " a_", member.ident.name);
             if i < all_members.len() - 1 {
                 w!(w, ",\n");
@@ -190,7 +190,7 @@ impl CppGen<'_> {
 
             w!(w, parent_name, "(");
             for (i, member) in parent_all_members.iter().enumerate() {
-                if self.should_use_move(&member.ty) {
+                if self.should_use_move(&member.ty, &member.annotations) {
                     w!(w, "std::move(a_", member.ident.name, ")");
                 } else {
                     w!(w, "a_", member.ident.name);
@@ -206,7 +206,7 @@ impl CppGen<'_> {
             if has_parent || i > 0 {
                 w!(w, ",\n\t");
             }
-            if self.should_use_move(&member.ty) {
+            if self.should_use_move(&member.ty, &member.annotations) {
                 w!(w, member.ident.name, "(std::move(a_", member.ident.name, "))");
             } else {
                 w!(w, member.ident.name, "(a_", member.ident.name, ")");
@@ -231,11 +231,20 @@ impl CppGen<'_> {
         } else {
             for (i, member) in all_members.iter().enumerate() {
                 let member_name = &member.ident.name;
-                if i < all_members.len() - 1 {
-                    w!(w, "if (this->", member_name, " < a_other.", member_name, ") { return true; }\n");
-                    w!(w, "if (a_other.", member_name, " < this->", member_name, ") { return false; }\n");
+                if Self::is_external(&member.annotations) {
+                    if i < all_members.len() - 1 {
+                        w!(w, "if (*this->", member_name, " < *a_other.", member_name, ") { return true; }\n");
+                        w!(w, "if (*a_other.", member_name, " < *this->", member_name, ") { return false; }\n");
+                    } else {
+                        w!(w, "return *this->", member_name, " < *a_other.", member_name, ";\n");
+                    }
                 } else {
-                    w!(w, "return this->", member_name, " < a_other.", member_name, ";\n");
+                    if i < all_members.len() - 1 {
+                        w!(w, "if (this->", member_name, " < a_other.", member_name, ") { return true; }\n");
+                        w!(w, "if (a_other.", member_name, " < this->", member_name, ") { return false; }\n");
+                    } else {
+                        w!(w, "return this->", member_name, " < a_other.", member_name, ";\n");
+                    }
                 }
             }
         }
@@ -244,7 +253,11 @@ impl CppGen<'_> {
         w!(w, "inline bool ", qualified_name, "::operator==(const ", qualified_name, " &", param, ") const {\n");
         for member in &all_members {
             let member_name = &member.ident.name;
-            w!(w, "if (!(this->", member_name, " == a_other.", member_name, ")) { return false; }\n");
+            if Self::is_external(&member.annotations) {
+                w!(w, "if (!(*this->", member_name, " == *a_other.", member_name, ")) { return false; }\n");
+            } else {
+                w!(w, "if (!(this->", member_name, " == a_other.", member_name, ")) { return false; }\n");
+            }
         }
         w!(w, "return true;\n");
         w!(w, "}\n\n");

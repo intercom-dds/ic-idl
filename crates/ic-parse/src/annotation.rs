@@ -119,7 +119,7 @@ impl Parser<'_> {
             Kind::Ident => {
                 self.advance_raw();
                 Ok(Ident {
-                    name: self.text(tok.span).to_owned(),
+                    name: self.ident_text(tok.span),
                     span: tok.span,
                 })
             }
@@ -196,7 +196,7 @@ impl Parser<'_> {
 
         self.advance_raw();
         let ident = Ident {
-            name: self.text(id_tok.span).to_owned(),
+            name: self.ident_text(id_tok.span),
             span: id_tok.span,
         };
         let value = self.const_expr()?;

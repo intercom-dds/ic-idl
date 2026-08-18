@@ -44,6 +44,27 @@ fn parse_simple_module() {
 }
 
 #[test]
+fn parse_escaped_identifiers() {
+    let result = from_str("struct _struct { long _long; long ordinary; };");
+    assert!(result.errors.is_empty(), "errors: {:?}", result.errors);
+
+    match &result.tree[0] {
+        Item::Struct(def) => {
+            assert_eq!(def.name.name, "struct");
+            assert!(matches!(
+                &def.fields[0].declarators[0],
+                ic_syntax::Declarator::Name(ident) if ident.name == "long"
+            ));
+            assert!(matches!(
+                &def.fields[1].declarators[0],
+                ic_syntax::Declarator::Name(ident) if ident.name == "ordinary"
+            ));
+        }
+        _ => panic!("expected struct"),
+    }
+}
+
+#[test]
 fn parse_nested_modules() {
     let result = from_str("module Parent { module Child { struct S {}; }; };");
     assert!(result.errors.is_empty(), "errors: {:?}", result.errors);

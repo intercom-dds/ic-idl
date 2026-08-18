@@ -390,6 +390,11 @@ impl<'a> Parser<'a> {
         &src[span.range()]
     }
 
+    pub(super) fn ident_text(&self, span: Span) -> String {
+        let text = self.text(span);
+        text.strip_prefix('_').unwrap_or(text).to_owned()
+    }
+
     /// Peeks at the nth token ahead (0 = current token) without skimming.
     #[inline]
     pub(super) fn peek_nth_raw(&self, n: usize) -> Kind {
@@ -443,7 +448,7 @@ impl<'a> Parser<'a> {
         if tok.kind == Kind::Ident {
             self.advance_raw();
             Ok(Ident {
-                name: self.text(tok.span).to_owned(),
+                name: self.ident_text(tok.span),
                 span: tok.span,
             })
         } else {
@@ -459,7 +464,7 @@ impl<'a> Parser<'a> {
             Kind::Ident | Kind::Keyword(_) => {
                 self.advance_raw();
                 Ok(Ident {
-                    name: self.text(tok.span).to_owned(),
+                    name: self.ident_text(tok.span),
                     span: tok.span,
                 })
             }

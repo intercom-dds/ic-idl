@@ -1,0 +1,16 @@
+---
+source: crates/ic-lint/tests/duplicate_struct_members.rs
+assertion_line: 72
+expression: test_lint_hir(source)
+---
+⨯ duplicate-name: duplicate member `value` in member 'Data'
+  @ test.idl:4:10
+
+ 2 │ struct Data {
+ 3 │     long value;
+   │          ˆˆˆˆˆ first defined here
+ 4 │     long _value;
+   │          ˆˆˆˆˆˆ duplicate member
+ 5 │ };
+
+  * names are case-insensitive

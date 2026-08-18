@@ -61,6 +61,18 @@ struct Rectangle {
 }
 
 #[test]
+fn escaped_identifier_collision() {
+    let source = r"
+struct Data {
+    long value;
+    long _value;
+};
+";
+
+    assert_snapshot!(test_lint_hir(source));
+}
+
+#[test]
 fn multiple_duplicate_members() {
     let source = r"
 struct Data {

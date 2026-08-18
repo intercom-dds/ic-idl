@@ -52,16 +52,14 @@ impl<'a, 'b> InitializerEvaluator<'a, 'b> {
         _struct_ty: &Ty,
         init_span: ic_syntax::Span,
     ) -> Option<Numeric> {
-        let (struct_name, struct_members) = {
+        let struct_name = {
             let struct_def = self.evaluator.ctx.context.definitions.get(struct_def_id);
-            let DefKind::Struct(struct_ty_info) = &struct_def.kind else {
+            if !matches!(struct_def.kind, DefKind::Struct(_)) {
                 return None;
-            };
-            (
-                struct_def.ident.name.clone(),
-                struct_ty_info.members.clone(),
-            )
+            }
+            struct_def.ident.name.clone()
         };
+        let struct_members = self.collect_members(struct_def_id);
 
         if init_list.is_empty() {
             self.evaluator.diagnostics().error(
@@ -82,6 +80,27 @@ impl<'a, 'b> InitializerEvaluator<'a, 'b> {
             ty: struct_def_id,
             fields: fields.into_boxed_slice(),
         })
+    }
+
+    /// Collects the members of a struct, inherited members first.
+    fn collect_members(&self, struct_def_id: DefId) -> Vec<Member> {
+        let context = &self.evaluator.ctx.context;
+
+        let mut chain = vec![];
+        let mut next = Some(struct_def_id);
+        while let Some(def_id) = next {
+            let DefKind::Struct(struct_ty) = &context.definitions.get(def_id).kind else {
+                break;
+            };
+            chain.push(struct_ty);
+            next = struct_ty.parent.map(|parent| parent.def_id);
+        }
+
+        chain
+            .into_iter()
+            .rev()
+            .flat_map(|struct_ty| struct_ty.members.iter().cloned())
+            .collect()
     }
 
     /// Evaluates named struct initialization: `{ .field1 = value1, .field2 = value2 }`

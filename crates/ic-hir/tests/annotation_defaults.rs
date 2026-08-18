@@ -91,14 +91,12 @@ fn test_annotation_numeric_defaults() {
         assert_eq!(ann.params[0].default, Some(Numeric::Int32(42)));
 
         assert_eq!(ann.params[1].ident.name, "ratio");
-        // Float literals are treated as doubles by default
         assert!(
-            matches!(ann.params[1].default, Some(Numeric::Double(f)) if (f - 3.15).abs() < f64::EPSILON)
+            matches!(ann.params[1].default, Some(Numeric::Float(f)) if (f - 3.15).abs() < f32::EPSILON)
         );
 
         assert_eq!(ann.params[2].ident.name, "priority");
-        // Note: literals are evaluated as Int32 by default, not considering target type
-        assert_eq!(ann.params[2].default, Some(Numeric::Int32(5)));
+        assert_eq!(ann.params[2].default, Some(Numeric::UInt8(5)));
     } else {
         panic!("Expected annotation definition");
     }

@@ -32,7 +32,7 @@ use ic_hir::hir::{
 use ic_hir::scope::ScopeId;
 use ic_syntax::{AliasDef, ExceptDef, InterfaceDef, StructDef, UnionDef, ValuetypeDef};
 
-use crate::annotation::convert_annotations;
+use crate::annotation::{convert_annotations, convert_annotations_for};
 use crate::eval::ConstEvaluator;
 use crate::registry::DefKindTag;
 use crate::resolve::{TypeResolver, resolve_declarator};
@@ -462,17 +462,21 @@ impl<'ctx> TypeItemProcessor<'ctx> {
                 continue;
             };
 
-            let annotations =
-                convert_annotations(self.ctx, &field.meta.annotations, self.current_scope);
-
             for decl in &field.declarators {
                 let (ident, member_ty) =
                     resolve_declarator(decl, ty.clone(), self.ctx, self.current_scope);
 
+                let annotations = convert_annotations_for(
+                    self.ctx,
+                    &field.meta.annotations,
+                    self.current_scope,
+                    Some(&member_ty),
+                );
+
                 members.push(Member {
                     ident,
                     ty: member_ty,
-                    annotations: annotations.clone(),
+                    annotations,
                 });
             }
         }
@@ -489,9 +493,6 @@ impl<'ctx> TypeItemProcessor<'ctx> {
         let mut variants = vec![];
 
         for field in fields {
-            let annotations =
-                convert_annotations(self.ctx, &field.meta.annotations, self.current_scope);
-
             let mut resolver = TypeResolver::new(self.ctx, self.current_scope);
             let Some(ty) = resolver.resolve_type(&field.ty) else {
                 continue;
@@ -499,6 +500,13 @@ impl<'ctx> TypeItemProcessor<'ctx> {
 
             let (ident, variant_ty) =
                 resolve_declarator(&field.declarator, ty, self.ctx, self.current_scope);
+
+            let annotations = convert_annotations_for(
+                self.ctx,
+                &field.meta.annotations,
+                self.current_scope,
+                Some(&variant_ty),
+            );
 
             let is_default = field
                 .labels
@@ -642,15 +650,23 @@ impl<'ctx> TypeItemProcessor<'ctx> {
             };
 
             let (ident, ty) = resolve_declarator(decl, base_ty, self.ctx, self.current_scope);
-            let alias_ty = AliasTy { ty };
             let span = ic_syntax::util::decl_span(decl);
 
-            let def_id = define::define(
+            let annotations = convert_annotations_for(
+                self.ctx,
+                &a.meta.annotations,
+                self.current_scope,
+                Some(&ty),
+            );
+
+            let alias_ty = AliasTy { ty };
+
+            let def_id = define::define_with_annotations(
                 self.ctx,
                 self.current_scope,
                 &ident,
                 span,
-                &a.meta.annotations,
+                annotations,
                 DefKindTag::Alias,
                 |_| DefKind::Alias(alias_ty),
             );
@@ -683,17 +699,21 @@ impl<'ctx> TypeItemProcessor<'ctx> {
             return result;
         };
 
-        let annotations =
-            convert_annotations(self.ctx, &members.meta.annotations, self.current_scope);
-
         for decl in &members.declarators {
             let (ident, member_ty) =
                 resolve_declarator(decl, ty.clone(), self.ctx, self.current_scope);
 
+            let annotations = convert_annotations_for(
+                self.ctx,
+                &members.meta.annotations,
+                self.current_scope,
+                Some(&member_ty),
+            );
+
             result.push(Member {
                 ident,
                 ty: member_ty,
-                annotations: annotations.clone(),
+                annotations,
             });
         }
 

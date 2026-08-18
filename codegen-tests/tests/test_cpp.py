@@ -130,14 +130,21 @@ def cpp_output_dir(request: pytest.FixtureRequest) -> Path:
     return make_output_dir(request, "cpp")
 
 
+@pytest.mark.parametrize("extra_args", [
+    pytest.param([], id="default"),
+    pytest.param(["--char-ptr-constants"], id="char-ptr-constants"),
+])
 def test_cpp(
     idl_file: Path,
     idl_compiler: Path,
     cxx_compiler: CxxCompiler,
     cpp_output_dir: Path,
     cpp_include_path: Path,
+    extra_args: list[str],
 ) -> None:
-    generated_files = run_codegen(idl_compiler, idl_file, cpp_output_dir, "cpp-out")
+    generated_files = run_codegen(
+        idl_compiler, idl_file, cpp_output_dir, "cpp-out", extra_args
+    )
     if not generated_files:
         return
 

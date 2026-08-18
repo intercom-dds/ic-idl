@@ -1,0 +1,57 @@
+---
+source: crates/ic-lint/tests/default_type_mismatch.rs
+expression: test_lint_hir(source)
+---
+⨯ default-type-mismatch: integer value out of range for 'uint8'
+  @ test.idl:2:10
+
+ 2 │ @default(300)
+   │          ˆˆˆ out of range
+ 3 │ typedef uint8 Byte;
+
+⨯ default-type-mismatch: integer value out of range for 'uint8'
+  @ test.idl:5:33
+
+ 3 │ typedef uint8 Byte;
+ 4 │ 
+ 5 │ union BadUnion switch (@default(300) uint8) {
+   │                                 ˆˆˆ out of range
+ 6 │ case 1:
+ 7 │     @default(300)
+
+⨯ default-type-mismatch: integer value out of range for 'uint8'
+  @ test.idl:7:14
+
+ 5 │ union BadUnion switch (@default(300) uint8) {
+ 6 │ case 1:
+ 7 │     @default(300)
+   │              ˆˆˆ out of range
+ 8 │     uint8 my_byte;
+ 9 │ };
+
+⨯ default-type-mismatch: integer value out of range for 'uint8'
+  @ test.idl:12:14
+
+ 11 │ exception BadException {
+ 12 │     @default(300)
+    │              ˆˆˆ out of range
+ 13 │     uint8 my_byte;
+ 14 │ };
+
+⨯ default-type-mismatch: integer value out of range for 'uint8'
+  @ test.idl:17:14
+
+ 16 │ valuetype BadValue {
+ 17 │     @default(300)
+    │              ˆˆˆ out of range
+ 18 │     public uint8 my_byte;
+ 19 │ };
+
+⨯ default-type-mismatch: integer value out of range for 'uint8'
+  @ test.idl:22:14
+
+ 21 │ @annotation bad_annotation {
+ 22 │     @default(300)
+    │              ˆˆˆ out of range
+ 23 │     uint8 my_byte;
+ 24 │ };

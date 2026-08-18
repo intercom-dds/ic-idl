@@ -1,0 +1,21 @@
+---
+source: crates/ic-lint/tests/ascii.rs
+expression: test_lint(source)
+---
+⨯ ascii: escaped identifiers must start with an ASCII letter
+  @ test.idl:3:12
+
+ 2 │ struct S {
+ 3 │     string _123;
+   │            ˆˆˆˆ invalid identifier
+ 4 │     string _;
+ 5 │ };
+
+⨯ ascii: escaped identifiers must start with an ASCII letter
+  @ test.idl:4:12
+
+ 2 │ struct S {
+ 3 │     string _123;
+ 4 │     string _;
+   │            ˆ invalid identifier
+ 5 │ };

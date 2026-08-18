@@ -25,6 +25,8 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+use std::assert_matches;
+
 use ic_parse::from_str;
 use ic_syntax::Item;
 
@@ -51,17 +53,32 @@ fn parse_escaped_identifiers() {
     match &result.tree[0] {
         Item::Struct(def) => {
             assert_eq!(def.name.name, "struct");
-            assert!(matches!(
+            assert_matches!(
                 &def.fields[0].declarators[0],
                 ic_syntax::Declarator::Name(ident) if ident.name == "long"
-            ));
-            assert!(matches!(
+            );
+            assert_matches!(
                 &def.fields[1].declarators[0],
                 ic_syntax::Declarator::Name(ident) if ident.name == "ordinary"
-            ));
+            );
         }
         _ => panic!("expected struct"),
     }
+}
+
+#[test]
+fn preserve_invalid_escaped_identifiers() {
+    let result = from_str("struct _123 {}; struct _ {};");
+    assert!(result.errors.is_empty(), "errors: {:?}", result.errors);
+
+    assert_matches!(
+        &result.tree[0],
+        Item::Struct(def) if def.name.name == "_123"
+    );
+    assert_matches!(
+        &result.tree[1],
+        Item::Struct(def) if def.name.name == "_"
+    );
 }
 
 #[test]

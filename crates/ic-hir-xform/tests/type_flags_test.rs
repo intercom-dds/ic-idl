@@ -550,26 +550,33 @@ fn test_bitmask_is_trivial_and_ordered() {
 }
 
 #[test]
-fn test_external_member_not_trivial() {
+fn test_indirect_members_not_trivial() {
     let idl = r"
-        struct Node {
+        struct ExternalNode {
             long value;
-            @external Node next;
+            @external ExternalNode next;
+        };
+
+        struct SharedNode {
+            long value;
+            @shared SharedNode next;
         };
     ";
 
-    let hir = common::parse_and_resolve(idl);
+    let hir = common::parse_with_builtins(idl);
     let transformed = type_flags::transform(hir);
 
-    let node = transformed
-        .iter()
-        .find(|def| def.ident.name == "Node")
-        .expect("Node struct should exist");
+    for name in ["ExternalNode", "SharedNode"] {
+        let node = transformed
+            .iter()
+            .find(|def| def.ident.name == name)
+            .expect("node struct should exist");
 
-    assert!(
-        !node.flags.contains(DefFlags::IS_TRIVIAL),
-        "Struct with @external member should NOT be trivial (it's heap-allocated)"
-    );
+        assert!(
+            !node.flags.contains(DefFlags::IS_TRIVIAL),
+            "Struct with indirect member should not be trivial"
+        );
+    }
 }
 
 #[test]

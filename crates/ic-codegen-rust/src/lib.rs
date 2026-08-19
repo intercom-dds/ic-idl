@@ -89,6 +89,20 @@ pub struct RustOptions {
 
 #[must_use]
 pub fn codegen_rust(hir: &ic_hir::ResolvedGraph, options: RustOptions) -> Vec<File> {
+    let (hir, original_hir) = prepare_hir(hir, options);
+    codegen::RustGen::new(&hir, &original_hir, options).generate()
+}
+
+#[must_use]
+pub fn codegen_rust_inline(hir: &ic_hir::ResolvedGraph, options: RustOptions) -> String {
+    let (hir, original_hir) = prepare_hir(hir, options);
+    codegen::RustGen::new(&hir, &original_hir, options).generate_inline()
+}
+
+fn prepare_hir(
+    hir: &ic_hir::ResolvedGraph,
+    options: RustOptions,
+) -> (ic_hir::ResolvedGraph, ic_hir::ResolvedGraph) {
     // Clone HIR for Rust-specific transformations
     let hir = hir.clone();
 
@@ -122,6 +136,5 @@ pub fn codegen_rust(hir: &ic_hir::ResolvedGraph, options: RustOptions) -> Vec<Fi
         },
     );
 
-    // Generate using native Rust backend
-    codegen::RustGen::new(&hir, &original_hir, options).generate()
+    (hir, original_hir)
 }

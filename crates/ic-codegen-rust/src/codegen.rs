@@ -39,6 +39,8 @@ use crate::helpers::{
     rust_primitive,
 };
 
+const GENERATED_HEADER: &str = "// @generated\n\n";
+
 struct Module {
     printer: Twine,
     entries: BTreeMap<String, Module>,
@@ -92,6 +94,21 @@ impl<'a> RustGen<'a> {
     }
 
     pub fn generate(&self) -> Vec<File> {
+        let root = self.generate_module();
+        let mut files = vec![];
+        Self::emit_module(root, &mut files, "");
+        files
+    }
+
+    pub fn generate_inline(&self) -> String {
+        let root = self.generate_module();
+        let mut output = Twine::new();
+        w!(output, GENERATED_HEADER);
+        Self::emit_module_inline(root, &mut output);
+        output.finish()
+    }
+
+    fn generate_module(&self) -> Module {
         let mut root = Module::new();
 
         for &def_id in &self.hir.order {
@@ -99,14 +116,12 @@ impl<'a> RustGen<'a> {
             self.recurse_node(&mut root, def);
         }
 
-        let mut files = Vec::new();
-        Self::emit_module(root, &mut files, "");
-        files
+        root
     }
 
     fn emit_module(module: Module, files: &mut Vec<File>, path: &str) {
         let mut content = String::new();
-        content.push_str("// @generated\n\n");
+        content.push_str(GENERATED_HEADER);
 
         for (name, child) in module.entries {
             content.push_str("pub mod ");
@@ -136,6 +151,16 @@ impl<'a> RustGen<'a> {
             path: file_path.into(),
             source: content,
         });
+    }
+
+    fn emit_module_inline(module: Module, output: &mut Twine) {
+        for (name, child) in module.entries {
+            w!(output, "pub mod ", name, " {\n");
+            Self::emit_module_inline(child, output);
+            w!(output, "}\n\n");
+        }
+
+        output.append(module.printer);
     }
 
     pub(crate) fn rust_type(&self, ty: &Ty, ctx: DefId) -> String {

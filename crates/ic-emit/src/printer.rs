@@ -231,6 +231,10 @@ impl Twine {
         self.writer.dedent();
     }
 
+    pub fn append(&mut self, other: Self) {
+        self.writer.tokens.extend(other.writer.tokens);
+    }
+
     #[must_use]
     pub fn finish(self) -> String {
         self.writer.finish()

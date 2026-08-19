@@ -25,7 +25,7 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use ic_hir::hir::{Ann, AnnArg, AnnParam, DefId, DefKind, Ident, Ty, TyKind};
+use ic_hir::hir::{Ann, AnnArg, AnnParam, DefFlags, DefId, DefKind, Ident, Ty, TyKind};
 use ic_hir::scope::ScopeId;
 use ic_syntax::util::{path_name, path_span};
 use ic_syntax::{Annotation, AnnotationArg};
@@ -126,6 +126,7 @@ fn convert_annotation_args(
 ) -> Vec<AnnArg> {
     // Get the annotation definition parameters if available
     let ann_params = get_annotation_params(ctx, def_id);
+    let target = target.filter(|_| is_type_dependent(ctx, def_id));
 
     // Process arguments based on whether we have named or positional args
     let has_named_args = ast_args.iter().any(|arg| arg.name.is_some());
@@ -151,6 +152,18 @@ fn convert_annotation_args(
             target,
         )
     }
+}
+
+/// Whether the value of an annotation is a value of the annotated item's type.
+fn is_type_dependent(ctx: &LoweringContext, def_id: Option<DefId>) -> bool {
+    let Some(def_id) = def_id else {
+        return false;
+    };
+
+    ctx.context
+        .type_of(def_id)
+        .flags
+        .contains(DefFlags::IS_BUILTIN)
 }
 
 /// Get annotation parameters from definition if available.

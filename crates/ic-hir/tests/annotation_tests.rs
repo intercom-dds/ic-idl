@@ -388,3 +388,34 @@ fn test_annotation_in_module_scope() {
         "Expected no diagnostics but got: {diagnostics}",
     );
 }
+
+#[test]
+fn test_any_argument_keeps_declared_type() {
+    let input = r"
+        @annotation metadata {
+            any value;
+        };
+
+        struct TestStruct {
+            @metadata({1, 2})
+            long field;
+        };
+    ";
+
+    let hir = common::parse_and_resolve_successfully(input);
+
+    let struct_def = hir
+        .iter()
+        .find(|def| def.ident.name == "TestStruct")
+        .unwrap();
+
+    let DefKind::Struct(struct_ty) = &struct_def.kind else {
+        panic!("Expected struct")
+    };
+
+    let value = &struct_ty.members[0].annotations[0].args[0].value;
+    let Numeric::Sequence { values, .. } = value else {
+        panic!("Expected Sequence, got {value:?}")
+    };
+    assert_eq!(values.len(), 2);
+}

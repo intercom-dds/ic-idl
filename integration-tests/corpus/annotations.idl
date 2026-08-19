@@ -29,6 +29,26 @@ module custom_annotations {
     @annotation shared {};
 };
 
+@autoid(HASH)
+module autoid_hash_types {
+    struct ModuleHash {
+        long camelCase;
+        @hashid("custom_hash") long hash_name;
+        @id(42) long explicit_id;
+    };
+
+    @autoid(SEQUENTIAL)
+    struct SequentialOverride {
+        long x;
+        long y;
+    };
+
+    union HashUnion switch (long) {
+        case 0: long member1;
+        default: long member2;
+    };
+};
+
 module annotation_types {
     struct KeyedStruct {
         @key long id;

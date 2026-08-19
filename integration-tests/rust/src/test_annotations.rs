@@ -25,7 +25,39 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use crate::annotation_types;
+use crate::{annotation_types, autoid_hash_types};
+
+#[test]
+fn autoid_hash_member_ids() {
+    let members = intercom_cts::member_info::<autoid_hash_types::ModuleHash>();
+    assert_eq!(members[0].name, "camelCase");
+    assert_eq!(
+        members.iter().map(|member| member.member_id).collect::<Vec<_>>(),
+        [96_462_948, 37_920_031, 42]
+    );
+    assert!(
+        intercom_cts::type_info::<autoid_hash_types::ModuleHash>()
+            .flags
+            .contains(intercom_cts::TypeFlag::IS_AUTOID_HASH)
+    );
+
+    let members = intercom_cts::member_info::<autoid_hash_types::SequentialOverride>();
+    assert_eq!(
+        members.iter().map(|member| member.member_id).collect::<Vec<_>>(),
+        [0, 1]
+    );
+    assert!(
+        !intercom_cts::type_info::<autoid_hash_types::SequentialOverride>()
+            .flags
+            .contains(intercom_cts::TypeFlag::IS_AUTOID_HASH)
+    );
+
+    let members = intercom_cts::member_info::<autoid_hash_types::HashUnion>();
+    assert_eq!(
+        members.iter().map(|member| member.member_id).collect::<Vec<_>>(),
+        [239_892_167, 256_044_424]
+    );
+}
 
 #[test]
 fn keyed_struct_exists() {

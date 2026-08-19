@@ -59,9 +59,9 @@ const KEYWORDS: &[&str] = &[
 
 #[derive(Command, Debug, Default, Clone)]
 pub struct CppOptions {
-    /// Generate scoped enums
+    /// Generate unscoped enums
     #[option(long)]
-    pub scoped_enums: bool,
+    pub unscoped_enums: bool,
 
     /// Use access functions instead of direct member access
     #[option(long)]

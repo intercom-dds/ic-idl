@@ -126,9 +126,9 @@ TEST_CASE("float_chain" * doctest::test_suite("constants")) {
 }
 
 TEST_CASE("enum_constant_reference" * doctest::test_suite("constants")) {
-    CHECK(constant_types::PRIORITY_VALUE == constant_types::HIGH);
-    CHECK(constant_types::PRIORITY_VALUE == 100);
-    CHECK(static_cast<int32_t>(constant_types::HIGH) == 100);
+    CHECK(constant_types::PRIORITY_VALUE == constant_types::Priority::HIGH);
+    CHECK(static_cast<int32_t>(constant_types::PRIORITY_VALUE) == 100);
+    CHECK(static_cast<int32_t>(constant_types::Priority::HIGH) == 100);
     CHECK(constant_types::PRIORITY_CHAIN == constant_types::PRIORITY_VALUE);
 }
 

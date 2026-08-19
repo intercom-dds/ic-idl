@@ -90,7 +90,7 @@ impl<'a> CppGen<'a> {
             ) {
                 return Some(current);
             }
-            if self.options.scoped_enums && matches!(def.kind, DefKind::Enum(_))
+            if !self.options.unscoped_enums && matches!(def.kind, DefKind::Enum(_))
                 || matches!(def.kind, DefKind::Bitmask(_))
             {
                 return Some(current);
@@ -101,22 +101,13 @@ impl<'a> CppGen<'a> {
 
     fn common_scope(&self, def_id1: DefId, def_id2: DefId) -> Option<DefId> {
         let mut scope1 = self.get_scope(def_id1)?;
-        let mut scope2 = self.get_scope(def_id2)?;
-
-        let mut ancestors1 = Vec::new();
-        loop {
-            ancestors1.push(scope1);
-            scope1 = match self.get_scope(scope1) {
-                Some(s) => s,
-                None => break,
-            };
-        }
+        let scope2 = self.get_scope(def_id2)?;
 
         loop {
-            if ancestors1.contains(&scope2) {
+            if scope1 == scope2 {
                 return Some(scope2);
             }
-            scope2 = self.get_scope(scope2)?;
+            scope1 = self.get_scope(scope1)?;
         }
     }
 
@@ -149,72 +140,40 @@ impl<'a> CppGen<'a> {
     ) -> String {
         let type_name = self.cpp_name(target_def_id).to_string();
         let relative_to_def_id = relative_to_def_id.into();
-        let target_scope_id = self
-            .hir
-            .context
-            .scopes
-            .find_scope_containing_def(target_def_id);
 
-        let Some(target_scope_id) = target_scope_id else {
-            return type_name;
-        };
-
-        if let Some(relative_to_def_id) = relative_to_def_id {
-            let current_scope_id = self
-                .hir
-                .context
-                .scopes
-                .find_scope_containing_def(relative_to_def_id);
-
-            if Some(target_scope_id) == current_scope_id {
-                return type_name;
-            }
-
-            if current_scope_id.is_some() {
-                let Some(target_scope) = self.get_scope(target_def_id) else {
-                    // Target is at global scope, we're in a nested scope
-                    return format!("::{type_name}");
-                };
-                let common = self.common_scope(target_def_id, relative_to_def_id);
-                if common == Some(target_scope) || common == self.get_scope(relative_to_def_id) {
-                    let relative_path = self.build_path_from(target_scope, common);
-                    let pkg_name = relative_path.join("::");
-                    let name = if pkg_name.is_empty() {
-                        // Target is in parent scope, need full path with :: prefix
-                        if common == Some(target_scope)
-                            && common != self.get_scope(relative_to_def_id)
-                        {
-                            let full_path = self.build_path_from(target_scope, None);
-                            let full_pkg_name = full_path.join("::");
-                            if full_pkg_name.is_empty() {
-                                format!("::{type_name}")
-                            } else {
-                                format!("::{full_pkg_name}::{type_name}")
-                            }
-                        } else {
-                            type_name
-                        }
-                    } else {
-                        format!("{pkg_name}::{type_name}")
-                    };
-                    return name;
-                }
-            }
-        }
+        let global_scope = relative_to_def_id.is_none_or(|def| self.get_scope(def).is_none());
 
         let Some(target_scope) = self.get_scope(target_def_id) else {
-            // Global scope - need :: prefix if we're inside a relative scope
-            if relative_to_def_id.is_some() {
-                return format!("::{type_name}");
-            }
-            return type_name;
+            return if global_scope {
+                type_name
+            } else {
+                // Target is at global scope, we're in a nested scope
+                format!("::{type_name}")
+            };
         };
-        let full_path = self.build_path_from(target_scope, None);
-        let pkg_name = full_path.join("::");
-        if pkg_name.is_empty() {
-            type_name
+
+        if relative_to_def_id
+            .map(|def| self.get_scope(def))
+            .is_some_and(|scope| scope == self.get_scope(target_def_id))
+        {
+            return type_name;
+        }
+
+        if let Some(relative_to_def_id) = relative_to_def_id
+            && let Some(common) = self.common_scope(target_def_id, relative_to_def_id)
+            && let relative_path = self.build_path_from(target_scope, Some(common))
+            && !relative_path.is_empty()
+        {
+            let relative_pkg_name = relative_path.join("::");
+            format!("{relative_pkg_name}::{type_name}")
         } else {
-            format!("{pkg_name}::{type_name}")
+            let full_path = self.build_path_from(target_scope, None);
+            let full_pkg_name = full_path.join("::");
+            if global_scope {
+                format!("{full_pkg_name}::{type_name}")
+            } else {
+                format!("::{full_pkg_name}::{type_name}")
+            }
         }
     }
 
@@ -373,7 +332,7 @@ impl<'a> CppGen<'a> {
                 }
             } else if self.has_default_value(&member.ty) {
                 w!(w, "{");
-                self.emit_default_initializer(w, &member.ty);
+                self.emit_default_initializer(w, &member.ty, Some(def_id));
                 w!(w, "}");
             }
             w!(w, ";\n");
@@ -545,7 +504,12 @@ impl<'a> CppGen<'a> {
         }
     }
 
-    pub fn emit_default_initializer(&self, w: &mut Twine, ty: &Ty) {
+    pub fn emit_default_initializer(
+        &self,
+        w: &mut Twine,
+        ty: &Ty,
+        relative_to_def_id: impl Into<Option<DefId>>,
+    ) {
         let resolved = match &ty.kind {
             TyKind::Adt(def_id) => self.hir.context.base_type_of(*def_id),
             _ => ty.clone(),
@@ -566,10 +530,10 @@ impl<'a> CppGen<'a> {
                                 .any(|a| a.ident.name == "default_literal")
                         })
                     {
-                        let name = self.scoped_name(default_member.id, None);
+                        let name = self.scoped_name(default_member.id, relative_to_def_id);
                         w!(w, name);
                     } else if let Some(first) = enum_ty.fields.first() {
-                        let name = self.scoped_name(*first, None);
+                        let name = self.scoped_name(*first, relative_to_def_id);
                         w!(w, name);
                     }
                 }

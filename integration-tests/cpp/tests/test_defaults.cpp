@@ -80,9 +80,9 @@ TEST_CASE("optional_fields_can_be_set" * doctest::test_suite("defaults")) {
 }
 
 TEST_CASE("enum_default_literal_exists" * doctest::test_suite("defaults")) {
-    CHECK(default_types::Priority::LOW == 0);
-    CHECK(default_types::Priority::MEDIUM == 1);
-    CHECK(default_types::Priority::HIGH == 2);
+    CHECK(static_cast<int32_t>(default_types::Priority::LOW) == 0);
+    CHECK(static_cast<int32_t>(default_types::Priority::MEDIUM) == 1);
+    CHECK(static_cast<int32_t>(default_types::Priority::HIGH) == 2);
 }
 
 TEST_CASE("enum_default_literal_value" * doctest::test_suite("defaults")) {

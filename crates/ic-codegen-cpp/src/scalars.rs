@@ -43,10 +43,10 @@ impl CppGen<'_> {
         let enum_name = &def.ident.name;
         let underlying_type = cpp_primitive(enum_ty.ty);
 
-        if self.options.scoped_enums {
-            w!(decl_w, "enum class ", enum_name, " : ", underlying_type, " {\n");
-        } else {
+        if self.options.unscoped_enums {
             w!(decl_w, "enum ", enum_name, " : ", underlying_type, " {\n");
+        } else {
+            w!(decl_w, "enum class ", enum_name, " : ", underlying_type, " {\n");
         }
 
         for (i, &field_id) in enum_ty.fields.iter().enumerate() {

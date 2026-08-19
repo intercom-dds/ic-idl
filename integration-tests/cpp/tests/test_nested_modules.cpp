@@ -32,8 +32,8 @@
 TEST_CASE("top_level_types_exist" * doctest::test_suite("nested_modules")) {
     nested_module_types::TopLevelStruct s(42);
     CHECK(s.value == 42);
-    CHECK(nested_module_types::TopLevelEnum::FIRST == 0);
-    CHECK(nested_module_types::TopLevelEnum::SECOND == 1);
+    CHECK(static_cast<int32_t>(nested_module_types::TopLevelEnum::FIRST) == 0);
+    CHECK(static_cast<int32_t>(nested_module_types::TopLevelEnum::SECOND) == 1);
 }
 
 TEST_CASE("nested_module_level1_exists" * doctest::test_suite("nested_modules")) {
@@ -41,9 +41,9 @@ TEST_CASE("nested_module_level1_exists" * doctest::test_suite("nested_modules"))
     nested_module_types::level1::Level1Struct s(20, top);
     CHECK(s.data == 20);
     CHECK(s.parent_ref.value == 10);
-    CHECK(nested_module_types::level1::Level1Enum::A == 0);
-    CHECK(nested_module_types::level1::Level1Enum::B == 1);
-    CHECK(nested_module_types::level1::Level1Enum::C == 2);
+    CHECK(static_cast<int32_t>(nested_module_types::level1::Level1Enum::A) == 0);
+    CHECK(static_cast<int32_t>(nested_module_types::level1::Level1Enum::B) == 1);
+    CHECK(static_cast<int32_t>(nested_module_types::level1::Level1Enum::C) == 2);
 }
 
 TEST_CASE("nested_module_level2_exists" * doctest::test_suite("nested_modules")) {
@@ -134,9 +134,9 @@ TEST_CASE("top_using_nested_struct" * doctest::test_suite("nested_modules")) {
 }
 
 TEST_CASE("level1_enum" * doctest::test_suite("nested_modules")) {
-    CHECK(nested_module_types::level1::Level1Enum::A == 0);
-    CHECK(nested_module_types::level1::Level1Enum::B == 1);
-    CHECK(nested_module_types::level1::Level1Enum::C == 2);
+    CHECK(static_cast<int32_t>(nested_module_types::level1::Level1Enum::A) == 0);
+    CHECK(static_cast<int32_t>(nested_module_types::level1::Level1Enum::B) == 1);
+    CHECK(static_cast<int32_t>(nested_module_types::level1::Level1Enum::C) == 2);
 }
 
 TEST_CASE("namespace_hierarchy_level1" * doctest::test_suite("nested_modules")) {

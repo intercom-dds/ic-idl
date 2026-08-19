@@ -43,8 +43,8 @@ TEST_CASE("module_a_first_opening" * doctest::test_suite("multi_module")) {
     module_a::StructA1 s1(10);
     CHECK(s1.value == 10);
     CHECK(module_a::CONST_A1 == 100);
-    CHECK(module_a::EnumA::X == 0);
-    CHECK(module_a::EnumA::Y == 1);
+    CHECK(static_cast<int32_t>(module_a::EnumA::X) == 0);
+    CHECK(static_cast<int32_t>(module_a::EnumA::Y) == 1);
 }
 
 TEST_CASE("module_a_second_opening" * doctest::test_suite("multi_module")) {
@@ -53,9 +53,9 @@ TEST_CASE("module_a_second_opening" * doctest::test_suite("multi_module")) {
     CHECK(s2.data == 3.14);
     CHECK(s2.ref_to_a1.value == 5);
     CHECK(module_a::CONST_A2 == 101);
-    CHECK(module_a::EnumA2::P == 0);
-    CHECK(module_a::EnumA2::Q == 1);
-    CHECK(module_a::EnumA2::R == 2);
+    CHECK(static_cast<int32_t>(module_a::EnumA2::P) == 0);
+    CHECK(static_cast<int32_t>(module_a::EnumA2::Q) == 1);
+    CHECK(static_cast<int32_t>(module_a::EnumA2::R) == 2);
 }
 
 TEST_CASE("module_a_third_opening" * doctest::test_suite("multi_module")) {
@@ -103,12 +103,12 @@ TEST_CASE("constants_only_module" * doctest::test_suite("multi_module")) {
 }
 
 TEST_CASE("enums_only_module" * doctest::test_suite("multi_module")) {
-    CHECK(enums_only::Color::RED == 0);
-    CHECK(enums_only::Color::GREEN == 1);
-    CHECK(enums_only::Color::BLUE == 2);
-    CHECK(enums_only::Size::SMALL == 0);
-    CHECK(enums_only::Size::MEDIUM == 1);
-    CHECK(enums_only::Size::LARGE == 2);
+    CHECK(static_cast<int32_t>(enums_only::Color::RED) == 0);
+    CHECK(static_cast<int32_t>(enums_only::Color::GREEN) == 1);
+    CHECK(static_cast<int32_t>(enums_only::Color::BLUE) == 2);
+    CHECK(static_cast<int32_t>(enums_only::Size::SMALL) == 0);
+    CHECK(static_cast<int32_t>(enums_only::Size::MEDIUM) == 1);
+    CHECK(static_cast<int32_t>(enums_only::Size::LARGE) == 2);
 }
 
 TEST_CASE("cross_module_references" * doctest::test_suite("multi_module")) {

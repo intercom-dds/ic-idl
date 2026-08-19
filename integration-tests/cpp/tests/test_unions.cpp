@@ -60,7 +60,7 @@ TEST_CASE("union_enum_discriminator" * doctest::test_suite("unions")) {
 TEST_CASE("union_enum_string_variant" * doctest::test_suite("unions")) {
     union_types::TypedValue tv;
     tv.string_value("test string");
-    REQUIRE(tv._d() == union_types::STRING_KIND);
+    REQUIRE(tv._d() == union_types::ValueKind::STRING_KIND);
     REQUIRE(tv.string_value() == "test string");
 }
 
@@ -116,7 +116,7 @@ TEST_CASE("union_discriminator_property" * doctest::test_suite("unions")) {
 
     union_types::TypedValue tv;
     tv.int_value(100);
-    REQUIRE(tv._d() == union_types::INT_KIND);
+    REQUIRE(tv._d() == union_types::ValueKind::INT_KIND);
 }
 
 TEST_CASE("union_equality" * doctest::test_suite("unions")) {
@@ -149,7 +149,7 @@ TEST_CASE("union_default_constructor_without_default_case" * doctest::test_suite
 
 TEST_CASE("union_default_constructor_enum_discriminator" * doctest::test_suite("unions")) {
     union_types::TypedValue tv;
-    REQUIRE(tv._d() == union_types::INT_KIND);
+    REQUIRE(tv._d() == union_types::ValueKind::INT_KIND);
     REQUIRE(tv.int_value() == 0);
 }
 
@@ -189,9 +189,9 @@ TEST_CASE("union_swap_same_discriminator" * doctest::test_suite("unions")) {
     using std::swap;
     swap(tv1, tv2);
 
-    REQUIRE(tv1._d() == union_types::INT_KIND);
+    REQUIRE(tv1._d() == union_types::ValueKind::INT_KIND);
     REQUIRE(tv1.int_value() == 200);
-    REQUIRE(tv2._d() == union_types::INT_KIND);
+    REQUIRE(tv2._d() == union_types::ValueKind::INT_KIND);
     REQUIRE(tv2.int_value() == 100);
 }
 
@@ -208,11 +208,11 @@ TEST_CASE("union_implicit_primitive_discriminator_default" * doctest::test_suite
 
 TEST_CASE("union_implicit_enum_discriminator_default" * doctest::test_suite("unions")) {
     union_types::ImplicitEnumDisc u;
-    REQUIRE(u._d() == union_types::STRING_KIND);
+    REQUIRE(u._d() == union_types::ValueKind::STRING_KIND);
 
     u.int_val(123);
-    REQUIRE(u._d() == union_types::INT_KIND);
+    REQUIRE(u._d() == union_types::ValueKind::INT_KIND);
 
     u._default();
-    REQUIRE(u._d() == union_types::STRING_KIND);
+    REQUIRE(u._d() == union_types::ValueKind::STRING_KIND);
 }

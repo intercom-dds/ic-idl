@@ -202,16 +202,25 @@ impl RustGen<'_> {
     }
 
     pub fn newtype_alias<'a>(&'a self, ty: &Ty) -> Option<(DefId, &'a AliasTy)> {
-        let TyKind::Adt(def_id) = ty.kind else {
+        let TyKind::Adt(mut def_id) = ty.kind else {
             return None;
         };
 
-        let def = self.hir.context.definitions.get(def_id);
-        let DefKind::Alias(alias_ty) = &def.kind else {
-            return None;
-        };
+        loop {
+            let def = self.hir.context.definitions.get(def_id);
+            let DefKind::Alias(alias_ty) = &def.kind else {
+                return None;
+            };
 
-        is_newtype(def).then_some((def_id, alias_ty))
+            if is_newtype(def) {
+                return Some((def_id, alias_ty));
+            }
+
+            let TyKind::Adt(next_id) = alias_ty.ty.kind else {
+                return None;
+            };
+            def_id = next_id;
+        }
     }
 }
 

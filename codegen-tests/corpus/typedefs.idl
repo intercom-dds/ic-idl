@@ -84,6 +84,10 @@ module typedef_tests {
     @ext::newtype typedef long MyInteger;
     const MyInteger MyIntegerConstant = 123;
 
+    @ext::newtype typedef octet GuidPrefix[12];
+    typedef GuidPrefix GuidPrefixAlias;
+    const GuidPrefixAlias GuidPrefixAliasConstant = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+
     // Complex typedef
     typedef long LongArray5[5];
     typedef sequence<LongArray5> LongArraySeq;

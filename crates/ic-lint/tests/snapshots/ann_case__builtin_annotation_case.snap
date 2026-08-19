@@ -1,0 +1,14 @@
+---
+source: crates/ic-lint/tests/ann_case.rs
+assertion_line: 38
+expression: "common::test_lint_hir(input)"
+---
+! ann-case: inconsistent capitalization: `Optional` should be `optional`
+  @ test.idl:3:14
+
+ 2 │ struct Test {
+ 3 │     @Optional string value;
+   │      ˆˆˆˆˆˆˆˆ annotation used here
+ 4 │ };
+
+  * the canonical name is `optional`

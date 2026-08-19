@@ -1,0 +1,14 @@
+---
+source: crates/ic-lint/tests/ann_case.rs
+assertion_line: 70
+expression: "common::test_lint_hir(input)"
+---
+! ann-case: inconsistent capitalization: `Mine` should be `mine`
+  @ test.idl:9:14
+
+  8 │ struct Test {
+  9 │     @outer::Mine long field;
+    │      ˆˆˆˆˆˆˆˆˆˆˆ annotation used here
+ 10 │ };
+
+  * the canonical name is `mine`

@@ -26,7 +26,7 @@ Integration and codegen tests can be run through `cargo xtask codegen` and `carg
 
 ## Conventions
 
-- All AI-assisted commits must include a `Co-Authored-By: <agent name> <agent email>` trailer identifying agent used.
+- All AI-assisted commits must include a `Co-Authored-By: <agent name> <agent email>` trailer identifying agent used. Do not enforce this during code review - it's not something you can validate.
 - Commit messages use `IC-XXX - <area>: <lowercase summary>` for Linear issue changes and `<area>: <lowercase summary>` otherwise.
 - Do **not** use Conventional Commits prefixes (`feat:`, `fix:`, `chore:`, `fix(foo):`, etc.).
 

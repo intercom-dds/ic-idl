@@ -84,6 +84,11 @@ module typedef_tests {
     @ext::newtype typedef long MyInteger;
     const MyInteger MyIntegerConstant = 123;
 
+    struct MyIntegerHolder {
+        MyInteger value;
+    };
+    const MyIntegerHolder MyIntegerHolderConstant = {MyIntegerConstant};
+
     @ext::newtype typedef octet GuidPrefix[12];
     typedef GuidPrefix GuidPrefixAlias;
     const GuidPrefixAlias GuidPrefixAliasConstant = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};

@@ -221,9 +221,22 @@ impl RustGen<'_> {
         }
     }
 
+    fn const_newtype(&self, val: &Numeric) -> Option<DefId> {
+        let Numeric::Const(def_id) = val else {
+            return None;
+        };
+        let DefKind::Const(const_ty) = &self.hir.context.definitions.get(*def_id).kind else {
+            return None;
+        };
+
+        self.newtype_alias(&const_ty.ty).map(|(id, _)| id)
+    }
+
     #[allow(clippy::too_many_lines)]
     pub(crate) fn emit_const_value(&self, val: &Numeric, ty: &Ty, ctx_id: DefId, w: &mut Twine) {
-        if let Some((newtype_id, alias_ty)) = self.newtype_alias(ty) {
+        if let Some((newtype_id, alias_ty)) = self.newtype_alias(ty)
+            && self.const_newtype(val) != Some(newtype_id)
+        {
             let newtype_ty = self.scoped_name(newtype_id, ctx_id);
             w!(w, newtype_ty, "(");
             self.emit_const_value(val, &alias_ty.ty, ctx_id, w);

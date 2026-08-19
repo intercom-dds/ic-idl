@@ -29,7 +29,7 @@ use std::fmt::Write;
 
 use ic_hir::annotation::{Optional, find_annotation};
 use ic_hir::hir::{
-    AliasTy, Def, DefFlags, DefId, DefKind, Member, Numeric, PrimitiveTy, Ty, TyKind,
+    AliasTy, Ann, Def, DefFlags, DefId, DefKind, Member, Numeric, PrimitiveTy, Ty, TyKind,
 };
 
 use crate::codegen::RustGen;
@@ -114,8 +114,30 @@ impl RustGen<'_> {
         members
     }
 
-    pub fn member_type(&self, ty: &Ty, ctx: DefId) -> String {
-        self.rust_type(ty, ctx)
+    pub fn member_type(&self, ty: &Ty, annotations: &[Ann], ctx: DefId) -> String {
+        let ty = self.rust_type(ty, ctx);
+        if self.is_shared_annotations(annotations) {
+            format!("::std::boxed::Box<{ty}>")
+        } else {
+            ty
+        }
+    }
+
+    pub fn is_shared_annotations(&self, annotations: &[Ann]) -> bool {
+        annotations.iter().any(|ann| {
+            let Some(def_id) = ann.def_id else {
+                return false;
+            };
+            let def = self.hir.context.definitions.get(def_id);
+
+            matches!(def.kind, DefKind::Annotation(_))
+                && matches!(def.ident.name.as_str(), "shared" | "external")
+                && def.flags.contains(DefFlags::IS_BUILTIN)
+        })
+    }
+
+    pub fn is_shared(&self, member: &Member) -> bool {
+        self.is_shared_annotations(&member.annotations)
     }
 
     pub(crate) fn valuetype_members(
@@ -236,13 +258,6 @@ pub fn is_must_understand(member: &Member) -> bool {
 
 pub fn is_key(member: &Member) -> bool {
     member.annotations.iter().any(|a| a.ident.name == "key")
-}
-
-pub fn is_shared(member: &Member) -> bool {
-    member
-        .annotations
-        .iter()
-        .any(|a| a.ident.name == "shared" || a.ident.name == "external")
 }
 
 pub fn is_newtype(def: &Def) -> bool {

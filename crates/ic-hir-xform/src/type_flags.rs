@@ -43,8 +43,17 @@ use ic_hir::hir::{Ann, DefFlags, DefId, DefKind, PrimitiveTy, Ty, TyKind};
 use ic_hir::{Context, ResolvedGraph};
 use tracing::{debug, debug_span};
 
-fn has_external_annotation(annotations: &[Ann]) -> bool {
-    annotations.iter().any(|a| a.ident.name == "external")
+fn has_indirect_annotation(context: &Context, annotations: &[Ann]) -> bool {
+    annotations.iter().any(|ann| {
+        let Some(def_id) = ann.def_id else {
+            return false;
+        };
+        let def = context.definitions.get(def_id);
+
+        matches!(def.kind, DefKind::Annotation(_))
+            && matches!(def.ident.name.as_str(), "shared" | "external")
+            && def.flags.contains(DefFlags::IS_BUILTIN)
+    })
 }
 
 fn analyze_def(def_id: DefId, context: &mut Context, seen: &mut HashSet<DefId>) {
@@ -52,42 +61,46 @@ fn analyze_def(def_id: DefId, context: &mut Context, seen: &mut HashSet<DefId>) 
         return;
     }
 
-    let def = context.definitions.get_mut(def_id);
+    {
+        let def = context.definitions.get_mut(def_id);
 
-    // Skip built-in types
-    if def.flags.contains(DefFlags::IS_BUILTIN) {
-        return;
+        // Skip built-in types
+        if def.flags.contains(DefFlags::IS_BUILTIN) {
+            return;
+        }
+
+        def.flags.set(DefFlags::IS_TRIVIAL);
+        def.flags.set(DefFlags::TOTAL_ORDER);
+
+        if def.flags.contains(DefFlags::IS_CIRCULAR) {
+            def.flags.unset(DefFlags::IS_TRIVIAL);
+        }
     }
 
-    def.flags.set(DefFlags::IS_TRIVIAL);
-    def.flags.set(DefFlags::TOTAL_ORDER);
+    let def = context.definitions.get(def_id);
 
-    if def.flags.contains(DefFlags::IS_CIRCULAR) {
-        def.flags.unset(DefFlags::IS_TRIVIAL);
-    }
-
-    // Collect parent `DefId`s, member types, and check for @external annotations
-    let (parents, types, has_external): (Vec<DefId>, Vec<Ty>, bool) = match &def.kind {
+    // Collect parent `DefId`s, member types, and check for indirect annotations
+    let (parents, types, has_indirect): (Vec<DefId>, Vec<Ty>, bool) = match &def.kind {
         DefKind::Struct(s) => (
             s.parent.into_iter().map(|p| p.def_id).collect(),
             s.members.iter().map(|m| m.ty.clone()).collect(),
             s.members
                 .iter()
-                .any(|m| has_external_annotation(&m.annotations)),
+                .any(|m| has_indirect_annotation(context, &m.annotations)),
         ),
         DefKind::Union(u) => (
             vec![],
             u.variants.iter().map(|v| v.ty.clone()).collect(),
             u.variants
                 .iter()
-                .any(|v| has_external_annotation(&v.annotations)),
+                .any(|v| has_indirect_annotation(context, &v.annotations)),
         ),
         DefKind::Valuetype(v) => (
             v.parent.into_iter().map(|p| p.def_id).collect(),
             v.members.iter().map(|m| m.ty.clone()).collect(),
             v.members
                 .iter()
-                .any(|m| has_external_annotation(&m.annotations)),
+                .any(|m| has_indirect_annotation(context, &m.annotations)),
         ),
         DefKind::Alias(a) => (vec![], vec![a.ty.clone()], false),
         DefKind::Except(e) => (
@@ -95,7 +108,7 @@ fn analyze_def(def_id: DefId, context: &mut Context, seen: &mut HashSet<DefId>) 
             e.members.iter().map(|m| m.ty.clone()).collect(),
             e.members
                 .iter()
-                .any(|m| has_external_annotation(&m.annotations)),
+                .any(|m| has_indirect_annotation(context, &m.annotations)),
         ),
         DefKind::Const(c) => (vec![], vec![c.ty.clone()], false),
         DefKind::Module(_)
@@ -107,8 +120,8 @@ fn analyze_def(def_id: DefId, context: &mut Context, seen: &mut HashSet<DefId>) 
         | DefKind::Bitset(_) => (vec![], vec![], false),
     };
 
-    // @external members imply heap allocation (Box<T>), so the type is not trivial
-    if has_external {
+    // Indirect members imply heap allocation, so the type is not trivial
+    if has_indirect {
         context
             .definitions
             .get_mut(def_id)

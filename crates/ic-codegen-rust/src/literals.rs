@@ -27,7 +27,7 @@
 
 use ic_emit::printer::Twine;
 use ic_emit::w;
-use ic_hir::hir::{DefId, DefKind, Numeric, PrimitiveTy, Ty, TyKind};
+use ic_hir::hir::{Ann, DefId, DefKind, Numeric, PrimitiveTy, Ty, TyKind};
 
 use crate::codegen::RustGen;
 use crate::helpers::{format_integer, is_trivial};
@@ -103,6 +103,25 @@ impl RustGen<'_> {
         }
     }
 
+    pub(crate) fn emit_annotated_default_value(
+        &self,
+        ty: &Ty,
+        annotations: &[Ann],
+        ctx_id: DefId,
+        w: &mut Twine,
+    ) {
+        let is_shared = self.is_shared_annotations(annotations);
+        if is_shared {
+            w!(w, "::std::boxed::Box::new(");
+        }
+
+        self.emit_default_value(ty, ctx_id, w);
+
+        if is_shared {
+            w!(w, ")");
+        }
+    }
+
     pub(crate) fn emit_const_default_value(&self, ty: &Ty, ctx_id: DefId, w: &mut Twine) {
         match &ty.kind {
             TyKind::Primitive(prim) => {
@@ -169,11 +188,37 @@ impl RustGen<'_> {
             let members = self.struct_members(struct_ty);
             for (member, field_value) in members.iter().zip(fields.iter()) {
                 w!(w, member.ident.name, ": ");
-                self.emit_const_value(field_value, &member.ty, ctx_id, w);
+                self.emit_annotated_const_value(
+                    field_value,
+                    &member.ty,
+                    &member.annotations,
+                    ctx_id,
+                    w,
+                );
                 w!(w, ",\n");
             }
         }
         w!(w, "}");
+    }
+
+    pub(crate) fn emit_annotated_const_value(
+        &self,
+        val: &Numeric,
+        ty: &Ty,
+        annotations: &[Ann],
+        ctx_id: DefId,
+        w: &mut Twine,
+    ) {
+        let is_shared = self.is_shared_annotations(annotations);
+        if is_shared {
+            w!(w, "::std::boxed::Box::new(");
+        }
+
+        self.emit_const_value(val, ty, ctx_id, w);
+
+        if is_shared {
+            w!(w, ")");
+        }
     }
 
     #[allow(clippy::too_many_lines)]

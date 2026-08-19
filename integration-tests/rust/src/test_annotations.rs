@@ -104,24 +104,50 @@ fn nested_struct() {
 fn shared_refs_struct() {
     let ns = annotation_types::NestedStruct { x: 5, y: 10 };
     let sr = annotation_types::SharedRefs {
-        shared_string: "shared".into(),
-        shared_struct: ns,
+        shared_string: Box::new("shared".into()),
+        shared_struct: Box::new(ns),
     };
 
-    assert_eq!(sr.shared_string, "shared");
+    assert_eq!(sr.shared_string.as_str(), "shared");
     assert_eq!(sr.shared_struct.x, 5);
     assert_eq!(sr.shared_struct.y, 10);
+    assert_eq!(
+        std::any::type_name_of_val(&sr.shared_string),
+        std::any::type_name::<Box<String>>()
+    );
+    assert_eq!(
+        std::any::type_name_of_val(&sr.shared_struct),
+        std::any::type_name::<Box<annotation_types::NestedStruct>>()
+    );
 }
 
 #[test]
 fn combined_annotations() {
     let ca = annotation_types::CombinedAnnotations {
         id: 99,
-        maybe_shared_name: Some("combined".into()),
+        maybe_shared_name: Some(Box::new("combined".into())),
     };
 
     assert_eq!(ca.id, 99);
-    assert_eq!(ca.maybe_shared_name, Some("combined".into()));
+    assert_eq!(
+        ca.maybe_shared_name.as_deref().map(String::as_str),
+        Some("combined")
+    );
+    assert_eq!(
+        std::any::type_name_of_val(&ca.maybe_shared_name),
+        std::any::type_name::<Option<Box<String>>>()
+    );
+}
+
+#[test]
+fn custom_shared_annotation_does_not_box() {
+    let value = annotation_types::CustomSharedName { value: 42 };
+
+    assert_eq!(value.value, 42);
+    assert_eq!(
+        std::any::type_name_of_val(&value.value),
+        std::any::type_name::<i32>()
+    );
 }
 
 #[test]

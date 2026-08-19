@@ -28,11 +28,10 @@
 use ic_emit::printer::Twine;
 use ic_emit::w;
 use ic_hir::hir::{AliasTy, Def, DefKind, Member, TyKind};
+use ic_hir::member_id::member_ids;
 
 use crate::codegen::RustGen;
-use crate::helpers::{
-    is_key, is_must_understand, is_optional, member_id, rust_primitive, type_flags,
-};
+use crate::helpers::{is_key, is_must_understand, is_optional, rust_primitive, type_flags};
 
 impl RustGen<'_> {
     fn emit_member_flags(&self, member: &Member, w: &mut Twine) {
@@ -167,15 +166,18 @@ impl RustGen<'_> {
             _ => vec![],
         };
 
+        let ids = if matches!(original_def.kind, DefKind::Struct(_)) {
+            member_ids(&self.original_hir.context, def_id)
+        } else {
+            (0u32..).take(original_members.len()).collect()
+        };
+
         w!(w, "const MEMBER_INFO: &[::intercom_cts::MemberInfo<'static>] = &[\n");
-        let mut id = 0usize;
-        for (orig_member, member) in original_members.iter().zip(members.iter()) {
+        for ((orig_member, member), id) in original_members.iter().zip(members.iter()).zip(ids) {
             let type_str = self.rust_type(&member.ty, def_id);
-            id = member_id(orig_member, id);
             w!(w, "::intercom_cts::MemberInfo {\n");
             w!(w, "name: \"", orig_member.ident.name, "\",\n");
             w!(w, "member_id: ", id.to_string(), ",\n");
-            id += 1;
             w!(w, "flags: ");
             self.emit_member_flags(member, w);
             w!(w, ",\n");
@@ -475,11 +477,13 @@ impl RustGen<'_> {
             _ => union_ty,
         };
 
+        let ids = member_ids(&self.original_hir.context, def.id);
         let variants: Vec<_> = union_ty
             .variants
             .iter()
             .zip(&original_union.variants)
-            .filter(|(v, _)| !matches!(v.ty.kind, TyKind::Null))
+            .zip(ids)
+            .filter(|((v, _), _)| !matches!(v.ty.kind, TyKind::Null))
             .collect();
 
         if variants.is_empty() {
@@ -487,12 +491,11 @@ impl RustGen<'_> {
         }
 
         w!(w, "const MEMBER_INFO: &[::intercom_cts::MemberInfo<'static>] = &[\n");
-        // Discriminator has member_id 0, so start at 1 for members
-        for (i, (variant, orig_variant)) in variants.iter().enumerate() {
+        for ((variant, orig_variant), id) in variants {
             let type_str = self.rust_type(&variant.ty, def.id);
             w!(w, "::intercom_cts::MemberInfo {\n");
             w!(w, "name: \"", orig_variant.ident.name, "\",\n");
-            w!(w, "member_id: ", (i + 1).to_string(), ",\n");
+            w!(w, "member_id: ", id.to_string(), ",\n");
             if self.is_shared_annotations(&variant.annotations) {
                 w!(w, "flags: ::intercom_cts::MemberFlag::IS_EXTERNAL,\n");
             } else {

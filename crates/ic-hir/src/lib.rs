@@ -86,6 +86,8 @@ pub mod keywords;
 /// Merging multiple HIR graphs into a single graph.
 pub mod merge;
 
+pub mod member_id;
+
 /// HIR rewriting utilities for replacing DefId references.
 pub mod rewrite;
 

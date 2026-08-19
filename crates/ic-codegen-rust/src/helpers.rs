@@ -31,6 +31,7 @@ use ic_hir::annotation::{Optional, find_annotation};
 use ic_hir::hir::{
     AliasTy, Ann, Def, DefFlags, DefId, DefKind, Member, Numeric, PrimitiveTy, Ty, TyKind,
 };
+use ic_hir::member_id::{Autoid, effective_autoid};
 
 use crate::codegen::RustGen;
 
@@ -289,19 +290,6 @@ pub fn default_value(member: &Member) -> &Numeric {
         .map_or(&NULL, |arg| &arg.value)
 }
 
-pub fn member_id(member: &Member, default_id: usize) -> usize {
-    member
-        .annotations
-        .iter()
-        .find(|ann| ann.ident.name == "id")
-        .and_then(|ann| ann.args.first())
-        .and_then(|arg| match &arg.value {
-            Numeric::UInt32(v) => Some(*v as usize),
-            _ => None,
-        })
-        .unwrap_or(default_id)
-}
-
 pub fn format_integer(val: i128) -> String {
     let s = val.to_string();
     let (sign, digits) = s
@@ -341,19 +329,6 @@ fn is_nested(def: &Def) -> bool {
     def.annotations.iter().any(|a| a.ident.name == "nested")
 }
 
-fn is_autoid_hash(ctx: &ic_hir::Context, def: &Def) -> bool {
-    def.annotations.iter().any(|a| {
-        a.ident.name == "autoid"
-            && a.args.first().is_some_and(|arg| {
-                if let Numeric::Const(def_id) = &arg.value {
-                    ctx.type_of(*def_id).ident.name == "HASH"
-                } else {
-                    false
-                }
-            })
-    })
-}
-
 fn has_key_member(def: &Def) -> bool {
     let members = match &def.kind {
         DefKind::Struct(s) => &s.members,
@@ -382,7 +357,7 @@ pub fn type_flags(ctx: &ic_hir::Context, def: &Def) -> String {
         flags.push("IS_NESTED");
     }
 
-    if is_autoid_hash(ctx, def) {
+    if effective_autoid(ctx, def.id) == Autoid::Hash {
         flags.push("IS_AUTOID_HASH");
     }
 

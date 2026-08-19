@@ -1,4 +1,4 @@
-// Copyright 2024 KONGSBERG
+// Copyright 2025 KONGSBERG
 //
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions are met:
@@ -25,11 +25,64 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-pub mod bit_bound;
-pub mod case;
-pub mod decl;
-pub mod deprecated_annotations;
-pub mod placement;
-pub mod range_bound;
-pub mod topic_nested;
-pub mod unknown;
+mod common;
+
+#[test]
+fn test_builtin_annotation_case() {
+    let input = r"
+        struct Test {
+            @Optional string value;
+        };
+    ";
+
+    insta::assert_snapshot!(common::test_lint_hir(input));
+}
+
+#[test]
+fn test_user_annotation_case() {
+    let input = r"
+        @annotation mine {
+            boolean value default TRUE;
+        };
+
+        struct Test {
+            @Mine long field;
+        };
+    ";
+
+    insta::assert_snapshot!(common::test_lint_hir(input));
+}
+
+#[test]
+fn test_scoped_annotation_case() {
+    let input = r"
+        module outer {
+            @annotation mine {
+                boolean value default TRUE;
+            };
+        };
+
+        struct Test {
+            @outer::Mine long field;
+        };
+    ";
+
+    insta::assert_snapshot!(common::test_lint_hir(input));
+}
+
+#[test]
+fn test_matching_case_is_clean() {
+    let input = r"
+        @annotation mine {
+            boolean value default TRUE;
+        };
+
+        struct Test {
+            @optional string a;
+            @mine long b;
+        };
+    ";
+
+    let output = common::test_lint_hir(input);
+    assert!(output.is_empty(), "Expected no warnings, but got: {output}");
+}

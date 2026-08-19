@@ -538,6 +538,7 @@ define_lints! {
         syntax::sanity::Sanity,
     ],
     hir_lints: [
+        annotation::case::AnnotationCase,
         annotation::deprecated_annotations::DeprecatedAnnotations,
         annotation::range_bound::RangeBound,
         annotation::unknown::UnknownAnnotation,

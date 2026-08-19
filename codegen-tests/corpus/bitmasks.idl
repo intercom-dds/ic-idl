@@ -99,6 +99,8 @@ module bitmasks {
 
     // Typedef bitmasks
     typedef SimpleBitmask MaskAlias;
+    const MaskAlias ALL_MASK = 0xFFFF;
+    const MaskAlias COPIED_MASK = ALL_MASK;
 
     struct UsingAlias {
         MaskAlias mask;

@@ -32,6 +32,20 @@ use ic_hir::hir::{DefId, DefKind, Numeric, PrimitiveTy, Ty, TyKind};
 use crate::codegen::RustGen;
 use crate::helpers::{format_integer, is_trivial};
 
+fn is_integer(value: &Numeric) -> bool {
+    matches!(
+        value,
+        Numeric::Int8(_)
+            | Numeric::UInt8(_)
+            | Numeric::Int16(_)
+            | Numeric::UInt16(_)
+            | Numeric::Int32(_)
+            | Numeric::UInt32(_)
+            | Numeric::Int64(_)
+            | Numeric::UInt64(_)
+    )
+}
+
 impl RustGen<'_> {
     pub(crate) fn format_numeric(num: &Numeric) -> String {
         match num {
@@ -170,6 +184,17 @@ impl RustGen<'_> {
             self.emit_const_value(val, &alias_ty.ty, ctx_id, w);
             w!(w, ")");
             return;
+        }
+
+        // Rust bitmasks are newtypes, so raw integer values require the
+        // underlying bitmask constructor.
+        if let TyKind::Adt(def_id) = ty.kind {
+            let base_def = self.hir.context.base_def_of(def_id);
+            if matches!(base_def.kind, DefKind::Bitmask(_)) && is_integer(val) {
+                let bitmask_ty = self.scoped_name(base_def.id, ctx_id);
+                w!(w, bitmask_ty, "(", Self::format_numeric(val), ")");
+                return;
+            }
         }
 
         match val {

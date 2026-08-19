@@ -312,8 +312,8 @@ impl<'a> CppGen<'a> {
                 let inner = self.cpp_type(ty, relative_def_opt);
                 format!("::std::array<{inner}, {len}>")
             }
-            TyKind::Any => "::ic_cts::Any".to_string(),
-            TyKind::Fixed | TyKind::Null => "void".to_string(),
+            TyKind::Any | TyKind::Fixed => "::ic_cts::Any".to_string(),
+            TyKind::Null => "void".to_string(),
         }
     }
 

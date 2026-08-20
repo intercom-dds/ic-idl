@@ -114,12 +114,13 @@ impl<'a> CSharpGen<'a> {
             Numeric::Double(v) => format!("{v}d"),
             Numeric::String(s) | Numeric::WString(s) => escape_str(s),
             Numeric::Const(def_id) => self.scoped_name(*def_id, relative_to_def_id),
-            Numeric::Array { values, .. } => {
+            Numeric::Array { ty, values } => {
+                let element_type = self.csharp_type(ty, relative_to_def_id);
                 let formatted: Vec<_> = values
                     .iter()
                     .map(|v| self.format_numeric(v, relative_to_def_id))
                     .collect();
-                format!("new[] {{ {} }}", formatted.join(", "))
+                format!("new {element_type}[] {{ {} }}", formatted.join(", "))
             }
             Numeric::Sequence { values, .. } => {
                 let formatted: Vec<_> = values
@@ -1231,7 +1232,16 @@ impl<'a> CSharpGen<'a> {
         self.emit_doc_comments(w, &def.annotations);
 
         let ty_str = self.csharp_type(&const_ty.ty, def.id);
-        let value_str = self.format_numeric(&const_ty.value, def.id);
+        let value = self.format_numeric(&const_ty.value, def.id);
+        let resolved_ty = self.hir.context.resolve_ty(&const_ty.ty);
+        let value_str = if let TyKind::Adt(def_id) = resolved_ty.kind
+            && matches!(self.hir.context.type_of(def_id).kind, DefKind::Bitmask(_))
+            && !matches!(&const_ty.value, Numeric::Const(_))
+        {
+            format!("({ty_str}){value}")
+        } else {
+            value
+        };
 
         // Wrap in a class if `--const-classes` is set
         if self.options.const_classes {

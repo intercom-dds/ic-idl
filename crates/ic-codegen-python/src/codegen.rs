@@ -721,7 +721,18 @@ impl<'a> PyGen<'a> {
 
     fn emit_const(&self, w: &mut PyWriter, def: &Def, const_ty: &ConstTy) {
         let ty_str = self.py_type(w, &const_ty.ty);
-        let value_str = self.format_numeric(w, &const_ty.value);
+        let resolved_ty = self.hir.context.resolve_ty(&const_ty.ty);
+        let value = self.format_numeric(w, &const_ty.value);
+        let value_str = if let TyKind::Adt(def_id) = &resolved_ty.kind
+            && matches!(self.hir.context.type_of(*def_id).kind, DefKind::Bitmask(_))
+            && !matches!(&const_ty.value, Numeric::Const(_))
+        {
+            let bitmask_type = self.py_type(w, &resolved_ty);
+            format!("{bitmask_type}({value})")
+        } else {
+            value
+        };
+
         py!(w, def, ": _typing_.Final[", ty_str, "] = ", value_str, "\n");
         py!(w, "\n\n");
     }

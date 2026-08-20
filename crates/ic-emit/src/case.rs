@@ -194,8 +194,8 @@ impl Converter {
         let mut iter = word.chars();
         if let Some(c) = iter.next() {
             buffer.extend(c.to_uppercase());
+            Self::append_tail(c, iter, buffer);
         }
-        buffer.extend(iter.flat_map(char::to_lowercase));
     }
 
     fn to_camel(&self, word: &str, buffer: &mut String) {
@@ -206,8 +206,22 @@ impl Converter {
             } else {
                 buffer.extend(c.to_uppercase());
             }
+            Self::append_tail(c, iter, buffer);
         }
-        buffer.extend(iter.flat_map(char::to_lowercase));
+    }
+
+    fn append_tail(first: char, iter: impl Iterator<Item = char>, buffer: &mut String) {
+        let mut previous = first;
+        let mut iter = iter.peekable();
+
+        while let Some(c) = iter.next() {
+            if previous.is_ascii_digit() && c.is_uppercase() && iter.peek().is_none() {
+                buffer.push(c);
+            } else {
+                buffer.extend(c.to_lowercase());
+            }
+            previous = c;
+        }
     }
 
     fn convert(mut self, input: &str) -> String {
@@ -224,11 +238,13 @@ impl Converter {
                 continue;
             }
 
-            if let Some((_, peek)) = iter.peek() {
+            if let Some((_, peek)) = iter.peek().copied() {
                 let len = i - start;
+                let digit_to_upper = c.is_ascii_digit()
+                    && peek.is_uppercase()
+                    && iter.clone().nth(1).is_some_and(|(_, c)| !is_delim(c));
 
-                let digit_to_upper = c.is_ascii_digit() && peek.is_uppercase();
-                if is_delim(*peek) || (c.is_lowercase() && peek.is_uppercase()) || digit_to_upper {
+                if is_delim(peek) || (c.is_lowercase() && peek.is_uppercase()) || digit_to_upper {
                     self.append(&input[start..=(start + len)], &mut buffer);
                     start = i + 1;
                 } else if was_upper && c.is_uppercase() && peek.is_lowercase() {
@@ -297,6 +313,12 @@ mod test {
         assert_eq!(snake("foo123Value"), "foo123_value");
         assert_eq!(snake("e2e"), "e2e");
         assert_eq!(camel("foo_123_bar"), "foo123Bar");
+        assert_eq!(pascal("Point3D"), "Point3D");
+        assert_eq!(camel("Point3D"), "point3D");
+        assert_eq!(snake("Point3D"), "point3d");
+        assert_eq!(upper_snake("Point3D"), "POINT3D");
+        assert_eq!(pascal("P2P"), "P2P");
+        assert_eq!(camel("P2P"), "p2P");
     }
 
     #[test]
@@ -315,5 +337,6 @@ mod test {
         assert_eq!(upper_snake("FOO_BAR_BAZ"), "FOO_BAR_BAZ");
         assert_eq!(upper_snake("JSONParser"), "JSON_PARSER");
         assert_eq!(upper_snake("IDLType"), "IDL_TYPE");
+        assert_eq!(upper_snake("ENTITY_P2P_FOO"), "ENTITY_P2P_FOO");
     }
 }

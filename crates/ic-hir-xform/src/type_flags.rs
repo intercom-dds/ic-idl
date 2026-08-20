@@ -39,22 +39,10 @@
 
 use std::collections::HashSet;
 
-use ic_hir::hir::{Ann, DefFlags, DefId, DefKind, PrimitiveTy, Ty, TyKind};
+use ic_hir::hir::{DefFlags, DefId, DefKind, PrimitiveTy, Ty, TyKind};
 use ic_hir::{Context, ResolvedGraph};
+use ic_hir_analysis::annotation::is_external;
 use tracing::{debug, debug_span};
-
-fn has_indirect_annotation(context: &Context, annotations: &[Ann]) -> bool {
-    annotations.iter().any(|ann| {
-        let Some(def_id) = ann.def_id else {
-            return false;
-        };
-        let def = context.definitions.get(def_id);
-
-        matches!(def.kind, DefKind::Annotation(_))
-            && matches!(def.ident.name.as_str(), "shared" | "external")
-            && def.flags.contains(DefFlags::IS_BUILTIN)
-    })
-}
 
 fn analyze_def(def_id: DefId, context: &mut Context, seen: &mut HashSet<DefId>) {
     if !seen.insert(def_id) {
@@ -84,31 +72,25 @@ fn analyze_def(def_id: DefId, context: &mut Context, seen: &mut HashSet<DefId>) 
         DefKind::Struct(s) => (
             s.parent.into_iter().map(|p| p.def_id).collect(),
             s.members.iter().map(|m| m.ty.clone()).collect(),
-            s.members
-                .iter()
-                .any(|m| has_indirect_annotation(context, &m.annotations)),
+            s.members.iter().any(|member| is_external(context, member)),
         ),
         DefKind::Union(u) => (
             vec![],
             u.variants.iter().map(|v| v.ty.clone()).collect(),
             u.variants
                 .iter()
-                .any(|v| has_indirect_annotation(context, &v.annotations)),
+                .any(|variant| is_external(context, variant)),
         ),
         DefKind::Valuetype(v) => (
             v.parent.into_iter().map(|p| p.def_id).collect(),
             v.members.iter().map(|m| m.ty.clone()).collect(),
-            v.members
-                .iter()
-                .any(|m| has_indirect_annotation(context, &m.annotations)),
+            v.members.iter().any(|member| is_external(context, member)),
         ),
-        DefKind::Alias(a) => (vec![], vec![a.ty.clone()], false),
+        DefKind::Alias(a) => (vec![], vec![a.ty.clone()], is_external(context, def)),
         DefKind::Except(e) => (
             vec![],
             e.members.iter().map(|m| m.ty.clone()).collect(),
-            e.members
-                .iter()
-                .any(|m| has_indirect_annotation(context, &m.annotations)),
+            e.members.iter().any(|member| is_external(context, member)),
         ),
         DefKind::Const(c) => (vec![], vec![c.ty.clone()], false),
         DefKind::Module(_)

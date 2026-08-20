@@ -2,7 +2,7 @@
 source: crates/ic-lint/tests/range_bound.rs
 expression: test_lint_hir(source)
 ---
-! range-bound: @min value (100) is greater than @max value (50)
+⨯ range-bound: @min value (100) is greater than @max value (50)
   @ test.idl:4:10
 
  2 │ module MyModule {

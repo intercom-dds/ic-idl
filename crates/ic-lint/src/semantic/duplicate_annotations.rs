@@ -29,8 +29,11 @@ use std::collections::HashSet;
 
 use ic_diagnostic::Label;
 use ic_hir::ResolvedGraph;
-use ic_hir::hir::{Ann, Def, DefFlags};
-use ic_hir::visit::Visitor;
+use ic_hir::hir::{
+    Ann, AnnParam, Attribute, BitsetTy, Def, DefId, Member, ProtoTy, UnionTy, Variant,
+};
+use ic_hir::visit::{self, Visitor};
+use ic_hir_analysis::annotation::{builtin_annotation_def, is_builtin_annotation};
 
 use crate::{Category, Lint, LintCtx};
 
@@ -38,6 +41,13 @@ use crate::{Category, Lint, LintCtx};
 pub struct DuplicateAnnotations<'a> {
     ctx: &'a LintCtx<'a>,
     hir: &'a ic_hir::ResolvedGraph,
+}
+
+#[derive(Clone, Copy, Eq, Hash, PartialEq)]
+enum AnnotationKey {
+    Definition(DefId),
+    Extensibility,
+    MemberId,
 }
 
 impl<'a> Lint<'a> for DuplicateAnnotations<'a> {
@@ -50,7 +60,7 @@ impl<'a> Lint<'a> for DuplicateAnnotations<'a> {
     }
 
     fn description() -> &'static str {
-        "Detects duplicate annotations on the same item"
+        "Detects duplicate built-in annotations on the same item"
     }
 
     fn check_hir(ctx: &'a LintCtx<'_>, hir: &ResolvedGraph) {
@@ -60,46 +70,50 @@ impl<'a> Lint<'a> for DuplicateAnnotations<'a> {
 }
 
 impl DuplicateAnnotations<'_> {
-    fn check_annotation_list(&mut self, annotations: &[Ann]) {
+    fn check_annotation_list(&self, annotations: &[Ann]) {
         let mut seen = HashSet::new();
 
         for ann in annotations {
-            let Some(def_id) = ann.def_id else { continue };
-            let def = self.hir.context.type_of(def_id);
-            if !(seen.insert(def_id)
-                || def.flags.contains(DefFlags::IS_BUILTIN) && def.ident.name == "doc")
+            let Some(def) = builtin_annotation_def(&self.hir.context, ann) else {
+                continue;
+            };
+            if ["doc", "verbatim", "derive"]
+                .iter()
+                .any(|name| is_builtin_annotation(&self.hir.context, ann, name))
             {
-                let diag = self.ctx.diag_span(
-                    Self::name(),
-                    Self::category(),
-                    format!("duplicate annotation '@{}'", ann.ident.name),
-                    Label::new(ann.ident.span).message("duplicate annotation"),
-                );
-                Self::report(self.ctx, diag);
+                continue;
             }
-        }
 
-        self.check_incompatible_annotations(annotations);
-    }
+            let key = if ["final", "mutable", "appendable", "extensibility"]
+                .iter()
+                .any(|name| is_builtin_annotation(&self.hir.context, ann, name))
+            {
+                AnnotationKey::Extensibility
+            } else if ["id", "hashid"]
+                .iter()
+                .any(|name| is_builtin_annotation(&self.hir.context, ann, name))
+            {
+                AnnotationKey::MemberId
+            } else {
+                AnnotationKey::Definition(def.id)
+            };
+            if seen.insert(key) {
+                continue;
+            }
 
-    fn check_incompatible_annotations(&mut self, annotations: &[Ann]) {
-        let has_optional = annotations.iter().any(|a| a.ident.name == "optional");
-        let has_key = annotations.iter().any(|a| a.ident.name == "key");
-
-        if has_optional
-            && has_key
-            && let Some(optional_ann) = annotations.iter().find(|a| a.ident.name == "optional")
-        {
-            let diag = self
-                .ctx
-                .diag_span(
-                    Self::name(),
-                    Self::category(),
-                    "@optional and @key are mutually exclusive",
-                    Label::new(optional_ann.ident.span)
-                        .message("@optional cannot be used with @key"),
-                )
-                .help("remove either @optional or @key");
+            let message = match key {
+                AnnotationKey::Extensibility => "multiple extensibility annotations".to_string(),
+                AnnotationKey::MemberId => "multiple member ID annotations".to_string(),
+                AnnotationKey::Definition(_) => {
+                    format!("duplicate annotation '@{}'", ann.ident.name)
+                }
+            };
+            let diag = self.ctx.diag_span(
+                Self::name(),
+                Self::category(),
+                message,
+                Label::new(ann.ident.span).message("duplicate annotation"),
+            );
             Self::report(self.ctx, diag);
         }
     }
@@ -112,6 +126,43 @@ impl<'a> Visitor<'a> for DuplicateAnnotations<'a> {
 
     fn visit_def(&mut self, def: &'a Def) {
         self.check_annotation_list(&def.annotations);
-        ic_hir::visit::walk_def(self, def);
+        visit::walk_def(self, def);
+    }
+
+    fn visit_member(&mut self, member: &'a Member) {
+        self.check_annotation_list(&member.annotations);
+        visit::walk_member(self, member);
+    }
+
+    fn visit_ann_param(&mut self, param: &'a AnnParam) {
+        self.check_annotation_list(&param.annotations);
+        visit::walk_ann_param(self, param);
+    }
+
+    fn visit_variant(&mut self, variant: &'a Variant) {
+        self.check_annotation_list(&variant.annotations);
+        visit::walk_variant(self, variant);
+    }
+
+    fn visit_proto(&mut self, proto: &'a ProtoTy) {
+        self.check_annotation_list(&proto.annotations);
+        visit::walk_proto(self, proto);
+    }
+
+    fn visit_attribute(&mut self, attribute: &'a Attribute) {
+        self.check_annotation_list(&attribute.annotations);
+        visit::walk_attribute(self, attribute);
+    }
+
+    fn visit_union(&mut self, _def: &'a Def, union: &'a UnionTy) {
+        self.check_annotation_list(&union.disc.annotations);
+        visit::walk_union(self, union);
+    }
+
+    fn visit_bitset(&mut self, _def: &'a Def, bitset: &'a BitsetTy) {
+        for field in &bitset.fields {
+            self.check_annotation_list(&field.annotations);
+        }
+        visit::walk_bitset(self, bitset);
     }
 }

@@ -36,8 +36,8 @@ use std::collections::HashMap;
 
 use ic_hir::fold::Fold;
 use ic_hir::hir::{
-    Ann, AnnotationTy, Def, DefId, DefKind, Member, Numeric, PrimitiveTy, Ty, TyKind, UnionTy,
-    Variant,
+    Ann, AnnotationTy, Def, DefFlags, DefId, DefKind, Member, Numeric, PrimitiveTy, Ty, TyKind,
+    UnionTy, Variant,
 };
 use ic_hir::{Context, ResolvedGraph};
 use tracing::{debug, debug_span};
@@ -46,6 +46,7 @@ struct DefaultAnnotation {
     enum_fields: HashMap<DefId, Vec<(i64, DefId)>>,
     typedef_targets: HashMap<DefId, TyKind>,
     const_values: HashMap<DefId, Numeric>,
+    default_annotation: Option<DefId>,
 }
 
 impl DefaultAnnotation {
@@ -53,6 +54,7 @@ impl DefaultAnnotation {
         let mut enum_fields = HashMap::new();
         let mut typedef_targets = HashMap::new();
         let mut const_values = HashMap::new();
+        let mut default_annotation = None;
 
         for (def_id, def) in &context.definitions {
             match &def.kind {
@@ -66,6 +68,11 @@ impl DefaultAnnotation {
                 DefKind::Const(const_ty) => {
                     const_values.insert(def_id, const_ty.value.clone());
                 }
+                DefKind::Annotation(_)
+                    if def.flags.contains(DefFlags::IS_BUILTIN) && def.ident.name == "default" =>
+                {
+                    default_annotation = Some(def_id);
+                }
                 _ => {}
             }
         }
@@ -74,6 +81,7 @@ impl DefaultAnnotation {
             enum_fields,
             typedef_targets,
             const_values,
+            default_annotation,
         }
     }
 
@@ -166,8 +174,9 @@ impl DefaultAnnotation {
     }
 
     fn process_annotations(&self, annotations: &mut [Ann], ty: &Ty) {
-        if let Some(default_ann) = annotations.iter_mut().find(|a| a.ident.name == "default")
-            && let Some(arg) = default_ann.args.first_mut()
+        if let Some(default_ann) = annotations.iter_mut().find(|annotation| {
+            self.default_annotation.is_some() && annotation.def_id == self.default_annotation
+        }) && let Some(arg) = default_ann.args.first_mut()
             && let Some(coerced) = self.coerce_numeric(&arg.value, ty)
         {
             arg.value = coerced;

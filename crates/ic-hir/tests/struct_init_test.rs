@@ -162,30 +162,6 @@ fn test_struct_init_positional() {
 }
 
 #[test]
-#[ignore = "Field order validation not yet implemented"]
-fn test_struct_init_field_order_error() {
-    let input = r"
-        struct Point {
-            int32 x;
-            int32 y;
-        };
-        
-        const Point BAD = { y= 1, x= 2 };  // Wrong order
-    ";
-
-    let (result, _, output) = common::parse_and_resolve(input);
-
-    // Should have an error about field order
-    assert!(
-        !result.errors.is_empty(),
-        "Expected error for out-of-order struct fields"
-    );
-
-    // Snapshot test the error message
-    insta::assert_snapshot!(output);
-}
-
-#[test]
 fn test_struct_init_missing_field_error() {
     let input = r"
         struct Point {
@@ -197,14 +173,10 @@ fn test_struct_init_missing_field_error() {
     ";
 
     let (result, _, output) = common::parse_and_resolve(input);
-
-    // Should have an error about missing field
     assert!(
         !result.errors.is_empty(),
         "Expected error for missing struct field"
     );
-
-    // Snapshot test the error message
     insta::assert_snapshot!(output);
 }
 
@@ -220,14 +192,10 @@ fn test_struct_init_extra_field_error() {
     ";
 
     let (result, _, output) = common::parse_and_resolve(input);
-
-    // Should have an error about extra field
     assert!(
         !result.errors.is_empty(),
         "Expected error for extra struct field"
     );
-
-    // Snapshot test the error message
     insta::assert_snapshot!(output);
 }
 
@@ -243,12 +211,10 @@ fn test_struct_init_duplicate_field_error() {
     ";
 
     let (result, _, output) = common::parse_and_resolve(input);
-
     assert!(
         !result.errors.is_empty(),
         "Expected error for duplicate struct field"
     );
-
     insta::assert_snapshot!(output);
 }
 

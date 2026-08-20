@@ -1,0 +1,13 @@
+---
+source: crates/ic-lint/tests/duplicate_annotations.rs
+expression: test_lint_hir(source)
+---
+⨯ duplicate-ann: duplicate annotation '@min'
+  @ test.idl:5:6
+
+ 3 │     @min(0)
+ 4 │     @max(100)
+ 5 │     @min(10)
+   │      ˆˆˆ duplicate annotation
+ 6 │     long field;
+ 7 │ };

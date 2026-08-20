@@ -186,8 +186,8 @@ public class DefaultsTests
     public void EnumDefaults_HasPriorityFields()
     {
         var e = new EnumDefaults();
-        Assert.Equal(Priority.Low, e.PriorityEmpty);
-        Assert.Equal(Priority.Low, e.PriorityHigh);
+        Assert.Equal(Priority.Medium, e.PriorityEmpty);
+        Assert.Equal(Priority.Medium, e.PriorityHigh);
     }
 
     [Fact]

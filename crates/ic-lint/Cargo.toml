@@ -40,6 +40,7 @@ workspace = true
 ic-alloc = { path = "../ic-alloc" }
 ic-cli = { path = "../ic-cli" }
 ic-hir = { path = "../ic-hir" }
+ic-hir-analysis = { path = "../ic-hir-analysis" }
 ic-preproc = { path = "../ic-preproc" }
 ic-syntax = { path = "../ic-syntax" }
 ic-diagnostic = { path = "../ic-diagnostic" }

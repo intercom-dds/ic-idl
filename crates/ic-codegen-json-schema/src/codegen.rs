@@ -30,7 +30,8 @@ use std::path::PathBuf;
 
 use ic_emit::File;
 use ic_hir::ResolvedGraph;
-use ic_hir::hir::{Def, DefId, DefKind, Numeric, PrimitiveTy, Ty, TyKind};
+use ic_hir::hir::{Ann, Def, DefFlags, DefId, DefKind, Numeric, PrimitiveTy, Ty, TyKind};
+use ic_hir_analysis::annotation::{Extensibility, doc, extensibility, is_optional};
 use ic_vfs::{FileId, SourceMap};
 use intercom_cts::json::{self, Value, value};
 
@@ -231,20 +232,18 @@ impl<'a> JsonSchemaGen<'a> {
         }
     }
 
-    fn doc_comments(def: &Def) -> Option<String> {
+    fn annotation_name<'b>(&'b self, annotation: &Ann) -> Option<&'b str> {
+        let def = self.hir.context.base_def_of(annotation.def_id?);
+        def.flags
+            .contains(DefFlags::IS_BUILTIN)
+            .then_some(def.ident.name.as_str())
+    }
+
+    fn doc_comments(&self, def: &Def) -> Option<String> {
         let docs: Vec<String> = def
             .annotations
             .iter()
-            .filter(|ann| ann.ident.name == "doc" || ann.ident.name == "documentation")
-            .filter_map(|ann| {
-                ann.args.first().and_then(|arg| {
-                    if let Numeric::String(value) | Numeric::WString(value) = &arg.value {
-                        Some(value.clone())
-                    } else {
-                        None
-                    }
-                })
-            })
+            .filter_map(|annotation| doc(&self.hir.context, annotation))
             .collect();
 
         if docs.is_empty() {
@@ -254,20 +253,20 @@ impl<'a> JsonSchemaGen<'a> {
         }
     }
 
-    fn apply_bounds(&self, annotations: &[ic_hir::hir::Ann], obj: &mut BTreeMap<String, Value>) {
+    fn apply_bounds(&self, annotations: &[Ann], obj: &mut BTreeMap<String, Value>) {
         for ann in annotations {
-            match ann.ident.name.as_str() {
-                "min" => {
+            match self.annotation_name(ann) {
+                Some("min") => {
                     if let Some(arg) = ann.args.first() {
                         obj.insert("minimum".to_string(), self.format_numeric(&arg.value));
                     }
                 }
-                "max" => {
+                Some("max") => {
                     if let Some(arg) = ann.args.first() {
                         obj.insert("maximum".to_string(), self.format_numeric(&arg.value));
                     }
                 }
-                "range" => {
+                Some("range") => {
                     for arg in &ann.args {
                         if arg.ident.name == "min" {
                             obj.insert("minimum".to_string(), self.format_numeric(&arg.value));
@@ -281,11 +280,11 @@ impl<'a> JsonSchemaGen<'a> {
         }
     }
 
-    fn generate_preamble(def: &Def) -> BTreeMap<String, Value> {
+    fn generate_preamble(&self, def: &Def) -> BTreeMap<String, Value> {
         let mut obj = BTreeMap::new();
         obj.insert("title".to_string(), Value::String(def.ident.name.clone()));
 
-        if let Some(desc) = Self::doc_comments(def) {
+        if let Some(desc) = self.doc_comments(def) {
             obj.insert("description".to_string(), Value::String(desc));
         }
         obj
@@ -361,7 +360,7 @@ impl<'a> JsonSchemaGen<'a> {
         struct_ty: &ic_hir::hir::StructTy,
         current_file_id: FileId,
     ) -> Value {
-        let mut obj = Self::generate_preamble(def);
+        let mut obj = self.generate_preamble(def);
         obj.insert("type".to_string(), Value::String("object".to_string()));
 
         if let Some(parent) = struct_ty.parent {
@@ -372,17 +371,12 @@ impl<'a> JsonSchemaGen<'a> {
         let mut properties = BTreeMap::new();
         let mut required = Vec::new();
 
-        let is_final_struct = def.annotations.iter().any(|a| a.ident.name == "final");
-        let is_mutable_struct = def.annotations.iter().any(|a| a.ident.name == "mutable");
+        let extensibility = extensibility(&self.hir.context, def);
 
         for member in &struct_ty.members {
             let mut member_obj = self.generate_type_schema(&member.ty, current_file_id);
 
-            let is_optional = member
-                .annotations
-                .iter()
-                .any(|a| a.ident.name == "optional");
-            if !is_mutable_struct && !is_optional {
+            if extensibility != Extensibility::Mutable && !is_optional(&self.hir.context, member) {
                 required.push(Value::String(member.ident.name.clone()));
             }
 
@@ -398,7 +392,7 @@ impl<'a> JsonSchemaGen<'a> {
             obj.insert("required".to_string(), Value::Array(required));
         }
 
-        if is_final_struct {
+        if extensibility == Extensibility::Final {
             obj.insert("additionalProperties".to_string(), Value::Bool(false));
         }
 
@@ -411,7 +405,7 @@ impl<'a> JsonSchemaGen<'a> {
         union_ty: &ic_hir::hir::UnionTy,
         current_file_id: FileId,
     ) -> Value {
-        let mut obj = Self::generate_preamble(def);
+        let mut obj = self.generate_preamble(def);
         obj.insert("type".to_string(), Value::String("object".to_string()));
 
         let mut explicit_discriminators = Vec::new();
@@ -479,7 +473,7 @@ impl<'a> JsonSchemaGen<'a> {
     }
 
     fn generate_enum(&self, def: &Def, enum_ty: &ic_hir::hir::EnumTy) -> Value {
-        let mut obj = Self::generate_preamble(def);
+        let mut obj = self.generate_preamble(def);
 
         let variants: Vec<Value> = enum_ty
             .fields
@@ -495,8 +489,8 @@ impl<'a> JsonSchemaGen<'a> {
         Value::Object(obj)
     }
 
-    fn generate_bitmask(def: &Def) -> Value {
-        let mut obj = Self::generate_preamble(def);
+    fn generate_bitmask(&self, def: &Def) -> Value {
+        let mut obj = self.generate_preamble(def);
         obj.insert(
             "oneOf".to_string(),
             value!([
@@ -513,7 +507,7 @@ impl<'a> JsonSchemaGen<'a> {
         typedef: &ic_hir::hir::AliasTy,
         current_file_id: FileId,
     ) -> Value {
-        let mut obj = Self::generate_preamble(def);
+        let mut obj = self.generate_preamble(def);
 
         let type_schema = self.generate_type_schema(&typedef.ty, current_file_id);
         if let Value::Object(map) = type_schema {
@@ -534,7 +528,7 @@ impl<'a> JsonSchemaGen<'a> {
                 DefKind::Struct(s) => self.generate_struct(def, s, file_id),
                 DefKind::Union(u) => self.generate_union(def, u, file_id),
                 DefKind::Enum(e) => self.generate_enum(def, e),
-                DefKind::Bitmask(_) => Self::generate_bitmask(def),
+                DefKind::Bitmask(_) => self.generate_bitmask(def),
                 DefKind::Alias(t) => self.generate_typedef(def, t, file_id),
                 _ => continue,
             };

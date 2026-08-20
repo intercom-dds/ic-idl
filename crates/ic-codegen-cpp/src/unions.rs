@@ -27,7 +27,11 @@
 
 use ic_emit::printer::{Twine, w};
 use ic_hir::hir::{Def, DefId, DefKind, Ty, TyKind, UnionTy, Variant};
-use ic_hir::union_case::{default_discriminator, default_union_case, unused_discriminator};
+use ic_hir_analysis::annotation::default_value;
+use ic_hir_analysis::enum_value::default_enumerator;
+use ic_hir_analysis::union_case::{
+    default_discriminator, default_union_case, unused_discriminator,
+};
 
 use crate::codegen::CppGen;
 
@@ -253,7 +257,7 @@ impl CppGen<'_> {
     }
 
     fn get_variant_default_expr(&self, variant: &Variant, def_id: DefId) -> String {
-        if let Some(default) = Self::default_value(&variant.annotations) {
+        if let Some(default) = default_value(&self.hir.context, variant) {
             let mut w = ic_emit::printer::Twine::new();
             self.emit_numeric_value_with_ty(&mut w, default, &variant.ty, def_id);
             w.finish()
@@ -359,11 +363,8 @@ impl CppGen<'_> {
                         result
                     }
                     DefKind::Enum(enum_ty) => {
-                        if let Some(&first_field_id) = enum_ty.fields.first() {
-                            self.scoped_name(first_field_id, relative_def)
-                        } else {
-                            "0".to_string()
-                        }
+                        let field_id = default_enumerator(&self.hir.context, enum_ty);
+                        self.scoped_name(field_id, relative_def)
                     }
                     DefKind::Union(_) | DefKind::Alias(_) => {
                         let type_name = self.cpp_type(ty, relative_def);

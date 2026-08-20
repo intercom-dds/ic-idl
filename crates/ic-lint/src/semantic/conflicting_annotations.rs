@@ -27,8 +27,9 @@
 
 use ic_diagnostic::{Label, error_span};
 use ic_hir::ResolvedGraph;
-use ic_hir::hir::{Member, Variant};
+use ic_hir::hir::{Ident, Member, Variant};
 use ic_hir::visit::Visitor;
+use ic_hir_analysis::annotation::{MemberLike, key_annotation, optional_annotation};
 
 use crate::{Category, Lint, LintCtx};
 
@@ -59,24 +60,11 @@ impl<'a> Lint<'a> for ConflictingAnnotations<'a> {
 }
 
 impl ConflictingAnnotations<'_> {
-    fn check_annotations(
-        &self,
-        annotations: &[ic_hir::hir::Ann],
-        ident: &ic_hir::hir::Ident,
-        item_type: &str,
-    ) {
-        let mut has_optional = None;
-        let mut has_key = None;
+    fn check_annotations(&self, target: &impl MemberLike, ident: &Ident, item_type: &str) {
+        let optional = optional_annotation(&self.hir.context, target);
+        let key = key_annotation(&self.hir.context, target);
 
-        for ann in annotations {
-            if ann.ident.name == "optional" {
-                has_optional = Some(ann);
-            } else if ann.ident.name == "key" {
-                has_key = Some(ann);
-            }
-        }
-
-        if let (Some(optional_ann), Some(key_ann)) = (has_optional, has_key) {
+        if let (Some(optional_ann), Some(key_ann)) = (optional, key) {
             Self::report(
                 self.ctx,
                 error_span(
@@ -101,10 +89,10 @@ impl<'a> Visitor<'a> for ConflictingAnnotations<'a> {
     }
 
     fn visit_member(&mut self, member: &'a Member) {
-        self.check_annotations(&member.annotations, &member.ident, "struct member");
+        self.check_annotations(member, &member.ident, "struct member");
     }
 
     fn visit_variant(&mut self, variant: &'a Variant) {
-        self.check_annotations(&variant.annotations, &variant.ident, "union variant");
+        self.check_annotations(variant, &variant.ident, "union variant");
     }
 }

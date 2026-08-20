@@ -29,6 +29,12 @@
 
 use ic_emit::printer::{Twine, w};
 use ic_hir::hir::{Def, DefId, DefKind, Member, PrimitiveTy, Ty, TyKind, UnionTy};
+use ic_hir_analysis::annotation::{
+    Extensibility, extensibility as analyze_extensibility, is_external, is_key, is_must_understand,
+    is_nested, is_optional,
+};
+use ic_hir_analysis::enum_value::default_enumerator;
+use ic_hir_analysis::member_id::{Autoid, effective_autoid};
 
 use crate::codegen::CppGen;
 
@@ -63,71 +69,27 @@ impl TypeInfo {
     }
 }
 
-fn is_key(member: &Member) -> bool {
-    member.annotations.iter().any(|a| a.ident.name == "key")
-}
-
-fn is_optional(member: &Member) -> bool {
-    CppGen::is_optional(member)
-}
-
-fn is_shared(member: &Member) -> bool {
-    member
-        .annotations
-        .iter()
-        .any(|a| a.ident.name == "shared" || a.ident.name == "external")
-}
-
-fn is_must_understand(member: &Member) -> bool {
-    member
-        .annotations
-        .iter()
-        .any(|a| a.ident.name == "must_understand")
-}
-
-fn is_nested(def: &Def) -> bool {
-    def.annotations.iter().any(|a| a.ident.name == "nested")
-}
-
 fn default_value_of(def: &Def, ctx: &ic_hir::Context) -> i64 {
     match &def.kind {
-        DefKind::Enum(e) => {
-            if let Some(&first_field_id) = e.fields.first() {
-                let field_def = ctx.definitions.get(first_field_id);
-                if let DefKind::Const(c) = &field_def.kind {
-                    return ctx.integer_value(&c.value);
-                }
+        DefKind::Enum(enum_ty) => {
+            let field_id = default_enumerator(ctx, enum_ty);
+            let field_def = ctx.definitions.get(field_id);
+            if let DefKind::Const(const_ty) = &field_def.kind {
+                ctx.integer_value(&const_ty.value)
+            } else {
+                0
             }
-            0
         }
         _ => 0,
     }
 }
 
-fn extensibility(def: &Def) -> &'static str {
-    let is_final = def.annotations.iter().any(|a| a.ident.name == "final");
-    let is_mutable = def.annotations.iter().any(|a| a.ident.name == "mutable");
-
-    if is_final {
-        "::ic_cts::dcps::xtypes::IS_FINAL"
-    } else if is_mutable {
-        "::ic_cts::dcps::xtypes::IS_MUTABLE"
-    } else {
-        "::ic_cts::dcps::xtypes::IS_APPENDABLE"
+fn extensibility(ctx: &ic_hir::Context, def: &Def) -> &'static str {
+    match analyze_extensibility(ctx, def) {
+        Extensibility::Final => "::ic_cts::dcps::xtypes::IS_FINAL",
+        Extensibility::Appendable => "::ic_cts::dcps::xtypes::IS_APPENDABLE",
+        Extensibility::Mutable => "::ic_cts::dcps::xtypes::IS_MUTABLE",
     }
-}
-
-fn is_autoid_hash(ctx: &ic_hir::Context, def: &Def) -> bool {
-    def.annotations.iter().any(|a| {
-        a.ident.name == "autoid"
-            && a.args.first().is_some_and(|arg| {
-                if let ic_hir::hir::Numeric::Const(def_id) = &arg.value {
-                    ctx.type_of(*def_id).ident.name == "HASH"
-                } else {
-                    false
-                }
-            })
-    })
 }
 
 fn primitive_bit_size(ty: PrimitiveTy) -> usize {
@@ -217,19 +179,19 @@ fn add_flag(flag: &mut String, value: &str) {
     }
 }
 
-fn member_flags(member: &Member, has_key: bool) -> String {
+fn member_flags(ctx: &ic_hir::Context, member: &Member, has_key: bool) -> String {
     let mut flag = String::new();
 
-    if is_key(member) {
+    if is_key(ctx, member) {
         add_flag(&mut flag, "::ic_cts::dcps::xtypes::IS_KEY");
     }
-    if is_optional(member) {
+    if is_optional(ctx, member) {
         add_flag(&mut flag, "::ic_cts::dcps::xtypes::IS_OPTIONAL");
     }
-    if is_shared(member) {
+    if is_external(ctx, member) {
         add_flag(&mut flag, "::ic_cts::dcps::xtypes::IS_EXTERNAL");
     }
-    if is_must_understand(member) {
+    if is_must_understand(ctx, member) {
         add_flag(&mut flag, "::ic_cts::dcps::xtypes::IS_MUST_UNDERSTAND");
     }
     if !has_key {
@@ -247,12 +209,12 @@ fn type_flags(ctx: &ic_hir::Context, def: &Def) -> String {
     let mut flag = String::new();
     match &def.kind {
         DefKind::Struct(_) | DefKind::Union(_) | DefKind::Except(_) => {
-            add_flag(&mut flag, extensibility(def));
+            add_flag(&mut flag, extensibility(ctx, def));
 
-            if is_nested(def) {
+            if is_nested(ctx, def) {
                 add_flag(&mut flag, "::ic_cts::dcps::xtypes::IS_NESTED");
             }
-            if is_autoid_hash(ctx, def) {
+            if effective_autoid(ctx, def.id) == Autoid::Hash {
                 add_flag(&mut flag, "::ic_cts::dcps::xtypes::IS_AUTOID_HASH");
             }
         }
@@ -455,7 +417,9 @@ impl CppGen<'_> {
 
         let mangled_name = self.mangled_name(def.id);
         let scoped_name = self.scoped_name(def.id, None);
-        let has_key = members.iter().any(is_key);
+        let has_key = members
+            .iter()
+            .any(|member| is_key(&self.hir.context, member));
 
         let mut type_infos = Vec::new();
         for (i, member) in members.iter().enumerate() {
@@ -466,7 +430,7 @@ impl CppGen<'_> {
 
         w!(w, "static ::ic_cts::MemberInfo ", mangled_name, "_members[", members.len(), "] = {\n");
         for (i, member) in members.iter().enumerate() {
-            let flags = member_flags(member, has_key);
+            let flags = member_flags(&self.hir.context, member, has_key);
             emit_member_info(
                 w,
                 i,

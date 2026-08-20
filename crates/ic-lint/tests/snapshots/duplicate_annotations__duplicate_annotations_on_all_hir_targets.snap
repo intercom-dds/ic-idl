@@ -1,0 +1,63 @@
+---
+source: crates/ic-lint/tests/duplicate_annotations.rs
+expression: test_lint_hir(source)
+---
+⨯ duplicate-ann: duplicate annotation '@ext::suppress'
+  @ test.idl:3:21
+
+ 2 │ @annotation Meta {
+ 3 │     @ext::suppress @ext::suppress long value;
+   │                     ˆˆˆˆˆˆˆˆˆˆˆˆˆ duplicate annotation
+ 4 │ };
+ 5 │ union Choice switch (@ext::suppress @ext::suppress long) {
+
+⨯ duplicate-ann: duplicate annotation '@ext::suppress'
+  @ test.idl:5:38
+
+ 3 │     @ext::suppress @ext::suppress long value;
+ 4 │ };
+ 5 │ union Choice switch (@ext::suppress @ext::suppress long) {
+   │                                      ˆˆˆˆˆˆˆˆˆˆˆˆˆ duplicate annotation
+ 6 │     case 0: @ext::suppress @ext::suppress long value;
+ 7 │ };
+
+⨯ duplicate-ann: duplicate annotation '@ext::suppress'
+  @ test.idl:6:29
+
+ 4 │ };
+ 5 │ union Choice switch (@ext::suppress @ext::suppress long) {
+ 6 │     case 0: @ext::suppress @ext::suppress long value;
+   │                             ˆˆˆˆˆˆˆˆˆˆˆˆˆ duplicate annotation
+ 7 │ };
+ 8 │ bitset Bits {
+
+⨯ duplicate-ann: duplicate annotation '@ext::suppress'
+  @ test.idl:9:21
+
+  7 │ };
+  8 │ bitset Bits {
+  9 │     @ext::suppress @ext::suppress bitfield<1> value;
+    │                     ˆˆˆˆˆˆˆˆˆˆˆˆˆ duplicate annotation
+ 10 │ };
+ 11 │ interface Service {
+
+⨯ duplicate-ann: duplicate annotation '@ext::suppress'
+  @ test.idl:12:21
+
+ 10 │ };
+ 11 │ interface Service {
+ 12 │     @ext::suppress @ext::suppress attribute long value;
+    │                     ˆˆˆˆˆˆˆˆˆˆˆˆˆ duplicate annotation
+ 13 │ };
+
+! bitset: bitsets are not supported
+  @ test.idl:8:8
+
+  6 │     case 0: @ext::suppress @ext::suppress long value;
+  7 │ };
+  8 │ bitset Bits {
+    │        ˆˆˆˆ defined here
+  9 │     @ext::suppress @ext::suppress bitfield<1> value;
+ 10 │ };
+
+  * the bitset will be skipped during codegen

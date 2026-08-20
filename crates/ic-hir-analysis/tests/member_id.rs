@@ -25,10 +25,11 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+#[path = "../../ic-hir/tests/common/mod.rs"]
 mod common;
 
 use ic_hir::hir::DefId;
-use ic_hir::member_id::{Autoid, effective_autoid, member_ids};
+use ic_hir_analysis::member_id::{Autoid, effective_autoid, member_ids};
 
 fn def_id(hir: &ic_hir::ResolvedGraph, name: &str) -> DefId {
     hir.context

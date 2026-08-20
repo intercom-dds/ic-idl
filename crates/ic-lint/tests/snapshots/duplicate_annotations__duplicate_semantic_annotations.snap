@@ -1,0 +1,22 @@
+---
+source: crates/ic-lint/tests/duplicate_annotations.rs
+expression: test_lint_hir(source)
+---
+⨯ duplicate-ann: multiple extensibility annotations
+  @ test.idl:3:2
+
+ 2 │ @final
+ 3 │ @extensibility(MUTABLE)
+   │  ˆˆˆˆˆˆˆˆˆˆˆˆˆ duplicate annotation
+ 4 │ struct Foo {
+ 5 │     @id(1)
+
+⨯ duplicate-ann: multiple member ID annotations
+  @ test.idl:6:6
+
+ 4 │ struct Foo {
+ 5 │     @id(1)
+ 6 │     @hashid("value")
+   │      ˆˆˆˆˆˆ duplicate annotation
+ 7 │     long value;
+ 8 │ };

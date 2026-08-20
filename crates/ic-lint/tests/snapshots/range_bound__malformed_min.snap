@@ -2,12 +2,12 @@
 source: crates/ic-lint/tests/range_bound.rs
 expression: test_lint_hir(source)
 ---
-! range-bound: invalid @min annotation: Field 'value' has wrong type, expected i64
-  @ test.idl:4:10
+⨯ range-bound: @min value must be an integer
+  @ test.idl:4:14
 
  2 │ module MyModule {
  3 │     struct MalformedMin {
  4 │         @min("not a number") long value;
-   │          ˆˆˆ malformed annotation
+   │              ˆˆˆˆˆˆˆˆˆˆˆˆˆˆ must be an integer
  5 │     };
  6 │ };

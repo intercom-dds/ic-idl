@@ -180,5 +180,6 @@ fn map_default_values() {
 #[test]
 fn enum_field_default() {
     let e = default_types::EnumDefaults::new();
+    assert_eq!(e.priority_empty, default_types::Priority::Medium);
     assert_eq!(e.priority_high, default_types::Priority::High);
 }

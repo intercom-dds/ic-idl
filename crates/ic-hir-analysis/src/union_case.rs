@@ -25,8 +25,10 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use crate::Context;
-use crate::hir::{DefKind, Label, Numeric, PrimitiveTy, Ty, TyKind, UnionTy, Variant};
+use ic_hir::Context;
+use ic_hir::hir::{DefKind, Label, Numeric, PrimitiveTy, Ty, TyKind, UnionTy, Variant};
+
+use crate::enum_value::default_enumerator;
 
 #[derive(Clone, Copy, Debug)]
 pub struct UnionCase<'a> {
@@ -51,18 +53,7 @@ fn default_value(ctx: &Context, ty: &Ty) -> Option<Numeric> {
                 return None;
             };
 
-            enum_ty
-                .fields
-                .iter()
-                .copied()
-                .find(|field_id| {
-                    ctx.type_of(*field_id)
-                        .annotations
-                        .iter()
-                        .any(|annotation| annotation.ident.name == "default_literal")
-                })
-                .or_else(|| enum_ty.fields.first().copied())
-                .map(Numeric::Const)
+            Some(Numeric::Const(default_enumerator(ctx, enum_ty)))
         }
         _ => None,
     }

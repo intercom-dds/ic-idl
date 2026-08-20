@@ -29,10 +29,9 @@ use std::collections::{HashMap, HashSet, VecDeque};
 
 use ic_alloc::graph::DiGraph;
 use ic_diagnostic::Label;
-use ic_hir::hir::{
-    Ann, DefFlags, DefId, DefKind, Member, PrimitiveTy, Ty, TyKind, UnionTy, Variant,
-};
+use ic_hir::hir::{DefId, DefKind, Member, PrimitiveTy, Ty, TyKind, UnionTy, Variant};
 use ic_hir::{Context, ResolvedGraph};
+use ic_hir_analysis::annotation::is_external;
 use ic_syntax::Span;
 
 use crate::{Category, Lint, LintCtx};
@@ -361,7 +360,7 @@ impl TypeGraph {
         targets: &mut Vec<DefId>,
     ) {
         for member in members {
-            let pointer = is_external(ctx, &member.annotations);
+            let pointer = is_external(ctx, member);
             self.edges(from, &member.ty, member.ident.span, pointer, targets);
         }
     }
@@ -370,7 +369,7 @@ impl TypeGraph {
         variants
             .iter()
             .map(|variant| {
-                let pointer = is_external(ctx, &variant.annotations);
+                let pointer = is_external(ctx, variant);
                 let mut targets = vec![];
                 self.edges(from, &variant.ty, variant.ident.span, pointer, &mut targets);
                 targets
@@ -444,15 +443,4 @@ fn collect_targets(ty: &Ty, out: &mut Vec<DefId>) {
         TyKind::Array { ty, .. } => collect_targets(ty, out),
         _ => {}
     }
-}
-
-fn is_external(ctx: &Context, annotations: &[Ann]) -> bool {
-    annotations.iter().any(|ann| {
-        ann.def_id.is_some_and(|id| {
-            let def = ctx.definitions.get(id);
-
-            def.flags.contains(DefFlags::IS_BUILTIN)
-                && matches!(def.ident.name.as_str(), "shared" | "external")
-        })
-    })
 }

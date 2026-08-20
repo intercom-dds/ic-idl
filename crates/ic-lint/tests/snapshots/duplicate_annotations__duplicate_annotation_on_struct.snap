@@ -1,0 +1,12 @@
+---
+source: crates/ic-lint/tests/duplicate_annotations.rs
+expression: test_lint_hir(source)
+---
+⨯ duplicate-ann: duplicate annotation '@empty'
+  @ test.idl:3:2
+
+ 2 │ @empty
+ 3 │ @empty
+   │  ˆˆˆˆˆ duplicate annotation
+ 4 │ struct Foo {
+ 5 │     long field;

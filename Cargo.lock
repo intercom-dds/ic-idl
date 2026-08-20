@@ -350,6 +350,7 @@ version = "0.6.0"
 dependencies = [
  "ic-emit",
  "ic-hir",
+ "ic-hir-analysis",
  "ic-hir-xform",
  "ic-vfs",
 ]
@@ -361,6 +362,7 @@ dependencies = [
  "ic-cli",
  "ic-emit",
  "ic-hir",
+ "ic-hir-analysis",
  "ic-hir-xform",
  "ic-vfs",
 ]
@@ -372,6 +374,7 @@ dependencies = [
  "ic-cli",
  "ic-emit",
  "ic-hir",
+ "ic-hir-analysis",
  "ic-hir-xform",
  "ic-vfs",
 ]
@@ -383,6 +386,7 @@ dependencies = [
  "ic-cli",
  "ic-emit",
  "ic-hir",
+ "ic-hir-analysis",
  "ic-hir-xform",
  "ic-vfs",
 ]
@@ -394,6 +398,7 @@ dependencies = [
  "ic-cli",
  "ic-emit",
  "ic-hir",
+ "ic-hir-analysis",
  "ic-hir-xform",
  "ic-vfs",
 ]
@@ -404,6 +409,7 @@ version = "0.6.0"
 dependencies = [
  "ic-emit",
  "ic-hir",
+ "ic-hir-analysis",
  "ic-idl",
  "ic-vfs",
  "intercom-cts",
@@ -416,6 +422,7 @@ dependencies = [
  "ic-cli",
  "ic-emit",
  "ic-hir",
+ "ic-hir-analysis",
  "ic-vfs",
  "intercom-cts",
 ]
@@ -439,6 +446,7 @@ dependencies = [
  "ic-cli",
  "ic-emit",
  "ic-hir",
+ "ic-hir-analysis",
  "ic-hir-xform",
  "ic-vfs",
 ]
@@ -450,6 +458,7 @@ dependencies = [
  "ic-cli",
  "ic-emit",
  "ic-hir",
+ "ic-hir-analysis",
  "ic-hir-xform",
  "ic-vfs",
 ]
@@ -461,6 +470,7 @@ dependencies = [
  "ic-cli",
  "ic-emit",
  "ic-hir",
+ "ic-hir-analysis",
  "ic-hir-xform",
  "ic-vfs",
 ]
@@ -471,6 +481,7 @@ version = "0.6.0"
 dependencies = [
  "ic-emit",
  "ic-hir",
+ "ic-hir-analysis",
  "ic-vfs",
 ]
 
@@ -526,6 +537,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "ic-hir-analysis"
+version = "0.6.0"
+dependencies = [
+ "ic-alloc",
+ "ic-cli",
+ "ic-diagnostic",
+ "ic-hir",
+ "ic-hir-lower",
+ "ic-parse",
+ "ic-syntax",
+ "ic-vfs",
+]
+
+[[package]]
 name = "ic-hir-lower"
 version = "0.6.0"
 dependencies = [
@@ -557,6 +582,7 @@ dependencies = [
  "ic-diagnostic",
  "ic-emit",
  "ic-hir",
+ "ic-hir-analysis",
  "ic-hir-lower",
  "ic-parse",
  "ic-vfs",
@@ -614,6 +640,7 @@ dependencies = [
  "ic-cli",
  "ic-diagnostic",
  "ic-hir",
+ "ic-hir-analysis",
  "ic-hir-lower",
  "ic-lexer",
  "ic-parse",

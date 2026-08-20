@@ -27,7 +27,8 @@
 
 use ic_emit::printer::Twine;
 use ic_emit::w;
-use ic_hir::hir::{Ann, DefId, DefKind, Numeric, PrimitiveTy, Ty, TyKind};
+use ic_hir::hir::{DefId, DefKind, Numeric, PrimitiveTy, Ty, TyKind};
+use ic_hir_analysis::annotation::{MemberLike, is_external};
 
 use crate::codegen::RustGen;
 use crate::helpers::{format_integer, is_trivial};
@@ -106,18 +107,18 @@ impl RustGen<'_> {
     pub(crate) fn emit_annotated_default_value(
         &self,
         ty: &Ty,
-        annotations: &[Ann],
+        member: &impl MemberLike,
         ctx_id: DefId,
         w: &mut Twine,
     ) {
-        let is_shared = self.is_shared_annotations(annotations);
-        if is_shared {
+        let is_external = is_external(&self.hir.context, member);
+        if is_external {
             w!(w, "::std::boxed::Box::new(");
         }
 
         self.emit_default_value(ty, ctx_id, w);
 
-        if is_shared {
+        if is_external {
             w!(w, ")");
         }
     }
@@ -137,13 +138,7 @@ impl RustGen<'_> {
             let members = self.struct_members(struct_ty);
             for (member, field_value) in members.iter().zip(fields.iter()) {
                 w!(w, member.ident.name, ": ");
-                self.emit_annotated_const_value(
-                    field_value,
-                    &member.ty,
-                    &member.annotations,
-                    ctx_id,
-                    w,
-                );
+                self.emit_annotated_const_value(field_value, &member.ty, member, ctx_id, w);
                 w!(w, ",\n");
             }
         }
@@ -154,18 +149,18 @@ impl RustGen<'_> {
         &self,
         val: &Numeric,
         ty: &Ty,
-        annotations: &[Ann],
+        member: &impl MemberLike,
         ctx_id: DefId,
         w: &mut Twine,
     ) {
-        let is_shared = self.is_shared_annotations(annotations);
-        if is_shared {
+        let is_external = is_external(&self.hir.context, member);
+        if is_external {
             w!(w, "::std::boxed::Box::new(");
         }
 
         self.emit_const_value(val, ty, ctx_id, w);
 
-        if is_shared {
+        if is_external {
             w!(w, ")");
         }
     }
@@ -242,7 +237,7 @@ impl RustGen<'_> {
                     w!(w, name);
                     let is_str_const_lit =
                         self.is_string_const_literal(&const_ty.ty, &const_ty.value);
-                    if matches!(ty.kind, TyKind::String { .. }) {
+                    if matches!(self.hir.context.resolve_ty(ty).kind, TyKind::String { .. }) {
                         if is_str_const_lit {
                             let base_ty = self.hir.context.base_type_of(ctx_id);
                             if !matches!(base_ty.kind, TyKind::String { .. }) {

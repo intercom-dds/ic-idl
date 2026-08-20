@@ -27,8 +27,8 @@
 
 use std::collections::HashSet;
 
-use crate::Context;
-use crate::hir::{DefId, PrimitiveTy, Ty, TyKind};
+use ic_hir::Context;
+use ic_hir::hir::{DefId, DefKind, PrimitiveTy, Ty, TyKind};
 
 /// Calculate the size in bytes of a type.
 /// Returns None for dynamically-sized types or types with unknown size.
@@ -59,7 +59,7 @@ fn type_size_impl(ty: &Ty, ctx: &Context, visited: &mut HashSet<DefId>) -> Optio
 
             let def = ctx.definitions.get(*id);
             let size = match &def.kind {
-                crate::hir::DefKind::Struct(struct_ty) => {
+                DefKind::Struct(struct_ty) => {
                     // Struct size = sum of member sizes
                     let mut total = 0;
                     for member in &struct_ty.members {
@@ -67,7 +67,7 @@ fn type_size_impl(ty: &Ty, ctx: &Context, visited: &mut HashSet<DefId>) -> Optio
                     }
                     Some(total)
                 }
-                crate::hir::DefKind::Union(union_ty) => {
+                DefKind::Union(union_ty) => {
                     // Union size = max of variant sizes + discriminator
                     let disc_size = type_size_impl(&union_ty.disc.ty, ctx, visited)?;
                     let mut max_variant_size = 0;
@@ -78,10 +78,10 @@ fn type_size_impl(ty: &Ty, ctx: &Context, visited: &mut HashSet<DefId>) -> Optio
                     }
                     Some(disc_size + max_variant_size)
                 }
-                crate::hir::DefKind::Alias(alias_ty) => type_size_impl(&alias_ty.ty, ctx, visited),
-                crate::hir::DefKind::Enum(enum_ty) => primitive_size(enum_ty.ty),
-                crate::hir::DefKind::Bitmask(bitmask_ty) => primitive_size(bitmask_ty.ty),
-                crate::hir::DefKind::Bitset(bitset_ty) => {
+                DefKind::Alias(alias_ty) => type_size_impl(&alias_ty.ty, ctx, visited),
+                DefKind::Enum(enum_ty) => primitive_size(enum_ty.ty),
+                DefKind::Bitmask(bitmask_ty) => primitive_size(bitmask_ty.ty),
+                DefKind::Bitset(bitset_ty) => {
                     // Bitset size = sum of field sizes (bits) / 8 (rounded up)
                     let mut total_bits = 0;
                     for field in &bitset_ty.fields {
@@ -115,14 +115,14 @@ fn primitive_size(prim: PrimitiveTy) -> Option<usize> {
 
 #[cfg(test)]
 mod tests {
+    use ic_hir::hir::{
+        AliasTy, BitmaskTy, BitsetField, BitsetTy, Def, DefFlags, DefKind, Disc, EnumTy, Member,
+        StructTy, UnionTy, Variant,
+    };
     use ic_syntax::{Ident, Span};
     use ic_vfs::{Location, SourceMap};
 
     use super::*;
-    use crate::hir::{
-        AliasTy, BitmaskTy, BitsetField, BitsetTy, Def, DefFlags, DefKind, Disc, EnumTy, Member,
-        StructTy, UnionTy, Variant,
-    };
 
     fn test_span() -> Span {
         let mut map = SourceMap::default();

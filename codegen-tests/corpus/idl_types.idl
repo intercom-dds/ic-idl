@@ -374,7 +374,7 @@ module IdlTypes
       @Default(value='n') lower_case lower_case1;
       @Default(value=D) lower_case lower_case2;
       lower_case lower_case3;
-      @range(min='s', max='t') @default(value='s') lower_case lower_case4;
+      @default(value='s') lower_case lower_case4;
 
       @Default(value=13) foo foo1;
       @Default(value=XII) foo foo2;

@@ -38,7 +38,10 @@ use ic_hir::hir::{
     BitmaskTy, ConstTy, Def, DefId, DefKind, EnumTy, ExceptTy, InterfaceTy, Member, Numeric,
     ParamKind, PrimitiveTy, ProtoTy, StructTy, Ty, TyKind, UnionTy, ValueTy, Variant,
 };
-use ic_hir::union_case::{default_discriminator, default_union_case, unused_discriminator};
+use ic_hir_analysis::enum_value::default_enumerator;
+use ic_hir_analysis::union_case::{
+    default_discriminator, default_union_case, unused_discriminator,
+};
 
 use crate::JavaOptions;
 
@@ -422,12 +425,9 @@ impl<'a> JavaGen<'a> {
                 let def = self.hir.context.type_of(*def_id);
                 match &def.kind {
                     DefKind::Enum(enum_ty) => {
-                        if let Some(&field_id) = enum_ty.fields.first() {
-                            let field_name = self.java_name(field_id);
-                            format!("{type_name}.{field_name}")
-                        } else {
-                            "null".to_string()
-                        }
+                        let field_id = default_enumerator(&self.hir.context, enum_ty);
+                        let field_name = self.java_name(field_id);
+                        format!("{type_name}.{field_name}")
                     }
                     _ => format!("new {type_name}()"),
                 }

@@ -32,15 +32,15 @@ use ic_emit::printer::Twine;
 use ic_emit::{File, w};
 use ic_hir::ResolvedGraph;
 use ic_hir::hir::{Def, DefFlags, DefId, DefKind, Numeric, ParamKind, PrimitiveTy, Ty, TyKind};
-use ic_hir::union_case::{default_union_case, unused_discriminator};
+use ic_hir_analysis::annotation::{default_value, is_newtype, is_optional};
+use ic_hir_analysis::enum_value::default_enumerator;
+use ic_hir_analysis::union_case::{default_union_case, unused_discriminator};
 
 use crate::RustOptions;
-use crate::helpers::{
-    default_value, is_copy, is_debug, is_eq, is_hash, is_newtype, is_optional, is_ord, is_trivial,
-    rust_primitive,
-};
+use crate::helpers::{is_copy, is_debug, is_eq, is_hash, is_ord, is_trivial, rust_primitive};
 
 const GENERATED_HEADER: &str = "// @generated\n\n";
+static NULL: Numeric = Numeric::Null;
 
 struct Module {
     printer: Twine,
@@ -201,8 +201,8 @@ impl<'a> RustGen<'a> {
 
         let members = self.struct_members(struct_ty);
         for member in &members {
-            let member_ty = self.member_type(&member.ty, &member.annotations, def.id);
-            let field_ty = if is_optional(member) {
+            let member_ty = self.member_type(&member.ty, member, def.id);
+            let field_ty = if is_optional(&self.hir.context, member) {
                 format!("::std::option::Option<{member_ty}>")
             } else {
                 member_ty
@@ -217,8 +217,8 @@ impl<'a> RustGen<'a> {
         w!(w, "pub struct ", def, " {\n");
 
         for member in &except_ty.members {
-            let member_ty = self.member_type(&member.ty, &member.annotations, def.id);
-            let field_ty = if is_optional(member) {
+            let member_ty = self.member_type(&member.ty, member, def.id);
+            let field_ty = if is_optional(&self.hir.context, member) {
                 format!("::std::option::Option<{member_ty}>")
             } else {
                 member_ty
@@ -244,8 +244,8 @@ impl<'a> RustGen<'a> {
 
         let members = self.valuetype_members(value_ty);
         for member in &members {
-            let member_ty = self.member_type(&member.ty, &member.annotations, def.id);
-            let field_ty = if is_optional(member) {
+            let member_ty = self.member_type(&member.ty, member, def.id);
+            let field_ty = if is_optional(&self.hir.context, member) {
                 format!("::std::option::Option<{member_ty}>")
             } else {
                 member_ty
@@ -386,7 +386,7 @@ impl<'a> RustGen<'a> {
             if variant.labels.is_empty() {
                 w!(w, variant.ident.name);
                 if !matches!(variant.ty.kind, TyKind::Null) {
-                    let member_ty = self.member_type(&variant.ty, &variant.annotations, def.id);
+                    let member_ty = self.member_type(&variant.ty, variant, def.id);
                     w!(w, "(", member_ty, ")");
                 }
                 w!(w, ",\n");
@@ -395,7 +395,7 @@ impl<'a> RustGen<'a> {
                     let variant_name = self.union_variant_name(variant, label, union_ty);
                     w!(w, variant_name);
                     if !matches!(variant.ty.kind, TyKind::Null) {
-                        let member_ty = self.member_type(&variant.ty, &variant.annotations, def.id);
+                        let member_ty = self.member_type(&variant.ty, variant, def.id);
                         w!(w, "(", member_ty, ")");
                     }
                     w!(w, ",\n");
@@ -466,12 +466,7 @@ impl<'a> RustGen<'a> {
                     w!(w, " => Self::", self.union_variant_name(variant, label, union_ty));
                     if !matches!(variant.ty.kind, TyKind::Null) {
                         w!(w, "(");
-                        self.emit_annotated_default_value(
-                            &variant.ty,
-                            &variant.annotations,
-                            def.id,
-                            w,
-                        );
+                        self.emit_annotated_default_value(&variant.ty, variant, def.id, w);
                         w!(w, ")");
                     }
                     w!(w, ",\n");
@@ -503,7 +498,7 @@ impl<'a> RustGen<'a> {
         w!(w, "Self::", variant_name);
         if !matches!(variant.ty.kind, TyKind::Null) {
             w!(w, "(");
-            self.emit_annotated_default_value(&variant.ty, &variant.annotations, def_id, w);
+            self.emit_annotated_default_value(&variant.ty, variant, def_id, w);
             w!(w, ")");
         }
     }
@@ -564,10 +559,9 @@ impl<'a> RustGen<'a> {
             w!(w, "#[must_use]\n");
         }
         w!(w, "pub const fn new() -> Self {\n");
-        if let Some(&first_id) = enum_ty.fields.first() {
-            let first_def = self.hir.context.definitions.get(first_id);
-            w!(w, "Self::", first_def, "\n");
-        }
+        let field_id = default_enumerator(&self.hir.context, enum_ty);
+        let field_def = self.hir.context.definitions.get(field_id);
+        w!(w, "Self::", field_def, "\n");
         w!(w, "}\n");
         w!(w, "}\n\n");
 
@@ -633,7 +627,7 @@ impl<'a> RustGen<'a> {
     fn emit_alias(&self, def: &Def, alias: &ic_hir::hir::AliasTy, w: &mut Twine) {
         let ty = self.rust_type(&alias.ty, def.id);
 
-        if is_newtype(def) {
+        if is_newtype(&self.hir.context, def) {
             self.emit_derives(def, w);
             w!(w, "pub struct ", def, "(pub ", ty, ");\n\n");
 
@@ -722,17 +716,11 @@ impl<'a> RustGen<'a> {
         w!(w, "Self {\n");
         for member in members {
             w!(w, member.ident.name, ": ");
-            if is_optional(member) {
+            if is_optional(&self.hir.context, member) {
                 w!(w, "::std::option::Option::None");
             } else {
-                let default_val = default_value(member);
-                self.emit_annotated_const_value(
-                    default_val,
-                    &member.ty,
-                    &member.annotations,
-                    def.id,
-                    w,
-                );
+                let default_val = default_value(&self.hir.context, member).unwrap_or(&NULL);
+                self.emit_annotated_const_value(default_val, &member.ty, member, def.id, w);
             }
             w!(w, ",\n");
         }
@@ -765,7 +753,7 @@ impl<'a> RustGen<'a> {
                 Self::emit_default_impl(def, w);
                 self.emit_type_info(def, w);
                 self.emit_member_info(def.id, w);
-                Self::emit_marshal_impl(def, &members, w);
+                self.emit_marshal_impl(def, &members, w);
                 Self::emit_unmarshal_impl(def, &members, w);
                 Self::emit_type_info_close(w);
             }
@@ -775,7 +763,7 @@ impl<'a> RustGen<'a> {
                 Self::emit_default_impl(def, w);
                 self.emit_type_info(def, w);
                 self.emit_member_info(def.id, w);
-                Self::emit_marshal_impl(def, &except_ty.members, w);
+                self.emit_marshal_impl(def, &except_ty.members, w);
                 Self::emit_unmarshal_impl(def, &except_ty.members, w);
                 Self::emit_type_info_close(w);
             }
@@ -786,7 +774,7 @@ impl<'a> RustGen<'a> {
                 Self::emit_default_impl(def, w);
                 self.emit_type_info(def, w);
                 self.emit_member_info(def.id, w);
-                Self::emit_marshal_impl(def, &members, w);
+                self.emit_marshal_impl(def, &members, w);
                 Self::emit_unmarshal_impl(def, &members, w);
                 Self::emit_type_info_close(w);
             }
@@ -822,7 +810,7 @@ impl<'a> RustGen<'a> {
             }
             DefKind::Alias(alias_ty) => {
                 self.emit_alias(def, alias_ty, w);
-                if is_newtype(def) {
+                if is_newtype(&self.hir.context, def) {
                     Self::emit_default_impl(def, w);
                     self.emit_newtype_type_descriptor(def, alias_ty, w);
                     Self::emit_newtype_marshal_impl(def, w);

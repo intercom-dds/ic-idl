@@ -34,6 +34,9 @@ use ic_hir::hir::{
     ExceptTy, InterfaceTy, Member, ModuleTy, Numeric, PrimitiveTy, StructTy, Ty, TyKind, UnionTy,
     ValueTy, Variant,
 };
+use ic_hir_analysis::annotation::{
+    Extensibility, extensibility, is_default_literal, is_extensibility_annotation,
+};
 use ic_vfs::{FileId, SourceMap};
 use intercom_cts::json::{self, Value};
 
@@ -132,7 +135,7 @@ impl<'a> JsonGen<'a> {
     fn emit_module(&self, def: &Def, module: &ModuleTy, obj: &mut BTreeMap<String, Value>) {
         let mut module_obj = BTreeMap::new();
         module_obj.insert("kind".to_string(), Value::String("module".to_string()));
-        self.emit_annotations(&def.annotations, &mut module_obj);
+        self.emit_def_annotations(def, &mut module_obj);
 
         for &child_id in &module.definitions {
             self.emit_def(child_id, &mut module_obj);
@@ -144,7 +147,7 @@ impl<'a> JsonGen<'a> {
     fn emit_struct(&self, def: &Def, struct_ty: &StructTy, obj: &mut BTreeMap<String, Value>) {
         let mut struct_obj = BTreeMap::new();
         struct_obj.insert("kind".to_string(), Value::String("struct".to_string()));
-        self.emit_annotations(&def.annotations, &mut struct_obj);
+        self.emit_def_annotations(def, &mut struct_obj);
 
         if let Some(parent) = struct_ty.parent {
             let name = self.make_scoped_name(parent.def_id);
@@ -164,7 +167,7 @@ impl<'a> JsonGen<'a> {
     fn emit_union(&self, def: &Def, union_ty: &UnionTy, obj: &mut BTreeMap<String, Value>) {
         let mut union_obj = BTreeMap::new();
         union_obj.insert("kind".to_string(), Value::String("union".to_string()));
-        self.emit_annotations(&def.annotations, &mut union_obj);
+        self.emit_def_annotations(def, &mut union_obj);
 
         let mut disc_obj = BTreeMap::new();
         self.emit_annotations(&union_ty.disc.annotations, &mut disc_obj);
@@ -219,19 +222,10 @@ impl<'a> JsonGen<'a> {
         Value::Object(case_obj)
     }
 
-    fn builtin_annotation(&self, name: &str) -> Option<DefId> {
-        self.hir.builtin_order.iter().copied().find(|&id| {
-            let def = self.hir.context.definitions.get(id);
-            matches!(def.kind, DefKind::Annotation(_)) && def.ident.name == name
-        })
-    }
-
     fn emit_enum(&self, def: &Def, enum_ty: &EnumTy, obj: &mut BTreeMap<String, Value>) {
         let mut enum_obj = BTreeMap::new();
         enum_obj.insert("kind".to_string(), Value::String("enum".to_string()));
-        self.emit_annotations(&def.annotations, &mut enum_obj);
-
-        let default_literal = self.builtin_annotation("default_literal");
+        self.emit_def_annotations(def, &mut enum_obj);
 
         let enumerators: Vec<Value> = enum_ty
             .fields
@@ -250,12 +244,7 @@ impl<'a> JsonGen<'a> {
                     enumerator.insert("value".to_string(), self.format_numeric(&c.value));
                 }
 
-                if default_literal.is_some()
-                    && field_def
-                        .annotations
-                        .iter()
-                        .any(|ann| ann.def_id == default_literal)
-                {
+                if is_default_literal(&self.hir.context, field_def) {
                     enumerator.insert("default".to_string(), Value::Bool(true));
                 }
 
@@ -270,7 +259,7 @@ impl<'a> JsonGen<'a> {
     fn emit_bitmask(&self, def: &Def, bitmask: &BitmaskTy, obj: &mut BTreeMap<String, Value>) {
         let mut bitmask_obj = BTreeMap::new();
         bitmask_obj.insert("kind".to_string(), Value::String("bitmask".to_string()));
-        self.emit_annotations(&def.annotations, &mut bitmask_obj);
+        self.emit_def_annotations(def, &mut bitmask_obj);
 
         let flags: Vec<Value> = bitmask
             .flags
@@ -303,7 +292,7 @@ impl<'a> JsonGen<'a> {
     fn emit_bitset(&self, def: &Def, bitset: &BitsetTy, obj: &mut BTreeMap<String, Value>) {
         let mut bitset_obj = BTreeMap::new();
         bitset_obj.insert("kind".to_string(), Value::String("bitset".to_string()));
-        self.emit_annotations(&def.annotations, &mut bitset_obj);
+        self.emit_def_annotations(def, &mut bitset_obj);
 
         let bitfields: Vec<Value> = bitset
             .fields
@@ -334,7 +323,7 @@ impl<'a> JsonGen<'a> {
 
         let mut type_obj = BTreeMap::new();
         self.emit_type_ref(&alias.ty, &mut type_obj);
-        self.emit_annotations(&def.annotations, &mut type_obj);
+        self.emit_def_annotations(def, &mut type_obj);
         alias_obj.insert("type".to_string(), Value::Object(type_obj));
 
         obj.insert(def.ident.name.clone(), Value::Object(alias_obj));
@@ -342,7 +331,7 @@ impl<'a> JsonGen<'a> {
 
     fn emit_const(&self, def: &Def, const_ty: &ConstTy, obj: &mut BTreeMap<String, Value>) {
         let mut const_obj = BTreeMap::new();
-        self.emit_annotations(&def.annotations, &mut const_obj);
+        self.emit_def_annotations(def, &mut const_obj);
         const_obj.insert("kind".to_string(), Value::String("const".to_string()));
 
         let mut type_obj = BTreeMap::new();
@@ -362,7 +351,7 @@ impl<'a> JsonGen<'a> {
     ) {
         let mut interface_obj = BTreeMap::new();
         interface_obj.insert("kind".to_string(), Value::String("interface".to_string()));
-        self.emit_annotations(&def.annotations, &mut interface_obj);
+        self.emit_def_annotations(def, &mut interface_obj);
 
         if !interface.parents.is_empty() {
             if interface.parents.len() > 1 {
@@ -399,7 +388,7 @@ impl<'a> JsonGen<'a> {
     fn emit_valuetype(&self, def: &Def, valuetype: &ValueTy, obj: &mut BTreeMap<String, Value>) {
         let mut valuetype_obj = BTreeMap::new();
         valuetype_obj.insert("kind".to_string(), Value::String("valuetype".to_string()));
-        self.emit_annotations(&def.annotations, &mut valuetype_obj);
+        self.emit_def_annotations(def, &mut valuetype_obj);
 
         if let Some(parent) = valuetype.parent {
             let name = self.make_scoped_name(parent.def_id);
@@ -427,7 +416,7 @@ impl<'a> JsonGen<'a> {
     fn emit_except(&self, def: &Def, except: &ExceptTy, obj: &mut BTreeMap<String, Value>) {
         let mut except_obj = BTreeMap::new();
         except_obj.insert("kind".to_string(), Value::String("exception".to_string()));
-        self.emit_annotations(&def.annotations, &mut except_obj);
+        self.emit_def_annotations(def, &mut except_obj);
 
         let members: Vec<Value> = except.members.iter().map(|m| self.emit_member(m)).collect();
         except_obj.insert("members".to_string(), Value::Array(members));
@@ -442,7 +431,7 @@ impl<'a> JsonGen<'a> {
         obj: &mut BTreeMap<String, Value>,
     ) {
         let mut ann_obj = BTreeMap::new();
-        self.emit_annotations(&def.annotations, &mut ann_obj);
+        self.emit_def_annotations(def, &mut ann_obj);
         ann_obj.insert("kind".to_string(), Value::String("annotation".to_string()));
 
         obj.insert(def.ident.name.clone(), Value::Object(ann_obj));
@@ -473,40 +462,67 @@ impl<'a> JsonGen<'a> {
         Value::Object(member_obj)
     }
 
-    fn emit_annotations(&self, annotations: &[Ann], obj: &mut BTreeMap<String, Value>) {
-        if annotations.is_empty() {
-            return;
-        }
+    fn emit_def_annotations(&self, def: &Def, obj: &mut BTreeMap<String, Value>) {
+        let mut ann_obj = self.format_annotations(
+            def.annotations
+                .iter()
+                .filter(|annotation| !is_extensibility_annotation(&self.hir.context, annotation)),
+        );
 
-        let mut ann_obj = BTreeMap::new();
-        for ann in annotations {
-            if let Some(kind) = self.extensibility_kind(ann) {
-                ann_obj.insert("extensibility".to_string(), Value::String(kind.to_string()));
-                continue;
-            }
-
-            let scoped_name = if let Some(def_id) = ann.def_id {
-                self.make_scoped_name(def_id)
-            } else {
-                ann.ident.name.clone()
+        if def
+            .annotations
+            .iter()
+            .any(|annotation| is_extensibility_annotation(&self.hir.context, annotation))
+        {
+            let kind = match extensibility(&self.hir.context, def) {
+                Extensibility::Final => "final",
+                Extensibility::Appendable => "appendable",
+                Extensibility::Mutable => "mutable",
             };
-
-            if ann.args.is_empty() {
-                ann_obj.insert(scoped_name, Value::Object(BTreeMap::new()));
-            } else if ann.args.len() == 1 {
-                ann_obj.insert(scoped_name, self.format_ann_value(&ann.args[0]));
-            } else {
-                let mut args_obj = BTreeMap::new();
-                for arg in &ann.args {
-                    args_obj.insert(arg.ident.name.clone(), self.format_ann_value(arg));
-                }
-                ann_obj.insert(scoped_name, Value::Object(args_obj));
-            }
+            ann_obj.insert("extensibility".to_string(), Value::String(kind.to_string()));
         }
 
         if !ann_obj.is_empty() {
             obj.insert("annotations".to_string(), Value::Object(ann_obj));
         }
+    }
+
+    fn emit_annotations(&self, annotations: &[Ann], obj: &mut BTreeMap<String, Value>) {
+        let ann_obj = self.format_annotations(annotations);
+        if !ann_obj.is_empty() {
+            obj.insert("annotations".to_string(), Value::Object(ann_obj));
+        }
+    }
+
+    fn format_annotations<'b>(
+        &self,
+        annotations: impl IntoIterator<Item = &'b Ann>,
+    ) -> BTreeMap<String, Value> {
+        annotations
+            .into_iter()
+            .map(|ann| {
+                let scoped_name = if let Some(def_id) = ann.def_id {
+                    self.make_scoped_name(def_id)
+                } else {
+                    ann.ident.name.clone()
+                };
+
+                let value = if ann.args.is_empty() {
+                    Value::Object(BTreeMap::new())
+                } else if ann.args.len() == 1 {
+                    self.format_ann_value(&ann.args[0])
+                } else {
+                    let args = ann
+                        .args
+                        .iter()
+                        .map(|arg| (arg.ident.name.clone(), self.format_ann_value(arg)))
+                        .collect();
+                    Value::Object(args)
+                };
+
+                (scoped_name, value)
+            })
+            .collect()
     }
 
     fn format_ann_value(&self, arg: &AnnArg) -> Value {
@@ -730,22 +746,6 @@ impl<'a> JsonGen<'a> {
                 Value::Object(obj)
             }
             Numeric::Null => Value::Null,
-        }
-    }
-
-    fn extensibility_kind(&self, ann: &Ann) -> Option<&'static str> {
-        if let Some(def_id) = ann.def_id
-            && let def = self.hir.context.type_of(def_id)
-            && def.flags.contains(DefFlags::IS_BUILTIN)
-        {
-            match ann.ident.name.to_lowercase().as_str() {
-                "final" => Some("final"),
-                "mutable" => Some("mutable"),
-                "appendable" => Some("appendable"),
-                _ => None,
-            }
-        } else {
-            None
         }
     }
 }

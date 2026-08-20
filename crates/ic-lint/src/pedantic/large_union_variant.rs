@@ -28,8 +28,8 @@
 use ic_diagnostic::Label;
 use ic_hir::ResolvedGraph;
 use ic_hir::hir::{Def, UnionTy};
-use ic_hir::type_size::type_size;
 use ic_hir::visit::Visitor;
+use ic_hir_analysis::type_size::type_size;
 
 use crate::{Category, Lint, LintCtx};
 

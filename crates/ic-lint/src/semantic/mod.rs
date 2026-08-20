@@ -47,6 +47,7 @@ pub mod invalid_inheritance;
 pub mod keywords;
 pub mod multiple_default_cases;
 pub mod oneway;
+pub mod range_bound;
 pub mod recursive_type;
 pub mod redundant_inheritance;
 pub mod union_case_label_range;

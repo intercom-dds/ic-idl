@@ -1661,6 +1661,14 @@ impl<'a> JavaGen<'a> {
         for_switch_case: bool,
     ) -> String {
         let resolved_ty = self.hir.context.resolve_ty(ty);
+        if let TyKind::Adt(def_id) = &resolved_ty.kind
+            && self.is_bitmask(*def_id)
+            && !matches!(value, Numeric::Const(_))
+        {
+            let value = self.hir.context.unsigned_value(value);
+            return format!("java.util.BitSet.valueOf(new long[] {{ 0x{value:X}L }})");
+        }
+
         match value {
             Numeric::Bool(b) => b.to_string(),
             Numeric::Char(c) | Numeric::WChar(c) => escape_char(*c),

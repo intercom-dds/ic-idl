@@ -34,6 +34,9 @@ pub struct UnionCase<'a> {
     pub label: Option<&'a Label>,
 }
 
+/// # Panics
+///
+/// Panics if union discriminator type has no default value.
 #[must_use]
 pub fn default_discriminator(ctx: &Context, union_ty: &UnionTy) -> Numeric {
     default_value(ctx, &union_ty.disc.ty).expect("union discriminator must have a default value")
@@ -92,6 +95,10 @@ pub fn union_case<'a>(
         })
 }
 
+/// # Panics
+///
+/// Panics if union discriminator type has no default value or union has no case for its default
+/// discriminator.
 #[must_use]
 pub fn default_union_case<'a>(ctx: &Context, union_ty: &'a UnionTy) -> UnionCase<'a> {
     let discriminator = default_discriminator(ctx, union_ty);

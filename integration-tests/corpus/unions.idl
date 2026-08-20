@@ -69,6 +69,14 @@ module union_types {
         boolean flag;
     };
 
+    union DefaultDiscriminatorCase switch (long) {
+    case 1:
+    case 0:
+        long value;
+    default:
+        boolean other;
+    };
+
     union ImplicitPrimitiveDisc switch (long) {
     case 1:
         long long_val;

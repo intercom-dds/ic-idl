@@ -410,29 +410,10 @@ impl<'a> RustGen<'a> {
             w!(w, "#[must_use]\n");
         }
 
-        w!(w, "pub fn new() -> Self {\n");
-
-        let def_variant = union_ty
-            .variants
-            .iter()
-            .find(|v| v.is_default)
-            .unwrap_or(&union_ty.variants[0]);
-
-        let variant_name = if def_variant.labels.is_empty() {
-            def_variant.ident.name.clone()
-        } else {
-            let def_label = &def_variant.labels[0];
-            self.union_variant_name(def_variant, def_label, union_ty)
-        };
-        w!(w, "Self::", variant_name);
-        if !matches!(def_variant.ty.kind, TyKind::Null) {
-            w!(w, "(");
-            self.emit_annotated_default_value(&def_variant.ty, &def_variant.annotations, def.id, w);
-            w!(w, ")");
-        }
-        w!(w, "\n}\n\n");
-
         let disc_ty = self.rust_type(&union_ty.disc.ty, def.id);
+        w!(w, "pub fn new() -> Self {\n");
+        w!(w, "Self::from(<", disc_ty, ">::default())\n");
+        w!(w, "}\n\n");
         if !self.options.must_use {
             w!(w, "#[must_use]\n");
         }
@@ -486,8 +467,19 @@ impl<'a> RustGen<'a> {
                 }
             }
         }
-        if union_ty.variants.iter().any(|v| v.is_default) {
-            w!(w, "_ => Self::default(),\n");
+        if let Some(default_variant) = union_ty.variants.iter().find(|v| v.is_default) {
+            w!(w, "_ => Self::", default_variant.ident.name);
+            if !matches!(default_variant.ty.kind, TyKind::Null) {
+                w!(w, "(");
+                self.emit_annotated_default_value(
+                    &default_variant.ty,
+                    &default_variant.annotations,
+                    def.id,
+                    w,
+                );
+                w!(w, ")");
+            }
+            w!(w, ",\n");
         }
         w!(w, "}\n");
         w!(w, "}\n");

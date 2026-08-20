@@ -150,6 +150,14 @@ fn union_equality() {
 }
 
 #[test]
+fn union_default_constructor_uses_default_discriminator_case() {
+    assert_eq!(
+        union_types::DefaultDiscriminatorCase::new(),
+        union_types::DefaultDiscriminatorCase::Value0(0)
+    );
+}
+
+#[test]
 fn union_default_constructor_with_default_case() {
     let u = union_types::IntOrString::new();
     assert_eq!(u.disc(), 0);

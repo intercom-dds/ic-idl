@@ -35,10 +35,17 @@ import union_types.*;
 class UnionsTests {
 
     @Test
-    void intOrString_defaultsToIntVal() {
+    void intOrString_defaultsToDefaultVal() {
         var u = new IntOrString();
-        assertEquals(1, u.getDiscriminator());
-        assertEquals(0, u.getIntVal());
+        assertEquals(0, u.getDiscriminator());
+        assertFalse(u.getDefaultVal());
+    }
+
+    @Test
+    void defaultDiscriminatorCase_defaultsToValue() {
+        var u = new DefaultDiscriminatorCase();
+        assertEquals(0, u.getDiscriminator());
+        assertEquals(0, u.getValue());
     }
 
     @Test
@@ -60,6 +67,7 @@ class UnionsTests {
     @Test
     void intOrString_setDefaultVal() {
         var u = new IntOrString();
+        u.setIntVal(42);
         u.setDefaultVal(true);
         assertEquals(0, u.getDiscriminator());
         assertTrue(u.getDefaultVal());
@@ -113,10 +121,10 @@ class UnionsTests {
     }
 
     @Test
-    void boolSwitch_defaultsToTrue() {
+    void boolSwitch_defaultsToFalse() {
         var u = new BoolSwitch();
-        assertTrue(u.getDiscriminator());
-        assertEquals(0, u.getTrueVal());
+        assertFalse(u.getDiscriminator());
+        assertEquals("", u.getFalseVal());
     }
 
     @Test
@@ -200,10 +208,10 @@ class UnionsTests {
     }
 
     @Test
-    void multiCase_defaultsToDiscriminator1() {
+    void multiCase_defaultsToFlag() {
         var u = new MultiCase();
-        assertEquals(1, u.getDiscriminator());
-        assertEquals(0, u.getSmallVal());
+        assertEquals(0, u.getDiscriminator());
+        assertFalse(u.getFlag());
     }
 
     @Test

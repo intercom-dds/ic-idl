@@ -27,6 +27,7 @@
 
 use ic_emit::printer::{Twine, w};
 use ic_hir::hir::{Def, DefId, DefKind, Ty, TyKind, UnionTy, Variant};
+use ic_hir::union_case::{default_discriminator, default_union_case, unused_discriminator};
 
 use crate::codegen::CppGen;
 
@@ -234,9 +235,11 @@ impl CppGen<'_> {
         w!(w, UNION_DISC_FIELD, " = ");
         if let Some(first_label) = variant.labels.first() {
             self.emit_numeric_value(w, &first_label.value, def_id);
+        } else if let Some(discriminator) = unused_discriminator(&self.hir.context, union_ty) {
+            self.emit_numeric_value(w, &discriminator, def_id);
         } else {
-            let default_val = self.get_default_value_expr(&union_ty.disc.ty, def_id);
-            w!(w, default_val);
+            let default_value = self.get_default_value_expr(&union_ty.disc.ty, def_id);
+            w!(w, default_value);
         }
         w!(w, ";\n");
     }
@@ -304,18 +307,14 @@ impl CppGen<'_> {
         let qualified_name = self.scoped_name(def.id, None);
         w!(w, "inline ", qualified_name, "::", def, "() {\n");
 
-        let init_variant = union_ty
-            .variants
-            .iter()
-            .find(|v| v.is_default)
-            .or_else(|| union_ty.variants.first());
-
-        if let Some(variant) = init_variant {
-            self.emit_set_discriminator_to_variant(w, variant, union_ty, def.id);
-            if !matches!(variant.ty.kind, TyKind::Null) {
-                let default_val = self.get_variant_default_expr(variant, def.id);
-                self.emit_variant_init(w, variant, &default_val);
-            }
+        let case = default_union_case(&self.hir.context, union_ty);
+        let discriminator = default_discriminator(&self.hir.context, union_ty);
+        w!(w, UNION_DISC_FIELD, " = ");
+        self.emit_numeric_value(w, &discriminator, def.id);
+        w!(w, ";\n");
+        if !matches!(case.variant.ty.kind, TyKind::Null) {
+            let default_value = self.get_variant_default_expr(case.variant, def.id);
+            self.emit_variant_init(w, case.variant, &default_value);
         }
         w!(w, "}\n\n");
     }
@@ -617,6 +616,10 @@ impl CppGen<'_> {
             if let Some(first_label) = variant.labels.first() {
                 w!(w, "_d(");
                 self.emit_numeric_value(w, &first_label.value, def.id);
+                w!(w, ");\n");
+            } else if let Some(discriminator) = unused_discriminator(&self.hir.context, union_ty) {
+                w!(w, "_d(");
+                self.emit_numeric_value(w, &discriminator, def.id);
                 w!(w, ");\n");
             } else {
                 w!(w, "_d(", self.get_default_value_expr(&union_ty.disc.ty, def.id), ");\n");

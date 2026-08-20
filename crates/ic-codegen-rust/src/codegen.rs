@@ -32,6 +32,7 @@ use ic_emit::printer::Twine;
 use ic_emit::{File, w};
 use ic_hir::ResolvedGraph;
 use ic_hir::hir::{Def, DefFlags, DefId, DefKind, Numeric, ParamKind, PrimitiveTy, Ty, TyKind};
+use ic_hir::union_case::{default_union_case, unused_discriminator};
 
 use crate::RustOptions;
 use crate::helpers::{
@@ -411,9 +412,17 @@ impl<'a> RustGen<'a> {
         }
 
         let disc_ty = self.rust_type(&union_ty.disc.ty, def.id);
+        let default_case = default_union_case(&self.hir.context, union_ty);
+
         w!(w, "pub fn new() -> Self {\n");
-        w!(w, "Self::from(<", disc_ty, ">::default())\n");
-        w!(w, "}\n\n");
+        self.emit_union_variant_default(
+            default_case.variant,
+            default_case.label,
+            union_ty,
+            def.id,
+            w,
+        );
+        w!(w, "\n}\n\n");
         if !self.options.must_use {
             w!(w, "#[must_use]\n");
         }
@@ -426,7 +435,9 @@ impl<'a> RustGen<'a> {
                     w!(w, "(_)");
                 }
                 w!(w, " => ");
-                self.emit_const_default_value(&union_ty.disc.ty, def.id, w);
+                let discriminator = unused_discriminator(&self.hir.context, union_ty)
+                    .expect("default union variant must have an unused discriminator");
+                self.emit_const_value(&discriminator, &union_ty.disc.ty, def.id, w);
                 w!(w, ",\n");
             } else {
                 for label in &variant.labels {
@@ -468,22 +479,33 @@ impl<'a> RustGen<'a> {
             }
         }
         if let Some(default_variant) = union_ty.variants.iter().find(|v| v.is_default) {
-            w!(w, "_ => Self::", default_variant.ident.name);
-            if !matches!(default_variant.ty.kind, TyKind::Null) {
-                w!(w, "(");
-                self.emit_annotated_default_value(
-                    &default_variant.ty,
-                    &default_variant.annotations,
-                    def.id,
-                    w,
-                );
-                w!(w, ")");
-            }
+            w!(w, "_ => ");
+            self.emit_union_variant_default(default_variant, None, union_ty, def.id, w);
             w!(w, ",\n");
         }
         w!(w, "}\n");
         w!(w, "}\n");
         w!(w, "}\n\n");
+    }
+
+    fn emit_union_variant_default(
+        &self,
+        variant: &ic_hir::hir::Variant,
+        label: Option<&ic_hir::hir::Label>,
+        union_ty: &ic_hir::hir::UnionTy,
+        def_id: DefId,
+        w: &mut Twine,
+    ) {
+        let variant_name = label.map_or_else(
+            || variant.ident.name.clone(),
+            |label| self.union_variant_name(variant, label, union_ty),
+        );
+        w!(w, "Self::", variant_name);
+        if !matches!(variant.ty.kind, TyKind::Null) {
+            w!(w, "(");
+            self.emit_annotated_default_value(&variant.ty, &variant.annotations, def_id, w);
+            w!(w, ")");
+        }
     }
 
     pub(crate) fn union_variant_name(

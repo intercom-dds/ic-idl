@@ -135,6 +135,12 @@ TEST_CASE("union_equality" * doctest::test_suite("unions")) {
     REQUIRE(u1 != u3);
 }
 
+TEST_CASE("union_default_constructor_uses_default_discriminator_case" * doctest::test_suite("unions")) {
+    union_types::DefaultDiscriminatorCase u;
+    REQUIRE(u._d() == 0);
+    REQUIRE(u.value() == 0);
+}
+
 TEST_CASE("union_default_constructor_with_default_case" * doctest::test_suite("unions")) {
     union_types::IntOrString u;
     REQUIRE(u._d() == 0);
@@ -208,7 +214,8 @@ TEST_CASE("union_implicit_primitive_discriminator_default" * doctest::test_suite
 
 TEST_CASE("union_implicit_enum_discriminator_default" * doctest::test_suite("unions")) {
     union_types::ImplicitEnumDisc u;
-    REQUIRE(u._d() == union_types::ValueKind::STRING_KIND);
+    REQUIRE(u._d() == union_types::ValueKind::INT_KIND);
+    REQUIRE(u.int_val() == 0);
 
     u.int_val(123);
     REQUIRE(u._d() == union_types::ValueKind::INT_KIND);

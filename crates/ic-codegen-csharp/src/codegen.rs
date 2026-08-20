@@ -36,6 +36,7 @@ use ic_hir::hir::{
     InterfaceTy, ModuleTy, Numeric, ParamKind, PrimitiveTy, ProtoTy, StructTy, Ty, TyKind, UnionTy,
     ValueTy,
 };
+use ic_hir::union_case::{default_discriminator, default_union_case, unused_discriminator};
 use ic_hir::{Context, ResolvedGraph};
 use ic_vfs::{FileId, SourceMap};
 
@@ -722,9 +723,7 @@ impl<'a> CSharpGen<'a> {
 
         // Default constructor
         w!(w, "\n");
-        w!(w, "public ", name, "()\n");
-        w!(w, "{\n");
-        w!(w, "}\n\n");
+        self.emit_union_default_constructor(w, def, union_ty);
 
         // Copy constructor
         w!(w, "public ", name, "(", name, " other)\n");
@@ -789,6 +788,10 @@ impl<'a> CSharpGen<'a> {
             if let Some(label) = variant.labels.first() {
                 let label_val = self.format_numeric(&label.value, def.id);
                 w!(w, "Discriminator = ", label_val, ";\n");
+            } else if variant.is_default {
+                let discriminator = unused_discriminator(&self.hir.context, union_ty)
+                    .expect("default union variant must have an unused discriminator");
+                w!(w, "Discriminator = ", self.format_numeric(&discriminator, def.id), ";\n");
             }
             w!(w, "_", var_name, " = value;\n");
 
@@ -812,6 +815,28 @@ impl<'a> CSharpGen<'a> {
         self.emit_union_compare_to(w, def, union_ty);
         Self::emit_union_hashcode(w, union_ty);
 
+        w!(w, "}\n\n");
+    }
+
+    fn emit_union_default_constructor(&self, w: &mut Twine, def: &Def, union_ty: &UnionTy) {
+        w!(w, "public ", def.ident.name, "()\n");
+        w!(w, "{\n");
+
+        let default_case = default_union_case(&self.hir.context, union_ty);
+        let discriminator = default_discriminator(&self.hir.context, union_ty);
+        w!(w, "Discriminator = ", self.format_numeric(&discriminator, def.id), ";\n");
+
+        if !matches!(default_case.variant.ty.kind, TyKind::Null) {
+            let initializer = self
+                .default_initializer(&default_case.variant.ty, def.id)
+                .unwrap_or_else(|| {
+                    format!(
+                        "default({})",
+                        self.csharp_type(&default_case.variant.ty, def.id)
+                    )
+                });
+            w!(w, "_", default_case.variant.ident.name, " = ", initializer, ";\n");
+        }
         w!(w, "}\n\n");
     }
 

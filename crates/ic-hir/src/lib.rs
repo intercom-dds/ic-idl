@@ -88,6 +88,8 @@ pub mod merge;
 
 pub mod member_id;
 
+pub mod union_case;
+
 /// HIR rewriting utilities for replacing DefId references.
 pub mod rewrite;
 

@@ -26,6 +26,7 @@
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use ic_hir::hir::{DefId, DefKind, PrimitiveTy, Ty, TyKind};
+use ic_hir_analysis::enum_value::default_enumerator;
 
 use crate::codegen::PyGen;
 use crate::imports::parent_module;
@@ -228,10 +229,10 @@ impl PyGen<'_> {
         let def = self.hir.context.type_of(def_id);
         match &def.kind {
             DefKind::Enum(enum_ty) => {
-                let first = *enum_ty.fields.first()?;
-                let first_def = self.hir.context.type_of(first);
+                let field_id = default_enumerator(&self.hir.context, enum_ty);
+                let field_def = self.hir.context.type_of(field_id);
                 let enum_path = self.py_def(w, def_id);
-                Some(format!("{}.{}", enum_path, first_def.ident.name))
+                Some(format!("{}.{}", enum_path, field_def.ident.name))
             }
             DefKind::Bitmask(bitmask_ty) => {
                 let first = *bitmask_ty.flags.first()?;

@@ -28,28 +28,29 @@
 use ic_emit::printer::Twine;
 use ic_emit::w;
 use ic_hir::hir::{AliasTy, Def, DefKind, Member, TyKind};
-use ic_hir::member_id::member_ids;
+use ic_hir_analysis::annotation::{is_external, is_key, is_must_understand, is_optional};
+use ic_hir_analysis::member_id::member_ids;
 
 use crate::codegen::RustGen;
-use crate::helpers::{is_key, is_must_understand, is_optional, rust_primitive, type_flags};
+use crate::helpers::{rust_primitive, type_flags};
 
 impl RustGen<'_> {
     fn emit_member_flags(&self, member: &Member, w: &mut Twine) {
         let mut flags = Vec::new();
 
-        if is_key(member) {
+        if is_key(&self.hir.context, member) {
             flags.push("IS_KEY");
         }
 
-        if is_optional(member) {
+        if is_optional(&self.hir.context, member) {
             flags.push("IS_OPTIONAL");
         }
 
-        if self.is_shared(member) {
+        if is_external(&self.hir.context, member) {
             flags.push("IS_EXTERNAL");
         }
 
-        if is_must_understand(member) {
+        if is_must_understand(&self.hir.context, member) {
             flags.push("IS_MUST_UNDERSTAND");
         }
 
@@ -187,14 +188,14 @@ impl RustGen<'_> {
         w!(w, "];\n\n");
     }
 
-    pub(crate) fn emit_marshal_impl<'c, I>(def: &Def, members: I, w: &mut Twine)
+    pub(crate) fn emit_marshal_impl<'c, I>(&self, def: &Def, members: I, w: &mut Twine)
     where
         I: IntoIterator<Item = &'c ic_hir::hir::Member>,
     {
         let member_data: Vec<_> = members
             .into_iter()
             .enumerate()
-            .map(|(i, m)| (m.ident.name.clone(), i, is_optional(m)))
+            .map(|(i, m)| (m.ident.name.clone(), i, is_optional(&self.hir.context, m)))
             .collect();
 
         w!(w, "impl ::intercom_cts::Marshal for ", def, " {\n");
@@ -496,7 +497,7 @@ impl RustGen<'_> {
             w!(w, "::intercom_cts::MemberInfo {\n");
             w!(w, "name: \"", orig_variant.ident.name, "\",\n");
             w!(w, "member_id: ", id.to_string(), ",\n");
-            if self.is_shared_annotations(&variant.annotations) {
+            if is_external(&self.hir.context, variant) {
                 w!(w, "flags: ::intercom_cts::MemberFlag::IS_EXTERNAL,\n");
             } else {
                 w!(w, "flags: ::intercom_cts::MemberFlag::nil(),\n");
@@ -593,12 +594,7 @@ impl RustGen<'_> {
                         self.emit_const_value(&label.value, &union_ty.disc.ty, def.id, w);
                         w!(w, " => {\n");
                         w!(w, "let mut value = ");
-                        self.emit_annotated_default_value(
-                            &variant.ty,
-                            &variant.annotations,
-                            def.id,
-                            w,
-                        );
+                        self.emit_annotated_default_value(&variant.ty, variant, def.id, w);
                         w!(w, ";\n");
                         w!(w, "state.decode_variant(&MEMBER_INFO[", info_idx.to_string(), "], &mut value)?;\n");
                         w!(w, "Self::", variant_name, "(value)\n");
@@ -622,7 +618,7 @@ impl RustGen<'_> {
                 } else {
                     w!(w, "_ => {\n");
                     w!(w, "let mut value = ");
-                    self.emit_annotated_default_value(&variant.ty, &variant.annotations, def.id, w);
+                    self.emit_annotated_default_value(&variant.ty, variant, def.id, w);
                     w!(w, ";\n");
                     w!(w, "state.decode_variant(&MEMBER_INFO[", info_idx.to_string(), "], &mut value)?;\n");
                     w!(w, "Self::", variant_name, "(value)\n");

@@ -2,7 +2,7 @@
 source: crates/ic-lint/tests/range_bound.rs
 expression: test_lint_hir(source)
 ---
-! range-bound: @min value -1 is less than type minimum 0
+⨯ range-bound: @min value -1 is less than type minimum 0
   @ test.idl:4:10
 
  2 │ module MyModule {

@@ -32,9 +32,10 @@ use std::path::PathBuf;
 use ic_emit::File;
 use ic_hir::ResolvedGraph;
 use ic_hir::hir::{
-    AliasTy, Ann, BitmaskTy, ConstTy, Def, DefFlags, DefId, DefKind, EnumTy, ExceptTy, InterfaceTy,
-    Numeric, ParamKind, ProtoTy, StructTy, Ty, TyKind, UnionTy, ValueTy,
+    AliasTy, BitmaskTy, ConstTy, Def, DefId, DefKind, EnumTy, ExceptTy, InterfaceTy, Numeric,
+    ParamKind, ProtoTy, StructTy, Ty, TyKind, UnionTy, ValueTy,
 };
+use ic_hir_analysis::annotation::is_optional;
 use ic_vfs::SourceMap;
 
 use crate::imports::{ImportContext, collect_imports, is_exportable};
@@ -440,17 +441,6 @@ impl<'a> PyGen<'a> {
         deferred
     }
 
-    fn is_optional(&self, annotations: &[Ann]) -> bool {
-        annotations.iter().any(|ann| {
-            if let Some(def_id) = ann.def_id {
-                let def = self.hir.context.type_of(def_id);
-                def.flags.contains(DefFlags::IS_BUILTIN) && def.ident.name == "optional"
-            } else {
-                false
-            }
-        })
-    }
-
     fn emit_struct(&self, w: &mut PyWriter, def: &Def, struct_ty: &StructTy) {
         py!(w, "@_dataclasses_.dataclass(slots=True, order=True)\n");
         py!(w, "class ", def);
@@ -467,7 +457,7 @@ impl<'a> PyGen<'a> {
             py!(w, "pass\n");
         } else {
             for member in &struct_ty.members {
-                let is_optional = self.is_optional(&member.annotations);
+                let is_optional = is_optional(&self.hir.context, member);
                 let ty_str = if is_optional {
                     format!("{} | None", self.py_type(w, &member.ty))
                 } else {

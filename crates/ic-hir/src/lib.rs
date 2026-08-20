@@ -71,9 +71,6 @@ pub use crate::ctx::Context;
 /// Diagnostic collection for HIR lowering.
 pub mod diagnostics;
 
-/// Annotation processing and validation.
-pub mod annotation;
-
 /// HIR tree folding for transformations.
 pub mod fold;
 
@@ -86,18 +83,11 @@ pub mod keywords;
 /// Merging multiple HIR graphs into a single graph.
 pub mod merge;
 
-pub mod member_id;
-
-pub mod union_case;
-
 /// HIR rewriting utilities for replacing DefId references.
 pub mod rewrite;
 
 /// Scope resolution and name lookup utilities.
 pub mod scope;
-
-/// Type size calculations for fixed-size types.
-pub mod type_size;
 
 /// HIR validation utilities.
 pub mod validate;

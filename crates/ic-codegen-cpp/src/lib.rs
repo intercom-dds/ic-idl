@@ -71,10 +71,6 @@ pub struct CppOptions {
     #[option(long)]
     pub no_header_follow: bool,
 
-    /// Do not generate ostream operators for serialization
-    #[option(long)]
-    pub no_stream_op: bool,
-
     /// Use const char* instead of `std::string_view` for constants
     #[option(long)]
     pub char_ptr_constants: bool,

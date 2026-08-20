@@ -32,9 +32,10 @@ use ic_emit::File;
 use ic_emit::printer::{Twine, w};
 use ic_hir::ResolvedGraph;
 use ic_hir::hir::{
-    AliasTy, Attribute, BitmaskTy, ConstTy, Def, DefFlags, DefId, DefKind, EnumTy, InterfaceTy,
-    Member, Numeric, ParamKind, Parameter, PrimitiveTy, ProtoTy, Ty, TyKind, UnionTy, ValueTy,
+    AliasTy, Attribute, BitmaskTy, ConstTy, Def, DefId, DefKind, EnumTy, InterfaceTy, Member,
+    Numeric, ParamKind, Parameter, PrimitiveTy, ProtoTy, Ty, TyKind, UnionTy, ValueTy,
 };
+use ic_hir_analysis::annotation::is_optional;
 use ic_vfs::SourceMap;
 
 use crate::deps::collect_file_dependencies;
@@ -113,17 +114,6 @@ impl<'a> CGen<'a> {
         self.c_declaration(ty, name, false)
     }
 
-    fn is_optional(&self, member: &Member) -> bool {
-        member.annotations.iter().any(|ann| {
-            if let Some(def_id) = ann.def_id {
-                let def = self.hir.context.type_of(def_id);
-                def.flags.contains(DefFlags::IS_BUILTIN) && def.ident.name == "optional"
-            } else {
-                false
-            }
-        })
-    }
-
     fn is_pointer_type(&self, ty: &Ty) -> bool {
         matches!(
             self.hir.context.resolve_ty(ty).kind,
@@ -143,7 +133,7 @@ impl<'a> CGen<'a> {
     }
 
     fn emit_member(&self, w: &mut Twine, member: &Member) {
-        let declaration = if self.is_optional(member) {
+        let declaration = if is_optional(&self.hir.context, member) {
             self.c_optional_member(&member.ty, &member.ident.name)
         } else {
             self.c_member(&member.ty, &member.ident.name)

@@ -1,0 +1,13 @@
+---
+source: crates/ic-lint/tests/range_bound.rs
+expression: test_lint_hir(source)
+---
+⨯ range-bound: @range argument 'min' must be a number
+  @ test.idl:4:16
+
+ 2 │ module MyModule {
+ 3 │     struct BadRange {
+ 4 │         @range(min="not a number", max=1.0) double value;
+   │                ˆˆˆ must be a number
+ 5 │     };
+ 6 │ };

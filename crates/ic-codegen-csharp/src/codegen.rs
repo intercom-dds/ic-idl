@@ -31,13 +31,17 @@ use std::path::PathBuf;
 
 use ic_emit::File;
 use ic_emit::printer::{Twine, w};
+use ic_hir::ResolvedGraph;
 use ic_hir::hir::{
     Ann, Attribute, BitmaskTy, ConstTy, Def, DefFlags, DefId, DefKind, EnumTy, ExceptTy,
     InterfaceTy, ModuleTy, Numeric, ParamKind, PrimitiveTy, ProtoTy, StructTy, Ty, TyKind, UnionTy,
     ValueTy,
 };
-use ic_hir::union_case::{default_discriminator, default_union_case, unused_discriminator};
-use ic_hir::{Context, ResolvedGraph};
+use ic_hir_analysis::annotation::doc;
+use ic_hir_analysis::enum_value::default_enumerator;
+use ic_hir_analysis::union_case::{
+    default_discriminator, default_union_case, unused_discriminator,
+};
 use ic_vfs::{FileId, SourceMap};
 
 use crate::CSharpOptions;
@@ -376,7 +380,8 @@ impl<'a> CSharpGen<'a> {
                 let def = self.hir.context.type_of(*def_id);
                 match &def.kind {
                     DefKind::Enum(enum_ty) => {
-                        Some(self.scoped_name(enum_ty.fields[0], relative_def))
+                        let field_id = default_enumerator(&self.hir.context, enum_ty);
+                        Some(self.scoped_name(field_id, relative_def))
                     }
                     DefKind::Bitmask(_) => None,
                     // Valuetypes and interfaces are abstract, can't instantiate
@@ -392,20 +397,12 @@ impl<'a> CSharpGen<'a> {
     }
 
     fn emit_doc_comments(&self, w: &mut Twine, annotations: &[Ann]) {
-        for ann in annotations {
-            if !is_doc(&self.hir.context, ann) {
+        for annotation in annotations {
+            let Some(text) = doc(&self.hir.context, annotation) else {
                 continue;
-            }
+            };
 
-            for doc in &ann.args {
-                if let Some(ty) = &doc.ty
-                    && let TyKind::String { .. } = ty.kind
-                    && let Some(str) = self.hir.context.string_value(&doc.value)
-                {
-                    let text = str.trim_end();
-                    w!(w, "/// <summary>", text, "</summary>\n");
-                }
-            }
+            w!(w, "/// <summary>", text.trim_end(), "</summary>\n");
         }
     }
 
@@ -1363,17 +1360,6 @@ impl<'a> CSharpGen<'a> {
 
         result
     }
-}
-
-/// Check if an annotation is a documentation annotation
-fn is_doc(ctx: &Context, ann: &Ann) -> bool {
-    if let Some(def_id) = ann.def_id {
-        let def = ctx.type_of(def_id);
-        if def.flags.contains(DefFlags::IS_BUILTIN) && def.ident.name == "doc" {
-            return true;
-        }
-    }
-    false
 }
 
 /// Check if a type can be used with `const` in C#

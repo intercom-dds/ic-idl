@@ -133,6 +133,12 @@ def test_map_default_values(generated_modules: dict[str, ModuleType]) -> None:
     assert m.map_values == {"one": 1, "two": 2}
 
 
+def test_enum_default_literal_value(generated_modules: dict[str, ModuleType]) -> None:
+    dt = generated_modules["default_types"]
+    e = dt.EnumDefaults()
+    assert e.priority_empty == dt.Priority.MEDIUM
+
+
 @pytest.mark.xfail(reason="@default annotation ignored in Python codegen", strict=True)
 def test_enum_field_default(generated_modules: dict[str, ModuleType]) -> None:
     dt = generated_modules["default_types"]

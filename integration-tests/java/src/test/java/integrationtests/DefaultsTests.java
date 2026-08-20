@@ -171,7 +171,7 @@ class DefaultsTests {
     @Test
     void enum_defaults_exist() {
         var e = new EnumDefaults();
-        assertNotNull(e.getPriorityEmpty());
+        assertEquals(Priority.MEDIUM, e.getPriorityEmpty());
         assertNotNull(e.getPriorityHigh());
     }
 }

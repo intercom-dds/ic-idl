@@ -36,6 +36,8 @@ fn valid_range() {
 module MyModule {
     struct Temperature {
         @range(min=-273, max=1000) long celsius;
+        @range(min='a', max='z') char lowercase;
+        @range(min=-1.5, max=1.5) double normalized;
     };
 };
 ";
@@ -84,6 +86,32 @@ module MyModule {
     };
 };
 ";
+
+    assert_snapshot!(test_lint_hir(source));
+}
+
+#[test]
+fn inverted_float_range() {
+    let source = r"
+module MyModule {
+    struct BadRange {
+        @range(min=1.5, max=-1.5) double value;
+    };
+};
+";
+
+    assert_snapshot!(test_lint_hir(source));
+}
+
+#[test]
+fn malformed_float_range() {
+    let source = r#"
+module MyModule {
+    struct BadRange {
+        @range(min="not a number", max=1.0) double value;
+    };
+};
+"#;
 
     assert_snapshot!(test_lint_hir(source));
 }
@@ -150,11 +178,7 @@ module MyModule {
 };
 ";
 
-    let output = test_lint_hir(source);
-    assert!(
-        output.is_empty(),
-        "Expected no warnings for multiple ranges, but got: {output}"
-    );
+    assert_snapshot!(test_lint_hir(source));
 }
 
 #[test]

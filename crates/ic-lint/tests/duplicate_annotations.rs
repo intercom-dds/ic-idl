@@ -30,20 +30,20 @@ mod common;
 use common::{lint_hir, test_lint_hir};
 use insta::assert_snapshot;
 
-use crate::common::test_lint;
-
 #[test]
-#[ignore = "DuplicateAnnotations needs to be a HIR lint after annotation resolution"]
 fn valid_annotations() {
-    let source = r#"
-@id(1)
-@version("1.0")
+    let source = r"
+@annotation First {};
+@annotation Second {};
+
+@First
+@Second
 struct Foo {
     @optional
     @min(0)
     long field;
 };
-"#;
+";
 
     let report = lint_hir(source);
     assert!(report.errors.is_empty());
@@ -51,21 +51,19 @@ struct Foo {
 }
 
 #[test]
-#[ignore = "DuplicateAnnotations needs to be a HIR lint after annotation resolution"]
 fn duplicate_annotation_on_struct() {
     let source = r"
-@id(1)
-@id(2)
+@empty
+@empty
 struct Foo {
     long field;
 };
 ";
 
-    assert_snapshot!(test_lint(source));
+    assert_snapshot!(test_lint_hir(source));
 }
 
 #[test]
-#[ignore = "DuplicateAnnotations needs to be a HIR lint after annotation resolution"]
 fn duplicate_annotation_on_field() {
     let source = r"
 struct Foo {
@@ -76,11 +74,10 @@ struct Foo {
 };
 ";
 
-    assert_snapshot!(test_lint(source));
+    assert_snapshot!(test_lint_hir(source));
 }
 
 #[test]
-#[ignore = "DuplicateAnnotations needs to be a HIR lint after annotation resolution"]
 fn duplicate_on_interface_method() {
     let source = r"
 interface Service {
@@ -90,11 +87,46 @@ interface Service {
 };
 ";
 
-    assert_snapshot!(test_lint(source));
+    assert_snapshot!(test_lint_hir(source));
 }
 
 #[test]
-fn duplicate_qualified_annotation() {
+fn duplicate_annotations_on_all_hir_targets() {
+    let source = r"
+@annotation Meta {
+    @ext::suppress @ext::suppress long value;
+};
+union Choice switch (@ext::suppress @ext::suppress long) {
+    case 0: @ext::suppress @ext::suppress long value;
+};
+bitset Bits {
+    @ext::suppress @ext::suppress bitfield<1> value;
+};
+interface Service {
+    @ext::suppress @ext::suppress attribute long value;
+};
+";
+
+    assert_snapshot!(test_lint_hir(source));
+}
+
+#[test]
+fn duplicate_semantic_annotations() {
+    let source = r#"
+@final
+@extensibility(MUTABLE)
+struct Foo {
+    @id(1)
+    @hashid("value")
+    long value;
+};
+"#;
+
+    assert_snapshot!(test_lint_hir(source));
+}
+
+#[test]
+fn duplicate_user_annotation_is_valid() {
     let source = r"
 @annotation MyAnn {
     long value;
@@ -107,5 +139,22 @@ struct Foo {
 };
 ";
 
-    assert_snapshot!(test_lint_hir(source));
+    assert!(test_lint_hir(source).is_empty());
+}
+
+#[test]
+fn repeatable_builtin_annotations_are_valid() {
+    let source = r#"
+@doc("first")
+@doc("second")
+@verbatim(text = "first")
+@verbatim(text = "second")
+@derive("First")
+@derive("Second")
+struct Foo {
+    long field;
+};
+"#;
+
+    assert!(test_lint_hir(source).is_empty());
 }

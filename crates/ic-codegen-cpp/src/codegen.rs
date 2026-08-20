@@ -32,11 +32,12 @@ use std::path::PathBuf;
 use ic_emit::File;
 use ic_emit::printer::{Twine, w};
 use ic_hir::ResolvedGraph;
-use ic_hir::annotation::{Optional, find_annotation};
 use ic_hir::hir::{
-    Ann, Decl, Def, DefId, DefKind, InterfaceTy, Member, ModuleTy, Numeric, ParamKind, PrimitiveTy,
+    Decl, Def, DefId, DefKind, InterfaceTy, Member, ModuleTy, Numeric, ParamKind, PrimitiveTy,
     ProtoTy, Ty, TyKind,
 };
+use ic_hir_analysis::annotation::{bit_bound, default_value, is_optional};
+use ic_hir_analysis::enum_value::default_enumerator;
 use ic_vfs::{FileId, SourceMap};
 
 use crate::CppOptions;
@@ -292,36 +293,14 @@ impl<'a> CppGen<'a> {
         }
     }
 
-    pub fn is_optional(member: &Member) -> bool {
-        find_annotation::<Optional>(&member.annotations, "optional")
-            .and_then(Result::ok)
-            .is_some_and(|opt| opt.value)
-    }
-
-    pub fn bit_bound(annotations: &[Ann]) -> Option<&Numeric> {
-        annotations
-            .iter()
-            .find(|ann| ann.ident.name == "bit_bound")
-            .and_then(|ann| ann.args.first())
-            .map(|arg| &arg.value)
-    }
-
-    pub fn default_value(annotations: &[Ann]) -> Option<&Numeric> {
-        annotations
-            .iter()
-            .find(|ann| ann.ident.name == "default")
-            .and_then(|ann| ann.args.first())
-            .map(|arg| &arg.value)
-    }
-
     pub fn emit_member(&self, w: &mut Twine, member: &Member, def_id: DefId) {
         let ty_str = self.cpp_type(&member.ty, def_id);
 
-        if Self::is_optional(member) {
+        if is_optional(&self.hir.context, member) {
             w!(w, "::std::optional<", ty_str, "> ", member.ident.name, ";\n");
         } else {
             w!(w, ty_str, " ", member.ident.name);
-            if let Some(default) = Self::default_value(&member.annotations) {
+            if let Some(default) = default_value(&self.hir.context, member) {
                 let is_array = matches!(default, Numeric::Array { .. });
                 if !is_array {
                     w!(w, "{");
@@ -520,22 +499,9 @@ impl<'a> CppGen<'a> {
             TyKind::Adt(def_id) => {
                 let def = self.hir.context.definitions.get(*def_id);
                 if let DefKind::Enum(enum_ty) = &def.kind {
-                    if let Some(default_member) = enum_ty
-                        .fields
-                        .iter()
-                        .map(|f| self.hir.context.definitions.get(f))
-                        .find(|f| {
-                            f.annotations
-                                .iter()
-                                .any(|a| a.ident.name == "default_literal")
-                        })
-                    {
-                        let name = self.scoped_name(default_member.id, relative_to_def_id);
-                        w!(w, name);
-                    } else if let Some(first) = enum_ty.fields.first() {
-                        let name = self.scoped_name(*first, relative_to_def_id);
-                        w!(w, name);
-                    }
+                    let field_id = default_enumerator(&self.hir.context, enum_ty);
+                    let name = self.scoped_name(field_id, relative_to_def_id);
+                    w!(w, name);
                 }
             }
             _ => {}
@@ -570,7 +536,7 @@ impl<'a> CppGen<'a> {
             DefKind::Union(_) => w!(w, "static constexpr bool is_union = true;\n"),
             DefKind::Enum(enum_ty) => {
                 w!(w, "static constexpr bool is_enum = true;\n");
-                if let Some(bit_bound) = Self::bit_bound(&def.annotations) {
+                if let Some(bit_bound) = bit_bound(&self.hir.context, def) {
                     w!(w, "using bit_bound = std::integral_constant<uint32_t, ");
                     self.emit_numeric_value(w, bit_bound, def.id);
                     w!(w, ">;\n");
@@ -582,7 +548,7 @@ impl<'a> CppGen<'a> {
                 w!(w, "using bit_bound = std::integral_constant<uint32_t, ");
                 self.emit_numeric_value(
                     w,
-                    Self::bit_bound(&def.annotations)
+                    bit_bound(&self.hir.context, def)
                         .unwrap_or(&Numeric::UInt64((bitmask.ty.size() * 8) as u64)),
                     def.id,
                 );

@@ -33,9 +33,10 @@ use ic_emit::File;
 use ic_emit::printer::{Twine, w};
 use ic_hir::ResolvedGraph;
 use ic_hir::hir::{
-    AliasTy, Ann, ConstTy, Def, DefFlags, DefId, DefKind, ExceptTy, InterfaceTy, ModuleTy, Numeric,
-    ParamKind, PrimitiveTy, ProtoTy, StructTy, Ty, TyKind, UnionTy, ValueTy,
+    AliasTy, ConstTy, Def, DefId, DefKind, ExceptTy, InterfaceTy, ModuleTy, Numeric, ParamKind,
+    PrimitiveTy, ProtoTy, StructTy, Ty, TyKind, UnionTy, ValueTy,
 };
+use ic_hir_analysis::annotation::is_optional;
 
 use crate::TypeScriptOptions;
 
@@ -316,17 +317,6 @@ impl<'a> TsGen<'a> {
         }
     }
 
-    fn is_optional(&self, annotations: &[Ann]) -> bool {
-        annotations.iter().any(|ann| {
-            if let Some(def_id) = ann.def_id {
-                let def = self.hir.context.type_of(def_id);
-                def.flags.contains(DefFlags::IS_BUILTIN) && def.ident.name == "optional"
-            } else {
-                false
-            }
-        })
-    }
-
     fn format_numeric(&self, value: &Numeric, def_id: DefId) -> String {
         match value {
             Numeric::Null | Numeric::Union { .. } => "null".to_string(),
@@ -428,7 +418,7 @@ impl<'a> TsGen<'a> {
 
         for member in &struct_ty.members {
             let ty_str = self.ts_type(&member.ty, def.id);
-            let optional = if self.is_optional(&member.annotations) {
+            let optional = if is_optional(&self.hir.context, member) {
                 "?"
             } else {
                 ""

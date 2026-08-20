@@ -40,5 +40,6 @@ workspace = true
 ic-cli = { path = "../ic-cli" }
 ic-emit = { path = "../ic-emit" }
 ic-hir = { path = "../ic-hir" }
+ic-hir-analysis = { path = "../ic-hir-analysis" }
 ic-vfs = { path = "../ic-vfs" }
 intercom-cts.workspace = true

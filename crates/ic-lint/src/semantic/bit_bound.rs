@@ -25,12 +25,11 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#![allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
-
 use ic_diagnostic::Label;
 use ic_hir::ResolvedGraph;
-use ic_hir::hir::{Ann, Def, Numeric, PrimitiveTy};
+use ic_hir::hir::Def;
 use ic_hir::visit::Visitor;
+use ic_hir_analysis::annotation::bit_bound_annotation;
 
 use crate::{Category, Lint, LintCtx};
 
@@ -49,7 +48,7 @@ impl<'a> Lint<'a> for BitBound<'a> {
     }
 
     fn description() -> &'static str {
-        "Errors when @bit position exceeds type bit width"
+        "Errors when @bit_bound is outside the supported range"
     }
 
     fn check_hir(ctx: &'a LintCtx<'_>, hir: &ResolvedGraph) {
@@ -59,43 +58,33 @@ impl<'a> Lint<'a> for BitBound<'a> {
 }
 
 impl BitBound<'_> {
-    fn check_bit_annotation(&mut self, ann: &Ann, type_bits: u32) {
-        let name = &ann.ident.name;
-        if name != "bit" {
+    fn check_bit_bound(&self, def: &Def) {
+        let Some(annotation) = bit_bound_annotation(&self.hir.context, def) else {
             return;
-        }
+        };
+        let Some(argument) = annotation.args.first() else {
+            return;
+        };
 
-        if let Some(bit_pos) = Self::get_bit_position(ann)
-            && bit_pos >= type_bits
-        {
-            let diag = self.ctx.diag_span(
-                Self::name(),
-                Self::category(),
-                format!("@bit({bit_pos}) exceeds type bit width of {type_bits}"),
-                Label::new(ann.ident.span).message("bit position out of bounds"),
-            );
-            Self::report(self.ctx, diag);
-        }
-    }
+        let bit_bound = self.hir.context.unsigned_value(&argument.value);
+        let message = if bit_bound == 0 {
+            Some("@bit_bound must be at least 1".to_string())
+        } else if bit_bound > 64 {
+            Some(format!("@bit_bound({bit_bound}) exceeds maximum of 64"))
+        } else {
+            None
+        };
+        let Some(message) = message else {
+            return;
+        };
 
-    fn get_bit_position(ann: &Ann) -> Option<u32> {
-        ann.args.first().and_then(|arg| match &arg.value {
-            Numeric::Int32(v) if *v >= 0 => Some(*v as u32),
-            Numeric::UInt32(v) => Some(*v),
-            Numeric::Int64(v) if u32::try_from(*v).is_ok() => Some(*v as u32),
-            Numeric::UInt64(v) if u32::try_from(*v).is_ok() => Some(*v as u32),
-            _ => None,
-        })
-    }
-
-    fn get_type_bits(ty: PrimitiveTy) -> Option<u32> {
-        match ty {
-            PrimitiveTy::UInt8 | PrimitiveTy::Int8 => Some(8),
-            PrimitiveTy::UInt16 | PrimitiveTy::Int16 => Some(16),
-            PrimitiveTy::UInt32 | PrimitiveTy::Int32 => Some(32),
-            PrimitiveTy::UInt64 | PrimitiveTy::Int64 => Some(64),
-            _ => None,
-        }
+        let diag = self.ctx.diag_span(
+            Self::name(),
+            Self::category(),
+            message,
+            Label::new(argument.ident.span).message("bit bound out of bounds"),
+        );
+        Self::report(self.ctx, diag);
     }
 }
 
@@ -104,15 +93,13 @@ impl<'a> Visitor<'a> for BitBound<'a> {
         &self.hir.context
     }
 
-    fn visit_bitmask(&mut self, _def: &'a Def, data: &'a ic_hir::hir::BitmaskTy) {
-        if let Some(type_bits) = Self::get_type_bits(data.ty) {
-            for &flag_id in &data.flags {
-                let flag_def = self.hir.context.definitions.get(flag_id);
-                for ann in &flag_def.annotations {
-                    self.check_bit_annotation(ann, type_bits);
-                }
-            }
-        }
+    fn visit_enum(&mut self, def: &'a Def, data: &'a ic_hir::hir::EnumTy) {
+        self.check_bit_bound(def);
+        ic_hir::visit::walk_enum(self, data);
+    }
+
+    fn visit_bitmask(&mut self, def: &'a Def, data: &'a ic_hir::hir::BitmaskTy) {
+        self.check_bit_bound(def);
         ic_hir::visit::walk_bitmask(self, data);
     }
 }

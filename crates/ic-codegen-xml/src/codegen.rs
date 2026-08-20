@@ -30,9 +30,14 @@ use std::collections::BTreeMap;
 use ic_emit::File;
 use ic_hir::ResolvedGraph;
 use ic_hir::hir::{
-    AliasTy, Ann, Def, DefId, DefKind, EnumTy, Member, Numeric, PrimitiveTy, StructTy, Ty, TyKind,
-    UnionTy, Variant,
+    AliasTy, Ann, Def, DefFlags, DefId, DefKind, EnumTy, Member, Numeric, PrimitiveTy, StructTy,
+    Ty, TyKind, UnionTy, Variant,
 };
+use ic_hir_analysis::annotation::{
+    Extensibility, MemberLike, extensibility, is_external, is_key, is_must_understand, is_nested,
+    is_non_serialized, is_optional,
+};
+use ic_hir_analysis::member_id::{Autoid, effective_autoid};
 use ic_vfs::{FileId, SourceMap};
 
 use crate::writer::XmlWriter;
@@ -128,7 +133,7 @@ impl<'a> XmlGen<'a> {
 
     fn emit_module(&self, def: &Def, module: &ic_hir::hir::ModuleTy, w: &mut XmlWriter) {
         let mut attrs = vec![("name".to_string(), def.ident.name.clone())];
-        let type_attrs = type_attrs(def);
+        let type_attrs = type_attrs(&self.hir.context, def);
         attrs.extend(type_attrs);
 
         let attrs_ref: Vec<_> = attrs
@@ -162,7 +167,7 @@ impl<'a> XmlGen<'a> {
             let base_type = self.make_scoped_name(parent.def_id);
             attrs.push(("baseType".to_string(), base_type));
         }
-        let type_attrs = type_attrs(def);
+        let type_attrs = type_attrs(&self.hir.context, def);
         attrs.extend(type_attrs);
 
         let attrs_ref: Vec<_> = attrs
@@ -179,7 +184,7 @@ impl<'a> XmlGen<'a> {
 
     fn emit_union(&self, def: &Def, union_ty: &UnionTy, w: &mut XmlWriter) {
         let mut attrs = vec![("name".to_string(), def.ident.name.clone())];
-        let type_attrs = type_attrs(def);
+        let type_attrs = type_attrs(&self.hir.context, def);
         attrs.extend(type_attrs);
 
         let attrs_ref: Vec<_> = attrs
@@ -216,7 +221,7 @@ impl<'a> XmlGen<'a> {
 
             let mut attrs = vec![("name".to_string(), variant.ident.name.clone())];
             self.add_type_attrs(&variant.ty, &mut attrs);
-            let member_attrs = member_attrs(&variant.annotations);
+            let member_attrs = member_attrs(&self.hir.context, variant);
             attrs.extend(member_attrs);
 
             let attrs_ref: Vec<_> = attrs
@@ -296,7 +301,7 @@ impl<'a> XmlGen<'a> {
     fn emit_member(&self, member: &Member, w: &mut XmlWriter) {
         let mut attrs = vec![("name".to_string(), member.ident.name.clone())];
         self.add_type_attrs(&member.ty, &mut attrs);
-        let member_attrs = member_attrs(&member.annotations);
+        let member_attrs = member_attrs(&self.hir.context, member);
         attrs.extend(member_attrs);
 
         let attrs_ref: Vec<_> = attrs
@@ -316,7 +321,7 @@ impl<'a> XmlGen<'a> {
     ) {
         let has_annotations = annotations
             .iter()
-            .any(|ann| !should_skip_annotation(&ann.ident.name));
+            .any(|annotation| !should_skip_annotation(&self.hir.context, annotation));
 
         if has_annotations {
             w.element(element_name, attrs, |w| {
@@ -329,7 +334,7 @@ impl<'a> XmlGen<'a> {
 
     fn emit_annotations(&self, annotations: &[Ann], w: &mut XmlWriter) {
         for ann in annotations {
-            if should_skip_annotation(&ann.ident.name) {
+            if should_skip_annotation(&self.hir.context, ann) {
                 continue;
             }
 
@@ -463,61 +468,66 @@ impl<'a> XmlGen<'a> {
     }
 }
 
-fn type_attrs(def: &Def) -> Vec<(String, String)> {
-    let mut attrs = Vec::new();
-
-    if let Some(ext) = annotation_str(def, "extensibility")
-        && ext != "appendable"
-    {
-        attrs.push(("extensibility".to_string(), ext));
+fn type_attrs(ctx: &ic_hir::Context, def: &Def) -> Vec<(String, String)> {
+    if !matches!(def.kind, DefKind::Struct(_) | DefKind::Union(_)) {
+        return Vec::new();
     }
 
-    if has_annotation(def, "nested") {
+    let mut attrs = Vec::new();
+
+    match extensibility(ctx, def) {
+        Extensibility::Final => attrs.push(("extensibility".to_string(), "final".to_string())),
+        Extensibility::Mutable => attrs.push(("extensibility".to_string(), "mutable".to_string())),
+        Extensibility::Appendable => {}
+    }
+
+    if is_nested(ctx, def) {
         attrs.push(("nested".to_string(), "true".to_string()));
     }
 
-    if let Some(autoid) = annotation_str(def, "autoid")
-        && autoid == "hash"
-    {
+    if effective_autoid(ctx, def.id) == Autoid::Hash {
         attrs.push(("autoid".to_string(), "hash".to_string()));
-    }
-
-    if has_annotation(def, "must_understand") {
-        attrs.push(("mustUnderstand".to_string(), "true".to_string()));
     }
 
     attrs
 }
 
-fn should_skip_annotation(name: &str) -> bool {
-    matches!(
-        name,
-        "must_understand"
-            | "doc"
-            | "documentation"
-            | "extensibility"
-            | "mutable"
-            | "final"
-            | "appendable"
-            | "key"
-            | "nested"
-            | "bit_bound"
-            | "autoid"
-    )
+fn should_skip_annotation(ctx: &ic_hir::Context, annotation: &Ann) -> bool {
+    annotation_name(ctx, annotation).is_some_and(|name| {
+        matches!(
+            name,
+            "must_understand"
+                | "doc"
+                | "documentation"
+                | "extensibility"
+                | "mutable"
+                | "final"
+                | "appendable"
+                | "key"
+                | "nested"
+                | "bit_bound"
+                | "autoid"
+        )
+    })
 }
 
-fn member_attrs(annotations: &[Ann]) -> Vec<(String, String)> {
+fn member_attrs(ctx: &ic_hir::Context, member: &impl MemberLike) -> Vec<(String, String)> {
     let mut attrs = Vec::new();
 
-    for ann in annotations {
-        match ann.ident.name.as_str() {
-            "key" => attrs.push(("key".to_string(), "true".to_string())),
-            "optional" => attrs.push(("optional".to_string(), "true".to_string())),
-            "external" => attrs.push(("external".to_string(), "true".to_string())),
-            "must_understand" => attrs.push(("mustUnderstand".to_string(), "true".to_string())),
-            "non_serialized" => attrs.push(("nonSerialized".to_string(), "true".to_string())),
-            _ => {}
-        }
+    if is_key(ctx, member) {
+        attrs.push(("key".to_string(), "true".to_string()));
+    }
+    if is_optional(ctx, member) {
+        attrs.push(("optional".to_string(), "true".to_string()));
+    }
+    if is_external(ctx, member) {
+        attrs.push(("external".to_string(), "true".to_string()));
+    }
+    if is_must_understand(ctx, member) {
+        attrs.push(("mustUnderstand".to_string(), "true".to_string()));
+    }
+    if is_non_serialized(ctx, member) {
+        attrs.push(("nonSerialized".to_string(), "true".to_string()));
     }
 
     attrs
@@ -550,24 +560,11 @@ fn is_basic_type(ty: &Ty) -> bool {
     )
 }
 
-fn has_annotation(def: &Def, name: &str) -> bool {
-    def.annotations.iter().any(|ann| ann.ident.name == name)
-}
-
-fn annotation_str(def: &Def, name: &str) -> Option<String> {
-    def.annotations.iter().find_map(|ann| {
-        if ann.ident.name == name {
-            ann.args.first().and_then(|arg| {
-                if let Numeric::String(value) | Numeric::WString(value) = &arg.value {
-                    Some(value.clone())
-                } else {
-                    None
-                }
-            })
-        } else {
-            None
-        }
-    })
+fn annotation_name<'a>(ctx: &'a ic_hir::Context, annotation: &Ann) -> Option<&'a str> {
+    let def = ctx.base_def_of(annotation.def_id?);
+    def.flags
+        .contains(DefFlags::IS_BUILTIN)
+        .then_some(def.ident.name.as_str())
 }
 
 fn bit_bound_for_type(prim: PrimitiveTy) -> &'static str {

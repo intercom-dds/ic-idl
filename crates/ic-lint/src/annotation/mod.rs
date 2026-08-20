@@ -30,6 +30,5 @@ pub mod case;
 pub mod decl;
 pub mod deprecated_annotations;
 pub mod placement;
-pub mod range_bound;
 pub mod topic_nested;
 pub mod unknown;

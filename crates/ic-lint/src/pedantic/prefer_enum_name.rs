@@ -34,6 +34,7 @@ use ic_diagnostic::Label;
 use ic_hir::ResolvedGraph;
 use ic_hir::hir::{AnnArg, ConstTy, Def, DefId, DefKind, Member, Numeric, TyKind};
 use ic_hir::visit::{Visitor, walk_const};
+use ic_hir_analysis::annotation::default_annotation;
 
 use crate::{Category, Lint, LintCtx};
 
@@ -154,10 +155,7 @@ impl PreferEnumName<'_> {
     }
 
     fn find_default_enum_literal<'m>(&self, member: &'m Member) -> Option<(String, &'m AnnArg)> {
-        let arg = member
-            .annotations
-            .iter()
-            .find(|a| a.ident.name == "default")?
+        let arg = default_annotation(&self.hir.context, member)?
             .args
             .first()?;
 

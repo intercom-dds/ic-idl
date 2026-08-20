@@ -1,0 +1,13 @@
+---
+source: crates/ic-lint/tests/range_bound.rs
+expression: test_lint_hir(source)
+---
+⨯ duplicate-ann: duplicate annotation '@range'
+  @ test.idl:4:33
+
+ 2 │ module MyModule {
+ 3 │     struct MultipleRanges {
+ 4 │         @range(min=0, max=100) @range(min=10, max=90) long value;
+   │                                 ˆˆˆˆˆ duplicate annotation
+ 5 │     };
+ 6 │ };

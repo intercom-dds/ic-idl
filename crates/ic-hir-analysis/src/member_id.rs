@@ -26,9 +26,10 @@
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use ic_alloc::md5;
+use ic_hir::Context;
+use ic_hir::hir::{Ann, DefId, DefKind};
 
-use crate::Context;
-use crate::hir::{Ann, DefFlags, DefId, DefKind};
+use crate::annotation::builtin_annotation;
 
 const MEMBER_ID_MASK: u32 = 0x0fff_ffff;
 
@@ -120,6 +121,7 @@ fn struct_member_ids(ctx: &Context, def_id: DefId, ids: &mut Vec<u32>) -> u32 {
     current
 }
 
+#[allow(clippy::cast_possible_truncation)]
 fn assign_member_id(
     ctx: &Context,
     autoid: Autoid,
@@ -140,6 +142,7 @@ fn assign_member_id(
             .first()
             .and_then(|arg| ctx.string_value(&arg.value))
             .filter(|value| !value.is_empty());
+
         return hash_member_name(hash_name.as_deref().unwrap_or(name));
     }
 
@@ -165,15 +168,4 @@ fn autoid(annotations: &[Ann], ctx: &Context) -> Option<Autoid> {
     });
 
     Some(autoid)
-}
-
-fn builtin_annotation<'a>(ctx: &Context, annotations: &'a [Ann], name: &str) -> Option<&'a Ann> {
-    annotations.iter().find(|annotation| {
-        annotation.def_id.is_some_and(|def_id| {
-            let def = ctx.type_of(def_id);
-            matches!(def.kind, DefKind::Annotation(_))
-                && def.ident.name == name
-                && def.flags.contains(DefFlags::IS_BUILTIN)
-        })
-    })
 }

@@ -27,7 +27,7 @@
 
 use ic_diagnostic::{Label, error_span};
 use ic_hir::ResolvedGraph;
-use ic_hir::hir::{Ann, DefKind, Member, TyKind, Variant};
+use ic_hir::hir::{Ann, DefFlags, DefKind, Member, TyKind, Variant};
 use ic_hir::visit::Visitor;
 
 use crate::{Category, Lint, LintCtx};
@@ -68,13 +68,21 @@ impl<'a> BoundAnnotations<'a> {
         self.min.is_some() || self.max.is_some() || self.range.is_some()
     }
 
-    fn collect(annotations: &'a [Ann]) -> Self {
+    fn collect(ctx: &ic_hir::Context, annotations: &'a [Ann]) -> Self {
         let mut result = Self::default();
-        for ann in annotations {
-            match ann.ident.name.as_str() {
-                "min" => result.min = Some(ann),
-                "max" => result.max = Some(ann),
-                "range" => result.range = Some(ann),
+        for annotation in annotations {
+            let Some(def_id) = annotation.def_id else {
+                continue;
+            };
+            let def = ctx.base_def_of(def_id);
+            if !def.flags.contains(DefFlags::IS_BUILTIN) {
+                continue;
+            }
+
+            match def.ident.name.as_str() {
+                "min" => result.min = Some(annotation),
+                "max" => result.max = Some(annotation),
+                "range" => result.range = Some(annotation),
                 _ => {}
             }
         }
@@ -84,7 +92,7 @@ impl<'a> BoundAnnotations<'a> {
 
 impl DuplicateBounds<'_> {
     fn check_bounds(&self, annotations: &[Ann], ty: &ic_hir::hir::Ty, location: &str) {
-        let local = BoundAnnotations::collect(annotations);
+        let local = BoundAnnotations::collect(&self.hir.context, annotations);
 
         if local.range.is_some() && (local.min.is_some() || local.max.is_some()) {
             self.report_range_with_min_max(&local);
@@ -113,7 +121,7 @@ impl DuplicateBounds<'_> {
                 break;
             };
 
-            let typedef_bounds = BoundAnnotations::collect(&def.annotations);
+            let typedef_bounds = BoundAnnotations::collect(&self.hir.context, &def.annotations);
 
             if let Some(local_ann) = local.min {
                 if let Some(typedef_ann) = typedef_bounds.min {

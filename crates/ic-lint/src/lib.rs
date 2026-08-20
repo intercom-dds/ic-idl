@@ -540,7 +540,7 @@ define_lints! {
     hir_lints: [
         annotation::case::AnnotationCase,
         annotation::deprecated_annotations::DeprecatedAnnotations,
-        annotation::range_bound::RangeBound,
+        semantic::range_bound::RangeBound,
         annotation::unknown::UnknownAnnotation,
         extensions::char_discriminator::CharDiscriminator,
         extensions::complex_key::ComplexMapKey,

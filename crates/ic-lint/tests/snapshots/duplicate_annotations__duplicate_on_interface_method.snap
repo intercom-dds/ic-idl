@@ -1,0 +1,13 @@
+---
+source: crates/ic-lint/tests/duplicate_annotations.rs
+expression: test_lint_hir(source)
+---
+⨯ duplicate-ann: duplicate annotation '@oneway'
+  @ test.idl:4:6
+
+ 2 │ interface Service {
+ 3 │     @oneway
+ 4 │     @oneway
+   │      ˆˆˆˆˆˆ duplicate annotation
+ 5 │     void notify();
+ 6 │ };

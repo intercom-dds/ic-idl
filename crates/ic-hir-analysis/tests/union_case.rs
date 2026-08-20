@@ -25,10 +25,12 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+#[path = "../../ic-hir/tests/common/mod.rs"]
 mod common;
 
-use ic_hir::hir::{DefId, DefKind, Numeric};
-use ic_hir::union_case::{
+use ic_hir::hir::{DefId, DefKind, EnumTy, Numeric};
+use ic_hir_analysis::enum_value::default_enumerator;
+use ic_hir_analysis::union_case::{
     default_discriminator, default_union_case, union_case, unused_discriminator,
 };
 
@@ -40,6 +42,15 @@ fn def_id(hir: &ic_hir::ResolvedGraph, name: &str) -> DefId {
         .unwrap()
 }
 
+fn enum_ty<'a>(hir: &'a ic_hir::ResolvedGraph, name: &str) -> &'a EnumTy {
+    let def = hir.context.type_of(def_id(hir, name));
+    let DefKind::Enum(enum_ty) = &def.kind else {
+        panic!("{name} is not an enum");
+    };
+
+    enum_ty
+}
+
 fn union_ty<'a>(hir: &'a ic_hir::ResolvedGraph, name: &str) -> &'a ic_hir::hir::UnionTy {
     let def = hir.context.type_of(def_id(hir, name));
     let DefKind::Union(union_ty) = &def.kind else {
@@ -47,6 +58,40 @@ fn union_ty<'a>(hir: &'a ic_hir::ResolvedGraph, name: &str) -> &'a ic_hir::hir::
     };
 
     union_ty
+}
+
+#[test]
+fn resolves_default_enumerator() {
+    let hir = common::parse_and_resolve_successfully(
+        r"
+        enum Kind {
+            FIRST,
+            @default_literal SECOND
+        };
+
+        enum PlainKind {
+            PLAIN_FIRST,
+            PLAIN_SECOND
+        };
+        ",
+    );
+
+    let kind = enum_ty(&hir, "Kind");
+    assert_eq!(
+        hir.context
+            .type_of(default_enumerator(&hir.context, kind))
+            .ident
+            .name,
+        "SECOND"
+    );
+    let plain_kind = enum_ty(&hir, "PlainKind");
+    assert_eq!(
+        hir.context
+            .type_of(default_enumerator(&hir.context, plain_kind))
+            .ident
+            .name,
+        "PLAIN_FIRST"
+    );
 }
 
 #[test]

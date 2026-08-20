@@ -98,6 +98,8 @@ fn valid_float_default() {
 struct Good {
     @default(3.14)
     float my_float;
+    @default(3)
+    double integer_float;
 };
 ";
 

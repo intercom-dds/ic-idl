@@ -1,0 +1,15 @@
+---
+source: crates/ic-lint/tests/range_bound.rs
+expression: test_lint_hir(source)
+---
+⨯ range-bound: @range min value (1.5) is greater than max value (-1.5)
+  @ test.idl:4:10
+
+ 2 │ module MyModule {
+ 3 │     struct BadRange {
+ 4 │         @range(min=1.5, max=-1.5) double value;
+   │          ˆˆˆˆˆ invalid range
+ 5 │     };
+ 6 │ };
+
+  ? swap min and max values

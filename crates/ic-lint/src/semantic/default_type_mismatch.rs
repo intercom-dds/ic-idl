@@ -30,10 +30,11 @@
 use ic_diagnostic::Label;
 use ic_hir::ResolvedGraph;
 use ic_hir::hir::{
-    AliasTy, Ann, AnnParam, Def, DefId, DefKind, EnumTy, Member, Numeric, PrimitiveTy, StructTy,
-    Ty, TyKind, UnionTy, Variant,
+    AliasTy, AnnParam, Def, DefId, DefKind, EnumTy, Member, Numeric, PrimitiveTy, StructTy, Ty,
+    TyKind, UnionTy, Variant,
 };
 use ic_hir::visit::Visitor;
+use ic_hir_analysis::annotation::{DefaultTarget, default_annotation};
 
 use crate::{Category, Lint, LintCtx};
 
@@ -62,8 +63,8 @@ impl<'a> Lint<'a> for DefaultTypeMismatch<'a> {
 }
 
 impl DefaultTypeMismatch<'_> {
-    fn check_default(&self, annotations: &[Ann], ty: &Ty) {
-        let Some(default_ann) = annotations.iter().find(|a| a.ident.name == "default") else {
+    fn check_default(&self, target: &impl DefaultTarget, ty: &Ty) {
+        let Some(default_ann) = default_annotation(&self.hir.context, target) else {
             return;
         };
 
@@ -340,7 +341,16 @@ impl DefaultTypeMismatch<'_> {
                 )
                 | (
                     PrimitiveTy::Float32 | PrimitiveTy::Float64 | PrimitiveTy::Float128,
-                    Numeric::Float(_) | Numeric::Double(_),
+                    Numeric::Int8(_)
+                        | Numeric::UInt8(_)
+                        | Numeric::Int16(_)
+                        | Numeric::UInt16(_)
+                        | Numeric::Int32(_)
+                        | Numeric::UInt32(_)
+                        | Numeric::Int64(_)
+                        | Numeric::UInt64(_)
+                        | Numeric::Float(_)
+                        | Numeric::Double(_),
                 )
         )
     }
@@ -352,27 +362,27 @@ impl<'a> Visitor<'a> for DefaultTypeMismatch<'a> {
     }
 
     fn visit_member(&mut self, member: &'a Member) {
-        self.check_default(&member.annotations, &member.ty);
+        self.check_default(member, &member.ty);
         ic_hir::visit::walk_member(self, member);
     }
 
     fn visit_variant(&mut self, variant: &'a Variant) {
-        self.check_default(&variant.annotations, &variant.ty);
+        self.check_default(variant, &variant.ty);
         ic_hir::visit::walk_variant(self, variant);
     }
 
     fn visit_ann_param(&mut self, param: &'a AnnParam) {
-        self.check_default(&param.annotations, &param.ty);
+        self.check_default(param, &param.ty);
         ic_hir::visit::walk_ann_param(self, param);
     }
 
     fn visit_union(&mut self, _def: &'a Def, data: &'a UnionTy) {
-        self.check_default(&data.disc.annotations, &data.disc.ty);
+        self.check_default(&data.disc, &data.disc.ty);
         ic_hir::visit::walk_union(self, data);
     }
 
     fn visit_alias(&mut self, def: &'a Def, data: &'a AliasTy) {
-        self.check_default(&def.annotations, &data.ty);
+        self.check_default(def, &data.ty);
         ic_hir::visit::walk_alias(self, data);
     }
 }

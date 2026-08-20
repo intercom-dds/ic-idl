@@ -561,6 +561,11 @@ fn test_indirect_members_not_trivial() {
             long value;
             @shared SharedNode next;
         };
+
+        struct DirectNode {
+            long value;
+            @external(FALSE) long next;
+        };
     ";
 
     let hir = common::parse_with_builtins(idl);
@@ -577,6 +582,36 @@ fn test_indirect_members_not_trivial() {
             "Struct with indirect member should not be trivial"
         );
     }
+
+    let direct = transformed
+        .iter()
+        .find(|def| def.ident.name == "DirectNode")
+        .expect("direct struct should exist");
+
+    assert!(direct.flags.contains(DefFlags::IS_TRIVIAL));
+}
+
+#[test]
+fn test_external_alias_not_trivial() {
+    let idl = r"
+        @external typedef long ExternalAlias;
+        @external(FALSE) typedef long DirectAlias;
+    ";
+
+    let hir = common::parse_with_builtins(idl);
+    let transformed = type_flags::transform(hir);
+
+    let external = transformed
+        .iter()
+        .find(|def| def.ident.name == "ExternalAlias")
+        .expect("external alias should exist");
+    let direct = transformed
+        .iter()
+        .find(|def| def.ident.name == "DirectAlias")
+        .expect("direct alias should exist");
+
+    assert!(!external.flags.contains(DefFlags::IS_TRIVIAL));
+    assert!(direct.flags.contains(DefFlags::IS_TRIVIAL));
 }
 
 #[test]

@@ -254,7 +254,7 @@ fn process_named_parameter(
             .map(|value| AnnArg {
                 ident: Ident {
                     name: param.ident.name.clone(),
-                    span: arg.span,
+                    span: arg.name.as_ref().map_or(arg.span, |name| name.span),
                 },
                 value,
                 ty: Some(ty),

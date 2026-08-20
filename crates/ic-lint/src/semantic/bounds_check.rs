@@ -31,6 +31,7 @@ use ic_diagnostic::Label;
 use ic_hir::ResolvedGraph;
 use ic_hir::hir::{Def, DefKind, Member, Numeric, StructTy, Ty, TyKind, UnionTy, Variant};
 use ic_hir::visit::Visitor;
+use ic_hir_analysis::annotation::default_annotation;
 use ic_vfs::Span;
 
 use crate::{Category, Lint, LintCtx};
@@ -61,11 +62,7 @@ impl<'a> Lint<'a> for BoundsCheck<'a> {
 
 impl BoundsCheck<'_> {
     fn check_struct_member(&self, member: &Member) {
-        let Some(default_ann) = member
-            .annotations
-            .iter()
-            .find(|a| a.ident.name == "default")
-        else {
+        let Some(default_ann) = default_annotation(&self.hir.context, member) else {
             return;
         };
 
@@ -77,11 +74,7 @@ impl BoundsCheck<'_> {
     }
 
     fn check_union_varaint(&self, variant: &Variant) {
-        let Some(default_ann) = variant
-            .annotations
-            .iter()
-            .find(|a| a.ident.name == "default")
-        else {
+        let Some(default_ann) = default_annotation(&self.hir.context, variant) else {
             return;
         };
 

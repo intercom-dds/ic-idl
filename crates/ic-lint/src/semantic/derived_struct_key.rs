@@ -29,6 +29,7 @@ use ic_diagnostic::{Label, error_span};
 use ic_hir::ResolvedGraph;
 use ic_hir::hir::{Def, StructTy};
 use ic_hir::visit::Visitor;
+use ic_hir_analysis::annotation::key_annotation;
 
 use crate::{Category, Lint, LintCtx};
 
@@ -67,22 +68,20 @@ impl<'a> Visitor<'a> for DerivedStructKey<'a> {
         if struct_ty.parent.is_some() {
             // Check each member for @key annotation
             for member in &struct_ty.members {
-                for ann in &member.annotations {
-                    if ann.ident.name == "key" {
-                        Self::report(
-                            self.ctx,
-                            error_span(
-                                format!(
-                                    "derived struct '{}' cannot define @key fields",
-                                    def.ident.name
-                                ),
-                                Label::new(ann.ident.span)
-                                    .message("@key not allowed in derived struct"),
-                            )
-                            .note("only base structs can define @key fields")
-                            .help("move @key fields to the base struct or remove inheritance"),
-                        );
-                    }
+                if let Some(annotation) = key_annotation(&self.hir.context, member) {
+                    Self::report(
+                        self.ctx,
+                        error_span(
+                            format!(
+                                "derived struct '{}' cannot define @key fields",
+                                def.ident.name
+                            ),
+                            Label::new(annotation.ident.span)
+                                .message("@key not allowed in derived struct"),
+                        )
+                        .note("only base structs can define @key fields")
+                        .help("move @key fields to the base struct or remove inheritance"),
+                    );
                 }
             }
         }

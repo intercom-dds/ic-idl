@@ -27,11 +27,11 @@
 
 use std::fmt::Write;
 
-use ic_hir::annotation::{Optional, find_annotation};
-use ic_hir::hir::{
-    AliasTy, Ann, Def, DefFlags, DefId, DefKind, Member, Numeric, PrimitiveTy, Ty, TyKind,
+use ic_hir::hir::{AliasTy, Def, DefFlags, DefId, DefKind, Numeric, PrimitiveTy, Ty, TyKind};
+use ic_hir_analysis::annotation::{
+    Extensibility, MemberLike, extensibility, is_external, is_key, is_nested, is_newtype,
 };
-use ic_hir::member_id::{Autoid, effective_autoid};
+use ic_hir_analysis::member_id::{Autoid, effective_autoid};
 
 use crate::codegen::RustGen;
 
@@ -115,30 +115,13 @@ impl RustGen<'_> {
         members
     }
 
-    pub fn member_type(&self, ty: &Ty, annotations: &[Ann], ctx: DefId) -> String {
+    pub fn member_type(&self, ty: &Ty, member: &impl MemberLike, ctx: DefId) -> String {
         let ty = self.rust_type(ty, ctx);
-        if self.is_shared_annotations(annotations) {
+        if is_external(&self.hir.context, member) {
             format!("::std::boxed::Box<{ty}>")
         } else {
             ty
         }
-    }
-
-    pub fn is_shared_annotations(&self, annotations: &[Ann]) -> bool {
-        annotations.iter().any(|ann| {
-            let Some(def_id) = ann.def_id else {
-                return false;
-            };
-            let def = self.hir.context.definitions.get(def_id);
-
-            matches!(def.kind, DefKind::Annotation(_))
-                && matches!(def.ident.name.as_str(), "shared" | "external")
-                && def.flags.contains(DefFlags::IS_BUILTIN)
-        })
-    }
-
-    pub fn is_shared(&self, member: &Member) -> bool {
-        self.is_shared_annotations(&member.annotations)
     }
 
     pub(crate) fn valuetype_members(
@@ -213,7 +196,7 @@ impl RustGen<'_> {
                 return None;
             };
 
-            if is_newtype(def) {
+            if is_newtype(&self.hir.context, def) {
                 return Some((def_id, alias_ty));
             }
 
@@ -252,44 +235,6 @@ pub fn is_hash(def: &Def) -> bool {
     is_ord(def)
 }
 
-/// Check if a member has the @optional annotation
-pub fn is_optional(member: &Member) -> bool {
-    find_annotation::<Optional>(&member.annotations, "optional")
-        .and_then(Result::ok)
-        .is_some_and(|opt| opt.value)
-}
-
-pub fn is_must_understand(member: &Member) -> bool {
-    member
-        .annotations
-        .iter()
-        .any(|a| a.ident.name == "must_understand")
-}
-
-pub fn is_key(member: &Member) -> bool {
-    member.annotations.iter().any(|a| a.ident.name == "key")
-}
-
-pub fn is_newtype(def: &Def) -> bool {
-    def.annotations.iter().any(|a| {
-        (a.ident.name == "newtype" || a.ident.name == "ext::newtype")
-            && a.args
-                .first()
-                .is_none_or(|arg| !matches!(arg.value, Numeric::Bool(false)))
-    })
-}
-
-pub fn default_value(member: &Member) -> &Numeric {
-    static NULL: Numeric = Numeric::Null;
-
-    member
-        .annotations
-        .iter()
-        .find(|ann| ann.ident.name == "default")
-        .and_then(|ann| ann.args.first())
-        .map_or(&NULL, |arg| &arg.value)
-}
-
 pub fn format_integer(val: i128) -> String {
     let s = val.to_string();
     let (sign, digits) = s
@@ -325,35 +270,26 @@ pub fn rust_primitive(ty: PrimitiveTy) -> &'static str {
     }
 }
 
-fn is_nested(def: &Def) -> bool {
-    def.annotations.iter().any(|a| a.ident.name == "nested")
-}
-
-fn has_key_member(def: &Def) -> bool {
+fn has_key_member(ctx: &ic_hir::Context, def: &Def) -> bool {
     let members = match &def.kind {
         DefKind::Struct(s) => &s.members,
         DefKind::Valuetype(v) => &v.members,
         DefKind::Except(e) => &e.members,
         _ => return false,
     };
-    members.iter().any(is_key)
+    members.iter().any(|member| is_key(ctx, member))
 }
 
 pub fn type_flags(ctx: &ic_hir::Context, def: &Def) -> String {
     let mut flags = Vec::new();
 
-    let is_final = def.annotations.iter().any(|a| a.ident.name == "final");
-    let is_mutable = def.annotations.iter().any(|a| a.ident.name == "mutable");
-
-    if is_final {
-        flags.push("IS_FINAL");
-    } else if is_mutable {
-        flags.push("IS_MUTABLE");
-    } else {
-        flags.push("IS_APPENDABLE");
+    match extensibility(ctx, def) {
+        Extensibility::Final => flags.push("IS_FINAL"),
+        Extensibility::Appendable => flags.push("IS_APPENDABLE"),
+        Extensibility::Mutable => flags.push("IS_MUTABLE"),
     }
 
-    if is_nested(def) {
+    if is_nested(ctx, def) {
         flags.push("IS_NESTED");
     }
 
@@ -361,7 +297,7 @@ pub fn type_flags(ctx: &ic_hir::Context, def: &Def) -> String {
         flags.push("IS_AUTOID_HASH");
     }
 
-    if has_key_member(def) {
+    if has_key_member(ctx, def) {
         flags.push("IS_KEYED");
     }
 

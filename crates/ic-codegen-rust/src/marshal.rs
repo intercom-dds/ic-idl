@@ -588,21 +588,22 @@ impl RustGen<'_> {
                         w!(w, " => Self::", variant_name, ",\n");
                     }
                 } else {
-                    let variant_name =
-                        self.union_variant_name(variant, &variant.labels[0], union_ty);
-                    for (i, label) in variant.labels.iter().enumerate() {
-                        if i > 0 {
-                            w!(w, " | ");
-                        }
+                    for label in &variant.labels {
+                        let variant_name = self.union_variant_name(variant, label, union_ty);
                         self.emit_const_value(&label.value, &union_ty.disc.ty, def.id, w);
+                        w!(w, " => {\n");
+                        w!(w, "let mut value = ");
+                        self.emit_annotated_default_value(
+                            &variant.ty,
+                            &variant.annotations,
+                            def.id,
+                            w,
+                        );
+                        w!(w, ";\n");
+                        w!(w, "state.decode_variant(&MEMBER_INFO[", info_idx.to_string(), "], &mut value)?;\n");
+                        w!(w, "Self::", variant_name, "(value)\n");
+                        w!(w, "},\n");
                     }
-                    w!(w, " => {\n");
-                    w!(w, "let mut value = ");
-                    self.emit_annotated_default_value(&variant.ty, &variant.annotations, def.id, w);
-                    w!(w, ";\n");
-                    w!(w, "state.decode_variant(&MEMBER_INFO[", info_idx.to_string(), "], &mut value)?;\n");
-                    w!(w, "Self::", variant_name, "(value)\n");
-                    w!(w, "},\n");
                     info_idx += 1;
                 }
             }

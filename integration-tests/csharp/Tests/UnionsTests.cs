@@ -40,6 +40,14 @@ public class UnionsTests
     }
 
     [Fact]
+    public void DefaultDiscriminatorCase_DefaultState()
+    {
+        var u = new DefaultDiscriminatorCase();
+        Assert.Equal(0, u.Discriminator);
+        Assert.Equal(0, u.Value);
+    }
+
+    [Fact]
     public void IntOrString_SetIntVal()
     {
         var u = new IntOrString();
@@ -192,6 +200,7 @@ public class UnionsTests
     public void IntOrString_DefaultVal()
     {
         var u = new IntOrString();
+        u.IntVal = 42;
         u.DefaultVal = true;
         Assert.Equal(0, u.Discriminator);
         Assert.True(u.DefaultVal);

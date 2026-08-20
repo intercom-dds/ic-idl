@@ -27,7 +27,6 @@
 
 #![allow(clippy::cast_possible_wrap, clippy::unused_self)]
 
-use std::collections::HashSet;
 use std::fmt::Write;
 use std::hash::{Hash, Hasher};
 use std::path::PathBuf;
@@ -39,6 +38,7 @@ use ic_hir::hir::{
     BitmaskTy, ConstTy, Def, DefId, DefKind, EnumTy, ExceptTy, InterfaceTy, Member, Numeric,
     ParamKind, PrimitiveTy, ProtoTy, StructTy, Ty, TyKind, UnionTy, ValueTy, Variant,
 };
+use ic_hir::union_case::{default_discriminator, default_union_case, unused_discriminator};
 
 use crate::JavaOptions;
 
@@ -1258,10 +1258,11 @@ impl<'a> JavaGen<'a> {
             if let Some(first_label) = variant.labels.first() {
                 let disc_value = self.format_numeric(&first_label.value, &union_ty.disc.ty, def.id);
                 w!(w, "this.discriminator = ", disc_value, ";\n");
-            } else if variant.is_default {
-                let default_value =
-                    self.find_default_discriminator_value(union_ty, &union_ty.disc.ty, def.id);
-                w!(w, "this.discriminator = ", default_value, ";\n");
+            } else if variant.is_default
+                && let Some(discriminator) = unused_discriminator(&self.hir.context, union_ty)
+            {
+                let value = self.format_numeric(&discriminator, &union_ty.disc.ty, def.id);
+                w!(w, "this.discriminator = ", value, ";\n");
             }
             w!(w, "_clear();\n");
             if !is_null {
@@ -1290,11 +1291,13 @@ impl<'a> JavaGen<'a> {
         let (disc_get, disc_set) = self.disc_get_set();
 
         w!(w, "public ", def, "() {\n");
-        if let Some(first_variant) = union_ty.variants.first()
-            && let Some(first_label) = first_variant.labels.first()
-        {
-            let disc_value = self.format_numeric(&first_label.value, &union_ty.disc.ty, def.id);
-            w!(w, disc_set, "(", disc_value, ");\n");
+        let default_case = default_union_case(&self.hir.context, union_ty);
+        let discriminator = default_discriminator(&self.hir.context, union_ty);
+        let discriminator_value = self.format_numeric(&discriminator, &union_ty.disc.ty, def.id);
+        w!(w, "this.discriminator = ", discriminator_value, ";\n");
+        if !self.is_null_type(&default_case.variant.ty) {
+            let variant_value = self.default_value(&default_case.variant.ty, def.id);
+            w!(w, "this.", default_case.variant.ident.name, " = ", variant_value, ";\n");
         }
         w!(w, "}\n\n");
 
@@ -1389,49 +1392,6 @@ impl<'a> JavaGen<'a> {
         w!(w, ") {\n");
         w!(w, "throw new IllegalStateException(\"Invalid union access: discriminator is \" + discriminator);\n");
         w!(w, "}\n");
-    }
-
-    // TODO: we should do this in the HIR and inject the value there instead
-    fn find_default_discriminator_value(
-        &self,
-        union_ty: &UnionTy,
-        disc_ty: &Ty,
-        def_id: DefId,
-    ) -> String {
-        let mut used_values = HashSet::new();
-        for variant in &union_ty.variants {
-            for label in &variant.labels {
-                let val = self.hir.context.integer_value(&label.value);
-                used_values.insert(val);
-            }
-        }
-
-        let resolved_ty = self.hir.context.resolve_ty(disc_ty);
-        match &resolved_ty.kind {
-            TyKind::Primitive(_) => {
-                let mut val = 0i64;
-                while used_values.contains(&val) {
-                    val += 1;
-                }
-                format_primitive_value(val, &resolved_ty)
-            }
-            TyKind::Adt(adt_def_id) => {
-                let adt_def = self.hir.context.type_of(*adt_def_id);
-                if let DefKind::Enum(enum_ty) = &adt_def.kind {
-                    for &field_id in &enum_ty.fields {
-                        let field_def = self.hir.context.type_of(field_id);
-                        if let DefKind::Const(const_ty) = &field_def.kind
-                            && let val = self.hir.context.integer_value(&const_ty.value)
-                            && !used_values.contains(&val)
-                        {
-                            return self.format_numeric(&Numeric::Const(field_id), disc_ty, def_id);
-                        }
-                    }
-                }
-                self.default_value(disc_ty, def_id)
-            }
-            _ => self.default_value(disc_ty, def_id),
-        }
     }
 
     fn emit_enumerators(&self, w: &mut Twine, fields: &[DefId]) {

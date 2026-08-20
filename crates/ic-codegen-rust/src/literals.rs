@@ -122,57 +122,6 @@ impl RustGen<'_> {
         }
     }
 
-    pub(crate) fn emit_const_default_value(&self, ty: &Ty, ctx_id: DefId, w: &mut Twine) {
-        match &ty.kind {
-            TyKind::Primitive(prim) => {
-                let val = match prim {
-                    PrimitiveTy::Bool => "false",
-                    PrimitiveTy::Char | PrimitiveTy::WChar => "'\\0'",
-                    PrimitiveTy::Float32 => "0_f32",
-                    PrimitiveTy::Float64 | PrimitiveTy::Float128 => "0_f64",
-                    _ => "0",
-                };
-                w!(w, val);
-            }
-            TyKind::Adt(def_id) => {
-                let def = self.hir.context.definitions.get(*def_id);
-                match &def.kind {
-                    DefKind::Struct(struct_ty) => {
-                        let ty_str = self.scoped_name(*def_id, ctx_id);
-                        w!(w, ty_str, " {\n");
-                        let members = self.struct_members(struct_ty);
-                        for member in members {
-                            w!(w, member.ident.name, ": ");
-                            self.emit_const_default_value(&member.ty, ctx_id, w);
-                            w!(w, ",\n");
-                        }
-                        w!(w, "}");
-                    }
-                    DefKind::Enum(enum_ty) => {
-                        let ty_str = self.scoped_name(*def_id, ctx_id);
-                        let default_field = *enum_ty
-                            .fields
-                            .first()
-                            .expect("enum must have at least one field");
-                        let default_const_def = self.hir.context.definitions.get(default_field);
-                        w!(w, ty_str, "::", default_const_def.ident.name);
-                    }
-                    DefKind::Alias(alias_ty) => {
-                        self.emit_const_default_value(&alias_ty.ty, ctx_id, w);
-                    }
-                    _ => {
-                        let ty_str = self.rust_type(ty, ctx_id);
-                        w!(w, "<", ty_str, ">::default()");
-                    }
-                }
-            }
-            _ => {
-                let ty_str = self.rust_type(ty, ctx_id);
-                w!(w, "<", ty_str, ">::default()");
-            }
-        }
-    }
-
     fn emit_struct_literal(
         &self,
         struct_id: DefId,

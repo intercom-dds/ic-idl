@@ -102,6 +102,20 @@ fn union_multi_case() {
 }
 
 #[test]
+fn union_multi_case_roundtrip() {
+    for value in [
+        union_types::MultiCase::SmallVal1(1),
+        union_types::MultiCase::SmallVal2(2),
+        union_types::MultiCase::SmallVal3(3),
+    ] {
+        let json = intercom_cts::json::to_string(&value, false).unwrap();
+        let decoded = intercom_cts::json::from_str(&json).unwrap();
+
+        assert_eq!(value, decoded);
+    }
+}
+
+#[test]
 fn union_default_method() {
     #[allow(unused)]
     let mut u = union_types::IntOrString::StrVal("hello".into());

@@ -471,7 +471,9 @@ impl<'a> RustGen<'a> {
                 w!(w, ",\n");
             }
         }
-        if let Some(default_variant) = union_ty.variants.iter().find(|v| v.is_default) {
+        if let Some(default_variant) = union_ty.variants.iter().find(|v| v.is_default)
+            && unused_discriminator(&self.hir.context, union_ty).is_some()
+        {
             w!(w, "_ => ");
             self.emit_union_variant_default(
                 default_variant,

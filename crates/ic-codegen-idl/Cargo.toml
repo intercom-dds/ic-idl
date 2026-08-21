@@ -42,4 +42,5 @@ ic-emit = { path = "../ic-emit" }
 ic-hir = { path = "../ic-hir" }
 ic-hir-analysis = { path = "../ic-hir-analysis" }
 ic-hir-xform = { path = "../ic-hir-xform" }
+ic-syntax = { path = "../ic-syntax" }
 ic-vfs = { path = "../ic-vfs" }

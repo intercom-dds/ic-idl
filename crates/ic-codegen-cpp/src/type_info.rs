@@ -336,7 +336,7 @@ impl CppGen<'_> {
                     members: None,
                 };
 
-                w!(w, "static ::ic_cts::TypeInfo ", var_name, " = ");
+                w!(w, "static const ::ic_cts::TypeInfo ", var_name, " = ");
                 info.emit(w);
                 w!(w, ";\n");
                 format!("&{var_name}")
@@ -369,7 +369,7 @@ impl CppGen<'_> {
                     members: None,
                 };
 
-                w!(w, "static ::ic_cts::TypeInfo ", var_name, " = ");
+                w!(w, "static const ::ic_cts::TypeInfo ", var_name, " = ");
                 info.emit(w);
                 w!(w, ";\n");
                 format!("&{var_name}")
@@ -402,7 +402,7 @@ impl CppGen<'_> {
                     members: None,
                 };
 
-                w!(w, "static ::ic_cts::TypeInfo ", var_name, " = ");
+                w!(w, "static const ::ic_cts::TypeInfo ", var_name, " = ");
                 info.emit(w);
                 w!(w, ";\n");
                 format!("&{var_name}")
@@ -431,7 +431,7 @@ impl CppGen<'_> {
         }
 
         let ids = member_ids(&self.original_hir.context, def.id);
-        w!(w, "static ::ic_cts::MemberInfo ", mangled_name, "_members[", members.len(), "] = {\n");
+        w!(w, "static const ::ic_cts::MemberInfo ", mangled_name, "_members[", members.len(), "] = {\n");
         for ((i, member), member_id) in members.iter().enumerate().zip(ids) {
             let flags = member_flags(&self.hir.context, member, has_key);
             emit_member_info(
@@ -484,7 +484,7 @@ impl CppGen<'_> {
         let disc_type_info = self.type_info_ref(&union.disc.ty);
         let member_ids = member_ids(&self.original_hir.context, def.id);
         let total_members = union.variants.len() + 1;
-        w!(w, "static ::ic_cts::MemberInfo ", mangled_name, "_members[", total_members, "] = {\n");
+        w!(w, "static const ::ic_cts::MemberInfo ", mangled_name, "_members[", total_members, "] = {\n");
 
         let mut disc_flags = String::new();
         add_flag(&mut disc_flags, "::ic_cts::dcps::xtypes::IS_DISCRIMINATOR");
@@ -545,7 +545,7 @@ impl CppGen<'_> {
         w!(w, "static ", type_name, " ", name, "_max = ", max_val, ";\n");
         w!(w, "static ", type_name, " ", name, "_default = ", default_value_of(def, &self.hir.context), ";\n\n");
 
-        w!(w, "static ::ic_cts::MemberInfo ", name, "_members[", fields.len(), "] = {\n");
+        w!(w, "static const ::ic_cts::MemberInfo ", name, "_members[", fields.len(), "] = {\n");
         for (i, &field_id) in fields.iter().enumerate() {
             let field_def = self.hir.context.definitions.get(field_id);
             let member_id = if let DefKind::Const(c) = &field_def.kind {
@@ -587,7 +587,7 @@ impl CppGen<'_> {
         w!(w, "static ", type_name, " ", name, "_max = ", max_val, ";\n");
         w!(w, "static ", type_name, " ", name, "_default = ", default_value_of(def, &self.hir.context), ";\n\n");
 
-        w!(w, "static ::ic_cts::MemberInfo ", name, "_members[", flags.len(), "] = {\n");
+        w!(w, "static const ::ic_cts::MemberInfo ", name, "_members[", flags.len(), "] = {\n");
         for (i, &flag_id) in flags.iter().enumerate() {
             let flag_def = self.hir.context.definitions.get(flag_id);
 

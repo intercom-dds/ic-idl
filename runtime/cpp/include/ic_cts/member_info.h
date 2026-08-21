@@ -73,7 +73,7 @@ struct TypeInfo {
     const TypeInfo* key_type;
     const TypeInfo* element_type;
     uint32_t member_count;
-    MemberInfo* members;
+    const MemberInfo* members;
 };
 
 #define TYPETRAITS_PRIMITIVE(type)               \

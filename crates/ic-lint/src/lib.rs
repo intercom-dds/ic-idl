@@ -564,6 +564,7 @@ define_lints! {
         semantic::exception_member::ExceptionMember,
         semantic::exhaustive_union_default::ExhaustiveUnionDefaultLint,
         semantic::initializer_list_size::InitializerListSize,
+        semantic::inheritance_extensibility::InheritanceExtensibility,
         semantic::invalid_enum_literal::InvalidEnumLiteral,
         semantic::invalid_enum_value::InvalidEnumValue,
         semantic::invalid_inheritance::InvalidInheritance,

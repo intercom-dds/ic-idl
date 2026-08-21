@@ -1,0 +1,22 @@
+---
+source: crates/ic-lint/tests/inheritance_extensibility.rs
+expression: test_lint_hir(source)
+---
+⨯ inheritance-extensibility: derived type `AppendableDerived` is appendable, but parent `FinalBase` is final
+  @ test.idl:5:8
+
+ 3 │ struct FinalBase {};
+ 4 │ 
+ 5 │ struct AppendableDerived : FinalBase {};
+   │        ˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆ   ˆˆˆˆˆˆˆˆˆ parent type used here
+   │        └─ extensibility differs from parent
+ 6 │ 
+ 7 │ @mutable
+
+⨯ inheritance-extensibility: derived type `OtherDerived` is appendable, but parent `MutableBase` is mutable
+  @ test.idl:11:8
+
+ 10 │ @appendable
+ 11 │ struct OtherDerived : MutableBase {};
+    │        ˆˆˆˆˆˆˆˆˆˆˆˆ   ˆˆˆˆˆˆˆˆˆˆˆ parent type used here
+    │        └─ extensibility differs from parent

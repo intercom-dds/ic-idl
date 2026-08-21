@@ -109,4 +109,11 @@ module union_tests {
     default:
         string other;
     };
+
+    union MultipleDefaultOctet switch (octet) {
+    case 0:
+    case 1:
+    default:
+        string var;
+    };
 };

@@ -86,4 +86,10 @@ module arrays_sequences {
         BoundedIntSeq bounded;
         SeqOfSeq nested;
     };
+
+    struct LargeCopyArrays {
+        octet one_dim[128];
+        octet two_dim[128][128];
+        octet three_dim[128][128][128];
+    };
 };

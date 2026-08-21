@@ -388,6 +388,7 @@ dependencies = [
  "ic-hir",
  "ic-hir-analysis",
  "ic-hir-xform",
+ "ic-syntax",
  "ic-vfs",
 ]
 

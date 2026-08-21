@@ -26,8 +26,8 @@
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use ic_diagnostic::{Label, error_span};
-use ic_hir::keywords::IDL_KEYWORDS;
 use ic_syntax::Item;
+use ic_syntax::keywords::IDL_KEYWORDS;
 use ic_syntax::visit::{Visitor, walk_tree};
 
 use crate::{Category, Lint, LintCtx};

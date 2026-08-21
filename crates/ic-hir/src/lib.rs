@@ -74,9 +74,6 @@ pub mod fold;
 /// Core HIR type definitions and data structures.
 pub mod hir;
 
-/// IDL keywords and reserved identifiers.
-pub mod keywords;
-
 /// Merging multiple HIR graphs into a single graph.
 pub mod merge;
 

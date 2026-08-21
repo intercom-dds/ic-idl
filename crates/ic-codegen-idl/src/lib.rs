@@ -31,8 +31,8 @@ mod deps;
 use ic_cli::Command;
 use ic_emit::File;
 use ic_hir::hir::DefId;
-use ic_hir::keywords::IDL_KEYWORDS;
 use ic_hir_xform::rename::{self, Target};
+use ic_syntax::keywords::IDL_KEYWORDS;
 
 #[derive(Command, Copy, Clone, Debug, Default)]
 pub struct IdlOptions {

@@ -118,6 +118,7 @@ pub fn codegen_cpp(
         ..Target::default()
     };
 
+    let original_hir = hir;
     let hir = ic_hir_xform::rename::transform(hir.clone(), &target);
-    codegen::CppGen::new(&hir, source_map, options).generate()
+    codegen::CppGen::new(&hir, original_hir, source_map, options).generate()
 }

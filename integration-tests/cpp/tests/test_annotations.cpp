@@ -31,6 +31,21 @@
 
 #include "annotations.h"
 
+TEST_CASE("effective_member_ids" * doctest::test_suite("annotations")) {
+    const auto& struct_info = ic_cts::TypeTraits<autoid_hash_types::ModuleHash>::type_info;
+    REQUIRE(struct_info.member_count == 4);
+    CHECK(struct_info.members[0].id == 96462948);
+    CHECK(struct_info.members[1].id == 37920031);
+    CHECK(struct_info.members[2].id == 42);
+    CHECK(struct_info.members[3].id == 57943011);
+
+    const auto& union_info = ic_cts::TypeTraits<autoid_hash_types::HashUnion>::type_info;
+    REQUIRE(union_info.member_count == 3);
+    CHECK(union_info.members[0].id == 0);
+    CHECK(union_info.members[1].id == 239892167);
+    CHECK(union_info.members[2].id == 256044424);
+}
+
 TEST_CASE("keyed_struct_exists" * doctest::test_suite("annotations")) {
     annotation_types::KeyedStruct ks(1, "test", 3.14);
     CHECK(ks.id == 1);

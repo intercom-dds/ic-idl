@@ -35,6 +35,7 @@ module autoid_hash_types {
         long camelCase;
         @hashid("custom_hash") long hash_name;
         @id(42) long explicit_id;
+        long thread_local;
     };
 
     @autoid(SEQUENTIAL)

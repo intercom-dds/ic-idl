@@ -47,14 +47,21 @@ type Path = Vec<String>;
 
 pub struct CppGen<'a> {
     pub(crate) hir: &'a ResolvedGraph,
+    pub(crate) original_hir: &'a ResolvedGraph,
     pub(crate) options: CppOptions,
     source_map: &'a SourceMap,
 }
 
 impl<'a> CppGen<'a> {
-    pub fn new(hir: &'a ResolvedGraph, source_map: &'a SourceMap, options: CppOptions) -> Self {
+    pub fn new(
+        hir: &'a ResolvedGraph,
+        original_hir: &'a ResolvedGraph,
+        source_map: &'a SourceMap,
+        options: CppOptions,
+    ) -> Self {
         Self {
             hir,
+            original_hir,
             options,
             source_map,
         }

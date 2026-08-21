@@ -125,7 +125,9 @@ fn primitive_type_info(ty: PrimitiveTy) -> &'static str {
 
 fn type_kind_name(def_kind: &DefKind) -> &'static str {
     match def_kind {
-        DefKind::Struct(_) | DefKind::Valuetype(_) => "::ic_cts::dcps::xtypes::TK_STRUCTURE",
+        DefKind::Struct(_) | DefKind::Valuetype(_) | DefKind::Except(_) => {
+            "::ic_cts::dcps::xtypes::TK_STRUCTURE"
+        }
         DefKind::Union(_) => "::ic_cts::dcps::xtypes::TK_UNION",
         DefKind::Enum(_) => "::ic_cts::dcps::xtypes::TK_ENUM",
         DefKind::Bitmask(_) => "::ic_cts::dcps::xtypes::TK_BITMASK",
@@ -609,7 +611,7 @@ impl CppGen<'_> {
 
     pub(crate) fn emit_member_info(&self, w: &mut Twine, def: &Def) {
         match &def.kind {
-            DefKind::Struct(_) | DefKind::Valuetype(_) => {
+            DefKind::Struct(_) | DefKind::Valuetype(_) | DefKind::Except(_) => {
                 let members = self.collect_all_members(def.id);
                 self.emit_struct_members(w, def, &members);
             }
@@ -626,7 +628,8 @@ impl CppGen<'_> {
             | DefKind::Union(_)
             | DefKind::Enum(_)
             | DefKind::Bitmask(_)
-            | DefKind::Valuetype(_) => &def.kind,
+            | DefKind::Valuetype(_)
+            | DefKind::Except(_) => &def.kind,
             _ => return,
         };
 
@@ -635,7 +638,7 @@ impl CppGen<'_> {
         let kind = type_kind_name(def_kind).to_string();
 
         let flags = match def_kind {
-            DefKind::Struct(_) | DefKind::Union(_) | DefKind::Valuetype(_) => {
+            DefKind::Struct(_) | DefKind::Union(_) | DefKind::Valuetype(_) | DefKind::Except(_) => {
                 type_flags(&self.hir.context, def)
             }
             _ => "0".to_string(),
@@ -648,7 +651,9 @@ impl CppGen<'_> {
         };
 
         let member_count = match def_kind {
-            DefKind::Struct(_) | DefKind::Valuetype(_) => self.collect_all_members(def.id).len(),
+            DefKind::Struct(_) | DefKind::Valuetype(_) | DefKind::Except(_) => {
+                self.collect_all_members(def.id).len()
+            }
             DefKind::Union(u) => u.variants.len() + 1,
             DefKind::Enum(e) => e.fields.len(),
             DefKind::Bitmask(b) => b.flags.len(),

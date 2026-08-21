@@ -208,6 +208,10 @@ pub fn is_non_serialized(ctx: &Context, target: &impl MemberLike) -> bool {
 
 #[must_use]
 pub fn is_nested(ctx: &Context, def: &Def) -> bool {
+    if !matches!(def.kind, DefKind::Struct(_) | DefKind::Union(_)) {
+        return false;
+    }
+
     if let Some(nested) = bool_annotation(ctx, &def.annotations, "nested") {
         return nested;
     }

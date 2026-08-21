@@ -94,6 +94,7 @@ impl CppGen<'_> {
         self.emit_type_traits(impl_w, def);
         self.emit_hash_declaration(impl_w, def);
         self.emit_union_serializer(impl_w, def, union_ty);
+        self.emit_formatter_specialization(impl_w, def);
 
         self.emit_union_impl(impl_w, def, union_ty, &disc_type);
     }

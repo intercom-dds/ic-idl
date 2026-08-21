@@ -74,7 +74,7 @@ def _detect_compiler_kind(name: str) -> str:
     return "gcc"
 
 
-def get_warning_flags(kind: str) -> list[str]:
+def get_warning_flags(kind: str, standard: str = "c++17") -> list[str]:
     """Get warning flags appropriate for the compiler kind."""
     if kind == "msvc":
         return [
@@ -82,7 +82,7 @@ def get_warning_flags(kind: str) -> list[str]:
             "/WX",
             "/permissive-",
             "/Zc:__cplusplus",
-            "/std:c++17",
+            f"/std:{standard}",
             "/EHsc",
         ]
     else:
@@ -97,7 +97,7 @@ def get_warning_flags(kind: str) -> list[str]:
             "-Wold-style-cast",
             "-Woverloaded-virtual",
             "-Wno-switch-bool",
-            "-std=c++17",
+            f"-std={standard}",
         ]
 
 
@@ -125,24 +125,59 @@ def cpp_include_path() -> Path:
     return (root / "runtime" / "cpp" / "include").resolve()
 
 
+@pytest.fixture(scope="session")
+def cxx_has_std_format(
+    cxx_compiler: CxxCompiler, tmp_path_factory: pytest.TempPathFactory
+) -> bool:
+    """Check whether the compiler provides a usable <format> in C++20 mode."""
+    probe = tmp_path_factory.mktemp("std_format_probe") / "probe.cpp"
+    probe.write_text(
+        "#include <format>\n"
+        "#include <string>\n"
+        "int main() { return std::format(\"{}\", 1).empty() ? 1 : 0; }\n"
+    )
+
+    cmd = [
+        cxx_compiler.path,
+        *get_warning_flags(cxx_compiler.kind, "c++20"),
+        *get_syntax_check_flags(cxx_compiler.kind),
+        str(probe),
+    ]
+
+    result = subprocess.run(
+        cmd,
+        check=False,
+        capture_output=True,
+        text=True,
+        timeout=60,
+    )
+    return result.returncode == 0
+
+
 @pytest.fixture
 def cpp_output_dir(request: pytest.FixtureRequest) -> Path:
     return make_output_dir(request, "cpp")
 
 
-@pytest.mark.parametrize("extra_args", [
-    pytest.param([], id="default"),
-    pytest.param(["--char-ptr-constants"], id="char-ptr-constants"),
-    pytest.param(["--unscoped-enums"], id="unscoped-enums"),
+@pytest.mark.parametrize(("extra_args", "standard"), [
+    pytest.param([], "c++17", id="default"),
+    pytest.param(["--char-ptr-constants"], "c++17", id="char-ptr-constants"),
+    pytest.param(["--unscoped-enums"], "c++17", id="unscoped-enums"),
+    pytest.param(["--use-fmt"], "c++20", id="use-fmt"),
 ])
 def test_cpp(
     idl_file: Path,
     idl_compiler: Path,
     cxx_compiler: CxxCompiler,
+    cxx_has_std_format: bool,
     cpp_output_dir: Path,
     cpp_include_path: Path,
     extra_args: list[str],
+    standard: str,
 ) -> None:
+    if standard == "c++20" and not cxx_has_std_format:
+        pytest.skip("Compiler does not support std::format")
+
     generated_files = run_codegen(
         idl_compiler, idl_file, cpp_output_dir, "cpp-out", extra_args
     )
@@ -153,7 +188,7 @@ def test_cpp(
     if not source_files:
         return
 
-    warning_flags = get_warning_flags(cxx_compiler.kind)
+    warning_flags = get_warning_flags(cxx_compiler.kind, standard)
     syntax_flags = get_syntax_check_flags(cxx_compiler.kind)
 
     if cxx_compiler.kind == "msvc":

@@ -75,7 +75,7 @@ pub struct CppOptions {
     #[option(long)]
     pub char_ptr_constants: bool,
 
-    /// Generate formatting specializations for fmtlib
+    /// Generate `std::formatter` specializations, requires C++20
     #[option(long)]
     pub use_fmt: bool,
 

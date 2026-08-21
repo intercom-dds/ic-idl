@@ -89,7 +89,7 @@ module ext {
     int64 value;
 };
 
-@ext::annotation_target(STRUCT_DEF | UNION_DEF | EXCEPTION_DEF)
+@ext::annotation_target(STRUCT_DEF | EXCEPTION_DEF)
 @annotation empty {};
 
 @ext::annotation_target(STRUCT_DEF | UNION_DEF | ENUM_DEF)

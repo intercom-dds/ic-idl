@@ -1,0 +1,25 @@
+---
+source: crates/ic-lint/tests/duplicate_default_literal.rs
+expression: test_lint_hir(source)
+---
+⨯ duplicate-default-literal: enum `Foo` has multiple default literals
+  @ test.idl:4:22
+
+ 2 │ enum Foo {
+ 3 │     @default_literal A,
+   │                      ˆ first default literal
+ 4 │     @default_literal B,
+   │                      ˆ additional default literal
+ 5 │     @default_literal C
+ 6 │ };
+
+⨯ duplicate-default-literal: enum `Foo` has multiple default literals
+  @ test.idl:5:22
+
+ 2 │ enum Foo {
+ 3 │     @default_literal A,
+   │                      ˆ first default literal
+ 4 │     @default_literal B,
+ 5 │     @default_literal C
+   │                      ˆ additional default literal
+ 6 │ };

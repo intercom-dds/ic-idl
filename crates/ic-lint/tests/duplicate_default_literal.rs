@@ -1,4 +1,4 @@
-// Copyright 2024 KONGSBERG
+// Copyright 2026 KONGSBERG
 //
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions are met:
@@ -25,33 +25,33 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-pub mod ann_target;
-pub mod ann_template;
-pub mod bit_bound;
-pub mod bounds_check;
-pub mod conflicting_annotations;
-pub mod default_type_mismatch;
-pub mod derived_struct_key;
-pub mod duplicate_annotations;
-pub mod duplicate_bounds;
-pub mod duplicate_case_labels;
-pub mod duplicate_default_literal;
-pub mod duplicate_enum_values;
-pub mod duplicate_name;
-pub mod duplicate_raises;
-pub mod exception_member;
-pub mod exhaustive_union_default;
-pub mod initializer_list_size;
-pub mod invalid_enum_literal;
-pub mod invalid_enum_value;
-pub mod invalid_inheritance;
-pub mod keywords;
-pub mod multiple_default_cases;
-pub mod oneway;
-pub mod range_bound;
-pub mod recursive_type;
-pub mod redundant_inheritance;
-pub mod union_case_label_range;
-pub mod unreachable_union_cases;
-pub mod void_ty;
-pub mod zero_bound;
+mod common;
+
+use common::{lint_hir, test_lint_hir};
+use insta::assert_snapshot;
+
+#[test]
+fn one_default_literal_is_valid() {
+    let source = r"
+enum Foo {
+    @default_literal A,
+    B
+};
+";
+
+    let report = lint_hir(source);
+    assert!(report.errors.is_empty());
+}
+
+#[test]
+fn duplicate_default_literals() {
+    let source = r"
+enum Foo {
+    @default_literal A,
+    @default_literal B,
+    @default_literal C
+};
+";
+
+    assert_snapshot!(test_lint_hir(source));
+}

@@ -557,6 +557,7 @@ define_lints! {
         semantic::duplicate_annotations::DuplicateAnnotations,
         semantic::duplicate_bounds::DuplicateBounds,
         semantic::duplicate_case_labels::DuplicateCaseLabels,
+        semantic::duplicate_default_literal::DuplicateDefaultLiteral,
         semantic::duplicate_enum_values::DuplicateEnumValues,
         semantic::duplicate_name::DuplicateName,
         semantic::duplicate_raises::DuplicateRaises,

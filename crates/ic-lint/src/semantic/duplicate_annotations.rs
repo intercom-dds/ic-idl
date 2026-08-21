@@ -47,6 +47,7 @@ pub struct DuplicateAnnotations<'a> {
 enum AnnotationKey {
     Definition(DefId),
     Extensibility,
+    External,
     MemberId,
 }
 
@@ -89,6 +90,11 @@ impl DuplicateAnnotations<'_> {
                 .any(|name| is_builtin_annotation(&self.hir.context, ann, name))
             {
                 AnnotationKey::Extensibility
+            } else if ["external", "shared"]
+                .iter()
+                .any(|name| is_builtin_annotation(&self.hir.context, ann, name))
+            {
+                AnnotationKey::External
             } else if ["id", "hashid"]
                 .iter()
                 .any(|name| is_builtin_annotation(&self.hir.context, ann, name))
@@ -97,12 +103,14 @@ impl DuplicateAnnotations<'_> {
             } else {
                 AnnotationKey::Definition(def.id)
             };
+
             if seen.insert(key) {
                 continue;
             }
 
             let message = match key {
                 AnnotationKey::Extensibility => "multiple extensibility annotations".to_string(),
+                AnnotationKey::External => "multiple external annotations".to_string(),
                 AnnotationKey::MemberId => "multiple member ID annotations".to_string(),
                 AnnotationKey::Definition(_) => {
                     format!("duplicate annotation '@{}'", ann.ident.name)

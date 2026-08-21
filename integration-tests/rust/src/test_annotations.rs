@@ -33,7 +33,7 @@ fn autoid_hash_member_ids() {
     assert_eq!(members[0].name, "camelCase");
     assert_eq!(
         members.iter().map(|member| member.member_id).collect::<Vec<_>>(),
-        [96_462_948, 37_920_031, 42]
+        [96462948, 37920031, 42, 57943011]
     );
     assert!(
         intercom_cts::type_info::<autoid_hash_types::ModuleHash>()

@@ -34,7 +34,7 @@ use ic_hir_analysis::annotation::{
     is_nested, is_optional,
 };
 use ic_hir_analysis::enum_value::default_enumerator;
-use ic_hir_analysis::member_id::{Autoid, effective_autoid};
+use ic_hir_analysis::member_id::{Autoid, effective_autoid, member_ids};
 
 use crate::codegen::CppGen;
 
@@ -230,14 +230,14 @@ fn type_flags(ctx: &ic_hir::Context, def: &Def) -> String {
 
 fn emit_member_info(
     w: &mut Twine,
-    index: usize,
+    member_id: u32,
     name: &str,
     flags: &str,
     case_labels: &str,
     type_info: &str,
     default_value: &str,
 ) {
-    w!(w, "{ ", index, ", \"", name, "\", ", flags, ", ");
+    w!(w, "{ ", member_id, ", \"", name, "\", ", flags, ", ");
     w!(w, case_labels, ", ", type_info, ", ", default_value, " },\n");
 }
 
@@ -428,12 +428,13 @@ impl CppGen<'_> {
             type_infos.push(type_info);
         }
 
+        let ids = member_ids(&self.original_hir.context, def.id);
         w!(w, "static ::ic_cts::MemberInfo ", mangled_name, "_members[", members.len(), "] = {\n");
-        for (i, member) in members.iter().enumerate() {
+        for ((i, member), member_id) in members.iter().enumerate().zip(ids) {
             let flags = member_flags(&self.hir.context, member, has_key);
             emit_member_info(
                 w,
-                i,
+                member_id,
                 &member.ident.name,
                 &flags,
                 "::ic_cts::MEMBER_INFO_EMPTY_CASE_LABELS",
@@ -479,6 +480,7 @@ impl CppGen<'_> {
         }
 
         let disc_type_info = self.type_info_ref(&union.disc.ty);
+        let member_ids = member_ids(&self.original_hir.context, def.id);
         let total_members = union.variants.len() + 1;
         w!(w, "static ::ic_cts::MemberInfo ", mangled_name, "_members[", total_members, "] = {\n");
 
@@ -488,7 +490,7 @@ impl CppGen<'_> {
 
         emit_member_info(
             w,
-            0,
+            member_ids[0],
             "_d",
             &disc_flags,
             "::ic_cts::MEMBER_INFO_EMPTY_CASE_LABELS",
@@ -505,7 +507,7 @@ impl CppGen<'_> {
 
             emit_member_info(
                 w,
-                i + 1,
+                member_ids[i + 1],
                 &variant.ident.name,
                 &flag,
                 &case_label_names[i],

@@ -483,7 +483,7 @@ impl RustGen<'_> {
             .variants
             .iter()
             .zip(&original_union.variants)
-            .zip(ids)
+            .zip(ids.into_iter().skip(1))
             .filter(|((v, _), _)| !matches!(v.ty.kind, TyKind::Null))
             .collect();
 

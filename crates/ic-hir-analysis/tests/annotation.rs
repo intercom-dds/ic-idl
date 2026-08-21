@@ -49,6 +49,9 @@ fn resolves_definition_properties() {
         @default_nested
         module Outer {
             struct InheritedNested {};
+            typedef long NotNestedAlias;
+            enum NotNestedEnum { VALUE };
+            bitmask NotNestedBitmask { FLAG };
             @nested(FALSE) struct NotNested {};
         };
 
@@ -60,6 +63,9 @@ fn resolves_definition_properties() {
     );
 
     assert!(is_nested(&hir.context, def(&hir, "InheritedNested")));
+    assert!(!is_nested(&hir.context, def(&hir, "NotNestedAlias")));
+    assert!(!is_nested(&hir.context, def(&hir, "NotNestedEnum")));
+    assert!(!is_nested(&hir.context, def(&hir, "NotNestedBitmask")));
     assert!(!is_nested(&hir.context, def(&hir, "NotNested")));
     assert_eq!(
         extensibility(&hir.context, def(&hir, "FinalType")),

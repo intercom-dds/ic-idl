@@ -77,10 +77,8 @@ pub fn member_ids(ctx: &Context, def_id: DefId) -> Vec<u32> {
         DefKind::Union(union_ty) => {
             let autoid = effective_autoid(ctx, def_id);
             let mut current = 0;
-            union_ty
-                .variants
-                .iter()
-                .map(|variant| {
+            std::iter::once(current)
+                .chain(union_ty.variants.iter().map(|variant| {
                     current = assign_member_id(
                         ctx,
                         autoid,
@@ -89,7 +87,7 @@ pub fn member_ids(ctx: &Context, def_id: DefId) -> Vec<u32> {
                         &variant.annotations,
                     );
                     current
-                })
+                }))
                 .collect()
         }
         _ => Vec::new(),

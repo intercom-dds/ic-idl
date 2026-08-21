@@ -99,7 +99,10 @@ fn assigns_effective_member_ids() {
 
     let choice = def_id(&hir, "Choice");
     assert_eq!(effective_autoid(&hir.context, choice), Autoid::Hash);
-    assert_eq!(member_ids(&hir.context, choice), [239_892_167, 256_044_424]);
+    assert_eq!(
+        member_ids(&hir.context, choice),
+        [0, 239_892_167, 256_044_424]
+    );
 
     let hash_id = def_id(&hir, "HashId");
     assert_eq!(member_ids(&hir.context, hash_id), [31_773_853, 31_773_854]);

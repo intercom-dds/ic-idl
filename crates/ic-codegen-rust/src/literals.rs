@@ -70,7 +70,7 @@ impl RustGen<'_> {
         {
             if self.is_copy_type(elem_ty) {
                 w!(w, "[");
-                self.emit_default_value(elem_ty, ctx_id, w);
+                self.array_default(elem_ty, ctx_id, w);
                 w!(w, "; ", len.to_string(), "]");
             } else {
                 w!(w, "std::array::from_fn(|_| ");

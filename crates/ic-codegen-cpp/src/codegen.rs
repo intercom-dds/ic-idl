@@ -584,6 +584,17 @@ impl<'a> CppGen<'a> {
         w!(w, "};\n\n");
     }
 
+    pub fn emit_formatter_specialization(&self, w: &mut Twine, def: &Def) {
+        if !self.options.use_fmt {
+            return;
+        }
+
+        let qualified_name = self.scoped_name(def.id, None);
+
+        w!(w, "template <>\n");
+        w!(w, "struct std::formatter<", qualified_name, "> : ::ic_cts::JsonFormatter<", qualified_name, "> {};\n\n");
+    }
+
     pub fn emit_hash_implementation(&self, w: &mut Twine, def: &Def) {
         let qualified_name = self.scoped_name(def.id, None);
 
@@ -880,6 +891,9 @@ impl<'a> CppGen<'a> {
             w!(header, "#include <string_view>\n");
             w!(header, "#include <vector>\n\n");
             w!(header, "#include <ic_cts/any.h>\n");
+            if self.options.use_fmt {
+                w!(header, "#include <ic_cts/format.h>\n");
+            }
             w!(header, "#include <ic_cts/member_info.h>\n");
             w!(header, "#include <ic_cts/memory.h>\n");
 

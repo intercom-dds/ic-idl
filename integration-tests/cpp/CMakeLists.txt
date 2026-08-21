@@ -124,3 +124,47 @@ add_custom_target(test
     DEPENDS cpp_integration_tests
     WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
 )
+
+include(CheckCXXSourceCompiles)
+
+set(SAVED_CXX_STANDARD ${CMAKE_CXX_STANDARD})
+set(CMAKE_CXX_STANDARD 20)
+check_cxx_source_compiles("
+    #include <format>
+    #include <string>
+    int main() { return std::format(\"{}\", 1).empty() ? 1 : 0; }
+    " HAVE_STD_FORMAT)
+set(CMAKE_CXX_STANDARD ${SAVED_CXX_STANDARD})
+
+if(HAVE_STD_FORMAT)
+    idl_generate(
+        LANGUAGE CPP
+        INPUT_IDL ../corpus
+        DESTINATION use_fmt
+        FLAGS --use-fmt
+        OUTPUT_VAR IDL_FORMAT_OUTPUTS
+    )
+
+    add_executable(cpp_format_tests
+        tests/main.cpp
+        tests/test_format.cpp
+        ${IDL_FORMAT_OUTPUTS}
+    )
+
+    target_compile_features(cpp_format_tests PRIVATE cxx_std_20)
+
+    target_link_libraries(cpp_format_tests PRIVATE
+        ic_idl::ic_cts
+        doctest::doctest
+    )
+
+    add_custom_target(format_test
+        COMMAND cpp_format_tests
+        DEPENDS cpp_format_tests
+        WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+    )
+
+    add_dependencies(test format_test)
+else()
+    message(STATUS "std::format not available, skipping --use-fmt tests")
+endif()

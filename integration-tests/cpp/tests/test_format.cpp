@@ -32,6 +32,7 @@
 
 #include "use_fmt/bitmasks.h"
 #include "use_fmt/enums.h"
+#include "use_fmt/exceptions.h"
 #include "use_fmt/structs.h"
 #include "use_fmt/unions.h"
 #include "use_fmt/valuetypes.h"
@@ -87,6 +88,16 @@ TEST_CASE("format_union" * doctest::test_suite("format")) {
 TEST_CASE("format_valuetype" * doctest::test_suite("format")) {
     valuetype_types::SimpleValue value(42, "answer");
     CHECK(std::format("{}", value) == "{\"id\":42,\"name\":\"answer\"}");
+}
+
+TEST_CASE("format_exception" * doctest::test_suite("format")) {
+    exception_types::SimpleError error(7, "broken");
+    CHECK(std::format("{}", error) == "{\"error_code\":7,\"message\":\"broken\"}");
+}
+
+TEST_CASE("format_empty_exception" * doctest::test_suite("format")) {
+    exception_types::EmptyError error;
+    CHECK(std::format("{}", error) == "{}");
 }
 
 TEST_CASE("format_pretty" * doctest::test_suite("format")) {

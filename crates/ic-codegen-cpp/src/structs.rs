@@ -88,7 +88,11 @@ impl CppGen<'_> {
 
         w!(decl_w, "};\n\n");
 
+        self.emit_type_traits(impl_w, def);
         self.emit_hash_declaration(impl_w, def);
+        self.emit_serializer_specialization(impl_w, def);
+        self.emit_formatter_specialization(impl_w, def);
+
         let all_members = self.collect_all_members(def.id);
         self.emit_struct_like_comparison_impl(impl_w, def, &all_members);
     }

@@ -28,21 +28,78 @@
 use insta::assert_snapshot;
 
 mod common;
-use common::test_lint_hir;
+use common::{lint_hir, test_lint_hir};
 
 #[test]
-fn invalid_bit_bounds() {
+fn zero_enum_bit_bound() {
     let source = r"
 @bit_bound(0)
 enum EmptyBound {
-    ENUM_VALUE
-};
-
-@bit_bound(65)
-bitmask WideBound {
-    MASK_VALUE
+    EMPTY_VALUE
 };
 ";
 
     assert_snapshot!(test_lint_hir(source));
+}
+
+#[test]
+fn enum_bit_bound_above_maximum() {
+    let source = r"
+@bit_bound(33)
+enum WideBound {
+    WIDE_VALUE
+};
+";
+
+    assert_snapshot!(test_lint_hir(source));
+}
+
+#[test]
+fn zero_bitmask_bit_bound() {
+    let source = r"
+@bit_bound(0)
+bitmask EmptyBound {
+    EMPTY_VALUE
+};
+";
+
+    assert_snapshot!(test_lint_hir(source));
+}
+
+#[test]
+fn bitmask_bit_bound_above_maximum() {
+    let source = r"
+@bit_bound(65)
+bitmask WideBound {
+    WIDE_VALUE
+};
+";
+
+    assert_snapshot!(test_lint_hir(source));
+}
+
+#[test]
+fn maximum_enum_bit_bound_is_valid() {
+    let source = r"
+@bit_bound(32)
+enum WideEnum {
+    ENUM_VALUE
+};
+";
+
+    let report = lint_hir(source);
+    assert!(report.errors.is_empty());
+}
+
+#[test]
+fn maximum_bitmask_bit_bound_is_valid() {
+    let source = r"
+@bit_bound(64)
+bitmask WideMask {
+    MASK_VALUE
+};
+";
+
+    let report = lint_hir(source);
+    assert!(report.errors.is_empty());
 }

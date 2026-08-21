@@ -1,0 +1,11 @@
+---
+source: crates/ic-lint/tests/bit_bound.rs
+expression: test_lint_hir(source)
+---
+⨯ bit-bound: @bit_bound must be at least 1
+  @ test.idl:2:12
+
+ 2 │ @bit_bound(0)
+   │            ˆ bit bound out of bounds
+ 3 │ bitmask EmptyBound {
+ 4 │     EMPTY_VALUE

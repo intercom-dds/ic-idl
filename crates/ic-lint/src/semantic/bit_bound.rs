@@ -58,7 +58,7 @@ impl<'a> Lint<'a> for BitBound<'a> {
 }
 
 impl BitBound<'_> {
-    fn check_bit_bound(&self, def: &Def) {
+    fn check_bit_bound(&self, def: &Def, maximum: u64) {
         let Some(annotation) = bit_bound_annotation(&self.hir.context, def) else {
             return;
         };
@@ -69,8 +69,10 @@ impl BitBound<'_> {
         let bit_bound = self.hir.context.unsigned_value(&argument.value);
         let message = if bit_bound == 0 {
             Some("@bit_bound must be at least 1".to_string())
-        } else if bit_bound > 64 {
-            Some(format!("@bit_bound({bit_bound}) exceeds maximum of 64"))
+        } else if bit_bound > maximum {
+            Some(format!(
+                "@bit_bound({bit_bound}) exceeds maximum of {maximum}"
+            ))
         } else {
             None
         };
@@ -94,12 +96,12 @@ impl<'a> Visitor<'a> for BitBound<'a> {
     }
 
     fn visit_enum(&mut self, def: &'a Def, data: &'a ic_hir::hir::EnumTy) {
-        self.check_bit_bound(def);
+        self.check_bit_bound(def, 32);
         ic_hir::visit::walk_enum(self, data);
     }
 
     fn visit_bitmask(&mut self, def: &'a Def, data: &'a ic_hir::hir::BitmaskTy) {
-        self.check_bit_bound(def);
+        self.check_bit_bound(def, 64);
         ic_hir::visit::walk_bitmask(self, data);
     }
 }

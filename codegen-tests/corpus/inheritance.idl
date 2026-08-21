@@ -82,7 +82,6 @@ module inheritance_tests {
         long value;
     };
 
-    // Inheritance with same field names (allowed in different levels)
     struct Parent {
         long value;
         string name;
@@ -99,7 +98,7 @@ module inheritance_tests {
         long base_val;
     };
 
-    @mutable
+    @appendable
     struct AnnotatedDerived : AnnotatedBase {
         string derived_val;
     };

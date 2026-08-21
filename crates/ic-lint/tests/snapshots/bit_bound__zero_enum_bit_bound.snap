@@ -8,14 +8,4 @@ expression: test_lint_hir(source)
  2 │ @bit_bound(0)
    │            ˆ bit bound out of bounds
  3 │ enum EmptyBound {
- 4 │     ENUM_VALUE
-
-⨯ bit-bound: @bit_bound(65) exceeds maximum of 64
-  @ test.idl:7:12
-
- 5 │ };
- 6 │ 
- 7 │ @bit_bound(65)
-   │            ˆˆ bit bound out of bounds
- 8 │ bitmask WideBound {
- 9 │     MASK_VALUE
+ 4 │     EMPTY_VALUE

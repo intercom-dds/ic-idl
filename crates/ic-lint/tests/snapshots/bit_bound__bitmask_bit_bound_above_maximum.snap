@@ -1,0 +1,11 @@
+---
+source: crates/ic-lint/tests/bit_bound.rs
+expression: test_lint_hir(source)
+---
+⨯ bit-bound: @bit_bound(65) exceeds maximum of 64
+  @ test.idl:2:12
+
+ 2 │ @bit_bound(65)
+   │            ˆˆ bit bound out of bounds
+ 3 │ bitmask WideBound {
+ 4 │     WIDE_VALUE

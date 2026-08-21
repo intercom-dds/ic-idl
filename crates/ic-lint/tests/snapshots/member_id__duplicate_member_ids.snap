@@ -1,0 +1,49 @@
+---
+source: crates/ic-lint/tests/member_id.rs
+expression: test_lint_hir(source)
+---
+⨯ member-id: duplicate member ID 1 in `Derived`
+  @ test.idl:7:17
+
+ 2 │ struct Base {
+ 3 │     @id(1) long inherited;
+   │                 ˆˆˆˆˆˆˆˆˆ first used here
+ 4 │ };
+ 5 │ 
+ 6 │ struct Derived : Base {
+ 7 │     @id(1) long duplicate;
+   │                 ˆˆˆˆˆˆˆˆˆ duplicate member ID
+ 8 │ };
+
+⨯ member-id: duplicate member ID 0 in `Generated`
+  @ test.idl:12:17
+
+ 10 │ struct Generated {
+ 11 │     long first;
+    │          ˆˆˆˆˆ first used here
+ 12 │     @id(0) long duplicate;
+    │                 ˆˆˆˆˆˆˆˆˆ duplicate member ID
+ 13 │ };
+
+⨯ member-id: duplicate member ID 0 in `Choice`
+  @ test.idl:16:25
+
+ 13 │ };
+ 14 │ 
+ 15 │ union Choice switch (long) {
+    │                      ˆˆˆˆ first used here
+ 16 │     case 0: @id(0) long discriminator_collision;
+    │                         ˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆ duplicate member ID
+ 17 │     case 1: @id(2) long first;
+ 18 │     case 2: @id(2) long second;
+
+⨯ member-id: duplicate member ID 2 in `Choice`
+  @ test.idl:18:25
+
+ 15 │ union Choice switch (long) {
+ 16 │     case 0: @id(0) long discriminator_collision;
+ 17 │     case 1: @id(2) long first;
+    │                         ˆˆˆˆˆ first used here
+ 18 │     case 2: @id(2) long second;
+    │                         ˆˆˆˆˆˆ duplicate member ID
+ 19 │ };

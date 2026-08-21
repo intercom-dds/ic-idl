@@ -1,0 +1,20 @@
+---
+source: crates/ic-lint/tests/member_id.rs
+expression: test_lint_hir(source)
+---
+⨯ member-id: member `value` has ID 268435456, which exceeds maximum 0xFFFFFFF
+  @ test.idl:3:25
+
+ 2 │ struct Foo {
+ 3 │     @id(268435456) long value;
+   │                         ˆˆˆˆˆ member ID out of range
+ 4 │ };
+
+⨯ member-id: member `out_of_range` has ID 268435456, which exceeds maximum 0xFFFFFFF
+  @ test.idl:8:10
+
+  6 │ struct Generated {
+  7 │     @id(268435455) long last_valid;
+  8 │     long out_of_range;
+    │          ˆˆˆˆˆˆˆˆˆˆˆˆ member ID out of range
+  9 │ };

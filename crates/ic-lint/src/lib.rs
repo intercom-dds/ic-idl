@@ -566,6 +566,7 @@ define_lints! {
         semantic::invalid_enum_literal::InvalidEnumLiteral,
         semantic::invalid_enum_value::InvalidEnumValue,
         semantic::invalid_inheritance::InvalidInheritance,
+        semantic::member_id::MemberId,
         semantic::multiple_default_cases::MultipleDefaultCases,
         semantic::recursive_type::RecursiveType,
         semantic::redundant_inheritance::RedundantInheritance,

@@ -57,7 +57,6 @@ const PYTHON_CONVENTION: Convention = Convention {
     bitmask: Some(Case::Pascal),
     bitset: Some(Case::Pascal),
     exception: Some(Case::Pascal),
-    annotation: Some(Case::Pascal),
     member: Some(Case::Snake),
     variant: Some(Case::Snake),
     enumerator: Some(Case::UpperSnake),

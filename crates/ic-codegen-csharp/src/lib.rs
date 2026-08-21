@@ -124,7 +124,6 @@ const DOTNET_CONVENTION: rename::Convention = rename::Convention {
     bitmask: Some(Case::Pascal),
     bitset: Some(Case::Pascal),
     exception: Some(Case::Pascal),
-    annotation: Some(Case::Pascal),
     member: Some(Case::Pascal),
     variant: Some(Case::Pascal),
     enumerator: Some(Case::Pascal),

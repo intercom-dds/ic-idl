@@ -53,7 +53,6 @@ const JAVA_CONVENTION: Convention = Convention {
     bitmask: Some(Case::Pascal),
     bitset: Some(Case::Pascal),
     exception: Some(Case::Pascal),
-    annotation: Some(Case::Pascal),
     member: Some(Case::Camel),
     variant: Some(Case::Camel),
     enumerator: Some(Case::UpperSnake),

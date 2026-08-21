@@ -169,9 +169,6 @@ pub struct Convention {
     /// Exceptions
     pub exception: Option<Case>,
 
-    /// Annotations
-    pub annotation: Option<Case>,
-
     /// Members of structs, exceptions, and value types
     pub member: Option<Case>,
 
@@ -639,9 +636,7 @@ fn rename_breadth(hir: &mut ResolvedGraph, def_ids: &[hir::DefId], target: &Targ
                 DefKind::Bitmask(_) => (target.convention.bitmask, IdentifierKind::Bitmask),
                 DefKind::Bitset(_) => (target.convention.bitset, IdentifierKind::Bitset),
                 DefKind::Except(_) => (target.convention.exception, IdentifierKind::Exception),
-                DefKind::Annotation(_) => {
-                    (target.convention.annotation, IdentifierKind::Annotation)
-                }
+                DefKind::Annotation(_) => (None, IdentifierKind::Annotation),
                 DefKind::Decl(Decl::Native) => (None, IdentifierKind::Struct),
             }
         };

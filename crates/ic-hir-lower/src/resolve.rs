@@ -30,15 +30,14 @@ use std::collections::HashMap;
 use ic_alloc::insensitive::CaseMap;
 use ic_diagnostic::{Label, error_span};
 use ic_hir::Context;
-use ic_hir::diagnostics::Diagnostics;
 use ic_hir::hir::{DefId, DefKind, PrimitiveTy, Ty, TyKind};
 use ic_hir::scope::{ScopeId, ScopeTree};
 use ic_syntax::{Ident, Path, Span, Type as AstType};
 use tracing::trace;
 
-use crate::LoweringContext;
 use crate::eval::ConstEvaluator;
 use crate::utils::{path_span, path_to_string};
+use crate::{Diagnostics, LoweringContext};
 
 /// Error returned when path resolution fails.
 #[derive(Debug, Clone)]

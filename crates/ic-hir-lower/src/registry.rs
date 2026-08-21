@@ -28,10 +28,11 @@
 use std::collections::HashMap;
 
 use ic_diagnostic::{Label, error_span};
-use ic_hir::diagnostics::Diagnostics;
 use ic_hir::hir::{Decl, DefId, DefKind};
 use ic_hir::scope::ScopeId;
 use ic_syntax::Ident;
+
+use crate::Diagnostics;
 
 /// Case-folded name for case-insensitive lookup.
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]

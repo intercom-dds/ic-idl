@@ -68,9 +68,6 @@ use std::fmt::Debug;
 mod ctx;
 pub use crate::ctx::Context;
 
-/// Diagnostic collection for HIR lowering.
-pub mod diagnostics;
-
 /// HIR tree folding for transformations.
 pub mod fold;
 

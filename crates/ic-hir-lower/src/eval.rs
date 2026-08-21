@@ -34,6 +34,7 @@ use ic_hir::scope::ScopeId;
 use super::LoweringContext;
 use super::utils::{literal_to_numeric, path_to_string};
 use super::value_items::types_equal;
+use crate::Diagnostics;
 
 type Value = ic_expr::Value<DefId>;
 type Expr = ic_expr::Expr<ExprLeaf, ic_syntax::Span>;
@@ -68,7 +69,7 @@ impl<'a> ConstEvaluator<'a> {
         }
     }
 
-    pub fn diagnostics(&mut self) -> &mut ic_hir::diagnostics::Diagnostics {
+    pub fn diagnostics(&mut self) -> &mut Diagnostics {
         &mut self.ctx.diagnostics
     }
 
@@ -767,11 +768,7 @@ fn float_rank_for_primitive(prim: PrimitiveTy) -> Option<FloatRank> {
     }
 }
 
-fn check_precision_loss(
-    expr: &ic_syntax::Expr,
-    ty: &Ty,
-    diag: &mut ic_hir::diagnostics::Diagnostics,
-) {
+fn check_precision_loss(expr: &ic_syntax::Expr, ty: &Ty, diag: &mut Diagnostics) {
     if let ic_syntax::ExprKind::Literal(ic_syntax::Literal::Float(f)) = &expr.value
         && let TyKind::Primitive(p) = &ty.kind
         && matches!(

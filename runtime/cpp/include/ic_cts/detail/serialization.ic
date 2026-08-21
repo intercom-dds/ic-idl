@@ -66,12 +66,14 @@ inline bool enum_to_string(std::string& res, T value, const TypeInfo* type) {
             std::ostringstream stream;
             bool empty = true;
             for (uint32_t i = 0; i < type->member_count; ++i) {
-                if ((1ULL << type->members[i].id) & value) {
+                if ((1ULL << type->members[i].id) & static_cast<uint64_t>(value)) {
                     if (!empty) {
                         stream << "|";
                     }
                     stream << type->members[i].name;
-                    value &= ~(1ULL << type->members[i].id);
+                    value = static_cast<T>(
+                        static_cast<uint64_t>(value) & ~(1ULL << type->members[i].id)
+                    );
                     empty = false;
                 }
             }
@@ -666,10 +668,12 @@ copy_discriminator(WRITER& writer, READER& reader, const TypeInfo& type_info, in
         }
         reader.end_member();
     } else {
-        discr = type_info.member_count != 0 ? type_info.members[1].case_labels[0] : 0;
+        discr = type_info.member_count != 0
+                    ? static_cast<uint64_t>(type_info.members[1].case_labels[0])
+                    : 0;
         for (uint32_t i = 1; i < type_info.member_count; ++i) {
             if ((type_info.members[i].flags & dcps::xtypes::IS_DEFAULT) != 0) {
-                discr = type_info.members[i].case_labels[0];
+                discr = static_cast<uint64_t>(type_info.members[i].case_labels[0]);
                 break;
             }
         }
@@ -701,13 +705,13 @@ copy_discriminator(WRITER& writer, READER& reader, const TypeInfo& type_info, in
         }
         for (uint32_t j = 0; j < static_cast<uint32_t>(type_info.members[i].case_labels[0]); ++j) {
             if (discr == static_cast<uint64_t>(type_info.members[i].case_labels[j + 1])) {
-                a_idx = i;
+                a_idx = static_cast<int32_t>(i);
                 break;
             }
         }
     }
     if (a_idx == 0 && default_member > 0) {
-        a_idx = default_member;
+        a_idx = static_cast<int32_t>(default_member);
     }
     return reader_has_member;
 }

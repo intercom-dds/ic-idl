@@ -69,6 +69,7 @@ use tracing::{debug, debug_span, info_span};
 mod annotation;
 mod builder;
 mod define;
+mod diagnostics;
 mod eval;
 mod initializers;
 mod registry;
@@ -77,6 +78,7 @@ mod type_items;
 mod utils;
 mod value_items;
 
+pub use diagnostics::Diagnostics;
 pub use registry::DefinitionRegistry;
 
 /// Input for HIR lowering, supporting both user-only and user+builtins scenarios.
@@ -209,7 +211,7 @@ pub(crate) struct LoweringContext {
     pub registry: DefinitionRegistry,
 
     /// Diagnostics collected during lowering.
-    pub diagnostics: ic_hir::diagnostics::Diagnostics,
+    pub diagnostics: Diagnostics,
 
     /// Top-level type IDs in order.
     pub order: Vec<DefId>,
@@ -224,7 +226,7 @@ impl LoweringContext {
         Self {
             context: Context::new(),
             registry: DefinitionRegistry::new(),
-            diagnostics: ic_hir::diagnostics::Diagnostics::new(),
+            diagnostics: Diagnostics::new(),
             module_scopes: HashMap::new(),
             order: Vec::new(),
         }

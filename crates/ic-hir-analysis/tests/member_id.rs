@@ -40,7 +40,7 @@ fn def_id(hir: &ic_hir::ResolvedGraph, name: &str) -> DefId {
 }
 
 #[test]
-fn assigns_effective_member_ids() {
+fn assigns_struct_member_ids() {
     let hir = common::parse_and_resolve_successfully(
         r#"
         const string HASH_NAME = "custom_hash";
@@ -59,11 +59,6 @@ fn assigns_effective_member_ids() {
                 long x;
                 @id(42) long y;
                 long z;
-            };
-
-            union Choice switch (long) {
-                case 0: long member1;
-                default: long member2;
             };
         };
 
@@ -84,7 +79,10 @@ fn assigns_effective_member_ids() {
     );
 
     let hashed = def_id(&hir, "Hashed");
-    assert_eq!(effective_autoid(&hir.context, hashed), Autoid::Hash);
+    assert_eq!(
+        effective_autoid(&hir.context, hir.context.type_of(hashed)),
+        Autoid::Hash
+    );
     assert_eq!(
         member_ids(&hir.context, hashed),
         [31_773_853, 37_920_031, 42]
@@ -92,17 +90,10 @@ fn assigns_effective_member_ids() {
 
     let sequential = def_id(&hir, "Sequential");
     assert_eq!(
-        effective_autoid(&hir.context, sequential),
+        effective_autoid(&hir.context, hir.context.type_of(sequential)),
         Autoid::Sequential
     );
     assert_eq!(member_ids(&hir.context, sequential), [0, 42, 43]);
-
-    let choice = def_id(&hir, "Choice");
-    assert_eq!(effective_autoid(&hir.context, choice), Autoid::Hash);
-    assert_eq!(
-        member_ids(&hir.context, choice),
-        [0, 239_892_167, 256_044_424]
-    );
 
     let hash_id = def_id(&hir, "HashId");
     assert_eq!(member_ids(&hir.context, hash_id), [31_773_853, 31_773_854]);
@@ -112,4 +103,101 @@ fn assigns_effective_member_ids() {
         member_ids(&hir.context, derived),
         [236_336_729, 236_336_730]
     );
+}
+
+#[test]
+fn assigns_union_member_ids() {
+    let hir = common::parse_and_resolve_successfully(
+        r"
+        @autoid(HASH)
+        module hashed {
+            union Choice switch (long) {
+                case 0: long member1;
+                default: long member2;
+            };
+        };
+        ",
+    );
+
+    let choice = def_id(&hir, "Choice");
+    assert_eq!(
+        effective_autoid(&hir.context, hir.context.type_of(choice)),
+        Autoid::Hash
+    );
+    assert_eq!(
+        member_ids(&hir.context, choice),
+        [0, 239_892_167, 256_044_424]
+    );
+}
+
+#[test]
+fn assigns_exception_member_ids() {
+    let hir = common::parse_and_resolve_successfully(
+        r"
+        @autoid(HASH)
+        module hashed {
+            exception HashedFailure {
+                string message;
+                long code;
+            };
+        };
+
+        exception Failure {
+            string message;
+        };
+        ",
+    );
+
+    let hashed_failure = def_id(&hir, "HashedFailure");
+    assert_eq!(
+        effective_autoid(&hir.context, hir.context.type_of(hashed_failure)),
+        Autoid::Hash
+    );
+    assert_eq!(
+        member_ids(&hir.context, hashed_failure),
+        [36_824_952, 73_872_321]
+    );
+
+    let failure = def_id(&hir, "Failure");
+    assert_eq!(member_ids(&hir.context, failure), [0]);
+}
+
+#[test]
+fn assigns_valuetype_member_ids() {
+    let hir = common::parse_and_resolve_successfully(
+        r"
+        @autoid(HASH)
+        module hashed {
+            valuetype HashedValue {
+                public string name;
+                public long code;
+            };
+
+            valuetype HashedDerived : HashedValue {
+                public long child;
+            };
+        };
+
+        valuetype ValueBase {
+            public long base;
+        };
+
+        valuetype ValueDerived : ValueBase {
+            public long child;
+        };
+        ",
+    );
+
+    let hashed_derived = def_id(&hir, "HashedDerived");
+    assert_eq!(
+        effective_autoid(&hir.context, hir.context.type_of(hashed_derived)),
+        Autoid::Hash
+    );
+    assert_eq!(
+        member_ids(&hir.context, hashed_derived),
+        [210_987_184, 73_872_321, 106_396_955]
+    );
+
+    let value_derived = def_id(&hir, "ValueDerived");
+    assert_eq!(member_ids(&hir.context, value_derived), [0, 1]);
 }

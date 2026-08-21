@@ -216,7 +216,7 @@ fn type_flags(ctx: &ic_hir::Context, def: &Def) -> String {
             if is_nested(ctx, def) {
                 add_flag(&mut flag, "::ic_cts::dcps::xtypes::IS_NESTED");
             }
-            if effective_autoid(ctx, def.id) == Autoid::Hash {
+            if effective_autoid(ctx, def) == Autoid::Hash {
                 add_flag(&mut flag, "::ic_cts::dcps::xtypes::IS_AUTOID_HASH");
             }
         }

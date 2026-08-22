@@ -130,11 +130,14 @@ def cpp_output_dir(request: pytest.FixtureRequest) -> Path:
     return make_output_dir(request, "cpp")
 
 
-@pytest.mark.parametrize("extra_args", [
-    pytest.param([], id="default"),
-    pytest.param(["--char-ptr-constants"], id="char-ptr-constants"),
-    pytest.param(["--unscoped-enums"], id="unscoped-enums"),
-])
+@pytest.mark.parametrize(
+    "extra_args",
+    [
+        pytest.param([], id="default"),
+        pytest.param(["--char-ptr-constants"], id="char-ptr-constants"),
+        pytest.param(["--unscoped-enums"], id="unscoped-enums"),
+    ],
+)
 def test_cpp(
     idl_file: Path,
     idl_compiler: Path,

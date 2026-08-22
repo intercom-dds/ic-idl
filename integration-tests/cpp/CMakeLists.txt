@@ -77,7 +77,9 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(doctest)
 
-set(IC_IDL_EXECUTABLE "${CMAKE_CURRENT_SOURCE_DIR}/../../target/debug/ic-idl")
+if(NOT DEFINED IC_IDL_EXECUTABLE)
+    set(IC_IDL_EXECUTABLE "${CMAKE_CURRENT_SOURCE_DIR}/../../target/debug/ic-idl")
+endif()
 
 find_package(
     ic_idl REQUIRED

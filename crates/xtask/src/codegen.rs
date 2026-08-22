@@ -35,10 +35,6 @@ pub struct Options {
     #[option(short, long, arg = "lang")]
     pub lang: Vec<String>,
 
-    /// Use release build of ic-idl
-    #[option(short, long)]
-    pub release: bool,
-
     /// Number of parallel jobs
     #[option(long, short = 'j', arg = "N")]
     pub jobs: Option<usize>,
@@ -118,21 +114,7 @@ fn lang_to_test_file(lang: &str) -> Option<&'static str> {
 pub fn run(opts: Options) {
     let workspace_root = git_root();
     let codegen_tests_dir = workspace_root.join("codegen-tests");
-    let idl_compiler = opts.idl_compiler.unwrap_or_else(|| {
-        let profile = if opts.release { "release" } else { "debug" };
-        workspace_root
-            .join("target")
-            .join(profile)
-            .join("ic-idl")
-            .with_extension(std::env::consts::EXE_EXTENSION)
-            .to_string_lossy()
-            .to_string()
-    });
-
-    if !PathBuf::from(&idl_compiler).exists() {
-        eprintln!("error: ic-idl not found at {idl_compiler}");
-        std::process::exit(1);
-    }
+    let idl_compiler = crate::idl_compiler(&workspace_root, opts.idl_compiler);
 
     let corpus = opts.corpus.map_or_else(
         || codegen_tests_dir.join("corpus"),
@@ -166,7 +148,7 @@ pub fn run(opts: Options) {
     cmd.current_dir(&codegen_tests_dir)
         .args(["run", "pytest"])
         .args(&test_files)
-        .arg(format!("--idl-compiler={idl_compiler}"))
+        .arg(format!("--idl-compiler={}", idl_compiler.display()))
         .arg(format!("--corpus={}", corpus.display()))
         .arg(format!("-n={jobs}"));
 

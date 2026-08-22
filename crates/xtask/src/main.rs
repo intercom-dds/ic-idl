@@ -27,6 +27,9 @@
 
 #![allow(clippy::print_stdout, clippy::print_stderr, clippy::large_enum_variant)]
 
+use std::path::{Path, PathBuf};
+use std::process::Command as ProcessCommand;
+
 use ic_cli::Command;
 
 mod codegen;
@@ -34,6 +37,38 @@ mod deny;
 mod integration;
 mod ipr;
 mod release;
+
+fn idl_compiler(workspace_root: &Path, explicit: Option<String>) -> PathBuf {
+    let path = if let Some(path) = explicit {
+        PathBuf::from(path)
+    } else {
+        let status = ProcessCommand::new("cargo")
+            .current_dir(workspace_root)
+            .args(["build", "-p", "ic-idl"])
+            .status()
+            .unwrap_or_else(|e| {
+                eprintln!("error: failed to run cargo: {e}");
+                std::process::exit(1);
+            });
+
+        if !status.success() {
+            std::process::exit(status.code().unwrap_or(1));
+        }
+
+        workspace_root
+            .join("target")
+            .join("debug")
+            .join("ic-idl")
+            .with_extension(std::env::consts::EXE_EXTENSION)
+    };
+
+    if !path.exists() {
+        eprintln!("error: ic-idl not found at {}", path.display());
+        std::process::exit(1);
+    }
+
+    path.canonicalize().unwrap()
+}
 
 /// Polyfill for building and releasing ic-idl
 #[derive(Command)]

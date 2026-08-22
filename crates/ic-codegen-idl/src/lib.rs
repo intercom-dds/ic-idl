@@ -36,10 +36,6 @@ use ic_syntax::keywords::IDL_KEYWORDS;
 
 #[derive(Command, Copy, Clone, Debug, Default)]
 pub struct IdlOptions {
-    /// Output Doxygen-compatible IDL files
-    #[option(long)]
-    pub idl_doxygen: bool,
-
     /// Emit IDL compatible with older parsers
     #[option(long)]
     pub idl_legacy: bool,

@@ -1,0 +1,25 @@
+---
+source: crates/ic-lint/tests/range_bound.rs
+expression: test_lint_hir(source)
+---
+⨯ range-bound: @min value -40000 is less than type minimum -32768
+  @ test.idl:7:10
+
+ 6 │     struct BadNestedTypedef {
+ 7 │         @min(-40000) @max(40000) Smaller value;
+   │          ˆˆˆ value out of bounds
+ 8 │     };
+ 9 │ };
+
+  ? valid range is -32768..32767
+
+⨯ range-bound: @max value 40000 exceeds type maximum 32767
+  @ test.idl:7:23
+
+ 6 │     struct BadNestedTypedef {
+ 7 │         @min(-40000) @max(40000) Smaller value;
+   │                       ˆˆˆ value out of bounds
+ 8 │     };
+ 9 │ };
+
+  ? valid range is -32768..32767

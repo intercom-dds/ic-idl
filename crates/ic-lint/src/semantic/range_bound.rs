@@ -201,9 +201,9 @@ impl RangeBound<'_> {
         }
     }
 
-    /// Get the valid range for a type
-    fn get_type_bounds(ty: &Ty) -> Option<(i64, i64)> {
-        match &ty.kind {
+    /// Get the valid range for a type, resolving through aliases
+    fn get_type_bounds(&self, ty: &Ty) -> Option<(i64, i64)> {
+        match &self.hir.context.resolve_ty(ty).kind {
             TyKind::Primitive(prim) => match prim {
                 PrimitiveTy::Int8 => Some((i64::from(i8::MIN), i64::from(i8::MAX))),
                 PrimitiveTy::Int16 => Some((i64::from(i16::MIN), i64::from(i16::MAX))),
@@ -217,16 +217,12 @@ impl RangeBound<'_> {
                 PrimitiveTy::WChar => Some((0, 65535)),
                 _ => None,
             },
-            TyKind::Adt(_) => {
-                // TODO: Follow typedef/alias to get underlying type
-                None
-            }
             _ => None,
         }
     }
 
     fn check_value_in_bounds(&mut self, value: i64, ty: &Ty, ann: &Ann, annotation_type: &str) {
-        if let Some((min_bound, max_bound)) = Self::get_type_bounds(ty) {
+        if let Some((min_bound, max_bound)) = self.get_type_bounds(ty) {
             if value < min_bound {
                 let diag = self
                     .ctx

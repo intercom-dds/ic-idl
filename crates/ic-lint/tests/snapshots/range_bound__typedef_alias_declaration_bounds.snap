@@ -1,0 +1,15 @@
+---
+source: crates/ic-lint/tests/range_bound.rs
+expression: test_lint_hir(source)
+---
+⨯ range-bound: @max value 256 exceeds type maximum 255
+  @ test.idl:5:6
+
+ 3 │     typedef octet Byte;
+ 4 │ 
+ 5 │     @max(256)
+   │      ˆˆˆ value out of bounds
+ 6 │     typedef Byte Level;
+ 7 │ };
+
+  ? valid range is 0..255

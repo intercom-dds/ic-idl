@@ -505,8 +505,13 @@ impl<'a> ic_hir::visit::Visitor<'a> for StdlibVisitor<'a> {
             {
                 self.stdlib.typing = true;
             }
-            DefKind::Interface(_) => {
-                self.stdlib.abc = true;
+            DefKind::Interface(interface_ty) => {
+                if interface_ty.parents.is_empty()
+                    || !interface_ty.prototypes.is_empty()
+                    || !interface_ty.attributes.is_empty()
+                {
+                    self.stdlib.abc = true;
+                }
             }
             DefKind::Valuetype(value_ty) => {
                 self.stdlib.dataclasses = true;

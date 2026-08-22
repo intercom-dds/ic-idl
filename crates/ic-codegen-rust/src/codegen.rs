@@ -261,7 +261,7 @@ impl<'a> RustGen<'a> {
         if !interface_ty.parents.is_empty() {
             w!(w, ": ");
             for (i, parent) in interface_ty.parents.iter().enumerate() {
-                let parent_def = self.hir.context.definitions.get(parent.def_id);
+                let parent_def = self.scoped_name(parent.def_id, def.id);
                 w!(w, parent_def);
                 if i + 1 < interface_ty.parents.len() {
                     w!(w, " + ");
@@ -315,9 +315,7 @@ impl<'a> RustGen<'a> {
     }
 
     fn emit_param_type(&self, param: &ic_hir::hir::Parameter, ctx: DefId, w: &mut Twine) {
-        // TODO: should be is_trivial(def)
-        let is_trivial = matches!(param.ty.kind, TyKind::Primitive(_));
-
+        let is_trivial = self.is_copy_type(&param.ty);
         if !is_trivial || matches!(param.kind, ParamKind::Out | ParamKind::InOut) {
             w!(w, "&");
             if matches!(param.kind, ParamKind::Out | ParamKind::InOut) {

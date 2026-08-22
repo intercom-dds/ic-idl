@@ -272,6 +272,68 @@ module MyModule {
 }
 
 #[test]
+fn typedef_exceeds_type_bounds() {
+    let source = r"
+module MyModule {
+    typedef octet Byte;
+
+    struct BadTypedef {
+        @range(min=-1, max=300) Byte value;
+    };
+};
+";
+    assert_snapshot!(test_lint_hir(source));
+}
+
+#[test]
+fn nested_typedef_exceeds_type_bounds() {
+    let source = r"
+module MyModule {
+    typedef short Small;
+    typedef Small Smaller;
+
+    struct BadNestedTypedef {
+        @min(-40000) @max(40000) Smaller value;
+    };
+};
+";
+    assert_snapshot!(test_lint_hir(source));
+}
+
+#[test]
+fn typedef_within_type_bounds() {
+    let source = r"
+module MyModule {
+    typedef octet Byte;
+    typedef Byte Alias;
+
+    struct GoodTypedef {
+        @range(min=0, max=255) Byte value;
+        @min(10) @max(20) Alias other;
+    };
+};
+";
+    let output = test_lint_hir(source);
+    assert!(
+        output.is_empty(),
+        "Expected no warnings for in-bounds typedef, but got: {output}"
+    );
+}
+
+#[test]
+fn typedef_alias_declaration_bounds() {
+    let source = r"
+module MyModule {
+    typedef octet Byte;
+
+    @max(256)
+    typedef Byte Level;
+};
+";
+    assert_snapshot!(test_lint_hir(source));
+}
+
+#[test]
 fn test_positive_min_works() {
     let source = r"
 module MyModule {

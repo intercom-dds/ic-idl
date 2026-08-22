@@ -40,9 +40,6 @@ also functional tests that ensure equality and comparison operators behave as ex
 The easiest way to run the tests is through `xtask`:
 
 ```bash
-# build ic-idl first
-cargo build
-
 # run all tests
 cargo xtask integration
 

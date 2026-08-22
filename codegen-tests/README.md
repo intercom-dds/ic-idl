@@ -39,9 +39,6 @@ they do not actually test or validate that the output matches the input IDL.
 The easiest way to run the tests is through `xtask`:
 
 ```bash
-# build ic-idl first
-cargo build
-
 # run all tests
 cargo xtask codegen
 
@@ -52,6 +49,7 @@ cargo xtask codegen -l python
 You can also run `pytest` directly if you prefer:
 
 ```bash
+cargo build
 cd codegen-tests
 uv run pytest . -n auto
 ```

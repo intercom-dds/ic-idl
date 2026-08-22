@@ -36,6 +36,10 @@ pub struct Options {
     /// Languages to test: c, python, typescript, csharp, cpp, java, rust
     #[option(short, long, arg = "lang")]
     pub lang: HashSet<String>,
+
+    /// Path to ic-idl compiler executable
+    #[option(long, arg = "path")]
+    pub idl_compiler: Option<String>,
 }
 
 fn git_root() -> PathBuf {
@@ -65,22 +69,24 @@ fn run_command(mut cmd: Command, command_name: &str) {
     }
 }
 
-fn run_typescript_tests(integration_dir: &Path) {
+fn run_typescript_tests(integration_dir: &Path, idl_compiler: &Path) {
     let mut cmd = Command::new("bun");
     cmd.current_dir(integration_dir.join("typescript"))
+        .env("IDL_COMPILER", idl_compiler)
         .arg("test");
     run_command(cmd, "bun");
 }
 
-fn run_csharp_tests(integration_dir: &Path, build_dir: &Path) {
+fn run_csharp_tests(integration_dir: &Path, build_dir: &Path, idl_compiler: &Path) {
     let mut cmd = Command::new("dotnet");
     cmd.current_dir(integration_dir.join("csharp"))
+        .env("IDL_COMPILER", idl_compiler)
         .args(["test", "--verbosity", "minimal", "--artifacts-path"])
         .arg(build_dir.join("csharp"));
     run_command(cmd, "dotnet");
 }
 
-fn run_cmake_tests(source_dir: &Path, build_dir: &Path) {
+fn run_cmake_tests(source_dir: &Path, build_dir: &Path, idl_compiler: &Path) {
     let jobs = std::thread::available_parallelism()
         .map_or(4, NonZero::get)
         .to_string();
@@ -88,7 +94,8 @@ fn run_cmake_tests(source_dir: &Path, build_dir: &Path) {
     let mut cmd = Command::new("cmake");
     cmd.current_dir(source_dir)
         .args(["-S", ".", "-B"])
-        .arg(build_dir);
+        .arg(build_dir)
+        .arg(format!("-DIC_IDL_EXECUTABLE={}", idl_compiler.display()));
     run_command(cmd, "cmake");
 
     let mut cmd = Command::new("cmake");
@@ -99,7 +106,7 @@ fn run_cmake_tests(source_dir: &Path, build_dir: &Path) {
     run_command(cmd, "cmake");
 }
 
-fn run_python_tests(integration_dir: &Path, build_dir: &Path) {
+fn run_python_tests(integration_dir: &Path, build_dir: &Path, idl_compiler: &Path) {
     let build_dir = build_dir.join("python");
     std::fs::create_dir_all(&build_dir).unwrap();
 
@@ -108,6 +115,7 @@ fn run_python_tests(integration_dir: &Path, build_dir: &Path) {
         .env("TMPDIR", &build_dir)
         .env("PYTHONPYCACHEPREFIX", build_dir.join("pycache"))
         .args(["run", "pytest", "-n", "auto"])
+        .arg(format!("--idl-compiler={}", idl_compiler.display()))
         .arg(format!("--basetemp={}", build_dir.join("tmp").display()))
         .args(["-o"])
         .arg(format!(
@@ -117,21 +125,23 @@ fn run_python_tests(integration_dir: &Path, build_dir: &Path) {
     run_command(cmd, "uv");
 }
 
-fn run_java_tests(integration_dir: &Path, build_dir: &Path) {
+fn run_java_tests(integration_dir: &Path, build_dir: &Path, idl_compiler: &Path) {
     let mut cmd = Command::new("mvn");
     cmd.current_dir(integration_dir.join("java"))
         .arg(format!(
             "-Dintegration.build.directory={}",
             build_dir.join("java").display()
         ))
+        .arg(format!("-Didl.compiler={}", idl_compiler.display()))
         .arg("test");
     run_command(cmd, "mvn");
 }
 
-fn run_rust_tests(integration_dir: &Path, build_dir: &Path) {
+fn run_rust_tests(integration_dir: &Path, build_dir: &Path, idl_compiler: &Path) {
     let mut cmd = Command::new("cargo");
     cmd.current_dir(integration_dir.join("rust"))
         .env("CARGO_TARGET_DIR", build_dir.join("rust"))
+        .env("IDL_COMPILER", idl_compiler)
         .arg("test");
     run_command(cmd, "cargo");
 }
@@ -140,6 +150,7 @@ pub fn run(opts: &Options) {
     let root = git_root();
     let integration_dir = root.join("integration-tests");
     let build_dir = root.join("target/integration-tests");
+    let idl_compiler = crate::idl_compiler(&root, opts.idl_compiler.clone());
     let all_languages = ["c", "python", "typescript", "csharp", "cpp", "java", "rust"];
     let languages: HashSet<_> = if opts.lang.is_empty() || opts.lang.contains("all") {
         all_languages.iter().map(ToString::to_string).collect()
@@ -149,15 +160,21 @@ pub fn run(opts: &Options) {
 
     for lang in &languages {
         match lang.as_str() {
-            "c" => run_cmake_tests(&integration_dir.join("c"), &build_dir.join("c")),
-            "python" | "py" => run_python_tests(&integration_dir, &build_dir),
-            "typescript" | "ts" => run_typescript_tests(&integration_dir),
-            "csharp" | "cs" => run_csharp_tests(&integration_dir, &build_dir),
-            "cpp" | "c++" => {
-                run_cmake_tests(&integration_dir.join("cpp"), &build_dir.join("cpp"));
-            }
-            "java" => run_java_tests(&integration_dir, &build_dir),
-            "rust" | "rs" => run_rust_tests(&integration_dir, &build_dir),
+            "c" => run_cmake_tests(
+                &integration_dir.join("c"),
+                &build_dir.join("c"),
+                &idl_compiler,
+            ),
+            "python" | "py" => run_python_tests(&integration_dir, &build_dir, &idl_compiler),
+            "typescript" | "ts" => run_typescript_tests(&integration_dir, &idl_compiler),
+            "csharp" | "cs" => run_csharp_tests(&integration_dir, &build_dir, &idl_compiler),
+            "cpp" | "c++" => run_cmake_tests(
+                &integration_dir.join("cpp"),
+                &build_dir.join("cpp"),
+                &idl_compiler,
+            ),
+            "java" => run_java_tests(&integration_dir, &build_dir, &idl_compiler),
+            "rust" | "rs" => run_rust_tests(&integration_dir, &build_dir, &idl_compiler),
             _ => {
                 eprintln!("error: unknown or unsupported language '{lang}'");
                 eprintln!(

@@ -143,3 +143,17 @@ module interfaces {
         long process(in sequence<long> data, out sequence<string> results);
     };
 };
+
+module interface_bases_a {
+    interface Base {
+        void base_op();
+    };
+
+    typedef Base BaseAlias;
+};
+
+module interface_bases_b {
+    interface Direct : interface_bases_a::Base {};
+    interface Aliased : interface_bases_a::BaseAlias {};
+    valuetype Supporting supports interface_bases_a::Base {};
+};

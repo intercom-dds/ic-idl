@@ -259,7 +259,11 @@ impl<'a> CSharpGen<'a> {
 
     fn scoped_name(&self, target_def_id: DefId, relative_to_def_id: DefId) -> String {
         let target_def = self.hir.context.type_of(target_def_id);
-        let type_name = &target_def.ident.name;
+        let type_name = if matches!(target_def.kind, DefKind::Interface(_)) {
+            format!("I{}", target_def.ident.name)
+        } else {
+            target_def.ident.name.clone()
+        };
 
         // Enum fields and bitmask flags need special handling
         if let Some(parent_id) = target_def.parent {
@@ -1041,7 +1045,7 @@ impl<'a> CSharpGen<'a> {
                     w!(w, ", ");
                 }
                 let parent_name = self.base_scoped_name(parent.def_id, def.id);
-                w!(w, "I", parent_name);
+                w!(w, parent_name);
             }
         }
 
@@ -1109,11 +1113,11 @@ impl<'a> CSharpGen<'a> {
 
             if let Some(supports) = valuetype.supports {
                 let supports_name = self.base_scoped_name(supports.def_id, def.id);
-                w!(w, ", I", supports_name);
+                w!(w, ", ", supports_name);
             }
         } else if let Some(supports) = valuetype.supports {
             let supports_name = self.base_scoped_name(supports.def_id, def.id);
-            w!(w, " : I", supports_name);
+            w!(w, " : ", supports_name);
         }
 
         w!(w, "\n");

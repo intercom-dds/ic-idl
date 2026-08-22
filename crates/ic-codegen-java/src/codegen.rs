@@ -308,8 +308,8 @@ impl<'a> JavaGen<'a> {
         &self.hir.context.type_of(def_id).ident.name
     }
 
-    fn java_base(&self, def_id: DefId) -> &str {
-        self.java_name(self.hir.context.base_id_of(def_id))
+    fn java_base(&self, def_id: DefId, relative_def: DefId) -> String {
+        self.scoped_name(self.hir.context.base_id_of(def_id), relative_def)
     }
 
     fn file_path(&self, def: &Def, suffix: impl Into<Option<&'a str>>) -> PathBuf {
@@ -637,7 +637,7 @@ impl<'a> JavaGen<'a> {
             w!(w, "public class ", def);
         }
         if let Some(parent) = struct_ty.parent {
-            let parent = self.java_base(parent.def_id);
+            let parent = self.java_base(parent.def_id, def.id);
             w!(w, " extends ", parent);
         }
         w!(w, " implements java.io.Serializable {\n");
@@ -1487,7 +1487,7 @@ impl<'a> JavaGen<'a> {
         let parents = interface_ty
             .parents
             .iter()
-            .map(|v| self.java_base(v.def_id))
+            .map(|v| self.java_base(v.def_id, def.id))
             .collect::<Vec<_>>()
             .join(", ");
 
@@ -1525,13 +1525,13 @@ impl<'a> JavaGen<'a> {
         w!(w, "public abstract class ", def, "Abstract");
 
         if let Some(extends) = value_ty.parent {
-            let name = self.java_base(extends.def_id);
+            let name = self.java_base(extends.def_id, def.id);
             w!(w, " extends ", name);
         }
 
         w!(w, " implements Cloneable");
         if let Some(supports) = value_ty.supports {
-            let name = self.java_base(supports.def_id);
+            let name = self.java_base(supports.def_id, def.id);
             w!(w, ", ", name);
         }
         w!(w, " {\n");

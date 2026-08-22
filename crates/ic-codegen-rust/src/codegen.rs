@@ -460,22 +460,28 @@ impl<'a> RustGen<'a> {
         w!(w, "fn from(disc: ", disc_ty, ") -> Self {\n");
         w!(w, "match disc {\n");
         for variant in &union_ty.variants {
-            if !variant.is_default {
-                for label in &variant.labels {
-                    self.emit_const_value(&label.value, &union_ty.disc.ty, def.id, w);
-                    w!(w, " => Self::", self.union_variant_name(variant, label, union_ty));
-                    if !matches!(variant.ty.kind, TyKind::Null) {
-                        w!(w, "(");
-                        self.emit_annotated_default_value(&variant.ty, variant, def.id, w);
-                        w!(w, ")");
-                    }
-                    w!(w, ",\n");
+            for label in &variant.labels {
+                self.emit_const_value(&label.value, &union_ty.disc.ty, def.id, w);
+                w!(w, " => Self::", self.union_variant_name(variant, label, union_ty));
+                if !matches!(variant.ty.kind, TyKind::Null) {
+                    w!(w, "(");
+                    self.emit_annotated_default_value(&variant.ty, variant, def.id, w);
+                    w!(w, ")");
                 }
+                w!(w, ",\n");
             }
         }
-        if let Some(default_variant) = union_ty.variants.iter().find(|v| v.is_default) {
+        if let Some(default_variant) = union_ty.variants.iter().find(|v| v.is_default)
+            && unused_discriminator(&self.hir.context, union_ty).is_some()
+        {
             w!(w, "_ => ");
-            self.emit_union_variant_default(default_variant, None, union_ty, def.id, w);
+            self.emit_union_variant_default(
+                default_variant,
+                default_variant.labels.first(),
+                union_ty,
+                def.id,
+                w,
+            );
             w!(w, ",\n");
         }
         w!(w, "}\n");

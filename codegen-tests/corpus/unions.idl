@@ -109,4 +109,24 @@ module union_tests {
     default:
         string other;
     };
+
+    union MultipleDefaultOctet switch (octet) {
+    case 0:
+    case 1:
+    default:
+        string var;
+    };
+
+    enum PartialEnum {
+        ONE,
+        TWO,
+        NINE = 9
+    };
+
+    union PartialEnumUnion switch (PartialEnum) {
+    case ONE:
+        long first;
+    case TWO:
+        float second;
+    };
 };

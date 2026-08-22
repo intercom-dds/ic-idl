@@ -134,7 +134,7 @@ def cxx_has_std_format(
     probe.write_text(
         "#include <format>\n"
         "#include <string>\n"
-        "int main() { return std::format(\"{}\", 1).empty() ? 1 : 0; }\n"
+        'int main() { return std::format("{}", 1).empty() ? 1 : 0; }\n'
     )
 
     cmd = [
@@ -159,12 +159,15 @@ def cpp_output_dir(request: pytest.FixtureRequest) -> Path:
     return make_output_dir(request, "cpp")
 
 
-@pytest.mark.parametrize(("extra_args", "standard"), [
-    pytest.param([], "c++17", id="default"),
-    pytest.param(["--char-ptr-constants"], "c++17", id="char-ptr-constants"),
-    pytest.param(["--unscoped-enums"], "c++17", id="unscoped-enums"),
-    pytest.param(["--use-fmt"], "c++20", id="use-fmt"),
-])
+@pytest.mark.parametrize(
+    ("extra_args", "standard"),
+    [
+        pytest.param([], "c++17", id="default"),
+        pytest.param(["--char-ptr-constants"], "c++17", id="char-ptr-constants"),
+        pytest.param(["--unscoped-enums"], "c++17", id="unscoped-enums"),
+        pytest.param(["--use-fmt"], "c++20", id="use-fmt"),
+    ],
+)
 def test_cpp(
     idl_file: Path,
     idl_compiler: Path,

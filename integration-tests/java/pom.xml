@@ -17,6 +17,7 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <junit.version>5.10.2</junit.version>
         <integration.build.directory>${project.basedir}/target</integration.build.directory>
+        <idl.compiler>${project.basedir}/../../target/debug/ic-idl</idl.compiler>
     </properties>
 
     <dependencies>
@@ -63,11 +64,11 @@
                         </goals>
                         <configuration>
                             <target>
-                                <available file="${project.basedir}/../../target/debug/ic-idl" property="ic-idl.exists"/>
-                                <fail unless="ic-idl.exists" message="ic-idl binary not found at ${project.basedir}/../../target/debug/ic-idl"/>
+                                <available file="${idl.compiler}" property="ic-idl.exists"/>
+                                <fail unless="ic-idl.exists" message="ic-idl binary not found at ${idl.compiler}"/>
 
                                 <mkdir dir="${project.build.directory}/generated-sources/idl"/>
-                                <apply executable="${project.basedir}/../../target/debug/ic-idl"
+                                <apply executable="${idl.compiler}"
                                        failonerror="true"
                                        parallel="false">
                                     <arg value="--java-out"/>

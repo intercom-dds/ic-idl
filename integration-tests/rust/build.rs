@@ -25,6 +25,8 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+use std::path::PathBuf;
+
 use intercom_build::Codegen;
 
 fn main() {
@@ -33,12 +35,17 @@ fn main() {
         .map(|res| res.map(|e| e.path()).expect("corpus IDL file path"))
         .collect();
 
+    let idl_compiler = std::env::var_os("IDL_COMPILER")
+        .map(PathBuf::from)
+        .unwrap_or_else(|| PathBuf::from("../../target/debug/ic-idl"));
+
     // Rebuild if corpus or ic-idl binary changes
     println!("cargo::rerun-if-changed=../corpus/");
-    println!("cargo::rerun-if-changed=../../target/debug/ic-idl");
+    println!("cargo::rerun-if-changed={}", idl_compiler.display());
+    println!("cargo::rerun-if-env-changed=IDL_COMPILER");
 
     Codegen::new("corpus")
-        .executable("../../target/debug/ic-idl")
+        .executable(idl_compiler)
         .include("../corpus")
         .input(&idl_files)
         .generate()

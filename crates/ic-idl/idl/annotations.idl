@@ -271,16 +271,7 @@ module ext {
 };
 
 @annotation doc {
-    enum PlacementKind {
-        BEGIN_FILE,
-        BEFORE_DECLARATION,
-        BEGIN_DECLARATION,
-        END_DECLARATION,
-        AFTER_DECLARATION,
-        END_FILE
-    };
     string text;
-    PlacementKind placement default BEFORE_DECLARATION;
 };
 
 @ext::annotation_target(PROTOTYPE)
@@ -299,16 +290,7 @@ module ext {
 
 module ext {
     @annotation doc {
-        enum PlacementKind {
-            BEGIN_FILE,
-            BEFORE_DECLARATION,
-            BEGIN_DECLARATION,
-            END_DECLARATION,
-            AFTER_DECLARATION,
-            END_FILE
-        };
         string text;
-        PlacementKind placement default BEFORE_DECLARATION;
     };
 
     @annotation suppress {

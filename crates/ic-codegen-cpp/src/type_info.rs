@@ -125,7 +125,9 @@ fn primitive_type_info(ty: PrimitiveTy) -> &'static str {
 
 fn type_kind_name(def_kind: &DefKind) -> &'static str {
     match def_kind {
-        DefKind::Struct(_) => "::ic_cts::dcps::xtypes::TK_STRUCTURE",
+        DefKind::Struct(_) | DefKind::Valuetype(_) | DefKind::Except(_) => {
+            "::ic_cts::dcps::xtypes::TK_STRUCTURE"
+        }
         DefKind::Union(_) => "::ic_cts::dcps::xtypes::TK_UNION",
         DefKind::Enum(_) => "::ic_cts::dcps::xtypes::TK_ENUM",
         DefKind::Bitmask(_) => "::ic_cts::dcps::xtypes::TK_BITMASK",
@@ -208,13 +210,13 @@ fn member_flags(ctx: &ic_hir::Context, member: &Member, has_key: bool) -> String
 fn type_flags(ctx: &ic_hir::Context, def: &Def) -> String {
     let mut flag = String::new();
     match &def.kind {
-        DefKind::Struct(_) | DefKind::Union(_) | DefKind::Except(_) => {
+        DefKind::Struct(_) | DefKind::Union(_) | DefKind::Except(_) | DefKind::Valuetype(_) => {
             add_flag(&mut flag, extensibility(ctx, def));
 
             if is_nested(ctx, def) {
                 add_flag(&mut flag, "::ic_cts::dcps::xtypes::IS_NESTED");
             }
-            if effective_autoid(ctx, def.id) == Autoid::Hash {
+            if effective_autoid(ctx, def) == Autoid::Hash {
                 add_flag(&mut flag, "::ic_cts::dcps::xtypes::IS_AUTOID_HASH");
             }
         }
@@ -334,7 +336,7 @@ impl CppGen<'_> {
                     members: None,
                 };
 
-                w!(w, "static ::ic_cts::TypeInfo ", var_name, " = ");
+                w!(w, "static const ::ic_cts::TypeInfo ", var_name, " = ");
                 info.emit(w);
                 w!(w, ";\n");
                 format!("&{var_name}")
@@ -367,7 +369,7 @@ impl CppGen<'_> {
                     members: None,
                 };
 
-                w!(w, "static ::ic_cts::TypeInfo ", var_name, " = ");
+                w!(w, "static const ::ic_cts::TypeInfo ", var_name, " = ");
                 info.emit(w);
                 w!(w, ";\n");
                 format!("&{var_name}")
@@ -400,7 +402,7 @@ impl CppGen<'_> {
                     members: None,
                 };
 
-                w!(w, "static ::ic_cts::TypeInfo ", var_name, " = ");
+                w!(w, "static const ::ic_cts::TypeInfo ", var_name, " = ");
                 info.emit(w);
                 w!(w, ";\n");
                 format!("&{var_name}")
@@ -429,7 +431,7 @@ impl CppGen<'_> {
         }
 
         let ids = member_ids(&self.original_hir.context, def.id);
-        w!(w, "static ::ic_cts::MemberInfo ", mangled_name, "_members[", members.len(), "] = {\n");
+        w!(w, "static const ::ic_cts::MemberInfo ", mangled_name, "_members[", members.len(), "] = {\n");
         for ((i, member), member_id) in members.iter().enumerate().zip(ids) {
             let flags = member_flags(&self.hir.context, member, has_key);
             emit_member_info(
@@ -482,7 +484,7 @@ impl CppGen<'_> {
         let disc_type_info = self.type_info_ref(&union.disc.ty);
         let member_ids = member_ids(&self.original_hir.context, def.id);
         let total_members = union.variants.len() + 1;
-        w!(w, "static ::ic_cts::MemberInfo ", mangled_name, "_members[", total_members, "] = {\n");
+        w!(w, "static const ::ic_cts::MemberInfo ", mangled_name, "_members[", total_members, "] = {\n");
 
         let mut disc_flags = String::new();
         add_flag(&mut disc_flags, "::ic_cts::dcps::xtypes::IS_DISCRIMINATOR");
@@ -543,7 +545,7 @@ impl CppGen<'_> {
         w!(w, "static ", type_name, " ", name, "_max = ", max_val, ";\n");
         w!(w, "static ", type_name, " ", name, "_default = ", default_value_of(def, &self.hir.context), ";\n\n");
 
-        w!(w, "static ::ic_cts::MemberInfo ", name, "_members[", fields.len(), "] = {\n");
+        w!(w, "static const ::ic_cts::MemberInfo ", name, "_members[", fields.len(), "] = {\n");
         for (i, &field_id) in fields.iter().enumerate() {
             let field_def = self.hir.context.definitions.get(field_id);
             let member_id = if let DefKind::Const(c) = &field_def.kind {
@@ -585,7 +587,7 @@ impl CppGen<'_> {
         w!(w, "static ", type_name, " ", name, "_max = ", max_val, ";\n");
         w!(w, "static ", type_name, " ", name, "_default = ", default_value_of(def, &self.hir.context), ";\n\n");
 
-        w!(w, "static ::ic_cts::MemberInfo ", name, "_members[", flags.len(), "] = {\n");
+        w!(w, "static const ::ic_cts::MemberInfo ", name, "_members[", flags.len(), "] = {\n");
         for (i, &flag_id) in flags.iter().enumerate() {
             let flag_def = self.hir.context.definitions.get(flag_id);
 
@@ -609,7 +611,7 @@ impl CppGen<'_> {
 
     pub(crate) fn emit_member_info(&self, w: &mut Twine, def: &Def) {
         match &def.kind {
-            DefKind::Struct(_) => {
+            DefKind::Struct(_) | DefKind::Valuetype(_) | DefKind::Except(_) => {
                 let members = self.collect_all_members(def.id);
                 self.emit_struct_members(w, def, &members);
             }
@@ -622,9 +624,12 @@ impl CppGen<'_> {
 
     pub(crate) fn emit_type_info_definition(&self, w: &mut Twine, def: &Def) {
         let def_kind = match &def.kind {
-            DefKind::Struct(_) | DefKind::Union(_) | DefKind::Enum(_) | DefKind::Bitmask(_) => {
-                &def.kind
-            }
+            DefKind::Struct(_)
+            | DefKind::Union(_)
+            | DefKind::Enum(_)
+            | DefKind::Bitmask(_)
+            | DefKind::Valuetype(_)
+            | DefKind::Except(_) => &def.kind,
             _ => return,
         };
 
@@ -633,7 +638,9 @@ impl CppGen<'_> {
         let kind = type_kind_name(def_kind).to_string();
 
         let flags = match def_kind {
-            DefKind::Struct(_) | DefKind::Union(_) => type_flags(&self.hir.context, def),
+            DefKind::Struct(_) | DefKind::Union(_) | DefKind::Valuetype(_) | DefKind::Except(_) => {
+                type_flags(&self.hir.context, def)
+            }
             _ => "0".to_string(),
         };
 
@@ -644,7 +651,9 @@ impl CppGen<'_> {
         };
 
         let member_count = match def_kind {
-            DefKind::Struct(_) => self.collect_all_members(def.id).len(),
+            DefKind::Struct(_) | DefKind::Valuetype(_) | DefKind::Except(_) => {
+                self.collect_all_members(def.id).len()
+            }
             DefKind::Union(u) => u.variants.len() + 1,
             DefKind::Enum(e) => e.fields.len(),
             DefKind::Bitmask(b) => b.flags.len(),

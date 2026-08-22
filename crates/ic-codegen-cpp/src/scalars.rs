@@ -73,6 +73,7 @@ impl CppGen<'_> {
 
         self.emit_type_traits(impl_w, def);
         self.emit_enum_serializer(impl_w, def, enum_ty);
+        self.emit_formatter_specialization(impl_w, def);
     }
 
     fn emit_enum_serializer(&self, w: &mut Twine, def: &Def, enum_ty: &EnumTy) {
@@ -154,6 +155,7 @@ impl CppGen<'_> {
         self.emit_type_traits_with_suffix(impl_w, def, "");
         self.emit_bitmask_serializer(impl_w, def, bitmask_ty);
         self.emit_hash_declaration(impl_w, def);
+        self.emit_formatter_specialization(impl_w, def);
     }
 
     fn emit_bitmask_serializer(&self, w: &mut Twine, def: &Def, bitmask_ty: &BitmaskTy) {

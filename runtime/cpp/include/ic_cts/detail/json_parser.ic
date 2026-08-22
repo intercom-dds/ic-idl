@@ -51,11 +51,11 @@ inline char32_t read_hex(T& reader) {
     for (int i = 0; i < 4; ++i) {
         int c = reader.getc();
         if (c >= '0' && c <= '9') {
-            code = (code << 4) + (c - '0');
+            code = (code << 4) + static_cast<char32_t>(c - '0');
         } else if (c >= 'a' && c <= 'f') {
-            code = (code << 4) + (c - 'a') + 10;
+            code = (code << 4) + static_cast<char32_t>(c - 'a') + 10;
         } else if (c >= 'A' && c <= 'F') {
-            code = (code << 4) + (c - 'A') + 10;
+            code = (code << 4) + static_cast<char32_t>(c - 'A') + 10;
         } else {
             return UNICODE_INVALID;
         }
@@ -81,7 +81,7 @@ inline char32_t read_unicode(T& reader) {
         c = reader.getc();
         if (c == 'u') {
             code = read_hex(reader);
-            if ((code & ~0x7FF) == 0xD800) {  // Surrogate pair
+            if ((code & ~static_cast<char32_t>(0x7FF)) == 0xD800) {  // Surrogate pair
                 if (reader.getc() == '\\' && reader.getc() == 'u') {
                     char16_t pair[2];
                     pair[0] = static_cast<uint16_t>(code);
@@ -481,9 +481,10 @@ inline std::string stdprintf(const char* format, ...) {
     if (len < 0) {
         throw std::runtime_error("Invalid format string passed to vsnprintf");
     }
-    std::vector<char> vec(len + 1);
+    const auto size = static_cast<size_t>(len) + 1;
+    std::vector<char> vec(size);
     va_start(ap, format);
-    std::vsnprintf(vec.data(), len + 1, format, ap);
+    std::vsnprintf(vec.data(), size, format, ap);
     va_end(ap);
     return vec.data();
 }
@@ -609,16 +610,19 @@ inline JsonWriter::JsonWriter(
     int indent_step,
     int indent_level
 )
-    : m_out(out), m_flags(flags), m_indentStep(indent_step), m_indentLevel(indent_level) {}
+    : m_out(out),
+      m_flags(flags),
+      m_indentStep(static_cast<uint32_t>(indent_step)),
+      m_indentLevel(static_cast<uint32_t>(indent_level)) {}
 
 inline JsonWriter::JsonWriter(std::ostream& out, bool pretty, int indent_step, int indent_level)
     : m_out(out),
       m_flags(pretty ? SERIALIZER_PRETTY : SerializerFlagsBits{}),
-      m_indentStep(indent_step),
-      m_indentLevel(indent_level) {}
+      m_indentStep(static_cast<uint32_t>(indent_step)),
+      m_indentLevel(static_cast<uint32_t>(indent_level)) {}
 
 inline void JsonWriter::reset(int indent_level) {
-    m_indentLevel = indent_level;
+    m_indentLevel = static_cast<uint32_t>(indent_level);
     m_needComma = false;
 }
 

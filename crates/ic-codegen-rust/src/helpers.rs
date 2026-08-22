@@ -293,7 +293,7 @@ pub fn type_flags(ctx: &ic_hir::Context, def: &Def) -> String {
         flags.push("IS_NESTED");
     }
 
-    if effective_autoid(ctx, def.id) == Autoid::Hash {
+    if effective_autoid(ctx, def) == Autoid::Hash {
         flags.push("IS_AUTOID_HASH");
     }
 

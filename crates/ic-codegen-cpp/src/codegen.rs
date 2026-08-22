@@ -532,14 +532,18 @@ impl<'a> CppGen<'a> {
         w!(w, "using ref_type = std::shared_ptr<", full_qualified_name, ">;\n");
         w!(w, "using weak_ref_type = std::weak_ptr<", full_qualified_name, ">;\n");
 
-        if let DefKind::Struct(_) | DefKind::Union(_) | DefKind::Valuetype(_) = &def.kind {
+        if let DefKind::Struct(_) | DefKind::Union(_) | DefKind::Valuetype(_) | DefKind::Except(_) =
+            &def.kind
+        {
             w!(w, "using sequence_type = std::vector<", qualified_name, ">;\n");
         }
 
         w!(w, "static const ic_cts::TypeInfo type_info;\n");
 
         match &def.kind {
-            DefKind::Struct(_) => w!(w, "static constexpr bool is_struct = true;\n"),
+            DefKind::Struct(_) | DefKind::Except(_) => {
+                w!(w, "static constexpr bool is_struct = true;\n");
+            }
             DefKind::Union(_) => w!(w, "static constexpr bool is_union = true;\n"),
             DefKind::Enum(enum_ty) => {
                 w!(w, "static constexpr bool is_enum = true;\n");
@@ -582,6 +586,17 @@ impl<'a> CppGen<'a> {
         w!(w, "using result_type = std::size_t;\n");
         w!(w, self.export_prefix(), "result_type operator()(const argument_type& s) const noexcept;\n");
         w!(w, "};\n\n");
+    }
+
+    pub fn emit_formatter_specialization(&self, w: &mut Twine, def: &Def) {
+        if !self.options.use_fmt {
+            return;
+        }
+
+        let qualified_name = self.scoped_name(def.id, None);
+
+        w!(w, "template <>\n");
+        w!(w, "struct std::formatter<", qualified_name, "> : ::ic_cts::JsonFormatter<", qualified_name, "> {};\n\n");
     }
 
     pub fn emit_hash_implementation(&self, w: &mut Twine, def: &Def) {
@@ -815,7 +830,7 @@ impl<'a> CppGen<'a> {
                 self.emit_member_info(w, def);
                 self.emit_type_info_definition(w, def);
             }
-            DefKind::Struct(_) | DefKind::Union(_) | DefKind::Bitmask(_) => {
+            DefKind::Struct(_) | DefKind::Union(_) | DefKind::Bitmask(_) | DefKind::Except(_) => {
                 self.emit_hash_implementation(w, def);
                 self.emit_member_info(w, def);
                 self.emit_type_info_definition(w, def);
@@ -823,9 +838,6 @@ impl<'a> CppGen<'a> {
             DefKind::Enum(_) => {
                 self.emit_member_info(w, def);
                 self.emit_type_info_definition(w, def);
-            }
-            DefKind::Except(_) => {
-                self.emit_hash_implementation(w, def);
             }
             _ => {}
         }
@@ -880,6 +892,9 @@ impl<'a> CppGen<'a> {
             w!(header, "#include <string_view>\n");
             w!(header, "#include <vector>\n\n");
             w!(header, "#include <ic_cts/any.h>\n");
+            if self.options.use_fmt {
+                w!(header, "#include <ic_cts/format.h>\n");
+            }
             w!(header, "#include <ic_cts/member_info.h>\n");
             w!(header, "#include <ic_cts/memory.h>\n");
 

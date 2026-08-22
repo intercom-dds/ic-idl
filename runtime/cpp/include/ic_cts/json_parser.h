@@ -230,22 +230,22 @@ class JsonNode {
                 return false;
             }
         } else {
-            value = m_data.str()[0] - '0';
+            value = static_cast<T>(m_data.str()[0] - '0');
         }
 
         T max = (std::numeric_limits<T>::max)() / 10;
-        T lim = ((std::numeric_limits<T>::max)() % 10) + (sign == -1);
+        T lim = static_cast<T>(((std::numeric_limits<T>::max)() % 10) + (sign == -1));
 
         for (size_t i = 1; i < m_data.length(); ++i) {
-            T digit = m_data.str()[i] - '0';
+            T digit = static_cast<T>(m_data.str()[i] - '0');
 
             if (value * static_cast<T>(sign) > max ||
                 (value * static_cast<T>(sign) == max && digit > lim)) {
                 return false;
             }
 
-            value *= 10;
-            value += digit * static_cast<T>(sign);
+            value = static_cast<T>(value * 10);
+            value = static_cast<T>(value + digit * static_cast<T>(sign));
         }
         return true;
     }
@@ -465,11 +465,11 @@ class JsonWriter : public GenericWriter {
             int len = 0;
             if (value < 0) {
                 put('-');
-                buf[len++] = -1 * (value % 10) + '0';
+                buf[len++] = static_cast<char>(-1 * (value % 10) + '0');
                 value /= T(-10);
             }
             while (value != 0) {
-                buf[len++] = (value % 10) + '0';
+                buf[len++] = static_cast<char>((value % 10) + '0');
                 value /= 10;
             }
             while (len > 0) {
@@ -488,7 +488,7 @@ class JsonWriter : public GenericWriter {
             char buf[32];
             int len = 0;
             while (value != 0) {
-                buf[len++] = (value % 10) + '0';
+                buf[len++] = static_cast<char>((value % 10) + '0');
                 value /= 10;
             }
             while (len > 0) {

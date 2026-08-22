@@ -27,7 +27,7 @@
 
 use ic_alloc::md5;
 use ic_hir::Context;
-use ic_hir::hir::{Ann, DefId, DefKind};
+use ic_hir::hir::{Ann, Def, DefId, DefKind, Member};
 
 use crate::annotation::builtin_annotation;
 
@@ -41,9 +41,11 @@ pub enum Autoid {
 }
 
 #[must_use]
-pub fn effective_autoid(ctx: &Context, def_id: DefId) -> Autoid {
-    let def = ctx.type_of(def_id);
-    if !matches!(def.kind, DefKind::Struct(_) | DefKind::Union(_)) {
+pub fn effective_autoid(ctx: &Context, def: &Def) -> Autoid {
+    if !matches!(
+        def.kind,
+        DefKind::Struct(_) | DefKind::Union(_) | DefKind::Except(_) | DefKind::Valuetype(_)
+    ) {
         return Autoid::Sequential;
     }
 
@@ -70,12 +72,12 @@ pub fn member_ids(ctx: &Context, def_id: DefId) -> Vec<u32> {
     let def = ctx.type_of(def_id);
     match &def.kind {
         DefKind::Struct(_) => {
-            let mut ids = Vec::new();
-            struct_member_ids(ctx, def_id, &mut ids);
+            let mut ids = vec![];
+            struct_member_ids(ctx, def, &mut ids);
             ids
         }
         DefKind::Union(union_ty) => {
-            let autoid = effective_autoid(ctx, def_id);
+            let autoid = effective_autoid(ctx, def);
             let mut current = 0;
             std::iter::once(current)
                 .chain(union_ty.variants.iter().map(|variant| {
@@ -90,22 +92,69 @@ pub fn member_ids(ctx: &Context, def_id: DefId) -> Vec<u32> {
                 }))
                 .collect()
         }
-        _ => Vec::new(),
+        DefKind::Except(except_ty) => {
+            let mut ids = vec![];
+            append_member_ids(
+                ctx,
+                effective_autoid(ctx, def),
+                u32::MAX,
+                &except_ty.members,
+                &mut ids,
+            );
+            ids
+        }
+        DefKind::Valuetype(_) => {
+            let mut ids = vec![];
+            valuetype_member_ids(ctx, def, &mut ids);
+            ids
+        }
+        _ => vec![],
     }
 }
 
-fn struct_member_ids(ctx: &Context, def_id: DefId, ids: &mut Vec<u32>) -> u32 {
-    let def = ctx.type_of(def_id);
+fn valuetype_member_ids(ctx: &Context, def: &Def, ids: &mut Vec<u32>) -> u32 {
+    let DefKind::Valuetype(valuetype) = &def.kind else {
+        return u32::MAX;
+    };
+
+    let current = valuetype.parent.map_or(u32::MAX, |parent| {
+        valuetype_member_ids(ctx, ctx.type_of(parent.def_id), ids)
+    });
+
+    append_member_ids(
+        ctx,
+        effective_autoid(ctx, def),
+        current,
+        &valuetype.members,
+        ids,
+    )
+}
+
+fn struct_member_ids(ctx: &Context, def: &Def, ids: &mut Vec<u32>) -> u32 {
     let DefKind::Struct(struct_ty) = &def.kind else {
         return u32::MAX;
     };
 
-    let mut current = struct_ty.parent.map_or(u32::MAX, |parent| {
-        struct_member_ids(ctx, parent.def_id, ids)
+    let current = struct_ty.parent.map_or(u32::MAX, |parent| {
+        struct_member_ids(ctx, ctx.type_of(parent.def_id), ids)
     });
-    let autoid = effective_autoid(ctx, def_id);
+    append_member_ids(
+        ctx,
+        effective_autoid(ctx, def),
+        current,
+        &struct_ty.members,
+        ids,
+    )
+}
 
-    for member in &struct_ty.members {
+fn append_member_ids(
+    ctx: &Context,
+    autoid: Autoid,
+    mut current: u32,
+    members: &[Member],
+    ids: &mut Vec<u32>,
+) -> u32 {
+    for member in members {
         current = assign_member_id(
             ctx,
             autoid,

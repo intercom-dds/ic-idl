@@ -485,7 +485,7 @@ fn type_attrs(ctx: &ic_hir::Context, def: &Def) -> Vec<(String, String)> {
         attrs.push(("nested".to_string(), "true".to_string()));
     }
 
-    if effective_autoid(ctx, def.id) == Autoid::Hash {
+    if effective_autoid(ctx, def) == Autoid::Hash {
         attrs.push(("autoid".to_string(), "hash".to_string()));
     }
 

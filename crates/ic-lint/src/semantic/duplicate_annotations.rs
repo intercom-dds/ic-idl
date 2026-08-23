@@ -78,7 +78,7 @@ impl DuplicateAnnotations<'_> {
             let Some(def) = builtin_annotation_def(&self.hir.context, ann) else {
                 continue;
             };
-            if ["doc", "verbatim", "derive"]
+            if ["doc", "verbatim", "derive", "topic"]
                 .iter()
                 .any(|name| is_builtin_annotation(&self.hir.context, ann, name))
             {

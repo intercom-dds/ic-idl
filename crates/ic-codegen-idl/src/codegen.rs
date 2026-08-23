@@ -330,7 +330,9 @@ impl<'a> IdlGen<'a> {
                 continue;
             };
 
-            w!(w, "/// ", text.trim_end(), "\n");
+            for line in text.trim_end().lines() {
+                w!(w, "/// ", line, "\n");
+            }
         }
 
         // And then non-doc annotations

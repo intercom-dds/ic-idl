@@ -44,6 +44,8 @@ use crate::deps::collect_def_dependencies;
 
 type Path = Vec<String>;
 
+const ANNOTATION_INLINE_MAX_WIDTH: usize = 72;
+
 pub struct IdlGen<'a> {
     hir: &'a ResolvedGraph,
     source_map: &'a SourceMap,
@@ -344,18 +346,26 @@ impl<'a> IdlGen<'a> {
 
             w!(w, "@", ann.ident.name);
             if !non_default_args.is_empty() {
-                w!(w, "(");
-                for (i, arg) in non_default_args.iter().enumerate() {
-                    if i > 0 {
-                        w!(w, ", ");
-                    }
-                    if non_default_args.len() > 1 {
-                        w!(w, arg.ident.name, " = ");
-                    }
-                    let val_str = self.format_numeric(&arg.value, relative_to_def_id);
-                    w!(w, val_str);
+                let named = non_default_args.len() > 1;
+                let args: Vec<_> = non_default_args
+                    .iter()
+                    .map(|arg| {
+                        let val_str = self.format_numeric(&arg.value, relative_to_def_id);
+                        if named {
+                            format!("{} = {val_str}", arg.ident.name)
+                        } else {
+                            val_str
+                        }
+                    })
+                    .collect();
+
+                if named
+                    && inline_annotation_width(&ann.ident.name, &args) > ANNOTATION_INLINE_MAX_WIDTH
+                {
+                    w!(w, "(\n", args.join(",\n"), "\n)");
+                } else {
+                    w!(w, "(", args.join(", "), ")");
                 }
-                w!(w, ")");
             }
             w!(w, "\n");
         }
@@ -744,6 +754,12 @@ impl<'a> IdlGen<'a> {
         }
         result
     }
+}
+
+fn inline_annotation_width(name: &str, args: &[String]) -> usize {
+    let separators = args.len().saturating_sub(1) * ", ".len();
+    let payload: usize = args.iter().map(String::len).sum();
+    "@".len() + name.len() + "(".len() + payload + separators + ")".len()
 }
 
 fn filter_non_default_args<'a>(ann: &'a Ann, hir: &ResolvedGraph) -> Vec<&'a AnnArg> {

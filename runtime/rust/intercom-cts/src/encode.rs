@@ -330,6 +330,7 @@ pub trait Serializer<'a>: Sized {
     ///
     /// ```
     /// # use intercom_cts::{encode::Serializer, Marshal};
+    /// struct Value;
     ///
     /// impl Marshal for Value {
     ///     fn marshal<'a, S>(&self, archive: S) -> Result<S::Ok, S::Error>

@@ -34,9 +34,11 @@ rust-version.workspace = true
 version.workspace = true
 
 [dependencies]
+ic-alloc = { path = "../ic-alloc" }
 ic-emit = { path = "../ic-emit" }
 ic-hir = { path = "../ic-hir" }
 ic-hir-analysis = { path = "../ic-hir-analysis" }
+ic-vfs = { path = "../ic-vfs" }
 tracing.workspace = true
 
 [dev-dependencies]

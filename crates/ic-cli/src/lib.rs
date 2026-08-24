@@ -44,7 +44,7 @@ mod parse;
 pub use parse::{ParseError, ParseResult};
 
 const LEFT_MARGIN: usize = 3;
-const DESC_SPACING: usize = 4;
+const DESC_SPACING: usize = 3;
 
 fn display_width(s: &str) -> usize {
     let mut width = 0;
@@ -407,13 +407,30 @@ impl CommandLine {
             .max()
             .unwrap_or(0);
 
+        let n_short_of = |v: &Opt| v.tokens.iter().filter(|t| t.len() == 1).count();
+        let token_width = |v: &Opt| match prefix {
+            Some(p) => display_width(&v.with_prefix(p)),
+            None => display_width(&v.formatted()),
+        };
+        let group_of = |v: &Opt| (v.section.clone(), self.split_flags && v.kind == Value::Flag);
+
         // Calculate the maximum width including indentation for alignment
         let max_width_with_indent = if self.align_sections {
             self.options
                 .values()
-                .map(|v| match prefix {
-                    Some(p) => display_width(&v.with_prefix(p)),
-                    None => display_width(&v.formatted()),
+                .map(|v| {
+                    let group = group_of(v);
+                    let peers = || self.options.values().filter(|p| group_of(p) == group);
+                    let indent = if peers().any(|p| n_short_of(p) > 0) {
+                        4 * peers()
+                            .map(n_short_of)
+                            .max()
+                            .unwrap_or(0)
+                            .saturating_sub(n_short_of(v))
+                    } else {
+                        0
+                    };
+                    indent + token_width(v)
                 })
                 .max()
                 .unwrap_or(0)

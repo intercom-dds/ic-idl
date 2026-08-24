@@ -580,6 +580,7 @@ dependencies = [
 name = "ic-hir-xform"
 version = "0.6.0"
 dependencies = [
+ "ic-alloc",
  "ic-diagnostic",
  "ic-emit",
  "ic-hir",

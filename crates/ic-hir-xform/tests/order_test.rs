@@ -164,7 +164,7 @@ fn external_sites(hir: &ResolvedGraph) -> Vec<String> {
 }
 
 fn strip_decls(hir: &mut ResolvedGraph) {
-    let kept: Vec<DefId> = hir
+    let kept: Vec<_> = hir
         .order
         .iter()
         .copied()
@@ -179,7 +179,7 @@ fn strip_decls(hir: &mut ResolvedGraph) {
             continue;
         };
 
-        let kept: Vec<DefId> = module
+        let kept: Vec<_> = module
             .definitions
             .iter()
             .copied()
@@ -320,7 +320,6 @@ fn acyclic_single_module_is_reordered_dependency_first() {
     );
 
     let ordered = order::apply(input);
-
     assert_eq!(emission(&ordered), vec!["M::A", "M::B", "M::C"]);
     assert_eq!(top_level_modules(&ordered), vec!["M"]);
     assert_declare_before_use(&ordered);
@@ -343,21 +342,15 @@ fn acyclic_multiple_modules_group_into_maximal_runs() {
     let input = graph_input(common::parse_with_builtins(idl));
     assert_eq!(
         emission(&input),
-        vec!["Bee::B2", "Bee::B1", "Aye::A2", "Aye::A1"],
-        "the constructed input must place the dependent module first"
+        vec!["Bee::B2", "Bee::B1", "Aye::A2", "Aye::A1"]
     );
 
     let ordered = order::apply(input);
-
     assert_eq!(
         emission(&ordered),
         vec!["Aye::A2", "Aye::A1", "Bee::B2", "Bee::B1"]
     );
-    assert_eq!(
-        top_level_modules(&ordered),
-        vec!["Aye", "Bee"],
-        "adjacent definitions sharing a module path must collapse into one module def"
-    );
+    assert_eq!(top_level_modules(&ordered), vec!["Aye", "Bee"]);
     assert_declare_before_use(&ordered);
 }
 
@@ -372,11 +365,7 @@ fn intra_module_sequence_cycle_gets_a_forward_declaration() {
     ";
 
     let input = graph_input(common::parse_with_builtins(idl));
-    assert_eq!(
-        emission(&input),
-        vec!["M::Bar", "M::Foo"],
-        "the constructed input must carry no forward declaration of its own"
-    );
+    assert_eq!(emission(&input), vec!["M::Bar", "M::Foo"]);
 
     let ordered = order::apply(input);
 
@@ -406,11 +395,9 @@ fn cross_module_cycle_declares_into_the_declared_types_module() {
     assert_eq!(emission(&input), vec!["Bee::Bar", "Aye::Foo"]);
 
     let ordered = order::apply(input);
-
     assert_eq!(
         emission(&ordered),
-        vec!["decl Aye::Foo", "Bee::Bar", "Aye::Foo"],
-        "the declaration belongs to the declared type's module, not the anchor's"
+        vec!["decl Aye::Foo", "Bee::Bar", "Aye::Foo"]
     );
 
     let decl = entries(&ordered)
@@ -420,12 +407,7 @@ fn cross_module_cycle_declares_into_the_declared_types_module() {
 
     assert_eq!(decl.name, "Foo");
     assert_eq!(decl.path, vec!["Aye".to_string()]);
-
-    assert_eq!(
-        top_level_modules(&ordered),
-        vec!["Aye", "Bee", "Aye"],
-        "placing the declaration in Aye forces Aye to be reopened after Bee"
-    );
+    assert_eq!(top_level_modules(&ordered), vec!["Aye", "Bee", "Aye"]);
 
     assert_declare_before_use(&ordered);
 }
@@ -444,13 +426,8 @@ fn all_direct_union_cycle_marks_one_variant_external() {
     assert_eq!(external_sites(&input), Vec::<String>::new());
 
     let ordered = order::apply(input);
-
     assert_eq!(emission(&ordered), vec!["decl M::A", "M::B", "M::A"]);
-    assert_eq!(
-        external_sites(&ordered),
-        vec!["M::B.a"],
-        "exactly one union variant in the cycle must be annotated @external"
-    );
+    assert_eq!(external_sites(&ordered), vec!["M::B.a"]);
 }
 
 #[test]
@@ -467,13 +444,8 @@ fn all_direct_struct_cycle_marks_one_member_external() {
     assert_eq!(external_sites(&input), Vec::<String>::new());
 
     let ordered = order::apply(input);
-
     assert_eq!(emission(&ordered), vec!["decl M::A", "M::B", "M::A"]);
-    assert_eq!(
-        external_sites(&ordered),
-        vec!["M::B.a"],
-        "exactly one struct member in the cycle must be annotated @external"
-    );
+    assert_eq!(external_sites(&ordered), vec!["M::B.a"]);
 }
 
 #[test]
@@ -490,9 +462,7 @@ fn cycle_through_alias_declares_the_struct_and_orders_the_alias_first() {
     assert_eq!(emission(&input), vec!["M::S", "M::T"]);
 
     let ordered = order::apply(input);
-
     assert_eq!(emission(&ordered), vec!["decl M::S", "M::T", "M::S"]);
-
     assert_eq!(
         decl_names(&ordered),
         vec!["M::S"],
@@ -513,7 +483,6 @@ fn cycle_through_alias_declares_the_struct_and_orders_the_alias_first() {
         alias < definition,
         "an alias cannot be declared ahead, so it must be emitted before its user"
     );
-
     assert_declare_before_use(&ordered);
 }
 
@@ -528,13 +497,8 @@ fn indirect_edge_suppresses_external_annotation() {
     ";
 
     let ordered = order::apply(graph_input(common::parse_with_builtins(idl)));
-
     assert_eq!(decl_names(&ordered), vec!["M::A"]);
-    assert_eq!(
-        external_sites(&ordered),
-        Vec::<String>::new(),
-        "an SCC holding a map or sequence edge needs no @external"
-    );
+    assert!(external_sites(&ordered).is_empty());
 }
 
 #[test]
@@ -556,15 +520,8 @@ fn apply_is_deterministic() {
     let first = order::apply(graph_input(common::parse_with_builtins(idl)));
     let second = order::apply(graph_input(common::parse_with_builtins(idl)));
 
-    assert!(
-        !decl_names(&first).is_empty(),
-        "the fixture must exercise forward declaration insertion"
-    );
-    assert!(
-        !external_sites(&first).is_empty(),
-        "the fixture must exercise @external synthesis"
-    );
-
+    assert!(!decl_names(&first).is_empty());
+    assert!(!external_sites(&first).is_empty());
     assert_eq!(emission(&first), emission(&second));
     assert_eq!(decl_names(&first), decl_names(&second));
     assert_eq!(top_level_modules(&first), top_level_modules(&second));
@@ -592,19 +549,17 @@ fn every_definition_survives_exactly_once() {
     before.sort_unstable();
 
     let ordered = order::apply(input);
-
     let mut after: Vec<DefId> = entries(&ordered)
         .into_iter()
         .filter(|entry| !entry.is_decl)
         .map(|entry| entry.def_id)
         .collect();
-    after.sort_unstable();
 
+    after.sort_unstable();
     assert_eq!(before, after);
 
     let unique: HashSet<DefId> = after.iter().copied().collect();
     assert_eq!(unique.len(), after.len(), "a definition was emitted twice");
-
     assert_declare_before_use(&ordered);
 }
 
@@ -740,11 +695,7 @@ fn module_doc_survives_reordering() {
     let ordered = order::apply(input);
 
     assert_eq!(emission(&ordered), vec!["M::A", "M::B"]);
-    assert_eq!(
-        module_docs(&ordered),
-        vec!["M=the M module"],
-        "a synthesized module def must carry the original module def's annotations"
-    );
+    assert_eq!(module_docs(&ordered), vec!["M=the M module"]);
 }
 
 #[test]
@@ -803,10 +754,9 @@ fn module_flags_survive_reordering() {
         .set(DefFlags::IS_SYNTHESIZED);
 
     let expected = input.context.definitions.get(module_id).flags.bits();
-    assert!(expected != 0, "the fixture must set a distinguishable flag");
+    assert_ne!(expected, 0, "the fixture must set a distinguishable flag");
 
     let ordered = order::apply(input);
-
     assert_eq!(
         module_flags(&ordered),
         vec![expected],
@@ -834,17 +784,10 @@ fn reopened_module_carries_its_doc_only_once() {
     );
 
     let ordered = order::apply(input);
-
-    assert_eq!(
-        top_level_modules(&ordered),
-        vec!["Aye", "Bee", "Aye"],
-        "the fixture must force Aye to be reopened"
-    );
-
+    assert_eq!(top_level_modules(&ordered), vec!["Aye", "Bee", "Aye"]);
     assert_eq!(
         module_docs(&ordered),
         vec!["Aye=the Aye module", "Bee=", "Aye="],
-        "a reopened module block must not repeat the doc comment of its first block"
     );
 }
 
@@ -925,7 +868,6 @@ fn the_first_block_of_a_module_is_the_original_module_def() {
     ";
 
     let input = graph_input(common::parse_with_builtins(idl));
-
     let original = *input
         .order
         .iter()
@@ -938,22 +880,9 @@ fn the_first_block_of_a_module_is_the_original_module_def() {
         .expect("the fixture must declare a module");
 
     let ordered = order::apply(input);
-
-    assert_eq!(
-        ordered.order,
-        vec![original],
-        "reordering a module's contents must not replace the module def itself"
-    );
-    assert_eq!(
-        dropped_module_contents(&ordered),
-        Vec::<String>::new(),
-        "no module def holding definitions may be left out of the emission order"
-    );
-    assert_eq!(
-        unresolvable_defs(&ordered),
-        Vec::<String>::new(),
-        "every emitted definition must be reachable through Context::lookup_symbol"
-    );
+    assert_eq!(ordered.order, vec![original],);
+    assert!(dropped_module_contents(&ordered).is_empty());
+    assert!(unresolvable_defs(&ordered).is_empty());
 }
 
 #[test]
@@ -968,28 +897,14 @@ fn a_reopened_module_keeps_its_name_bound_to_an_emitted_block() {
     ";
 
     let ordered = order::apply(graph_input(common::parse_with_builtins(idl)));
-
     let blocks = top_level_modules(&ordered);
-
-    assert!(
-        blocks.len() > blocks.iter().collect::<HashSet<_>>().len(),
-        "the fixture must force a module to be reopened, blocks were {blocks:?}"
-    );
-    assert_eq!(
-        dropped_module_contents(&ordered),
-        Vec::<String>::new(),
-        "reopening a module must not strand the definitions of any module def"
-    );
-    assert_eq!(
-        unresolvable_defs(&ordered),
-        Vec::<String>::new(),
-        "a reopened module's name must still resolve to one of its emitted blocks"
-    );
+    assert!(blocks.len() > blocks.iter().collect::<HashSet<_>>().len(),);
+    assert!(dropped_module_contents(&ordered).is_empty(),);
+    assert!(unresolvable_defs(&ordered).is_empty());
 }
 
 fn place_in_file(hir: &mut ResolvedGraph, def_id: DefId, file_id: FileId) {
     let def = hir.context.definitions.get_mut(def_id);
-
     def.span.start.file_id = file_id;
     def.span.end.file_id = file_id;
     def.ident.span.start.file_id = file_id;
@@ -1027,7 +942,6 @@ fn a_module_split_across_files_is_emitted_as_one_block_per_file() {
     ";
 
     let mut input = graph_input(common::parse_with_builtins(idl));
-
     let mut source_map = SourceMap::default();
     let first = source_map.embed_with_name("first.idl", "");
     let second = source_map.embed_with_name("second.idl", "");
@@ -1063,27 +977,15 @@ fn a_module_split_across_files_is_emitted_as_one_block_per_file() {
     place_in_file(&mut input, module_id, elsewhere);
 
     let ordered = order::apply(input);
-
     assert_eq!(
         blocks_by_file(&ordered),
         vec![
             (first, vec!["A".to_string()]),
             (second, vec!["B".to_string()]),
         ],
-        "ic-codegen-idl buckets output files by the top-level def's ident file, so a module whose \
-         definitions live in two files must be emitted as one block per file, each block naming \
-         the file of the definitions it holds"
     );
-    assert_eq!(
-        dropped_module_contents(&ordered),
-        Vec::<String>::new(),
-        "splitting a module across files must not strand the definitions of any module def"
-    );
-    assert_eq!(
-        unresolvable_defs(&ordered),
-        Vec::<String>::new(),
-        "a module split across files must still resolve to one of its emitted blocks"
-    );
+    assert!(dropped_module_contents(&ordered).is_empty());
+    assert!(unresolvable_defs(&ordered).is_empty());
 }
 
 fn set_offsets(hir: &mut ResolvedGraph, offsets: &[(&str, u32)]) {
@@ -1111,7 +1013,6 @@ fn sibling_modules_share_one_enclosing_block() {
     ";
 
     let input = graph_input(common::parse_with_builtins(idl));
-
     let ordered = order::apply(input);
 
     assert_eq!(
@@ -1141,9 +1042,7 @@ fn a_nested_module_run_stays_inside_the_enclosing_block() {
     ";
 
     let input = graph_input(common::parse_with_builtins(idl));
-
     let ordered = order::apply(input);
-
     assert_eq!(
         emission(&ordered),
         vec![
@@ -1152,13 +1051,10 @@ fn a_nested_module_run_stays_inside_the_enclosing_block() {
             "IC::Management::UCM::U1",
             "IC::Management::M2",
         ],
-        "the dependency chain must force UCM between the two Management definitions"
     );
     assert_eq!(
         block_tree(&ordered),
         vec!["IC", "IC::Common", "IC::Management", "IC::Management::UCM"],
-        "a nested module emitted between two definitions of its parent must be nested inside the \
-         parent block, not close and reopen every ancestor"
     );
     assert_declare_before_use(&ordered);
 }
@@ -1179,12 +1075,9 @@ fn a_ready_sibling_is_emitted_before_leaving_its_module() {
     set_offsets(&mut input, &[("C1", 10), ("M1", 20), ("C2", 30)]);
 
     let ordered = order::apply(input);
-
     assert_eq!(
         emission(&ordered),
         vec!["IC::Common::C1", "IC::Common::C2", "IC::Management::M1"],
-        "C2 depends on nothing, so leaving IC::Common to emit M1 first splits IC::Common for no \
-         reason"
     );
     assert_eq!(
         block_tree(&ordered),
@@ -1204,32 +1097,78 @@ fn a_required_reopen_happens_inside_one_enclosing_block() {
     ";
 
     let input = graph_input(common::parse_with_builtins(idl));
+    let ordered = order::apply(input);
+    let blocks = block_tree(&ordered);
+    assert_eq!(blocks.iter().filter(|name| *name == "IC").count(), 1);
+
+    let inner: Vec<_> = blocks.iter().filter(|name| *name != "IC").collect();
+    assert!(inner.len() > inner.iter().collect::<HashSet<_>>().len());
+    assert!(dropped_module_contents(&ordered).is_empty());
+    assert!(unresolvable_defs(&ordered).is_empty(),);
+    assert_declare_before_use(&ordered);
+}
+
+#[test]
+fn a_singleton_sorting_between_cycle_members_is_emitted_between_them() {
+    let idl = r"
+        module M {
+            struct Cee;
+            struct Aye { long x; };
+            struct Bee { sequence<Cee> cs; };
+            struct Cee { sequence<Bee> bs; };
+        };
+    ";
+
+    let mut input = common::parse_with_builtins(idl);
+    strip_decls(&mut input);
+    set_offsets(&mut input, &[("Bee", 10), ("Aye", 20), ("Cee", 30)]);
 
     let ordered = order::apply(input);
 
-    let blocks = block_tree(&ordered);
+    assert_eq!(
+        emission(&ordered),
+        vec!["decl M::Cee", "M::Bee", "M::Aye", "M::Cee"],
+    );
+    assert_declare_before_use(&ordered);
+}
+
+#[test]
+fn sharing_the_current_file_outranks_sharing_a_longer_module_path() {
+    let idl = r"
+        module IC {
+            module Common {
+                struct C1 { long x; };
+                struct C2 { long y; };
+            };
+            module Other { struct O1 { long z; }; };
+        };
+    ";
+
+    let mut input = common::parse_with_builtins(idl);
+    set_offsets(&mut input, &[("C1", 10), ("C2", 20), ("O1", 30)]);
+
+    let mut source_map = SourceMap::default();
+    let first = source_map.embed_with_name("first.idl", "");
+    let second = source_map.embed_with_name("second.idl", "");
+    assert!(first != second, "the fixture must mint two distinct files");
+
+    for def_id in leaf_ids(&input) {
+        let name = input.context.definitions.get(def_id).ident.name.clone();
+
+        let file_id = match name.as_str() {
+            "C1" | "O1" => first,
+            "C2" => second,
+            other => panic!("the fixture must hold only C1, C2 and O1, found `{other}`"),
+        };
+
+        place_in_file(&mut input, def_id, file_id);
+    }
+
+    let ordered = order::apply(input);
 
     assert_eq!(
-        blocks.iter().filter(|name| *name == "IC").count(),
-        1,
-        "the enclosing module must be opened once, blocks were {blocks:?}"
-    );
-
-    let inner: Vec<&String> = blocks.iter().filter(|name| *name != "IC").collect();
-
-    assert!(
-        inner.len() > inner.iter().collect::<HashSet<_>>().len(),
-        "the fixture must force an inner module to be reopened, blocks were {blocks:?}"
-    );
-    assert_eq!(
-        dropped_module_contents(&ordered),
-        Vec::<String>::new(),
-        "reopening inside an enclosing block must not strand any module def"
-    );
-    assert_eq!(
-        unresolvable_defs(&ordered),
-        Vec::<String>::new(),
-        "a module reopened inside an enclosing block must still resolve"
+        emission(&ordered),
+        vec!["IC::Common::C1", "IC::Other::O1", "IC::Common::C2"],
     );
     assert_declare_before_use(&ordered);
 }

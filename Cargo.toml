@@ -105,6 +105,10 @@ ignore_without_reason = "allow"
 multiple_crate_versions = "allow"
 missing_errors_doc = "allow"
 
+[profile.profiling]
+inherits = "release"
+debug = true
+
 [profile.release]
 lto = "thin"
 codegen-units = 1

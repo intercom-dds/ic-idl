@@ -38,6 +38,7 @@ pub mod implicit_default;
 pub mod move_constants;
 pub mod move_nested;
 pub mod normalize;
+pub mod order;
 pub mod rename;
 pub mod rename_xtypes;
 pub mod squash_modules;

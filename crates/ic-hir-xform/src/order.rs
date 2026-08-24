@@ -25,7 +25,7 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use std::collections::{HashMap, HashSet};
+use std::collections::{BTreeSet, HashMap, HashSet};
 
 use ic_alloc::graph::DiGraph;
 use ic_hir::hir::{Decl, Def, DefFlags, DefId, DefKind, Ident, ModuleTy};
@@ -143,20 +143,167 @@ fn sort_key(ctx: &Context, item: &Item) -> (FileId, u32, String) {
     (item.file_id, def.span.start.offset, def.ident.name.clone())
 }
 
-fn shared_prefix(left: &[DefId], right: &[DefId]) -> usize {
-    left.iter().zip(right).take_while(|(a, b)| a == b).count()
+/// A trie over module paths.
+///
+/// Every node holds the slots of the candidates in its subtree, so the node
+/// reached by walking a module path holds exactly the candidates whose own
+/// module path starts with that path.
+struct PathTrie {
+    children: Vec<HashMap<DefId, usize>>,
+    slots: Vec<BTreeSet<usize>>,
 }
 
-fn affinity(current: Option<(FileId, &[DefId])>, item: &Item) -> (usize, usize) {
-    match current {
-        Some((file_id, path)) => (
-            usize::from(file_id == item.file_id),
-            shared_prefix(path, &item.path),
-        ),
-        None => (0, 0),
+impl PathTrie {
+    fn new() -> Self {
+        Self {
+            children: vec![HashMap::new()],
+            slots: vec![BTreeSet::new()],
+        }
+    }
+
+    fn intern(&mut self, path: &[DefId]) -> Vec<usize> {
+        let mut chain = Vec::with_capacity(path.len() + 1);
+        let mut node = 0;
+        chain.push(node);
+
+        for &segment in path {
+            node = if let Some(&next) = self.children[node].get(&segment) {
+                next
+            } else {
+                let next = self.slots.len();
+                self.children.push(HashMap::new());
+                self.slots.push(BTreeSet::new());
+                self.children[node].insert(segment, next);
+                next
+            };
+
+            chain.push(node);
+        }
+
+        chain
+    }
+
+    fn insert(&mut self, chain: &[usize], slot: usize) {
+        for &node in chain {
+            self.slots[node].insert(slot);
+        }
+    }
+
+    fn remove(&mut self, chain: &[usize], slot: usize) {
+        for &node in chain {
+            self.slots[node].remove(&slot);
+        }
+    }
+
+    fn is_empty(&self) -> bool {
+        self.slots[0].is_empty()
+    }
+
+    fn deepest(&self, chain: &[usize]) -> Option<usize> {
+        chain
+            .iter()
+            .rev()
+            .find_map(|&node| self.slots[node].first().copied())
     }
 }
 
+/// The definitions whose blockers have all been emitted, indexed so that the
+/// best of them is found without scanning the ones that lose.
+///
+/// `anywhere` holds every candidate. `per_file` holds one trie per file, each
+/// holding only the candidates in that file. Walking the current module path
+/// from its end back towards the root and stopping at the first non-empty node
+/// finds the candidates sharing the longest prefix of that path, and the lowest
+/// slot in that node applies the sorted order as the tie-break.
+struct Candidates {
+    anywhere: PathTrie,
+    per_file: Vec<PathTrie>,
+    anywhere_chain: Vec<Vec<usize>>,
+    file_chain: Vec<Vec<usize>>,
+    file_index: Vec<usize>,
+}
+
+impl Candidates {
+    fn new(order: &[DefId], by_id: &HashMap<DefId, Item>) -> Self {
+        let mut anywhere = PathTrie::new();
+        let mut per_file: Vec<PathTrie> = Vec::new();
+        let mut file_slot: HashMap<FileId, usize> = HashMap::new();
+
+        let mut anywhere_chain = Vec::with_capacity(order.len());
+        let mut file_chain = Vec::with_capacity(order.len());
+        let mut file_index = Vec::with_capacity(order.len());
+
+        for id in order {
+            let item = &by_id[id];
+
+            anywhere_chain.push(anywhere.intern(&item.path));
+
+            let index = if let Some(&index) = file_slot.get(&item.file_id) {
+                index
+            } else {
+                let index = per_file.len();
+                per_file.push(PathTrie::new());
+                file_slot.insert(item.file_id, index);
+                index
+            };
+
+            file_chain.push(per_file[index].intern(&item.path));
+            file_index.push(index);
+        }
+
+        Self {
+            anywhere,
+            per_file,
+            anywhere_chain,
+            file_chain,
+            file_index,
+        }
+    }
+
+    fn insert(&mut self, slot: usize) {
+        self.anywhere.insert(&self.anywhere_chain[slot], slot);
+        self.per_file[self.file_index[slot]].insert(&self.file_chain[slot], slot);
+    }
+
+    fn remove(&mut self, slot: usize) {
+        self.anywhere.remove(&self.anywhere_chain[slot], slot);
+        self.per_file[self.file_index[slot]].remove(&self.file_chain[slot], slot);
+    }
+
+    fn is_empty(&self) -> bool {
+        self.anywhere.is_empty()
+    }
+
+    fn best(&self, current: Option<usize>) -> Option<usize> {
+        let Some(previous) = current else {
+            return self.anywhere.deepest(&[0]);
+        };
+
+        let here = &self.per_file[self.file_index[previous]];
+
+        if here.is_empty() {
+            self.anywhere.deepest(&self.anywhere_chain[previous])
+        } else {
+            here.deepest(&self.file_chain[previous])
+        }
+    }
+}
+
+/// Orders the flattened definitions so that each one follows the definitions it
+/// depends on, and returns the cyclic groups that no ordering can satisfy.
+///
+/// The work happens in three steps.
+///
+/// 1. Build a dependency graph over the definitions present in this emission
+///    and find its cyclic strongly connected components. A dependency between
+///    two members of one component cannot be satisfied by ordering alone, so it
+///    is dropped from the blocker set and `break_cycles` later repairs it with a
+///    forward declaration. A dependency on an alias is always kept as a blocker
+///    because an alias cannot be forward declared.
+/// 2. Sort the definitions by file, then by byte offset, then by name. That
+///    order is the tie-break for the rest of the algorithm and is what makes the
+///    output stable across runs. A definition's position in it is its slot.
+/// 3. Emit the definitions one at a time. See `emit_order`.
 fn sorted_items(ctx: &Context, items: Vec<Item>) -> (Vec<Item>, Vec<HashSet<DefId>>) {
     let present: HashSet<DefId> = items.iter().map(|i| i.def_id).collect();
 
@@ -203,60 +350,148 @@ fn sorted_items(ctx: &Context, items: Vec<Item>) -> (Vec<Item>, Vec<HashSet<DefI
     }
 
     let mut by_id: HashMap<DefId, Item> = items.into_iter().map(|i| (i.def_id, i)).collect();
-    let mut remaining: Vec<DefId> = by_id.keys().copied().collect();
-    remaining.sort_by_key(|id| sort_key(ctx, &by_id[id]));
+    let mut order: Vec<DefId> = by_id.keys().copied().collect();
+    order.sort_by_key(|id| sort_key(ctx, &by_id[id]));
 
-    let mut emitted: HashSet<DefId> = HashSet::new();
-    let mut sorted = Vec::with_capacity(remaining.len());
-    let mut reported = false;
-    let mut current: Option<(FileId, Vec<DefId>)> = None;
-
-    while !remaining.is_empty() {
-        let here = current
-            .as_ref()
-            .map(|(file_id, path)| (*file_id, path.as_slice()));
-
-        let mut best: Option<((usize, usize), usize)> = None;
-
-        for (index, id) in remaining.iter().enumerate() {
-            if !blockers[id].iter().all(|dep| emitted.contains(dep)) {
-                continue;
-            }
-
-            let rank = affinity(here, &by_id[id]);
-
-            if best.is_none_or(|(top, _)| rank > top) {
-                best = Some((rank, index));
-            }
-        }
-
-        let ready = best.map(|(_, index)| index);
-
-        if ready.is_none() && !reported {
-            reported = true;
-
-            let names: Vec<String> = remaining
-                .iter()
-                .filter(|id| {
-                    blockers[*id]
-                        .iter()
-                        .any(|dep| !emitted.contains(dep) && group_of.get(dep) == group_of.get(*id))
-                })
-                .map(|&id| ctx.qualified_name(id))
-                .collect();
-
-            warn!(defs = ?names, "cyclic typedef dependency: no ordering can satisfy it");
-        }
-
-        let def_id = remaining.remove(ready.unwrap_or(0));
-        emitted.insert(def_id);
-
-        let item = by_id.remove(&def_id).unwrap();
-        current = Some((item.file_id, item.path.clone()));
-        sorted.push(item);
-    }
+    let sorted = emit_order(ctx, &order, &mut by_id, &blockers, &group_of);
 
     (sorted, cycles)
+}
+
+/// Emits the definitions in dependency order, preferring the candidates that
+/// keep the current output file and module block open.
+///
+/// This is Kahn's algorithm with a global choice of what to emit next. A
+/// definition becomes a candidate once every definition in its blocker set has
+/// been emitted. Among all candidates the winner is the one with the greatest
+/// affinity to the definition just emitted, and the lowest slot breaks ties.
+///
+/// Affinity ranks sharing the current file above sharing module path segments.
+/// A candidate in the current file beats a candidate in any other file, however
+/// many module segments that other candidate shares. Among the candidates that
+/// do share the current file, the one sharing the longest prefix of the current
+/// module path wins. Both rules exist to avoid closing and reopening a file or a
+/// module block for no reason.
+///
+/// The choice is global and not per component, so an unrelated definition whose
+/// slot falls between the slots of two members of one cyclic component is
+/// emitted between them. Emitting each component as one contiguous block would
+/// change the output.
+///
+/// Affinity is measured against the definition just emitted, so it is not a
+/// fixed sort key and a plain priority queue cannot express it. `Candidates`
+/// indexes the candidates by module path instead, which answers the same
+/// question without a scan.
+///
+/// Definitions whose blockers can never all be emitted leave no candidate at
+/// all. That is reported once, and the lowest remaining slot is emitted anyway
+/// so that the emission still terminates and still covers every definition.
+fn emit_order(
+    ctx: &Context,
+    order: &[DefId],
+    by_id: &mut HashMap<DefId, Item>,
+    blockers: &HashMap<DefId, HashSet<DefId>>,
+    group_of: &HashMap<DefId, usize>,
+) -> Vec<Item> {
+    let count = order.len();
+    let slot_of: HashMap<DefId, usize> = order
+        .iter()
+        .enumerate()
+        .map(|(slot, &id)| (id, slot))
+        .collect();
+
+    let mut candidates = Candidates::new(order, by_id);
+
+    let mut pending: Vec<usize> = Vec::with_capacity(count);
+    let mut dependents: Vec<Vec<usize>> = vec![Vec::new(); count];
+
+    for (slot, id) in order.iter().enumerate() {
+        let deps = &blockers[id];
+        pending.push(deps.len());
+
+        for dep in deps {
+            dependents[slot_of[dep]].push(slot);
+        }
+    }
+
+    for (slot, &blocked) in pending.iter().enumerate() {
+        if blocked == 0 {
+            candidates.insert(slot);
+        }
+    }
+
+    let mut alive = vec![true; count];
+    let mut left = count;
+
+    let mut emitted: HashSet<DefId> = HashSet::new();
+    let mut sorted = Vec::with_capacity(count);
+    let mut reported = false;
+    let mut current: Option<usize> = None;
+    let mut cursor = 0;
+
+    while left > 0 {
+        let chosen = if candidates.is_empty() {
+            if !reported {
+                reported = true;
+                report_unsatisfiable(ctx, order, &alive, blockers, group_of, &emitted);
+            }
+
+            while !alive[cursor] {
+                cursor += 1;
+            }
+
+            cursor
+        } else {
+            candidates
+                .best(current)
+                .expect("a non-empty candidate set must yield a best candidate")
+        };
+
+        alive[chosen] = false;
+        left -= 1;
+
+        candidates.remove(chosen);
+
+        let def_id = order[chosen];
+        emitted.insert(def_id);
+
+        for &dependent in &dependents[chosen] {
+            pending[dependent] -= 1;
+
+            if pending[dependent] == 0 && alive[dependent] {
+                candidates.insert(dependent);
+            }
+        }
+
+        current = Some(chosen);
+        sorted.push(by_id.remove(&def_id).unwrap());
+    }
+
+    sorted
+}
+
+fn report_unsatisfiable(
+    ctx: &Context,
+    order: &[DefId],
+    alive: &[bool],
+    blockers: &HashMap<DefId, HashSet<DefId>>,
+    group_of: &HashMap<DefId, usize>,
+    emitted: &HashSet<DefId>,
+) {
+    let names: Vec<String> = order
+        .iter()
+        .enumerate()
+        .filter(|&(slot, _)| alive[slot])
+        .map(|(_, &id)| id)
+        .filter(|id| {
+            blockers[id]
+                .iter()
+                .any(|dep| !emitted.contains(dep) && group_of.get(dep) == group_of.get(id))
+        })
+        .map(|id| ctx.qualified_name(id))
+        .collect();
+
+    warn!(defs = ?names, "cyclic typedef dependency: no ordering can satisfy it");
 }
 
 fn forward_decl_target(ctx: &Context, def_id: DefId) -> Option<(DefId, Decl)> {

@@ -163,6 +163,19 @@ fn external_sites(hir: &ResolvedGraph) -> Vec<String> {
     out
 }
 
+fn decl_kinds(hir: &ResolvedGraph) -> Vec<String> {
+    entries(hir)
+        .iter()
+        .filter_map(|entry| {
+            let DefKind::Decl(decl) = hir.context.definitions.get(entry.def_id).kind else {
+                return None;
+            };
+
+            Some(format!("{decl:?} {}", entry.qualified()))
+        })
+        .collect()
+}
+
 fn strip_decls(hir: &mut ResolvedGraph) {
     let kept: Vec<_> = hir
         .order
@@ -499,6 +512,124 @@ fn indirect_edge_suppresses_external_annotation() {
     let ordered = order::apply(graph_input(common::parse_with_builtins(idl)));
     assert_eq!(decl_names(&ordered), vec!["M::A"]);
     assert!(external_sites(&ordered).is_empty());
+}
+
+#[test]
+fn interface_cycle_is_forward_declared_as_an_interface() {
+    let idl = r"
+        module M {
+            interface B;
+            interface A { void f(in B b); };
+            interface B { void g(in A a); };
+        };
+    ";
+
+    let ordered = order::apply(graph_input(common::parse_with_builtins(idl)));
+
+    assert_eq!(decl_names(&ordered), vec!["M::A"]);
+    assert_eq!(
+        decl_kinds(&ordered),
+        vec!["Interface M::A"],
+        "an interface must be forward declared as an interface"
+    );
+    assert_declare_before_use(&ordered);
+}
+
+#[test]
+fn valuetype_cycle_is_forward_declared_as_a_valuetype() {
+    let idl = r"
+        module M {
+            valuetype B;
+            valuetype A { public B b; };
+            valuetype B { public A a; };
+        };
+    ";
+
+    let ordered = order::apply(graph_input(common::parse_with_builtins(idl)));
+
+    assert_eq!(decl_names(&ordered), vec!["M::A"]);
+    assert_eq!(
+        decl_kinds(&ordered),
+        vec!["Valuetype M::A"],
+        "a valuetype must be forward declared as a valuetype"
+    );
+    assert_declare_before_use(&ordered);
+}
+
+#[test]
+fn an_exception_cycle_is_not_forward_declared() {
+    let idl = r"
+        module M {
+            struct S;
+            exception E { sequence<S> ss; };
+            struct S { sequence<E> es; };
+        };
+    ";
+
+    let ordered = order::apply(graph_input(common::parse_with_builtins(idl)));
+
+    assert!(
+        !decl_kinds(&ordered)
+            .iter()
+            .any(|decl| decl.ends_with("M::E")),
+        "an exception has no forward declaration in IDL, so none may be emitted; got {:?}",
+        decl_kinds(&ordered)
+    );
+}
+
+#[test]
+fn every_direct_cycle_in_one_component_is_broken() {
+    let idl = r"
+        module M {
+            struct B;
+            struct C;
+            struct A { B b; C c; };
+            struct B { A a; };
+            struct C { A a; };
+        };
+    ";
+
+    let input = graph_input(common::parse_with_builtins(idl));
+    assert_eq!(external_sites(&input), Vec::<String>::new());
+
+    let ordered = order::apply(input);
+
+    assert_eq!(external_sites(&ordered), vec!["M::C.a", "M::B.a"]);
+
+    let again = order::apply(ordered.clone());
+    assert_eq!(
+        external_sites(&again),
+        external_sites(&ordered),
+        "no direct layout cycle may survive the pass"
+    );
+    assert_declare_before_use(&ordered);
+}
+
+#[test]
+fn a_direct_cycle_beside_an_indirect_one_is_still_broken() {
+    let idl = r"
+        module M {
+            struct B;
+            struct C;
+            struct A { sequence<B> bs; C c; };
+            struct B { A a; };
+            struct C { A a; };
+        };
+    ";
+
+    let input = graph_input(common::parse_with_builtins(idl));
+    assert_eq!(external_sites(&input), Vec::<String>::new());
+
+    let ordered = order::apply(input);
+
+    assert_eq!(external_sites(&ordered), vec!["M::C.a"]);
+
+    let again = order::apply(ordered.clone());
+    assert_eq!(
+        external_sites(&again),
+        external_sites(&ordered),
+        "an indirect edge elsewhere in the component must not suppress the repair"
+    );
 }
 
 #[test]

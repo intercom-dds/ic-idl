@@ -79,7 +79,6 @@ use ic_preproc::{ExpansionInfo, ProcArgs};
 use ic_vfs::SourceMap;
 use tracing::{info, info_span};
 
-// Import modules
 mod builtin;
 mod config;
 mod parse;
@@ -93,6 +92,9 @@ pub use ic_hir as hir;
 pub use ic_hir_lower as hir_lower;
 pub use ic_vfs as vfs;
 pub use util::Error as DiagnosticError;
+
+/// Default set of annotations that ic-idl and its backends use
+pub const DEFAULT_ANNOTATIONS: &str = include_str!("../idl/annotations.idl");
 
 /// Error type for compilation failures.
 #[derive(Debug)]
@@ -260,11 +262,9 @@ impl Compiler {
     /// Panics if the built-in annotations file fails to parse. This should never
     /// happen in practice as the built-in annotations are embedded in the binary.
     pub fn compile(&mut self) -> Result<(hir::ResolvedGraph, CompileDiagnostics), CompileError> {
-        // Parse built-in annotations once
-        let builtin_file_id = self.source_map.embed_with_name(
-            "<builtin-annotations>",
-            include_str!("../idl/annotations.idl"),
-        );
+        let builtin_file_id = self
+            .source_map
+            .embed_with_name("<builtin-annotations>", DEFAULT_ANNOTATIONS);
         let builtin_parsed =
             parse::from_file(builtin_file_id, ProcArgs::default(), &mut self.source_map);
 

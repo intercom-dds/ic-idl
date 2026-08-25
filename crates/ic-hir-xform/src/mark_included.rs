@@ -1,4 +1,4 @@
-// Copyright 2024 KONGSBERG
+// Copyright 2025 KONGSBERG
 //
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions are met:
@@ -25,24 +25,31 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-//! Provides a generic set of HIR transformations. These can be individually
-//! performed on a HIR to modify the representation of the graph, e.g. for
-//! renaming all types to conform to a specific standard.
-//!
-//! Each transformation will consume the HIR and construct a new one.
+use std::collections::HashSet;
 
-// pub mod nested;
-pub mod default_annotation;
-pub mod flatten;
-pub mod implicit_default;
-pub mod mark_included;
-pub mod move_constants;
-pub mod move_nested;
-pub mod normalize;
-pub mod order;
-pub mod rename;
-pub mod rename_xtypes;
-pub mod squash_modules;
-pub mod strip_typedefs;
-pub mod synthesize_collections;
-pub mod type_flags;
+use ic_hir::ResolvedGraph;
+use ic_hir::hir::{DefFlags, DefId};
+use ic_vfs::FileId;
+use tracing::{debug, debug_span};
+
+/// Marks types from files not specified on the command line with the `IS_INCLUDED` flag.
+#[must_use]
+pub fn transform(mut hir: ResolvedGraph, cmd_files: Vec<FileId>) -> ResolvedGraph {
+    let _span = debug_span!("xform", name = "suppress_includes").entered();
+    debug!("applying transform");
+
+    let file_set = HashSet::<FileId>::from_iter(cmd_files);
+    let def_ids: Vec<DefId> = hir.context.definitions.iter().map(|(id, _)| id).collect();
+    let mut seen = HashSet::new();
+
+    for def_id in def_ids {
+        if seen.insert(def_id) {
+            let def = hir.context.definitions.get_mut(def_id);
+            let file_id = def.ident.span.start.file_id;
+            if !file_set.contains(&file_id) {
+                def.flags.set(DefFlags::IS_INCLUDED);
+            }
+        }
+    }
+    hir
+}

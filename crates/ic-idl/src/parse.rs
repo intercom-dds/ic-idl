@@ -39,6 +39,7 @@ use crate::util::Error;
 #[derive(Debug)]
 #[allow(dead_code)]
 pub struct ParseResult {
+    pub file_id: FileId,
     pub tree: Vec<Item>,
     pub errors: Vec<Error>,
     pub orphaned_annotations: Vec<Annotation>,
@@ -73,6 +74,7 @@ pub fn from_file(file_id: FileId, args: ProcArgs, vfs: &mut SourceMap) -> ParseR
     errors.extend(state.errors().iter().cloned().map(Into::into));
 
     ParseResult {
+        file_id,
         tree: parsed.tree,
         errors,
         orphaned_annotations: parsed.orphaned_annotations,

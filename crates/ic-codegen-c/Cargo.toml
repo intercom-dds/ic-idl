@@ -37,6 +37,7 @@ version.workspace = true
 workspace = true
 
 [dependencies]
+ic-cli = { path = "../ic-cli" }
 ic-emit = { path = "../ic-emit" }
 ic-hir = { path = "../ic-hir" }
 ic-hir-analysis = { path = "../ic-hir-analysis" }

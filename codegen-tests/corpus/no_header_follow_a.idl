@@ -1,4 +1,4 @@
-// Copyright 2024 KONGSBERG
+// Copyright 2025 KONGSBERG
 //
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions are met:
@@ -25,24 +25,13 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-//! Provides a generic set of HIR transformations. These can be individually
-//! performed on a HIR to modify the representation of the graph, e.g. for
-//! renaming all types to conform to a specific standard.
-//!
-//! Each transformation will consume the HIR and construct a new one.
+#include "no_header_follow_b.idl"
+#include "no_header_follow_c.idl"
 
-// pub mod nested;
-pub mod default_annotation;
-pub mod flatten;
-pub mod implicit_default;
-pub mod mark_included;
-pub mod move_constants;
-pub mod move_nested;
-pub mod normalize;
-pub mod order;
-pub mod rename;
-pub mod rename_xtypes;
-pub mod squash_modules;
-pub mod strip_typedefs;
-pub mod synthesize_collections;
-pub mod type_flags;
+module no_header_follow
+{
+    struct A {
+        @key B key;
+        C value;
+    };
+};

@@ -131,6 +131,12 @@ fn direct_targets(ctx: &Context, def_id: DefId) -> HashSet<DefId> {
                 walk(ctx, &variant.ty, behind, &mut HashSet::new(), &mut out);
             }
         }
+        DefKind::Valuetype(v) => {
+            for member in &v.members {
+                let behind = ic_hir_analysis::annotation::is_external(ctx, member);
+                walk(ctx, &member.ty, behind, &mut HashSet::new(), &mut out);
+            }
+        }
         DefKind::Alias(a) => {
             let behind = ic_hir_analysis::annotation::is_external(ctx, def);
             walk(ctx, &a.ty, behind, &mut HashSet::new(), &mut out);
@@ -689,6 +695,7 @@ fn break_direct_cycles(
 #[derive(Debug, Clone, Copy)]
 enum ExternalSite {
     Member(usize),
+    ValuetypeMember(usize),
     Variant(usize),
     Alias,
 }
@@ -729,6 +736,14 @@ fn external_site(ctx: &Context, owner: DefId, scc: &HashSet<DefId>) -> Option<Ex
                     && refers_into(ctx, &member.ty, scc)
             })
             .map(ExternalSite::Member),
+        DefKind::Valuetype(v) => v
+            .members
+            .iter()
+            .position(|member| {
+                !ic_hir_analysis::annotation::is_external(ctx, member)
+                    && refers_into(ctx, &member.ty, scc)
+            })
+            .map(ExternalSite::ValuetypeMember),
         DefKind::Union(u) => u
             .variants
             .iter()
@@ -741,7 +756,7 @@ fn external_site(ctx: &Context, owner: DefId, scc: &HashSet<DefId>) -> Option<Ex
             && refers_into(ctx, &a.ty, scc))
         .then_some(ExternalSite::Alias),
 
-        DefKind::Except(_) | DefKind::Valuetype(_) => {
+        DefKind::Except(_) => {
             debug!(
                 owner = ?owner,
                 kind = def.kind.kind_name(),
@@ -763,7 +778,7 @@ fn external_site(ctx: &Context, owner: DefId, scc: &HashSet<DefId>) -> Option<Ex
 
 fn site_rank(site: ExternalSite) -> usize {
     match site {
-        ExternalSite::Member(_) => 0,
+        ExternalSite::Member(_) | ExternalSite::ValuetypeMember(_) => 0,
         ExternalSite::Variant(_) => 1,
         ExternalSite::Alias => 2,
     }
@@ -817,6 +832,11 @@ fn mark_external(
         ExternalSite::Member(index) => {
             if let DefKind::Struct(s) = &mut def.kind {
                 s.members[index].annotations.push(ann);
+            }
+        }
+        ExternalSite::ValuetypeMember(index) => {
+            if let DefKind::Valuetype(v) = &mut def.kind {
+                v.members[index].annotations.push(ann);
             }
         }
         ExternalSite::Variant(index) => {

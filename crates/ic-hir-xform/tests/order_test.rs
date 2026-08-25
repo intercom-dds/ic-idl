@@ -149,6 +149,20 @@ fn external_sites(hir: &ResolvedGraph) -> Vec<String> {
                     }
                 }
             }
+            DefKind::Valuetype(v) => {
+                for member in &v.members {
+                    if ic_hir_analysis::annotation::is_external(&hir.context, member) {
+                        out.push(format!("{}.{}", entry.qualified(), member.ident.name));
+                    }
+                }
+            }
+            DefKind::Except(e) => {
+                for member in &e.members {
+                    if ic_hir_analysis::annotation::is_external(&hir.context, member) {
+                        out.push(format!("{}.{}", entry.qualified(), member.ident.name));
+                    }
+                }
+            }
             DefKind::Union(u) => {
                 for variant in &u.variants {
                     if ic_hir_analysis::annotation::is_external(&hir.context, variant) {
@@ -436,7 +450,7 @@ fn all_direct_union_cycle_marks_one_variant_external() {
     ";
 
     let input = graph_input(common::parse_with_builtins(idl));
-    assert_eq!(external_sites(&input), Vec::<String>::new());
+    assert!(external_sites(&input).is_empty());
 
     let ordered = order::apply(input);
     assert_eq!(emission(&ordered), vec!["decl M::A", "M::B", "M::A"]);
@@ -454,11 +468,101 @@ fn all_direct_struct_cycle_marks_one_member_external() {
     ";
 
     let input = graph_input(common::parse_with_builtins(idl));
-    assert_eq!(external_sites(&input), Vec::<String>::new());
+    assert!(external_sites(&input).is_empty());
 
     let ordered = order::apply(input);
     assert_eq!(emission(&ordered), vec!["decl M::A", "M::B", "M::A"]);
     assert_eq!(external_sites(&ordered), vec!["M::B.a"]);
+}
+
+#[test]
+fn all_direct_valuetype_cycle_marks_one_member_external() {
+    let idl = r"
+        module M {
+            valuetype B;
+            valuetype A { public B b; };
+            valuetype B { public A a; };
+        };
+    ";
+
+    let input = graph_input(common::parse_with_builtins(idl));
+    assert!(external_sites(&input).is_empty());
+
+    let ordered = order::apply(input);
+    assert_eq!(emission(&ordered), vec!["decl M::A", "M::B", "M::A"]);
+    assert_eq!(external_sites(&ordered), vec!["M::B.a"]);
+
+    let again = order::apply(ordered.clone());
+    assert_eq!(
+        external_sites(&again),
+        external_sites(&ordered),
+        "no direct layout cycle may survive the pass"
+    );
+    assert_declare_before_use(&ordered);
+}
+
+#[test]
+fn a_struct_valuetype_direct_cycle_is_broken_at_a_member() {
+    let idl = r"
+        module M {
+            valuetype V;
+            struct S { V v; };
+            valuetype V { public S s; };
+        };
+    ";
+
+    let input = graph_input(common::parse_with_builtins(idl));
+    assert!(external_sites(&input).is_empty());
+
+    let ordered = order::apply(input);
+    assert_eq!(
+        external_sites(&ordered),
+        vec!["M::V.s"],
+        "a valuetype member is a direct layout edge, so the cycle must be seen and broken"
+    );
+
+    let again = order::apply(ordered.clone());
+    assert_eq!(
+        external_sites(&again),
+        external_sites(&ordered),
+        "no direct layout cycle may survive the pass"
+    );
+    assert_declare_before_use(&ordered);
+}
+
+#[test]
+fn a_valuetype_member_outranks_a_union_variant() {
+    let idl = r"
+        module M {
+            valuetype V;
+            union U switch (boolean) { case TRUE: V v; case FALSE: long x; };
+            valuetype V { public U u; };
+        };
+    ";
+
+    let ordered = order::apply(graph_input(common::parse_with_builtins(idl)));
+
+    assert_eq!(
+        external_sites(&ordered),
+        vec!["M::V.u"],
+        "a member site outranks a variant site whatever kind owns the member"
+    );
+    assert_declare_before_use(&ordered);
+}
+
+#[test]
+fn an_exception_member_is_never_marked_external() {
+    let idl = r"
+        module M {
+            struct S;
+            exception E { S s; };
+            struct S { E e; };
+        };
+    ";
+
+    let ordered = order::apply(graph_input(common::parse_with_builtins(idl)));
+
+    assert!(external_sites(&ordered).is_empty());
 }
 
 #[test]
@@ -590,7 +694,7 @@ fn every_direct_cycle_in_one_component_is_broken() {
     ";
 
     let input = graph_input(common::parse_with_builtins(idl));
-    assert_eq!(external_sites(&input), Vec::<String>::new());
+    assert!(external_sites(&input).is_empty());
 
     let ordered = order::apply(input);
 
@@ -618,7 +722,7 @@ fn a_direct_cycle_beside_an_indirect_one_is_still_broken() {
     ";
 
     let input = graph_input(common::parse_with_builtins(idl));
-    assert_eq!(external_sites(&input), Vec::<String>::new());
+    assert!(external_sites(&input).is_empty());
 
     let ordered = order::apply(input);
 
@@ -726,9 +830,8 @@ fn cyclic_alias_chain_terminates() {
 
     let ordered = order::apply(hir);
     assert_eq!(emission(&ordered).len(), 2);
-    assert_eq!(
-        decl_names(&ordered),
-        Vec::<String>::new(),
+    assert!(
+        decl_names(&ordered).is_empty(),
         "an alias is never forward declared"
     );
 
@@ -764,9 +867,8 @@ fn cyclic_alias_chain_terminates() {
 
     let ordered = order::apply(hir);
     assert_eq!(emission(&ordered).len(), 2);
-    assert_eq!(
-        decl_names(&ordered),
-        Vec::<String>::new(),
+    assert!(
+        decl_names(&ordered).is_empty(),
         "an alias is never forward declared"
     );
 }

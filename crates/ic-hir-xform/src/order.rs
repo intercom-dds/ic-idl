@@ -25,7 +25,7 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use std::collections::{BTreeSet, HashMap, HashSet};
+use std::collections::{BTreeSet, HashMap, HashSet, VecDeque};
 
 use ic_alloc::graph::DiGraph;
 use ic_hir::hir::{Decl, Def, DefFlags, DefId, DefKind, Ident, ModuleTy};
@@ -81,7 +81,7 @@ fn alias_body(ctx: &Context, def_id: DefId) -> Option<ic_hir::hir::Ty> {
     }
 }
 
-fn indirect_targets(ctx: &Context, def_id: DefId) -> HashSet<DefId> {
+fn direct_targets(ctx: &Context, def_id: DefId) -> HashSet<DefId> {
     use ic_hir::hir::{Ty, TyKind};
 
     fn walk(
@@ -93,7 +93,7 @@ fn indirect_targets(ctx: &Context, def_id: DefId) -> HashSet<DefId> {
     ) {
         match &ty.kind {
             TyKind::Adt(id) => {
-                if behind {
+                if !behind {
                     out.insert(*id);
                 }
 
@@ -131,7 +131,10 @@ fn indirect_targets(ctx: &Context, def_id: DefId) -> HashSet<DefId> {
                 walk(ctx, &variant.ty, behind, &mut HashSet::new(), &mut out);
             }
         }
-        DefKind::Alias(a) => walk(ctx, &a.ty, false, &mut HashSet::new(), &mut out),
+        DefKind::Alias(a) => {
+            let behind = ic_hir_analysis::annotation::is_external(ctx, def);
+            walk(ctx, &a.ty, behind, &mut HashSet::new(), &mut out);
+        }
         _ => {}
     }
 
@@ -494,13 +497,32 @@ fn report_unsatisfiable(
     warn!(defs = ?names, "cyclic typedef dependency: no ordering can satisfy it");
 }
 
+fn forward_decl_kind(kind: &DefKind) -> Option<Decl> {
+    match kind {
+        DefKind::Struct(_) => Some(Decl::Struct),
+        DefKind::Union(_) => Some(Decl::Union),
+        DefKind::Interface(_) => Some(Decl::Interface),
+        DefKind::Valuetype(_) => Some(Decl::Valuetype),
+
+        DefKind::Alias(_)
+        | DefKind::Annotation(_)
+        | DefKind::Module(_)
+        | DefKind::Except(_)
+        | DefKind::Enum(_)
+        | DefKind::Const(_)
+        | DefKind::Bitmask(_)
+        | DefKind::Bitset(_)
+        | DefKind::Decl(_) => None,
+    }
+}
+
 fn forward_decl_target(ctx: &Context, def_id: DefId) -> Option<(DefId, Decl)> {
     use ic_hir::hir::TyKind;
 
-    match &ctx.definitions.get(def_id).kind {
-        DefKind::Alias(_) => {}
-        DefKind::Union(_) => return Some((def_id, Decl::Union)),
-        _ => return Some((def_id, Decl::Struct)),
+    let kind = &ctx.definitions.get(def_id).kind;
+
+    if !matches!(kind, DefKind::Alias(_)) {
+        return forward_decl_kind(kind).map(|decl| (def_id, decl));
     }
 
     let mut chain: Vec<DefId> = Vec::new();
@@ -522,11 +544,7 @@ fn forward_decl_target(ctx: &Context, def_id: DefId) -> Option<(DefId, Decl)> {
         }
     }
 
-    match &ctx.definitions.get(current).kind {
-        DefKind::Struct(_) => Some((current, Decl::Struct)),
-        DefKind::Union(_) => Some((current, Decl::Union)),
-        _ => None,
-    }
+    forward_decl_kind(&ctx.definitions.get(current).kind).map(|decl| (current, decl))
 }
 
 fn break_cycles(
@@ -548,21 +566,18 @@ fn break_cycles(
     let mut decls_before: HashMap<DefId, Vec<(Vec<DefId>, DefId)>> = HashMap::new();
 
     for scc in cycles {
-        let mut has_indirect = false;
-        for &def_id in scc {
-            let indirect = indirect_targets(&hir.context, def_id);
-            if indirect.iter().any(|target| scc.contains(target)) {
-                has_indirect = true;
-                break;
-            }
-        }
-
         let mut needs_decl: Vec<(DefId, Decl)> = Vec::new();
         for &def_id in scc {
             let here = position[&def_id];
             for dep in hir.context.deps(def_id) {
                 if scc.contains(&dep) && position.get(&dep).is_some_and(|&there| there > here) {
                     let Some((target, decl)) = forward_decl_target(&hir.context, dep) else {
+                        warn!(
+                            def = %hir.context.qualified_name(dep),
+                            kind = hir.context.definitions.get(dep).kind.kind_name(),
+                            used_by = %hir.context.qualified_name(def_id),
+                            "cyclic dependency on a kind that has no forward declaration"
+                        );
                         continue;
                     };
 
@@ -609,12 +624,66 @@ fn break_cycles(
                 .push((path, decl_id));
         }
 
-        if !has_indirect {
-            mark_external(hir, scc, &position);
-        }
+        break_direct_cycles(hir, scc, &position);
     }
 
     decls_before
+}
+
+fn direct_cycles(
+    ctx: &Context,
+    scc: &HashSet<DefId>,
+    position: &HashMap<DefId, usize>,
+) -> Vec<HashSet<DefId>> {
+    let rank = |id: &DefId| (position.get(id).copied().unwrap_or(usize::MAX), *id);
+
+    let mut nodes: Vec<DefId> = scc.iter().copied().collect();
+    nodes.sort_by_key(rank);
+
+    let mut graph: DiGraph<DefId> = DiGraph::new();
+    for &def_id in &nodes {
+        graph.add_node(def_id);
+    }
+
+    for &def_id in &nodes {
+        let mut targets: Vec<DefId> = direct_targets(ctx, def_id)
+            .into_iter()
+            .filter(|target| *target != def_id && scc.contains(target))
+            .collect();
+        targets.sort_by_key(rank);
+
+        for target in targets {
+            graph.add_edge(&def_id, &target, ());
+        }
+    }
+
+    let mut cycles: Vec<HashSet<DefId>> = graph
+        .cyclic_scc()
+        .into_iter()
+        .map(|component| component.into_iter().collect())
+        .collect();
+
+    cycles.sort_by_key(|component| component.iter().map(rank).min());
+
+    cycles
+}
+
+fn break_direct_cycles(
+    hir: &mut ResolvedGraph,
+    scc: &HashSet<DefId>,
+    position: &HashMap<DefId, usize>,
+) {
+    let mut queue: VecDeque<HashSet<DefId>> = direct_cycles(&hir.context, scc, position)
+        .into_iter()
+        .collect();
+
+    while let Some(component) = queue.pop_front() {
+        if !mark_external(hir, &component, position) {
+            continue;
+        }
+
+        queue.extend(direct_cycles(&hir.context, &component, position));
+    }
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -655,14 +724,22 @@ fn external_site(ctx: &Context, owner: DefId, scc: &HashSet<DefId>) -> Option<Ex
         DefKind::Struct(s) => s
             .members
             .iter()
-            .position(|member| refers_into(ctx, &member.ty, scc))
+            .position(|member| {
+                !ic_hir_analysis::annotation::is_external(ctx, member)
+                    && refers_into(ctx, &member.ty, scc)
+            })
             .map(ExternalSite::Member),
         DefKind::Union(u) => u
             .variants
             .iter()
-            .position(|variant| refers_into(ctx, &variant.ty, scc))
+            .position(|variant| {
+                !ic_hir_analysis::annotation::is_external(ctx, variant)
+                    && refers_into(ctx, &variant.ty, scc)
+            })
             .map(ExternalSite::Variant),
-        DefKind::Alias(a) => refers_into(ctx, &a.ty, scc).then_some(ExternalSite::Alias),
+        DefKind::Alias(a) => (!ic_hir_analysis::annotation::is_external(ctx, def)
+            && refers_into(ctx, &a.ty, scc))
+        .then_some(ExternalSite::Alias),
 
         DefKind::Except(_) | DefKind::Valuetype(_) => {
             debug!(
@@ -692,7 +769,11 @@ fn site_rank(site: ExternalSite) -> usize {
     }
 }
 
-fn mark_external(hir: &mut ResolvedGraph, scc: &HashSet<DefId>, position: &HashMap<DefId, usize>) {
+fn mark_external(
+    hir: &mut ResolvedGraph,
+    scc: &HashSet<DefId>,
+    position: &HashMap<DefId, usize>,
+) -> bool {
     let mut owners: Vec<DefId> = scc.iter().copied().collect();
     owners.sort_by_key(|id| position.get(id).copied().unwrap_or(usize::MAX));
 
@@ -716,7 +797,7 @@ fn mark_external(hir: &mut ResolvedGraph, scc: &HashSet<DefId>, position: &HashM
             .collect();
 
         warn!(defs = ?names, "unbreakable dependency cycle: no @external candidate found");
-        return;
+        return false;
     };
 
     let span = hir.context.definitions.get(owner).span;
@@ -747,6 +828,8 @@ fn mark_external(hir: &mut ResolvedGraph, scc: &HashSet<DefId>, position: &HashM
     }
 
     debug!(owner = ?owner, site = ?site, "synthesized @external to break cycle");
+
+    true
 }
 
 struct Run {

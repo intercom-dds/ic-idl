@@ -406,7 +406,7 @@ impl<'a> CSharpGen<'a> {
                 continue;
             };
 
-            w!(w, "/// <summary>", text.trim_end(), "</summary>\n");
+            w!(w, "/// <summary>", #text.trim_end(), "</summary>\n");
         }
     }
 

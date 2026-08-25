@@ -333,7 +333,7 @@ impl<'a> IdlGen<'a> {
             };
 
             for line in text.trim_end().lines() {
-                w!(w, "/// ", line, "\n");
+                w!(w, "/// ", #line, "\n");
             }
         }
 

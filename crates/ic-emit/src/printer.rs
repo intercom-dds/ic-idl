@@ -219,6 +219,12 @@ impl Twine {
         }
     }
 
+    pub fn write_raw(&mut self, args: &[&dyn ToString]) {
+        for arg in args {
+            self.writer.text(arg.to_string());
+        }
+    }
+
     pub fn blank(&mut self) {
         self.writer.blank();
     }
@@ -263,10 +269,19 @@ impl<T: Iterator> IterExt for T {}
 
 #[macro_export]
 macro_rules! w {
-    ($twine:expr, $($arg:expr),+ $(,)?) => {
+    ($twine:expr $(,)?) => {};
+    ($twine:expr, # $arg:expr $(, $($rest:tt)*)?) => {
         {
-            let args: &[&dyn std::string::ToString] = &[$(&$arg),+];
+            let args: &[&dyn std::string::ToString] = &[&$arg];
+            $twine.write_raw(args);
+            $crate::w!($twine $(, $($rest)*)?);
+        }
+    };
+    ($twine:expr, $arg:expr $(, $($rest:tt)*)?) => {
+        {
+            let args: &[&dyn std::string::ToString] = &[&$arg];
             $twine.write(args);
+            $crate::w!($twine $(, $($rest)*)?);
         }
     };
 }

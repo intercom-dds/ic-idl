@@ -25,7 +25,7 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::path::PathBuf;
 
 use ic_emit::File;
@@ -34,7 +34,7 @@ use ic_hir::ResolvedGraph;
 use ic_hir::hir::{
     AliasTy, Ann, AnnArg, AnnotationTy, Attribute, BitmaskTy, BitsetTy, ConstTy, Decl, Def,
     DefFlags, DefId, DefKind, EnumTy, ExceptTy, InterfaceTy, ModuleTy, Numeric, ParamKind, ProtoTy,
-    StructTy, Ty, TyKind, UnionTy, ValueTy,
+    Spanned, StructTy, Ty, TyKind, UnionTy, ValueTy,
 };
 use ic_hir_analysis::annotation::doc;
 use ic_vfs::{FileId, SourceMap};
@@ -143,7 +143,7 @@ impl<'a> IdlGen<'a> {
         let scope1 = self.get_scope(def_id1)?;
         let scope2 = self.get_scope(def_id2)?;
 
-        let mut ancestors1 = Vec::new();
+        let mut ancestors1 = vec![];
         let mut current = scope1;
         loop {
             ancestors1.push(current);
@@ -184,7 +184,7 @@ impl<'a> IdlGen<'a> {
     }
 
     fn build_path_from(&self, from_scope: DefId, to_scope: Option<DefId>) -> Path {
-        let mut path = Vec::new();
+        let mut path = vec![];
         let mut current = from_scope;
 
         loop {
@@ -299,7 +299,7 @@ impl<'a> IdlGen<'a> {
     fn emit_parents<'ctx>(
         &self,
         w: &mut Twine,
-        parents: impl IntoIterator<Item = &'ctx ic_hir::hir::Spanned<DefId>>,
+        parents: impl IntoIterator<Item = &'ctx Spanned<DefId>>,
         relative_to_def_id: DefId,
     ) {
         let mut parents_iter = parents.into_iter().map(|p| p.def_id);
@@ -317,9 +317,8 @@ impl<'a> IdlGen<'a> {
     }
 
     fn emit_module(&self, w: &mut Twine, def: &Def, module: &ModuleTy) {
-        w!(w, "module ", def.ident.name, " {");
+        w!(w, "module ", def.ident.name, " {\n");
         for &nested_id in &module.definitions {
-            w!(w, "\n");
             self.emit_definition(w, nested_id);
         }
         w!(w, "}; // module ", def.ident.name, "\n\n");
@@ -686,14 +685,14 @@ impl<'a> IdlGen<'a> {
     }
 
     pub fn generate(&self) -> Vec<File> {
-        let mut files_map: HashMap<FileId, Vec<DefId>> = HashMap::new();
+        let mut files_map: HashMap<_, Vec<_>> = HashMap::new();
         for &def_id in &self.hir.order {
             let def = self.hir.context.definitions.get(def_id);
             let file_id = def.ident.span.start.file_id;
             files_map.entry(file_id).or_default().push(def_id);
         }
 
-        let mut result = Vec::new();
+        let mut result = vec![];
         for (file_id, def_ids) in files_map {
             let file_name = self
                 .source_map
@@ -711,7 +710,7 @@ impl<'a> IdlGen<'a> {
                 w!(w, "#pragma once\n");
             }
 
-            let mut dependencies = std::collections::HashSet::new();
+            let mut dependencies = HashSet::new();
             for &def_id in &def_ids {
                 collect_def_dependencies(self.hir, def_id, file_id, &mut dependencies);
             }

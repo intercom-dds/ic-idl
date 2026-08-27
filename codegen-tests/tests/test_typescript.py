@@ -47,6 +47,9 @@ def typescript_output_dir(request: pytest.FixtureRequest) -> Path:
     return make_output_dir(request, "typescript")
 
 
+RESOLUTION_MODES = [("ESNext", "bundler"), ("nodenext", "nodenext")]
+
+
 def test_typescript(
     idl_file: Path, idl_compiler: Path, tsc: str, typescript_output_dir: Path
 ) -> None:
@@ -56,23 +59,28 @@ def test_typescript(
     if not ts_files:
         return
 
-    result = subprocess.run(
-        [
-            tsc,
-            "--noEmit",
-            "--strict",
-            "--skipLibCheck",
-            "--module",
-            "ESNext",
-            "--moduleResolution",
-            "bundler",
-            "--target",
-            "ESNext",
-            *[str(f) for f in ts_files],
-        ],
-        check=False,
-        capture_output=True,
-        text=True,
-        timeout=60,
-    )
-    assert result.returncode == 0, f"tsc failed:\n{result.stdout}\n{result.stderr}"
+    (typescript_output_dir / "package.json").write_text('{"type": "module"}')
+
+    for module, resolution in RESOLUTION_MODES:
+        result = subprocess.run(
+            [
+                tsc,
+                "--noEmit",
+                "--strict",
+                "--skipLibCheck",
+                "--module",
+                module,
+                "--moduleResolution",
+                resolution,
+                "--target",
+                "ESNext",
+                *[str(f) for f in ts_files],
+            ],
+            check=False,
+            capture_output=True,
+            text=True,
+            timeout=60,
+        )
+        assert result.returncode == 0, (
+            f"tsc failed ({resolution}):\n{result.stdout}\n{result.stderr}"
+        )

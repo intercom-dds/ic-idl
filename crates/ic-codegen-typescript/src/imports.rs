@@ -32,6 +32,8 @@ use ic_hir::hir::{DefId, DefKind, ModuleTy};
 
 pub const BARREL_STEM: &str = "index";
 
+const MODULE_EXT: &str = ".js";
+
 pub struct FileImport {
     pub binding: String,
     pub path: String,
@@ -126,10 +128,7 @@ fn collect_file(
         used.insert(binding.clone());
 
         let path = match target {
-            None => match ups {
-                0 => ".".to_string(),
-                n => vec![".."; n].join("/"),
-            },
+            None => barrel_path(ups),
             Some(id) => relative_path(hir, dir_module, id),
         };
 
@@ -187,27 +186,48 @@ pub fn relative_path(hir: &ResolvedGraph, from_module: Option<DefId>, to_module:
     let ups = from_ancestors.len() - common;
     let remaining = &to_ancestors[common..];
 
-    if ups == 0 && remaining.is_empty() {
-        return ".".to_string();
-    }
-
-    let mut path = String::new();
-    if ups == 0 {
-        path.push('.');
-    } else {
-        for i in 0..ups {
-            if i > 0 {
-                path.push('/');
-            }
-            path.push_str("..");
-        }
-    }
+    let mut path = ascend(ups);
     for &id in remaining {
         path.push('/');
         path.push_str(&module_file_stem(hir, id));
     }
 
+    if remaining.is_empty() || has_nested_modules(hir, to_module) {
+        path.push('/');
+        path.push_str(BARREL_STEM);
+    }
+
+    path.push_str(MODULE_EXT);
     path
+}
+
+fn ascend(ups: usize) -> String {
+    if ups == 0 {
+        return ".".to_string();
+    }
+
+    let mut path = String::new();
+    for i in 0..ups {
+        if i > 0 {
+            path.push('/');
+        }
+        path.push_str("..");
+    }
+    path
+}
+
+pub fn barrel_path(ups: usize) -> String {
+    format!("{}/{BARREL_STEM}{MODULE_EXT}", ascend(ups))
+}
+
+pub fn has_nested_modules(hir: &ResolvedGraph, module_id: DefId) -> bool {
+    match &hir.context.type_of(module_id).kind {
+        DefKind::Module(module_ty) => module_ty
+            .definitions
+            .iter()
+            .any(|&id| matches!(hir.context.type_of(id).kind, DefKind::Module(_))),
+        _ => false,
+    }
 }
 
 pub fn scope_of(hir: &ResolvedGraph, def_id: DefId) -> Option<DefId> {
@@ -301,16 +321,11 @@ pub fn partition_module_defs(
 pub fn dir_module_of(hir: &ResolvedGraph, file_module: Option<DefId>) -> Option<DefId> {
     let module_id = file_module?;
     let def = hir.context.type_of(module_id);
-    let DefKind::Module(module_ty) = &def.kind else {
+    if !matches!(def.kind, DefKind::Module(_)) {
         return None;
-    };
+    }
 
-    let has_nested = module_ty
-        .definitions
-        .iter()
-        .any(|&id| matches!(hir.context.type_of(id).kind, DefKind::Module(_)));
-
-    if has_nested {
+    if has_nested_modules(hir, module_id) {
         Some(module_id)
     } else {
         def.parent

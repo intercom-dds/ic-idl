@@ -601,14 +601,20 @@ impl<'a> TsGen<'a> {
         }
     }
 
-    fn emit_re_exports(&self, w: &mut Twine, re_exports: &[DefId], referenced: &[DefId]) {
+    fn emit_re_exports(
+        &self,
+        w: &mut Twine,
+        re_exports: &[DefId],
+        referenced: &[DefId],
+        dir_module: Option<DefId>,
+    ) {
         let is_in_module = |def_id: DefId, module_id: DefId| -> bool {
             imports::module_ancestors(self.hir, def_id).contains(&module_id)
         };
 
         for &nested_id in re_exports {
             let nested_def = self.hir.context.type_of(nested_id);
-            let nested_stem = imports::module_file_stem(self.hir, nested_id);
+            let nested_path = imports::relative_path(self.hir, dir_module, nested_id);
             let refs_in_module: Vec<DefId> = referenced
                 .iter()
                 .copied()
@@ -616,16 +622,16 @@ impl<'a> TsGen<'a> {
                 .collect();
 
             if refs_in_module.is_empty() {
-                w!(w, "export * as ", nested_def, " from \"./", nested_stem, "\";\n");
+                w!(w, "export * as ", nested_def, " from \"", nested_path, "\";\n");
             } else {
                 let all_types = self.is_type_only(nested_id)
                     && refs_in_module.iter().all(|&id| self.is_type_only(id));
 
                 if all_types {
-                    w!(w, "import type * as ", nested_def, " from \"./", nested_stem, "\";\n");
+                    w!(w, "import type * as ", nested_def, " from \"", nested_path, "\";\n");
                     w!(w, "export type { ", nested_def, " };\n");
                 } else {
-                    w!(w, "import * as ", nested_def, " from \"./", nested_stem, "\";\n");
+                    w!(w, "import * as ", nested_def, " from \"", nested_path, "\";\n");
                     w!(w, "export { ", nested_def, " };\n");
                 }
             }
@@ -656,7 +662,7 @@ impl<'a> TsGen<'a> {
         let referenced: Vec<DefId> = self.collect_deps(defs).into_iter().collect();
 
         if let Some(nested_modules) = re_exports {
-            self.emit_re_exports(&mut w, nested_modules, &referenced);
+            self.emit_re_exports(&mut w, nested_modules, &referenced, dir_module);
         }
 
         let empty = FileImports::new();

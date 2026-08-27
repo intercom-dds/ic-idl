@@ -33,21 +33,32 @@ use ic_emit::File;
 use ic_emit::printer::{Twine, w};
 use ic_hir::ResolvedGraph;
 use ic_hir::hir::{
-    AliasTy, ConstTy, Def, DefId, DefKind, ExceptTy, InterfaceTy, ModuleTy, Numeric, ParamKind,
-    PrimitiveTy, ProtoTy, StructTy, Ty, TyKind, UnionTy, ValueTy,
+    AliasTy, ConstTy, Def, DefId, DefKind, ExceptTy, InterfaceTy, Numeric, ParamKind, PrimitiveTy,
+    ProtoTy, StructTy, Ty, TyKind, UnionTy, ValueTy,
 };
 use ic_hir_analysis::annotation::is_optional;
 
 use crate::TypeScriptOptions;
+use crate::imports::{self, FileImports, ImportMap};
 
 pub struct TsGen<'a> {
     hir: &'a ResolvedGraph,
     options: TypeScriptOptions,
+    imports: ImportMap,
 }
 
 impl<'a> TsGen<'a> {
     pub fn new(hir: &'a ResolvedGraph, options: TypeScriptOptions) -> Self {
-        Self { hir, options }
+        let mut generator = Self {
+            hir,
+            options,
+            imports: ImportMap::default(),
+        };
+        generator.imports =
+            imports::collect(hir, &|defs| generator.collect_deps(defs), &|def_id| {
+                generator.is_type_only(def_id)
+            });
+        generator
     }
 
     fn ts_name(&self, def_id: DefId) -> &str {
@@ -71,127 +82,39 @@ impl<'a> TsGen<'a> {
         }
     }
 
-    fn scope_of(&self, def_id: DefId) -> Option<DefId> {
-        let def = self.hir.context.type_of(def_id);
-        let mut current = def.parent?;
-
-        loop {
-            let def = self.hir.context.type_of(current);
-            if matches!(def.kind, DefKind::Module(_)) {
-                return Some(current);
-            }
-            current = def.parent?;
-        }
-    }
-
-    fn get_root_module(&self, def_id: DefId) -> Option<DefId> {
-        let mut current = def_id;
-        loop {
-            let def = self.hir.context.type_of(current);
-            if matches!(def.kind, DefKind::Module(_)) && def.parent.is_none() {
-                return Some(current);
-            }
-            current = def.parent?;
-        }
-    }
-
-    fn module_ancestors(&self, def_id: DefId) -> Vec<DefId> {
-        let mut ancestors = vec![];
-        let mut current = Some(def_id);
-        while let Some(id) = current {
-            let def = self.hir.context.type_of(id);
-            if matches!(def.kind, DefKind::Module(_)) {
-                ancestors.push(id);
-            }
-            current = def.parent;
-        }
-        ancestors.reverse();
-        ancestors
-    }
-
-    fn build_path_from(&self, from_scope: DefId, to_scope: Option<DefId>) -> Vec<String> {
-        let mut path = vec![];
-        let mut current = from_scope;
-
-        loop {
-            if Some(current) == to_scope {
-                break;
-            }
-
-            let def = self.hir.context.type_of(current);
-            path.push(def.ident.name.clone());
-
-            match def.parent {
-                Some(parent_id) => {
-                    let parent_def = self.hir.context.type_of(parent_id);
-                    if matches!(parent_def.kind, DefKind::Module(_)) {
-                        current = parent_id;
-                    } else {
-                        break;
-                    }
-                }
-                None => break,
-            }
-        }
-
-        path.reverse();
-        path
-    }
-
     fn scoped_name(&self, target_def_id: DefId, relative_to_def_id: DefId) -> String {
         let type_name = self.ts_name(target_def_id);
-        let target_scope = self.scope_of(target_def_id);
-        let current_scope = self.scope_of(relative_to_def_id);
+        let target_scope = imports::scope_of(self.hir, target_def_id);
+        let file_module = imports::scope_of(self.hir, relative_to_def_id);
 
-        match (target_scope, current_scope) {
-            (None, None) => type_name.to_string(),
-            (None, Some(_)) => format!("types.{type_name}"),
-            (Some(target_scope), Some(current_scope)) if target_scope == current_scope => {
-                type_name.to_string()
-            }
-            (Some(target_scope), Some(current_scope)) => {
-                // Find common ancestor and build relative path
-                let target_ancestors = self.module_ancestors(target_scope);
-                let current_ancestors = self.module_ancestors(current_scope);
+        if target_scope == file_module {
+            return type_name.to_string();
+        }
 
-                // Find the common prefix length
-                let common_len = target_ancestors
-                    .iter()
-                    .zip(current_ancestors.iter())
-                    .take_while(|(a, b)| a == b)
-                    .count();
+        let ancestors = target_scope
+            .map(|scope| imports::module_ancestors(self.hir, scope))
+            .unwrap_or_default();
+        let name_of = |&id: &DefId| self.hir.context.type_of(id).ident.name.clone();
 
-                // Build path from the divergence point
-                let relative_path: Vec<_> = target_ancestors[common_len..]
-                    .iter()
-                    .map(|&id| self.hir.context.type_of(id).ident.name.clone())
-                    .collect();
-
-                if relative_path.is_empty() {
-                    // Target is in an ancestor of current scope
-                    // We need to reference via the ancestor's name
-                    if common_len > 0 && current_ancestors.len() > common_len {
-                        // Get the name of the module that contains the target
-                        let target_module = self.hir.context.type_of(target_scope);
-                        format!("{}.{type_name}", target_module.ident.name)
-                    } else {
-                        type_name.to_string()
+        let mut path: Vec<String> = vec![];
+        match file_module {
+            None => path.extend(ancestors.iter().map(name_of)),
+            Some(module_id) => {
+                if let Some(index) = ancestors.iter().position(|&id| id == module_id) {
+                    path.extend(ancestors[index + 1..].iter().map(name_of));
+                } else {
+                    let (target, rest) =
+                        imports::import_target(self.hir, file_module, target_scope);
+                    if let Some(binding) = self.imports.binding(file_module, target) {
+                        path.push(binding.to_string());
                     }
-                } else {
-                    let pkg_name = relative_path.join(".");
-                    format!("{pkg_name}.{type_name}")
-                }
-            }
-            (Some(target_scope), None) => {
-                let full_path = self.build_path_from(target_scope, None);
-                let pkg_name = full_path.join(".");
-                if pkg_name.is_empty() {
-                    type_name.to_string()
-                } else {
-                    format!("{pkg_name}.{type_name}")
+                    path.extend(rest.iter().map(name_of));
                 }
             }
         }
+
+        path.push(type_name.to_string());
+        path.join(".")
     }
 
     fn collect_deps(&self, def_ids: &[DefId]) -> HashSet<DefId> {
@@ -678,67 +601,14 @@ impl<'a> TsGen<'a> {
         }
     }
 
-    fn partition_module_defs(&self, module_ty: &ModuleTy) -> (Vec<DefId>, Vec<DefId>) {
-        let mut nested_modules = vec![];
-        let mut other_defs = vec![];
-
-        for &def_id in &module_ty.definitions {
-            let def = self.hir.context.type_of(def_id);
-            if matches!(def.kind, DefKind::Module(_)) {
-                nested_modules.push(def_id);
-            } else {
-                other_defs.push(def_id);
-            }
-        }
-
-        (nested_modules, other_defs)
-    }
-
-    fn relative_import_path(&self, from_module: Option<DefId>, to_module: DefId) -> String {
-        let from_ancestors = from_module
-            .map(|m| self.module_ancestors(m))
-            .unwrap_or_default();
-        let to_ancestors = self.module_ancestors(to_module);
-
-        let common_len = from_ancestors
-            .iter()
-            .zip(to_ancestors.iter())
-            .take_while(|(a, b)| a == b)
-            .count();
-
-        let ups = from_ancestors.len() - common_len;
-        let remaining = &to_ancestors[common_len..];
-
-        if ups == 0 && remaining.is_empty() {
-            return ".".to_string();
-        }
-
-        let mut parts = String::new();
-        if ups == 0 {
-            parts.push('.');
-        } else {
-            for i in 0..ups {
-                if i > 0 {
-                    parts.push('/');
-                }
-                parts.push_str("..");
-            }
-        }
-        for &id in remaining {
-            parts.push('/');
-            parts.push_str(&self.hir.context.type_of(id).ident.name);
-        }
-
-        parts
-    }
-
     fn emit_re_exports(&self, w: &mut Twine, re_exports: &[DefId], referenced: &[DefId]) {
         let is_in_module = |def_id: DefId, module_id: DefId| -> bool {
-            self.module_ancestors(def_id).contains(&module_id)
+            imports::module_ancestors(self.hir, def_id).contains(&module_id)
         };
 
         for &nested_id in re_exports {
             let nested_def = self.hir.context.type_of(nested_id);
+            let nested_stem = imports::module_file_stem(self.hir, nested_id);
             let refs_in_module: Vec<DefId> = referenced
                 .iter()
                 .copied()
@@ -746,133 +616,61 @@ impl<'a> TsGen<'a> {
                 .collect();
 
             if refs_in_module.is_empty() {
-                w!(w, "export * as ", nested_def, " from \"./", nested_def, "\";\n");
+                w!(w, "export * as ", nested_def, " from \"./", nested_stem, "\";\n");
             } else {
                 let all_types = self.is_type_only(nested_id)
                     && refs_in_module.iter().all(|&id| self.is_type_only(id));
 
                 if all_types {
-                    w!(w, "import type * as ", nested_def, " from \"./", nested_def, "\";\n");
+                    w!(w, "import type * as ", nested_def, " from \"./", nested_stem, "\";\n");
                     w!(w, "export type { ", nested_def, " };\n");
                 } else {
-                    w!(w, "import * as ", nested_def, " from \"./", nested_def, "\";\n");
+                    w!(w, "import * as ", nested_def, " from \"./", nested_stem, "\";\n");
                     w!(w, "export { ", nested_def, " };\n");
                 }
             }
         }
     }
 
-    fn compute_import_sources(
-        &self,
-        referenced: &[DefId],
-        dir_module: Option<DefId>,
-        file_name: &str,
-        exclude_from_deps: &[DefId],
-        re_exports: Option<&[DefId]>,
-    ) -> HashSet<Option<DefId>> {
-        let mut import_sources: HashSet<Option<DefId>> = referenced
-            .iter()
-            .map(|&id| self.get_root_module(id))
-            .collect();
-
-        for &exclude in exclude_from_deps {
-            import_sources.remove(&Some(exclude));
-        }
-
-        if file_name == "index.ts" && dir_module.is_none() {
-            import_sources.remove(&None);
-        }
-
-        if let Some(nested_modules) = re_exports {
-            for &nested_id in nested_modules {
-                import_sources.remove(&Some(nested_id));
-            }
-        }
-
-        import_sources
-    }
-
-    fn emit_imports(
-        &self,
-        w: &mut Twine,
-        import_sources: &HashSet<Option<DefId>>,
-        referenced: &[DefId],
-        dir_module: Option<DefId>,
-    ) {
-        if import_sources.is_empty() {
-            return;
-        }
-
-        let ups = dir_module.map_or(0, |m| self.module_ancestors(m).len());
-
-        for &source in import_sources {
-            let (name, import_path) = match source {
-                None => {
-                    let path = match ups {
-                        0 => ".".to_string(),
-                        n => vec![".."; n].join("/"),
-                    };
-                    ("types".to_string(), path)
-                }
-                Some(module_id) => {
-                    let module_def = self.hir.context.type_of(module_id);
-                    (
-                        module_def.ident.name.clone(),
-                        self.relative_import_path(dir_module, module_id),
-                    )
-                }
-            };
-
-            let refs_from_source: Vec<DefId> = referenced
-                .iter()
-                .copied()
-                .filter(|&ref_id| self.get_root_module(ref_id) == source)
-                .collect();
-
-            let all_types = refs_from_source.iter().all(|&id| self.is_type_only(id));
-
-            if all_types {
-                w!(w, "import type * as ", name, " from \"", import_path, "\";\n");
+    fn emit_imports(w: &mut Twine, imports: &FileImports) {
+        for import in imports.values() {
+            if import.type_only {
+                w!(w, "import type * as ", import.binding, " from \"", import.path, "\";\n");
             } else {
-                w!(w, "import * as ", name, " from \"", import_path, "\";\n");
+                w!(w, "import * as ", import.binding, " from \"", import.path, "\";\n");
             }
         }
     }
 
     fn emit_file(
         &self,
-        dir_module: Option<DefId>,
-        file_name: &str,
+        file_module: Option<DefId>,
+        file_stem: &str,
         defs: &[DefId],
-        exclude_from_deps: &[DefId],
         re_exports: Option<&[DefId]>,
     ) -> File {
         let mut w = Twine::with_indent(2);
         Self::emit_header(&mut w);
 
+        let dir_module = imports::dir_module_of(self.hir, file_module);
         let referenced: Vec<DefId> = self.collect_deps(defs).into_iter().collect();
 
         if let Some(nested_modules) = re_exports {
             self.emit_re_exports(&mut w, nested_modules, &referenced);
         }
 
-        let import_sources = self.compute_import_sources(
-            &referenced,
-            dir_module,
-            file_name,
-            exclude_from_deps,
-            re_exports,
-        );
+        let empty = FileImports::new();
+        let imports = self.imports.of(file_module).unwrap_or(&empty);
 
         let has_re_exports = re_exports.is_some_and(|r| !r.is_empty());
-        if !import_sources.is_empty() {
+        if !imports.is_empty() {
             if has_re_exports {
                 w!(w, "\n");
             }
-            self.emit_imports(&mut w, &import_sources, &referenced, dir_module);
+            Self::emit_imports(&mut w, imports);
         }
 
-        if (has_re_exports || !import_sources.is_empty()) && !defs.is_empty() {
+        if (has_re_exports || !imports.is_empty()) && !defs.is_empty() {
             w!(w, "\n");
         }
 
@@ -880,18 +678,19 @@ impl<'a> TsGen<'a> {
             self.emit_non_module_definition(&mut w, def_id);
         }
 
-        if defs.is_empty() && !has_re_exports && import_sources.is_empty() {
+        if defs.is_empty() && !has_re_exports && imports.is_empty() {
             w!(w, "export {}\n");
         }
 
         let mut path: PathBuf = dir_module
-            .map(|m| self.module_ancestors(m))
+            .map(|m| imports::module_ancestors(self.hir, m))
             .unwrap_or_default()
             .iter()
-            .map(|&id| &self.hir.context.type_of(id).ident.name)
+            .map(|&id| imports::module_file_stem(self.hir, id))
             .collect();
 
-        path.push(file_name);
+        path.push(file_stem);
+        path.set_extension("ts");
         File::Generated {
             path,
             source: w.finish(),
@@ -904,48 +703,25 @@ impl<'a> TsGen<'a> {
             return;
         };
 
-        let (nested_modules, non_module_defs) = self.partition_module_defs(module_ty);
-        let parent_module = def
-            .parent
-            .filter(|&p| matches!(self.hir.context.type_of(p).kind, DefKind::Module(_)));
+        let (nested_modules, non_module_defs) = imports::partition_module_defs(self.hir, module_ty);
 
         if nested_modules.is_empty() {
             result.push(self.emit_file(
-                parent_module,
-                &format!("{}.ts", def.ident.name),
+                Some(module_id),
+                &imports::module_file_stem(self.hir, module_id),
                 &non_module_defs,
-                &[module_id],
                 None,
             ));
         } else {
-            let mut exclude: Vec<DefId> = vec![module_id];
-            exclude.extend(&nested_modules);
-
             result.push(self.emit_file(
                 Some(module_id),
-                "index.ts",
+                imports::BARREL_STEM,
                 &non_module_defs,
-                &exclude,
                 Some(&nested_modules),
             ));
 
             for &nested_id in &nested_modules {
-                let nested_def = self.hir.context.type_of(nested_id);
-                if let DefKind::Module(nested_module_ty) = &nested_def.kind {
-                    let (nested_nested, nested_other) =
-                        self.partition_module_defs(nested_module_ty);
-                    if nested_nested.is_empty() {
-                        result.push(self.emit_file(
-                            Some(module_id),
-                            &format!("{}.ts", nested_def.ident.name),
-                            &nested_other,
-                            &[nested_id],
-                            None,
-                        ));
-                    } else {
-                        self.generate_module(nested_id, result);
-                    }
-                }
+                self.generate_module(nested_id, result);
             }
         }
     }
@@ -975,9 +751,8 @@ impl<'a> TsGen<'a> {
         if !top_level_defs.is_empty() || !top_level_modules.is_empty() {
             result.push(self.emit_file(
                 None,
-                "index.ts",
+                imports::BARREL_STEM,
                 &top_level_defs,
-                &[],
                 Some(&top_level_modules),
             ));
         }

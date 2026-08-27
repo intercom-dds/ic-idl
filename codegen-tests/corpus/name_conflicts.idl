@@ -142,3 +142,28 @@ module name_conflicts {
         group_b::common::Item item_b;
     };
 };
+
+module index_conflict {
+    module index {
+        struct Indexed {
+            long value;
+        };
+    };
+
+    module index_ {
+        struct Escaped {
+            long value;
+        };
+    };
+
+    module consumer {
+        struct UsesIndex {
+            index_conflict::index::Indexed indexed;
+            index_conflict::index_::Escaped escaped;
+        };
+    };
+};
+
+struct TopLevelIndexUser {
+    index_conflict::consumer::UsesIndex consumer_ref;
+};

@@ -27,7 +27,7 @@
 
 use ic_emit::printer::{Twine, w};
 use ic_hir::hir::{Def, ValueTy};
-use ic_hir_analysis::annotation::is_external;
+use ic_hir_analysis::annotation::{MemberLike, is_external};
 
 use crate::codegen::CppGen;
 
@@ -54,6 +54,7 @@ impl CppGen<'_> {
         }
 
         self.emit_valuetype_constructors(decl_w, def, valuetype_ty);
+        w!(decl_w, "virtual ~", valuetype_name, "() = default;\n");
         Self::emit_valuetype_comparison_operators(decl_w, valuetype_name);
 
         for proto in &valuetype_ty.prototypes {
@@ -64,7 +65,8 @@ impl CppGen<'_> {
             w!(decl_w, "\n");
         }
 
-        for member in &valuetype_ty.members {
+        let members = self.collect_members(def.id);
+        for member in &members {
             self.emit_member(decl_w, member, def.id);
         }
 
@@ -104,8 +106,8 @@ impl CppGen<'_> {
             }
             w!(w, valuetype_name, "(\n");
             for (i, member) in all_members.iter().enumerate() {
-                let ty_str = self.member_cpp_type(&member.ty, member, def.id);
-                w!(w, ty_str, " a_", member.ident.name);
+                let ty_str = self.member_cpp_type(member.ty(), member, def.id);
+                w!(w, ty_str, " a_", member.name());
                 if i < all_members.len() - 1 {
                     w!(w, ",\n");
                 }
@@ -176,8 +178,8 @@ impl CppGen<'_> {
 
         w!(w, "inline ", qualified_name, "::", valuetype_name, "(\n");
         for (i, member) in all_members.iter().enumerate() {
-            let ty_str = self.member_cpp_type(&member.ty, member, def.id);
-            w!(w, ty_str, " a_", member.ident.name);
+            let ty_str = self.member_cpp_type(member.ty(), member, def.id);
+            w!(w, ty_str, " a_", member.name());
             if i < all_members.len() - 1 {
                 w!(w, ",\n");
             }
@@ -192,10 +194,10 @@ impl CppGen<'_> {
 
             w!(w, parent_name, "(");
             for (i, member) in parent_all_members.iter().enumerate() {
-                if self.should_use_move(&member.ty, Some(member)) {
-                    w!(w, "std::move(a_", member.ident.name, ")");
+                if self.should_use_move(member.ty(), Some(member)) {
+                    w!(w, "std::move(a_", member.name(), ")");
                 } else {
-                    w!(w, "a_", member.ident.name);
+                    w!(w, "a_", member.name());
                 }
                 if i < parent_all_members.len() - 1 {
                     w!(w, ", ");
@@ -204,14 +206,14 @@ impl CppGen<'_> {
             w!(w, ")");
         }
 
-        for (i, member) in valuetype_ty.members.iter().enumerate() {
+        for (i, member) in self.collect_members(def.id).iter().enumerate() {
             if has_parent || i > 0 {
                 w!(w, ",\n\t");
             }
-            if self.should_use_move(&member.ty, Some(member)) {
-                w!(w, member.ident.name, "(std::move(a_", member.ident.name, "))");
+            if self.should_use_move(member.ty(), Some(member)) {
+                w!(w, member.name(), "(std::move(a_", member.name(), "))");
             } else {
-                w!(w, member.ident.name, "(a_", member.ident.name, ")");
+                w!(w, member.name(), "(a_", member.name(), ")");
             }
         }
 
@@ -232,7 +234,7 @@ impl CppGen<'_> {
             w!(w, "return false;\n");
         } else {
             for (i, member) in all_members.iter().enumerate() {
-                let member_name = &member.ident.name;
+                let member_name = &member.name();
 
                 let ptr = if is_external(&self.hir.context, member) {
                     "*"
@@ -251,7 +253,7 @@ impl CppGen<'_> {
 
         w!(w, "inline bool ", qualified_name, "::operator==(const ", qualified_name, " &", param, ") const {\n");
         for member in &all_members {
-            let member_name = &member.ident.name;
+            let member_name = &member.name();
             let ptr = if is_external(&self.hir.context, member) {
                 "*"
             } else {
@@ -279,7 +281,7 @@ impl CppGen<'_> {
         w!(w, "typename Archive::StructValue serializer(a_archive, a_info);\n");
 
         for (i, member) in all_members.iter().enumerate() {
-            let member_name = &member.ident.name;
+            let member_name = &member.name();
             w!(w, "serializer.io(a_info->members[", i.to_string(), "], a_value.", member_name, ");\n");
         }
 

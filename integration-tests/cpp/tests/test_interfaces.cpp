@@ -60,6 +60,16 @@ TEST_CASE("empty_interface" * doctest::test_suite("interfaces")) {
     CHECK(std::is_polymorphic_v<interface_types::Empty>);
 }
 
+TEST_CASE("interface_with_attribute" * doctest::test_suite("interfaces")) {
+    using NameReturnType = decltype(std::declval<interface_types::WithAttribute>().name());
+    CHECK((std::is_same<NameReturnType, const std::string&>::value));
+
+    using CountSetterType = decltype(std::declval<interface_types::WithAttribute>().count(123));
+    CHECK((std::is_same<CountSetterType, void>::value));
+    using CountReturnType = decltype(std::declval<interface_types::WithAttribute>().count());
+    CHECK((std::is_same<CountReturnType, int32_t>::value));
+}
+
 TEST_CASE("operation_failed_exception" * doctest::test_suite("interfaces")) {
     interface_types::OperationFailed ex(42, "Test error");
     CHECK(ex.error_code == 42);

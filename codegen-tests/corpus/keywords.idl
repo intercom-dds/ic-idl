@@ -737,8 +737,8 @@ module all_keywords {
       @DDSService
       interface for
       {
-         attribute while for setraises (else);
-         while if(inout while for) raises(else);
+         attribute while do setraises (else);
+         while if(inout while do) raises(else);
       };
     };
 };

@@ -28,15 +28,15 @@
 #![allow(clippy::cast_possible_wrap)]
 
 use ic_emit::printer::{Twine, w};
-use ic_hir::hir::{Def, DefId, DefKind, Member, PrimitiveTy, Ty, TyKind, UnionTy};
+use ic_hir::hir::{Def, DefId, DefKind, PrimitiveTy, Ty, TyKind, UnionTy};
 use ic_hir_analysis::annotation::{
-    Extensibility, extensibility as analyze_extensibility, is_external, is_key, is_must_understand,
-    is_nested, is_optional,
+    Extensibility, MemberLike, extensibility as analyze_extensibility, is_external, is_key,
+    is_must_understand, is_nested, is_optional,
 };
 use ic_hir_analysis::enum_value::default_enumerator;
 use ic_hir_analysis::member_id::{Autoid, effective_autoid, member_ids};
 
-use crate::codegen::CppGen;
+use crate::codegen::{CppGen, MemberKind};
 
 struct TypeInfo {
     name: String,
@@ -181,7 +181,7 @@ fn add_flag(flag: &mut String, value: &str) {
     }
 }
 
-fn member_flags(ctx: &ic_hir::Context, member: &Member, has_key: bool) -> String {
+fn member_flags(ctx: &ic_hir::Context, member: &impl MemberLike, has_key: bool) -> String {
     let mut flag = String::new();
 
     if is_key(ctx, member) {
@@ -276,7 +276,12 @@ impl CppGen<'_> {
     fn type_info_ref(&self, ty: &Ty) -> String {
         let resolved = self.hir.context.resolve_ty(ty);
         match &resolved.kind {
-            TyKind::Adt(def_id) => {
+            TyKind::Adt(def_id)
+                if !matches!(
+                    self.hir.context.type_of(*def_id).kind,
+                    DefKind::Interface(_)
+                ) =>
+            {
                 let type_name = self.scoped_name(*def_id, None);
                 format!("&::ic_cts::TypeTraits<{type_name}>::type_info")
             }
@@ -412,7 +417,7 @@ impl CppGen<'_> {
     }
 
     // Emit struct members with cleaner structure
-    fn emit_struct_members(&self, w: &mut Twine, def: &Def, members: &[Member]) {
+    fn emit_struct_members(&self, w: &mut Twine, def: &Def, members: &[MemberKind<'_>]) {
         if members.is_empty() {
             return;
         }
@@ -426,7 +431,7 @@ impl CppGen<'_> {
         let mut type_infos = Vec::new();
         for (i, member) in members.iter().enumerate() {
             let var_name = format!("{mangled_name}_type_info_{i}");
-            let type_info = self.emit_nested_type_info(w, &member.ty, &var_name, &scoped_name);
+            let type_info = self.emit_nested_type_info(w, member.ty(), &var_name, &scoped_name);
             type_infos.push(type_info);
         }
 
@@ -437,7 +442,7 @@ impl CppGen<'_> {
             emit_member_info(
                 w,
                 member_id,
-                &member.ident.name,
+                member.name(),
                 &flags,
                 "::ic_cts::MEMBER_INFO_EMPTY_CASE_LABELS",
                 &type_infos[i],

@@ -27,7 +27,7 @@
 
 use ic_alloc::md5;
 use ic_hir::Context;
-use ic_hir::hir::{Ann, Def, DefId, DefKind, Member};
+use ic_hir::hir::{Ann, Attribute, Def, DefId, DefKind, Member};
 
 use crate::annotation::builtin_annotation;
 
@@ -117,15 +117,23 @@ fn valuetype_member_ids(ctx: &Context, def: &Def, ids: &mut Vec<u32>) -> u32 {
         return u32::MAX;
     };
 
-    let current = valuetype.parent.map_or(u32::MAX, |parent| {
+    let mut current = valuetype.parent.map_or(u32::MAX, |parent| {
         valuetype_member_ids(ctx, ctx.type_of(parent.def_id), ids)
     });
 
-    append_member_ids(
+    current = append_member_ids(
         ctx,
         effective_autoid(ctx, def),
         current,
         &valuetype.members,
+        ids,
+    );
+
+    append_attrib_member_ids(
+        ctx,
+        effective_autoid(ctx, def),
+        current,
+        &valuetype.attributes,
         ids,
     )
 }
@@ -161,6 +169,27 @@ fn append_member_ids(
             current,
             &member.ident.name,
             &member.annotations,
+        );
+        ids.push(current);
+    }
+
+    current
+}
+
+fn append_attrib_member_ids(
+    ctx: &Context,
+    autoid: Autoid,
+    mut current: u32,
+    attributes: &[Attribute],
+    ids: &mut Vec<u32>,
+) -> u32 {
+    for attribute in attributes {
+        current = assign_member_id(
+            ctx,
+            autoid,
+            current,
+            &attribute.ident.name,
+            &attribute.annotations,
         );
         ids.push(current);
     }

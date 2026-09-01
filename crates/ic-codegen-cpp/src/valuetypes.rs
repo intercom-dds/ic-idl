@@ -43,7 +43,7 @@ impl CppGen<'_> {
 
         w!(decl_w, "class ", valuetype_name);
         if let Some(parent) = valuetype_ty.parent {
-            w!(decl_w, " : public ", self.scoped_name(parent.def_id, def.id));
+            w!(decl_w, " : public virtual ", self.scoped_name(parent.def_id, def.id));
         }
 
         w!(decl_w, " {\n");

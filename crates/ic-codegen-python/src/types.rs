@@ -167,6 +167,10 @@ impl MemberLike for MemberKind<'_> {
             MemberKind::Variant(v) => v.annotations(),
         }
     }
+
+    fn ty(&self) -> &Ty {
+        MemberKind::ty(self)
+    }
 }
 
 impl PyGen<'_, '_> {

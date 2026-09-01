@@ -31,7 +31,7 @@ mod common;
 use ic_hir::hir::{Def, DefKind};
 use ic_hir_analysis::annotation::{
     Extensibility, bit_bound, default_value, doc, extensibility, is_external, is_key,
-    is_must_understand, is_nested, is_newtype, is_non_serialized, is_optional,
+    is_must_understand, is_nested, is_newtype, is_non_serialized, is_optional, range,
 };
 
 fn def<'a>(hir: &'a ic_hir::ResolvedGraph, name: &str) -> &'a Def {
@@ -102,6 +102,7 @@ fn resolves_annotation_properties() {
             @must_understand long understood_value;
             @must_understand(FALSE) long ignored_value;
             @default(42) long defaulted_value;
+            @range(min=1, max=9) long range_value;
         };
 
         @BIT_BOUND(16)
@@ -115,6 +116,8 @@ fn resolves_annotation_properties() {
 
         @EXT::NEWTYPE typedef long NewtypeAlias;
         @ext::newtype(FALSE) typedef long PlainAlias;
+
+        @range(min=1, max=9) typedef long RangeAlias;
 
         const string DOC_TEXT = "Built-in documentation";
         @DOC(DOC_TEXT) struct Documented {};
@@ -153,6 +156,13 @@ fn resolves_annotation_properties() {
         Some(42)
     );
     assert_eq!(
+        range(&hir.context, &properties.members[12]).map(|(min, max)| (
+            hir.context.unsigned_value(min),
+            hir.context.unsigned_value(max)
+        )),
+        Some((1, 9))
+    );
+    assert_eq!(
         bit_bound(&hir.context, def(&hir, "Bounded"))
             .map(|value| hir.context.unsigned_value(value)),
         Some(16)
@@ -161,6 +171,13 @@ fn resolves_annotation_properties() {
     assert!(!is_external(&hir.context, def(&hir, "DirectAlias")));
     assert!(is_newtype(&hir.context, def(&hir, "NewtypeAlias")));
     assert!(!is_newtype(&hir.context, def(&hir, "PlainAlias")));
+    assert_eq!(
+        range(&hir.context, def(&hir, "RangeAlias")).map(|(min, max)| (
+            hir.context.unsigned_value(min),
+            hir.context.unsigned_value(max)
+        )),
+        Some((1, 9))
+    );
     assert_eq!(
         doc(&hir.context, &def(&hir, "Documented").annotations[0]).as_deref(),
         Some("Built-in documentation")

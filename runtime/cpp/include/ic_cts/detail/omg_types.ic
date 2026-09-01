@@ -1,0 +1,314 @@
+// Copyright 2026 KONGSBERG
+//
+// Redistribution and use in source and binary forms, with or without
+// modification, are permitted provided that the following conditions are met:
+//
+// 1. Redistributions of source code must retain the above copyright notice,
+//    this list of conditions and the following disclaimer.
+//
+// 2. Redistributions in binary form must reproduce the above copyright notice,
+//    this list of conditions and the following disclaimer in the documentation
+//    and/or other materials provided with the distribution.
+//
+// 3. Neither the name of the copyright holder nor the names of its contributors
+//    may be used to endorse or promote products derived from this software
+//    without specific prior written permission.
+//
+// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
+// ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+// WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+// DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
+// FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+// DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+// SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+// CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+// OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+// OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+#pragma once
+
+namespace omg::types {
+
+template <typename T, T Min, T Max>
+constexpr ranged<T, Min, Max>::ranged() noexcept {}
+
+template <typename T, T Min, T Max>
+constexpr ranged<T, Min, Max>::ranged(T value) {
+    set(value);
+}
+
+template <typename T, T Min, T Max>
+constexpr T ranged<T, Min, Max>::value() const noexcept {
+    return m_value;
+}
+
+template <typename T, T Min, T Max>
+constexpr ranged<T, Min, Max>::operator T() const noexcept {
+    return m_value;
+}
+
+template <typename T, T Min, T Max>
+constexpr bool ranged<T, Min, Max>::operator==(const T& rhs) const noexcept {
+    return m_value == rhs;
+}
+
+template <typename T, T Min, T Max>
+constexpr bool ranged<T, Min, Max>::operator!=(const T& rhs) const noexcept {
+    return m_value != rhs;
+}
+
+template <typename T, T Min, T Max>
+constexpr bool ranged<T, Min, Max>::operator<(const T& rhs) const noexcept {
+    return m_value < rhs;
+}
+
+template <typename T, T Min, T Max>
+constexpr bool ranged<T, Min, Max>::operator<=(const T& rhs) const noexcept {
+    return m_value <= rhs;
+}
+
+template <typename T, T Min, T Max>
+constexpr bool ranged<T, Min, Max>::operator>(const T& rhs) const noexcept {
+    return m_value > rhs;
+}
+
+template <typename T, T Min, T Max>
+constexpr bool ranged<T, Min, Max>::operator>=(const T& rhs) const noexcept {
+    return m_value >= rhs;
+}
+
+template <typename T, T Min, T Max>
+constexpr bool ranged<T, Min, Max>::operator==(const ranged& rhs) const noexcept {
+    return m_value == rhs.m_value;
+}
+
+template <typename T, T Min, T Max>
+constexpr bool ranged<T, Min, Max>::operator!=(const ranged& rhs) const noexcept {
+    return m_value != rhs.m_value;
+}
+
+template <typename T, T Min, T Max>
+constexpr bool ranged<T, Min, Max>::operator<(const ranged& rhs) const noexcept {
+    return m_value < rhs.m_value;
+}
+
+template <typename T, T Min, T Max>
+constexpr bool ranged<T, Min, Max>::operator<=(const ranged& rhs) const noexcept {
+    return m_value <= rhs.m_value;
+}
+
+template <typename T, T Min, T Max>
+constexpr bool ranged<T, Min, Max>::operator>(const ranged& rhs) const noexcept {
+    return m_value > rhs.m_value;
+}
+
+template <typename T, T Min, T Max>
+constexpr bool ranged<T, Min, Max>::operator>=(const ranged& rhs) const noexcept {
+    return m_value >= rhs.m_value;
+}
+
+template <typename T, T Min, T Max>
+constexpr ranged<T, Min, Max>& ranged<T, Min, Max>::operator=(T value) {
+    set(value);
+    return *this;
+}
+
+template <typename T, T Min, T Max>
+constexpr ranged<T, Min, Max> ranged<T, Min, Max>::operator+(const T& rhs) const {
+    return ranged<T, Min, Max>{static_cast<T>(m_value + rhs)};
+}
+
+template <typename T, T Min, T Max>
+constexpr ranged<T, Min, Max> ranged<T, Min, Max>::operator+(const ranged& rhs) const {
+    return *this + rhs.value();
+}
+
+template <typename T, T Min, T Max>
+constexpr ranged<T, Min, Max> ranged<T, Min, Max>::operator-(const T& rhs) const {
+    return ranged<T, Min, Max>{static_cast<T>(m_value - rhs)};
+}
+
+template <typename T, T Min, T Max>
+constexpr ranged<T, Min, Max> ranged<T, Min, Max>::operator-(const ranged& rhs) const {
+    return *this - rhs.value();
+}
+
+template <typename T, T Min, T Max>
+constexpr ranged<T, Min, Max> ranged<T, Min, Max>::operator*(const T& rhs) const {
+    return ranged<T, Min, Max>{static_cast<T>(m_value * rhs)};
+}
+
+template <typename T, T Min, T Max>
+constexpr ranged<T, Min, Max> ranged<T, Min, Max>::operator*(const ranged& rhs) const {
+    return *this * rhs.value();
+}
+
+template <typename T, T Min, T Max>
+constexpr ranged<T, Min, Max> ranged<T, Min, Max>::operator/(const T& rhs) const {
+    if (rhs == 0) {
+        throw std::domain_error("division by zero");
+    }
+    return ranged<T, Min, Max>{static_cast<T>(m_value / rhs)};
+}
+
+template <typename T, T Min, T Max>
+constexpr ranged<T, Min, Max> ranged<T, Min, Max>::operator/(const ranged& rhs) const {
+    return *this / rhs.value();
+}
+
+template <typename T, T Min, T Max>
+constexpr ranged<T, Min, Max> ranged<T, Min, Max>::operator%(const T& rhs) const {
+    if (rhs == 0) {
+        throw std::domain_error("modulo by zero");
+    }
+    return ranged<T, Min, Max>{static_cast<T>(m_value % rhs)};
+}
+
+template <typename T, T Min, T Max>
+constexpr ranged<T, Min, Max> ranged<T, Min, Max>::operator%(const ranged& rhs) const {
+    return *this % rhs.value();
+}
+
+template <typename T, T Min, T Max>
+constexpr ranged<T, Min, Max>& ranged<T, Min, Max>::operator+=(const T& rhs) {
+    set(static_cast<T>(m_value + rhs));
+    return *this;
+}
+
+template <typename T, T Min, T Max>
+constexpr ranged<T, Min, Max>& ranged<T, Min, Max>::operator+=(const ranged& rhs) {
+    return *this += rhs.m_value;
+}
+
+template <typename T, T Min, T Max>
+constexpr ranged<T, Min, Max>& ranged<T, Min, Max>::operator-=(const T& rhs) {
+    set(static_cast<T>(m_value - rhs));
+    return *this;
+}
+
+template <typename T, T Min, T Max>
+constexpr ranged<T, Min, Max>& ranged<T, Min, Max>::operator-=(const ranged& rhs) {
+    return *this -= rhs.m_value;
+}
+
+template <typename T, T Min, T Max>
+constexpr ranged<T, Min, Max>& ranged<T, Min, Max>::operator*=(const T& rhs) {
+    set(static_cast<T>(m_value * rhs));
+    return *this;
+}
+
+template <typename T, T Min, T Max>
+constexpr ranged<T, Min, Max>& ranged<T, Min, Max>::operator*=(const ranged& rhs) {
+    return *this *= rhs.m_value;
+}
+
+template <typename T, T Min, T Max>
+constexpr ranged<T, Min, Max>& ranged<T, Min, Max>::operator/=(const T& rhs) {
+    if (rhs == 0) {
+        throw std::domain_error("division by zero");
+    }
+
+    set(static_cast<T>(m_value / rhs));
+    return *this;
+}
+
+template <typename T, T Min, T Max>
+constexpr ranged<T, Min, Max>& ranged<T, Min, Max>::operator/=(const ranged& rhs) {
+    return *this /= rhs.m_value;
+}
+
+template <typename T, T Min, T Max>
+constexpr ranged<T, Min, Max>& ranged<T, Min, Max>::operator%=(const T& rhs) {
+    if (rhs == 0) {
+        throw std::domain_error("modulo by zero");
+    }
+
+    set(static_cast<T>(m_value % rhs));
+    return *this;
+}
+
+template <typename T, T Min, T Max>
+constexpr ranged<T, Min, Max>& ranged<T, Min, Max>::operator%=(const ranged& rhs) {
+    return *this %= rhs.m_value;
+}
+
+template <typename T, T Min, T Max>
+void constexpr ranged<T, Min, Max>::set(T value) {
+    if constexpr (std::is_floating_point<T>::value) {
+        if (std::isnan(value)) {
+            throw std::domain_error("value is NaN");
+        }
+    }
+    if (value < Min || value > Max) {
+        throw std::out_of_range("value outside range");
+    }
+    m_value = value;
+}
+
+// non-member operators inside omg::types for ADL and grouping
+
+template <typename T, T Min, T Max>
+constexpr bool operator==(const T& lhs, const ranged<T, Min, Max>& rhs) {
+    return rhs == lhs;
+}
+
+template <typename T, T Min, T Max>
+constexpr bool operator!=(const T& lhs, const ranged<T, Min, Max>& rhs) {
+    return rhs != lhs;
+}
+
+template <typename T, T Min, T Max>
+constexpr bool operator<(const T& lhs, const ranged<T, Min, Max>& rhs) {
+    return rhs > lhs;
+}
+
+template <typename T, T Min, T Max>
+constexpr bool operator<=(const T& lhs, const ranged<T, Min, Max>& rhs) {
+    return rhs >= lhs;
+}
+
+template <typename T, T Min, T Max>
+constexpr bool operator>(const T& lhs, const ranged<T, Min, Max>& rhs) {
+    return rhs < lhs;
+}
+
+template <typename T, T Min, T Max>
+constexpr bool operator>=(const T& lhs, const ranged<T, Min, Max>& rhs) {
+    return rhs <= lhs;
+}
+
+template <typename T, T Min, T Max>
+constexpr ranged<T, Min, Max> operator+(const T& lhs, ranged<T, Min, Max> rhs) {
+    return rhs + lhs;
+}
+
+template <typename T, T Min, T Max>
+constexpr ranged<T, Min, Max> operator-(const T& lhs, ranged<T, Min, Max> rhs) {
+    return ranged<T, Min, Max>{lhs} - rhs;
+}
+
+template <typename T, T Min, T Max>
+constexpr ranged<T, Min, Max> operator*(const T& lhs, ranged<T, Min, Max> rhs) {
+    return rhs * lhs;
+}
+
+template <typename T, T Min, T Max>
+constexpr ranged<T, Min, Max> operator/(const T& lhs, ranged<T, Min, Max> rhs) {
+    return ranged<T, Min, Max>{lhs} / rhs;
+}
+
+template <typename T, T Min, T Max>
+constexpr ranged<T, Min, Max> operator%(const T& lhs, ranged<T, Min, Max> rhs) {
+    return ranged<T, Min, Max>{lhs} % rhs;
+}
+
+}  // namespace omg::types
+
+namespace std {
+template <typename T, T Min, T Max>
+struct hash<omg::types::ranged<T, Min, Max>> {
+    std::size_t operator()(const omg::types::ranged<T, Min, Max>& r) const noexcept {
+        return std::hash<T>{}(r.value());
+    }
+};
+}  // namespace std

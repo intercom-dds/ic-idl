@@ -166,6 +166,7 @@ def cpp_output_dir(request: pytest.FixtureRequest) -> Path:
         pytest.param(["--char-ptr-constants"], "c++17", id="char-ptr-constants"),
         pytest.param(["--unscoped-enums"], "c++17", id="unscoped-enums"),
         pytest.param(["--use-fmt"], "c++20", id="use-fmt"),
+        pytest.param(["--ranged-type"], "c++20", id="ranged-type"),
     ],
 )
 def test_cpp(

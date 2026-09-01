@@ -104,7 +104,7 @@ impl CppGen<'_> {
             }
             w!(w, valuetype_name, "(\n");
             for (i, member) in all_members.iter().enumerate() {
-                let ty_str = self.member_cpp_type(&member.ty, member, def.id);
+                let ty_str = self.cpp_type_member(member, def.id, false);
                 w!(w, ty_str, " a_", member.ident.name);
                 if i < all_members.len() - 1 {
                     w!(w, ",\n");
@@ -176,7 +176,7 @@ impl CppGen<'_> {
 
         w!(w, "inline ", qualified_name, "::", valuetype_name, "(\n");
         for (i, member) in all_members.iter().enumerate() {
-            let ty_str = self.member_cpp_type(&member.ty, member, def.id);
+            let ty_str = self.cpp_type_member(member, def.id, false);
             w!(w, ty_str, " a_", member.ident.name);
             if i < all_members.len() - 1 {
                 w!(w, ",\n");

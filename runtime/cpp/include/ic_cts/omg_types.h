@@ -27,11 +27,14 @@
 
 #pragma once
 
+#include <cmath>
 #include <cstdint>
 #include <map>
 #include <memory>
 #include <optional>
+#include <stdexcept>
 #include <string>
+#include <type_traits>
 #include <vector>
 
 #include "member_info.h"
@@ -148,4 +151,72 @@ struct elements {
 template <typename T>
 using elements_t = typename elements<T>::type;
 
+/// Implementation of `omg::types::ranged<T, Min, Max>` for ranged numeric types
+/// Will throw `std::out_of_range` on out-of-bounds or `std::domain_error` invalid math operations
+template <typename T, T Min, T Max>
+class ranged {
+    static_assert(
+        std::is_integral<T>::value || std::is_floating_point<T>::value,
+        "ranged requires a numeric type"
+    );
+    static_assert(Min <= Max, "Min must be <= Max");
+
+  public:
+    using value_type = T;
+
+    static constexpr T min_value = Min;
+    static constexpr T max_value = Max;
+
+    constexpr ranged() noexcept;
+    constexpr ranged(T value);
+
+    constexpr T value() const noexcept;
+    constexpr explicit operator T() const noexcept;
+
+    constexpr bool operator==(const T& rhs) const noexcept;
+    constexpr bool operator!=(const T& rhs) const noexcept;
+    constexpr bool operator<(const T& rhs) const noexcept;
+    constexpr bool operator<=(const T& rhs) const noexcept;
+    constexpr bool operator>(const T& rhs) const noexcept;
+    constexpr bool operator>=(const T& rhs) const noexcept;
+
+    constexpr bool operator==(const ranged& rhs) const noexcept;
+    constexpr bool operator!=(const ranged& rhs) const noexcept;
+    constexpr bool operator<(const ranged& rhs) const noexcept;
+    constexpr bool operator<=(const ranged& rhs) const noexcept;
+    constexpr bool operator>(const ranged& rhs) const noexcept;
+    constexpr bool operator>=(const ranged& rhs) const noexcept;
+
+    constexpr ranged& operator=(T value);
+
+    constexpr ranged& operator+=(const T& rhs);
+    constexpr ranged& operator+=(const ranged& rhs);
+    constexpr ranged& operator-=(const T& rhs);
+    constexpr ranged& operator-=(const ranged& rhs);
+    constexpr ranged& operator*=(const T& rhs);
+    constexpr ranged& operator*=(const ranged& rhs);
+    constexpr ranged& operator/=(const T& rhs);
+    constexpr ranged& operator/=(const ranged& rhs);
+    constexpr ranged& operator%=(const T& rhs);
+    constexpr ranged& operator%=(const ranged& rhs);
+
+    constexpr ranged operator+(const T& rhs) const;
+    constexpr ranged operator+(const ranged& rhs) const;
+    constexpr ranged operator-(const T& rhs) const;
+    constexpr ranged operator-(const ranged& rhs) const;
+    constexpr ranged operator*(const T& rhs) const;
+    constexpr ranged operator*(const ranged& rhs) const;
+    constexpr ranged operator/(const T& rhs) const;
+    constexpr ranged operator/(const ranged& rhs) const;
+    constexpr ranged operator%(const T& rhs) const;
+    constexpr ranged operator%(const ranged& rhs) const;
+
+  private:
+    constexpr void set(T value);
+
+    T m_value{Min};
+};
+
 }  // namespace omg::types
+
+#include "detail/omg_types.ic"  // IWYU pragma: export

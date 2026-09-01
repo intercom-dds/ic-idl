@@ -79,6 +79,10 @@ pub struct CppOptions {
     #[option(long)]
     pub use_fmt: bool,
 
+    /// Wrap @range annotated numerics in a ranged type with bounds checking, requires C++20
+    #[option(long)]
+    pub ranged_type: bool,
+
     /// Use <sym> as dllexport symbol
     #[option(long, arg = "sym")]
     pub dll_export: Option<String>,

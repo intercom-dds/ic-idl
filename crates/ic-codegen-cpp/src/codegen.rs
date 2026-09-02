@@ -36,7 +36,9 @@ use ic_hir::hir::{
     Decl, Def, DefId, DefKind, InterfaceTy, Member, ModuleTy, Numeric, ParamKind, PrimitiveTy,
     ProtoTy, Ty, TyKind,
 };
-use ic_hir_analysis::annotation::{MemberLike, bit_bound, default_value, is_external, is_optional};
+use ic_hir_analysis::annotation::{
+    MemberLike, bit_bound, default_value, is_external, is_optional, range,
+};
 use ic_hir_analysis::enum_value::default_enumerator;
 use ic_vfs::{FileId, SourceMap};
 
@@ -218,10 +220,70 @@ impl<'a> CppGen<'a> {
         }
     }
 
-    pub fn cpp_type(&self, ty: &Ty, relative_def: impl Into<Option<DefId>>) -> String {
+    fn format_template_numeric(
+        &self,
+        value: &Numeric,
+        prim: PrimitiveTy,
+        relative_def: impl Into<Option<DefId>>,
+    ) -> String {
+        match (prim, value) {
+            (PrimitiveTy::Float32, Numeric::Double(value)) => format!("{value:.7}f"),
+            (PrimitiveTy::Float64, Numeric::Float(value)) => format!("{value:.7}"),
+            (PrimitiveTy::Float128, Numeric::Float(value)) => format!("{value:.7}L"),
+            (PrimitiveTy::Float128, Numeric::Double(value)) => format!("{value:.16}L"),
+            _ => self.format_numeric_value(value, relative_def),
+        }
+    }
+
+    #[allow(clippy::too_many_lines)]
+    fn cpp_type_impl(
+        &self,
+        ty: &Ty,
+        member: Option<&impl MemberLike>,
+        relative_def: impl Into<Option<DefId>>,
+    ) -> String {
         let relative_def_opt = relative_def.into();
+        let range = member
+            .and_then(|member| range(&self.hir.context, member))
+            .or_else(|| {
+                relative_def_opt
+                    .filter(|def| {
+                        matches!(
+                            self.hir.context.type_of(*def).kind,
+                            DefKind::Alias(_) | DefKind::Const(_)
+                        )
+                    })
+                    .and_then(|def| {
+                        self.hir
+                            .context
+                            .hierarchy_of(def)
+                            .find_map(|def| range(&self.hir.context, def))
+                    })
+            })
+            .or_else(|| match &ty.kind {
+                TyKind::Adt(def_id) => self
+                    .hir
+                    .context
+                    .hierarchy_of(*def_id)
+                    .find_map(|def| range(&self.hir.context, def)),
+                _ => None,
+            });
+
         match &ty.kind {
-            TyKind::Primitive(prim) => cpp_primitive(*prim).to_string(),
+            TyKind::Primitive(prim) => {
+                if self.options.ranged_type
+                    && let Some((min, max)) = range
+                {
+                    format!(
+                        "::omg::types::ranged<{}, {}, {}>",
+                        cpp_primitive(*prim),
+                        self.format_template_numeric(min, *prim, relative_def_opt),
+                        self.format_template_numeric(max, *prim, relative_def_opt)
+                    )
+                } else {
+                    cpp_primitive(*prim).to_string()
+                }
+            }
             TyKind::String {
                 wide, bound: None, ..
             } => {
@@ -286,10 +348,32 @@ impl<'a> CppGen<'a> {
         }
     }
 
-    pub fn should_use_move<T>(&self, ty: &Ty, member: Option<&T>) -> bool
-    where
-        T: MemberLike,
-    {
+    pub fn cpp_type_member(
+        &self,
+        member: &impl MemberLike,
+        relative_def: impl Into<Option<DefId>>,
+        inner: bool,
+    ) -> String {
+        if is_optional(&self.hir.context, member) && !inner {
+            format!(
+                "::std::optional<{}>",
+                self.cpp_type_impl(member.ty(), Some(member), relative_def)
+            )
+        } else if is_external(&self.hir.context, member) && !inner {
+            format!(
+                "::std::unique_ptr<{}>",
+                self.cpp_type_impl(member.ty(), Some(member), relative_def)
+            )
+        } else {
+            self.cpp_type_impl(member.ty(), Some(member), relative_def)
+        }
+    }
+
+    pub fn cpp_type(&self, ty: &Ty, relative_def: impl Into<Option<DefId>>) -> String {
+        self.cpp_type_impl(ty, None::<&Member>, relative_def)
+    }
+
+    pub fn should_use_move(&self, ty: &Ty, member: Option<&impl MemberLike>) -> bool {
         member.is_some_and(|m| is_external(&self.hir.context, m))
             || if let TyKind::Adt(def_id) = &ty.kind {
                 let def = self.hir.context.definitions.get(def_id);
@@ -304,33 +388,18 @@ impl<'a> CppGen<'a> {
             }
     }
 
-    pub fn member_cpp_type(
-        &self,
-        ty: &Ty,
-        member: &impl MemberLike,
-        relative_def: impl Into<Option<DefId>>,
-    ) -> String {
-        if is_optional(&self.hir.context, member) {
-            format!("::std::optional<{}>", self.cpp_type(ty, relative_def))
-        } else if is_external(&self.hir.context, member) {
-            format!("::std::unique_ptr<{}>", self.cpp_type(ty, relative_def))
-        } else {
-            self.cpp_type(ty, relative_def)
-        }
-    }
-
     pub fn emit_member(&self, w: &mut Twine, member: &Member, def_id: DefId) {
-        let ty_str = self.member_cpp_type(&member.ty, member, def_id);
+        let ty_str = self.cpp_type_member(member, def_id, false);
         let external = is_external(&self.hir.context, member);
 
-        let inner_ty = self.cpp_type(&member.ty, def_id);
+        let inner_ty = self.cpp_type_member(member, def_id, true);
         w!(w, ty_str, " ", member.ident.name);
         if let Some(default) = default_value(&self.hir.context, member) {
             let is_array = matches!(default, Numeric::Array { .. });
             if !is_array || external {
                 w!(w, "{");
             }
-            self.emit_numeric_value_with_ty(w, default, &member.ty, def_id, external);
+            self.emit_numeric_value_with_member(w, default, member, def_id, external);
             if !is_array || external {
                 w!(w, "}");
             }
@@ -341,7 +410,18 @@ impl<'a> CppGen<'a> {
                 w!(w, "{");
             }
 
-            self.emit_default_initializer(w, &member.ty, Some(def_id));
+            if range(&self.hir.context, member).is_some()
+                || matches!(member.ty.kind, TyKind::Adt(def_id) if
+                    self.hir
+                        .context
+                        .hierarchy_of(def_id)
+                        .any(|def| range(&self.hir.context, def).is_some())
+                )
+            {
+                w!(w, inner_ty, "()");
+            } else {
+                self.emit_default_initializer(w, &member.ty, Some(def_id));
+            }
 
             if external {
                 w!(w, ")}");
@@ -386,7 +466,25 @@ impl<'a> CppGen<'a> {
         value: &Numeric,
         relative_def: impl Into<Option<DefId>>,
     ) {
-        self.emit_numeric_value_impl(w, value, relative_def, None, false, false);
+        self.emit_numeric_value_impl(w, value, relative_def, None, None::<&Member>, false, false);
+    }
+
+    pub fn format_numeric_value(
+        &self,
+        value: &Numeric,
+        relative_def: impl Into<Option<DefId>>,
+    ) -> String {
+        let mut w = Twine::default();
+        self.emit_numeric_value_impl(
+            &mut w,
+            value,
+            relative_def,
+            None,
+            None::<&Member>,
+            false,
+            false,
+        );
+        w.finish()
     }
 
     pub fn emit_numeric_value_with_ty(
@@ -397,16 +495,44 @@ impl<'a> CppGen<'a> {
         relative_def: impl Into<Option<DefId>>,
         external: bool,
     ) {
-        self.emit_numeric_value_impl(w, value, relative_def, Some(ty), false, external);
+        self.emit_numeric_value_impl(
+            w,
+            value,
+            relative_def,
+            Some(ty),
+            None::<&Member>,
+            false,
+            external,
+        );
     }
 
-    #[allow(clippy::too_many_lines)]
+    pub fn emit_numeric_value_with_member(
+        &self,
+        w: &mut Twine,
+        value: &Numeric,
+        member: &Member,
+        relative_def: impl Into<Option<DefId>>,
+        external: bool,
+    ) {
+        self.emit_numeric_value_impl(
+            w,
+            value,
+            relative_def,
+            Some(&member.ty),
+            Some(member),
+            false,
+            external,
+        );
+    }
+
+    #[allow(clippy::too_many_arguments, clippy::too_many_lines)]
     fn emit_numeric_value_impl(
         &self,
         w: &mut Twine,
         value: &Numeric,
         relative_def: impl Into<Option<DefId>>,
         expected_ty: Option<&Ty>,
+        member: Option<&impl MemberLike>,
         emit_type_for_struct: bool,
         external: bool,
     ) {
@@ -415,7 +541,7 @@ impl<'a> CppGen<'a> {
         if let Some(ty) = expected_ty
             && external
         {
-            w!(w, "::std::make_unique<", self.cpp_type(ty, relative_def_opt), ">(");
+            w!(w, "::std::make_unique<", self.cpp_type_impl(ty, member, relative_def_opt), ">(");
         }
 
         match value {
@@ -504,6 +630,7 @@ impl<'a> CppGen<'a> {
                         value,
                         relative_def_opt,
                         member.map(|m| &m.ty),
+                        member,
                         true,
                         external,
                     );
@@ -818,7 +945,7 @@ impl<'a> CppGen<'a> {
 
             match param.kind {
                 ParamKind::In => {
-                    if self.should_use_move::<Member>(&resolved_ty, None) && !pass_by_value {
+                    if self.should_use_move(&resolved_ty, None::<&Member>) && !pass_by_value {
                         w!(w, "const ", ty_str, "& a_", param_name);
                     } else {
                         w!(w, ty_str, " a_", param_name);
@@ -961,6 +1088,9 @@ impl<'a> CppGen<'a> {
             }
             w!(header, "#include <ic_cts/member_info.h>\n");
             w!(header, "#include <ic_cts/memory.h>\n");
+            if self.options.ranged_type {
+                w!(header, "#include <ic_cts/omg_types.h>\n");
+            }
 
             let mut dependencies = std::collections::HashSet::new();
             for &def_id in &def_ids {

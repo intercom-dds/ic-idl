@@ -98,7 +98,10 @@ TEST_CASE("nested_struct" * doctest::test_suite("annotations")) {
 }
 
 TEST_CASE("shared_refs_struct" * doctest::test_suite("annotations")) {
-    annotation_types::SharedRefs sr(std::make_unique<std::string>("shared"), std::make_unique<annotation_types::NestedStruct>(5, 10));
+    annotation_types::SharedRefs sr(
+        std::make_unique<std::string>("shared"),
+        std::make_unique<annotation_types::NestedStruct>(5, 10)
+    );
     CHECK(*sr.shared_string.get() == "shared");
     CHECK(sr.shared_struct->x == 5);
     CHECK(sr.shared_struct->y == 10);
@@ -171,4 +174,71 @@ TEST_CASE("optional_assignment" * doctest::test_suite("annotations")) {
 
     os.optional_int.reset();
     CHECK_FALSE(os.optional_int.has_value());
+}
+
+TEST_CASE("range_annotation" * doctest::test_suite("annotations")) {
+    CHECK(annotation_types::RangedNumber::min_value == -99);
+    CHECK(annotation_types::RangedNumber::max_value == 99);
+
+    CHECK(decltype(annotation_types::RangedStruct::ranged_field)::min_value == 1);
+    CHECK(decltype(annotation_types::RangedStruct::ranged_field)::max_value == 100);
+    annotation_types::RangedStruct s;
+    CHECK(s.ranged_field == 1);
+    CHECK(s.ranged_typedef_field == -99);
+}
+
+TEST_CASE("ranged_type" * doctest::test_suite("annotations")) {
+    using SimpleRange = omg::types::ranged<uint32_t, 1, 100>;
+    SimpleRange a;
+
+    CHECK(SimpleRange::min_value == 1);
+    CHECK(SimpleRange::max_value == 100);
+    CHECK(a == SimpleRange::min_value);
+
+    a = 100;
+    CHECK(a == 100);
+
+    CHECK_THROWS_AS(a = 101, std::out_of_range);
+
+    a = 100;
+    CHECK_THROWS_AS(a += 1, std::out_of_range);
+    a = 100;
+    CHECK_THROWS_AS([[maybe_unused]] const SimpleRange _ = a + 1, std::out_of_range);
+
+    a = 1;
+    CHECK_THROWS_AS(a -= 1, std::out_of_range);
+    a = 1;
+    CHECK_THROWS_AS([[maybe_unused]] const SimpleRange _ = a - 1, std::out_of_range);
+
+    a = 1;
+    CHECK_THROWS_AS(a *= 101, std::out_of_range);
+    a = 1;
+    CHECK_THROWS_AS([[maybe_unused]] const SimpleRange _ = a * 101, std::out_of_range);
+
+    a = 1;
+    CHECK_THROWS_AS(a /= 4, std::out_of_range);
+    a = 1;
+    CHECK_THROWS_AS([[maybe_unused]] const SimpleRange _ = a / 4, std::out_of_range);
+
+    using IntRange = omg::types::ranged<int32_t, -100, 100>;
+    IntRange zero{0};  // Must be non-const to enable div-by-zero
+    IntRange i;
+
+    CHECK(IntRange::min_value == -100);
+    CHECK(IntRange::max_value == 100);
+    CHECK(i == IntRange::min_value);
+
+    CHECK_THROWS_AS([[maybe_unused]] const IntRange _ = i / zero, std::domain_error);
+    CHECK_THROWS_AS(i /= zero, std::domain_error);
+    CHECK_THROWS_AS([[maybe_unused]] const IntRange _ = i % zero, std::domain_error);
+    CHECK_THROWS_AS(i %= zero, std::domain_error);
+
+    // Math operations with rhs outside range
+    CHECK((omg::types::ranged<int, 10, 100>{10} += 1) == 11);
+    CHECK((omg::types::ranged<int, 10, 100>{11} -= 1) == 10);
+    CHECK((omg::types::ranged<int, 10, 100>{10} *= 2) == 20);
+    CHECK((omg::types::ranged<int, 10, 100>{50} /= 2) == 25);
+
+    auto result = SimpleRange{100} - 1;
+    CHECK(std::is_same_v<decltype(result), SimpleRange>);
 }

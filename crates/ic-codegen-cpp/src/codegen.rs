@@ -33,8 +33,8 @@ use ic_emit::File;
 use ic_emit::printer::{Twine, w};
 use ic_hir::ResolvedGraph;
 use ic_hir::hir::{
-    Decl, Def, DefId, DefKind, InterfaceTy, Member, ModuleTy, Numeric, ParamKind, PrimitiveTy,
-    ProtoTy, Ty, TyKind,
+    Attribute, Decl, Def, DefId, DefKind, InterfaceTy, Member, ModuleTy, Numeric, ParamKind,
+    PrimitiveTy, ProtoTy, Ty, TyKind,
 };
 use ic_hir_analysis::annotation::{MemberLike, bit_bound, default_value, is_external, is_optional};
 use ic_hir_analysis::enum_value::default_enumerator;
@@ -212,7 +212,10 @@ impl<'a> CppGen<'a> {
             TyKind::Array { .. } => true,
             TyKind::Adt(def_id) => {
                 let def = self.hir.context.definitions.get(*def_id);
-                matches!(def.kind, DefKind::Enum(_) | DefKind::Bitmask(_))
+                matches!(
+                    def.kind,
+                    DefKind::Enum(_) | DefKind::Bitmask(_) | DefKind::Interface(_)
+                )
             }
             _ => false,
         }
@@ -242,7 +245,20 @@ impl<'a> CppGen<'a> {
                     format!("::ic_cts::bounded_string<{bound}>")
                 }
             }
-            TyKind::Adt(def_id) => self.scoped_name(*def_id, relative_def_opt),
+            TyKind::Adt(def_id) => format!(
+                "{}{}",
+                self.scoped_name(*def_id, relative_def_opt),
+                if !matches!(self.hir.context.type_of(*def_id).kind, DefKind::Alias(_))
+                    && matches!(
+                        self.hir.context.base_def_of(*def_id).kind,
+                        DefKind::Interface(_)
+                    )
+                {
+                    "*"
+                } else {
+                    ""
+                }
+            ),
             TyKind::Sequence {
                 ty, bound: None, ..
             } => {
@@ -295,7 +311,7 @@ impl<'a> CppGen<'a> {
                 let def = self.hir.context.definitions.get(def_id);
 
                 match &def.kind {
-                    DefKind::Bitmask(_) | DefKind::Enum(_) => false,
+                    DefKind::Bitmask(_) | DefKind::Enum(_) | DefKind::Interface(_) => false,
                     DefKind::Alias(alias_ty) => self.should_use_move(&alias_ty.ty, member),
                     _ => true,
                 }
@@ -319,29 +335,29 @@ impl<'a> CppGen<'a> {
         }
     }
 
-    pub fn emit_member(&self, w: &mut Twine, member: &Member, def_id: DefId) {
-        let ty_str = self.member_cpp_type(&member.ty, member, def_id);
+    pub fn emit_member(&self, w: &mut Twine, member: &impl MemberLike, def_id: DefId) {
+        let ty_str = self.member_cpp_type(member.ty(), member, def_id);
         let external = is_external(&self.hir.context, member);
 
-        let inner_ty = self.cpp_type(&member.ty, def_id);
-        w!(w, ty_str, " ", member.ident.name);
+        let inner_ty = self.cpp_type(member.ty(), def_id);
+        w!(w, ty_str, " ", member.name());
         if let Some(default) = default_value(&self.hir.context, member) {
             let is_array = matches!(default, Numeric::Array { .. });
             if !is_array || external {
                 w!(w, "{");
             }
-            self.emit_numeric_value_with_ty(w, default, &member.ty, def_id, external);
+            self.emit_numeric_value_with_ty(w, default, member.ty(), def_id, external);
             if !is_array || external {
                 w!(w, "}");
             }
-        } else if self.has_default_value(&member.ty) && !is_optional(&self.hir.context, member) {
+        } else if self.has_default_value(member.ty()) && !is_optional(&self.hir.context, member) {
             if external {
                 w!(w, "{::std::make_unique<", inner_ty ,">(");
             } else {
                 w!(w, "{");
             }
 
-            self.emit_default_initializer(w, &member.ty, Some(def_id));
+            self.emit_default_initializer(w, member.ty(), Some(def_id));
 
             if external {
                 w!(w, ")}");
@@ -354,7 +370,28 @@ impl<'a> CppGen<'a> {
         w!(w, ";\n");
     }
 
-    pub fn collect_all_members(&self, def_id: DefId) -> Vec<Member> {
+    pub fn collect_members(&self, def_id: DefId) -> Vec<MemberKind<'a>> {
+        let def = self.hir.context.definitions.get(def_id);
+        let mut all_members = Vec::new();
+
+        match &def.kind {
+            DefKind::Struct(struct_ty) => {
+                all_members.extend(struct_ty.members.iter().map(MemberKind::Member));
+            }
+            DefKind::Valuetype(valuetype_ty) => {
+                all_members.extend(valuetype_ty.members.iter().map(MemberKind::Member));
+                all_members.extend(valuetype_ty.attributes.iter().map(MemberKind::Attrib));
+            }
+            DefKind::Except(except_ty) => {
+                all_members.extend(except_ty.members.iter().map(MemberKind::Member));
+            }
+            _ => {}
+        }
+
+        all_members
+    }
+
+    pub fn collect_all_members(&self, def_id: DefId) -> Vec<MemberKind<'a>> {
         let def = self.hir.context.definitions.get(def_id);
         let mut all_members = Vec::new();
 
@@ -363,16 +400,17 @@ impl<'a> CppGen<'a> {
                 if let Some(parent) = struct_ty.parent {
                     all_members.extend(self.collect_all_members(parent.def_id));
                 }
-                all_members.extend(struct_ty.members.clone());
+                all_members.extend(struct_ty.members.iter().map(MemberKind::Member));
             }
             DefKind::Valuetype(valuetype_ty) => {
                 if let Some(parent) = valuetype_ty.parent {
                     all_members.extend(self.collect_all_members(parent.def_id));
                 }
-                all_members.extend(valuetype_ty.members.clone());
+                all_members.extend(valuetype_ty.members.iter().map(MemberKind::Member));
+                all_members.extend(valuetype_ty.attributes.iter().map(MemberKind::Attrib));
             }
             DefKind::Except(except_ty) => {
-                all_members.extend(except_ty.members.clone());
+                all_members.extend(except_ty.members.iter().map(MemberKind::Member));
             }
             _ => {}
         }
@@ -503,7 +541,7 @@ impl<'a> CppGen<'a> {
                         w,
                         value,
                         relative_def_opt,
-                        member.map(|m| &m.ty),
+                        member.map(MemberKind::ty),
                         true,
                         external,
                     );
@@ -689,14 +727,8 @@ impl<'a> CppGen<'a> {
         } else if has_members {
             w!(w, "return ::ic_cts::hash_all(\n");
             match &def.kind {
-                DefKind::Struct(struct_ty) => {
-                    self.emit_hash_struct_members(w, def, &struct_ty.members);
-                }
-                DefKind::Except(except_ty) => {
-                    self.emit_hash_struct_members(w, def, &except_ty.members);
-                }
-                DefKind::Valuetype(valuetype_ty) => {
-                    self.emit_hash_struct_members(w, def, &valuetype_ty.members);
+                DefKind::Struct(_) | DefKind::Except(_) | DefKind::Valuetype(_) => {
+                    self.emit_hash_struct_members(w, def, &self.collect_members(def.id));
                 }
                 DefKind::Bitmask(bitmask_ty) => {
                     let underlying_type = cpp_primitive(bitmask_ty.ty);
@@ -713,7 +745,7 @@ impl<'a> CppGen<'a> {
         w!(w, "}\n\n");
     }
 
-    fn emit_hash_struct_members(&self, w: &mut Twine, def: &Def, members: &[Member]) {
+    fn emit_hash_struct_members(&self, w: &mut Twine, def: &Def, members: &[impl MemberLike]) {
         let mut first = true;
 
         match &def.kind {
@@ -740,7 +772,7 @@ impl<'a> CppGen<'a> {
                 w!(w, ",\n");
             }
             first = false;
-            let member_name = format!("s.{}", member.ident.name);
+            let member_name = format!("s.{}", member.name());
             w!(w, member_name);
         }
         w!(w, "\n");
@@ -777,6 +809,10 @@ impl<'a> CppGen<'a> {
             self.emit_prototype(decl_w, def, prototype);
         }
 
+        for attribute in &interface_ty.attributes {
+            self.emit_interface_attribute(decl_w, def, attribute);
+        }
+
         w!(decl_w, "};\n\n");
     }
 
@@ -796,10 +832,7 @@ impl<'a> CppGen<'a> {
                 && let def = self.hir.context.definitions.get(def_id)
                 && matches!(def.kind, DefKind::Interface(_))
             {
-                (
-                    true,
-                    format!("{}*", self.cpp_type(&param.ty, interface_def.id)),
-                )
+                (true, self.cpp_type(&param.ty, interface_def.id))
             } else if let TyKind::String { wide, .. } = &resolved_ty.kind
                 && param.kind == ParamKind::In
             {
@@ -835,6 +868,21 @@ impl<'a> CppGen<'a> {
         }
 
         w!(w, ") = 0;\n\n");
+    }
+
+    fn emit_interface_attribute(&self, w: &mut Twine, attrib_def: &Def, attrib: &Attribute) {
+        let attrib_name = &attrib.ident.name;
+
+        let ty = if self.should_use_move(&attrib.ty, Some(attrib)) {
+            format!("const {}&", self.cpp_type(&attrib.ty, attrib_def.id))
+        } else {
+            self.cpp_type(&attrib.ty, attrib_def.id)
+        };
+
+        if !attrib.is_readonly {
+            w!(w, "virtual void ", attrib_name, "(", ty, ") = 0;\n");
+        }
+        w!(w, "virtual ", ty, " ",  attrib_name, "() = 0;\n\n");
     }
 
     fn emit_forward_decl(&self, w: &mut Twine, def: &Def, decl: Decl) {
@@ -1082,4 +1130,32 @@ pub(crate) fn emit_escaped_string(w: &mut Twine, s: &str) {
         _ = write_escaped_char(w, c);
     }
     w!(w, '"');
+}
+
+pub(crate) enum MemberKind<'a> {
+    Member(&'a Member),
+    Attrib(&'a Attribute),
+}
+
+impl MemberLike for MemberKind<'_> {
+    fn annotations(&self) -> &[ic_hir::hir::Ann] {
+        match self {
+            MemberKind::Member(m) => m.annotations(),
+            MemberKind::Attrib(a) => a.annotations(),
+        }
+    }
+
+    fn name(&self) -> &str {
+        match self {
+            MemberKind::Member(m) => m.name(),
+            MemberKind::Attrib(a) => a.name(),
+        }
+    }
+
+    fn ty(&self) -> &Ty {
+        match self {
+            MemberKind::Member(m) => m.ty(),
+            MemberKind::Attrib(a) => a.ty(),
+        }
+    }
 }

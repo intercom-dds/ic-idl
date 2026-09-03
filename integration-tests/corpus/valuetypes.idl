@@ -51,6 +51,12 @@ module valuetype_types {
     valuetype Empty {
     };
 
+    valuetype WithAttribute {
+        readonly attribute string name;
+        attribute long count;
+        attribute Named iface;
+    };
+
     valuetype WithSequence {
         public sequence<long> numbers;
         public sequence<string> names;

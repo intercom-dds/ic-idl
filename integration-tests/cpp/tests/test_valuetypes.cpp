@@ -59,6 +59,17 @@ TEST_CASE("valuetype_empty" * doctest::test_suite("valuetypes")) {
     CHECK(e == e);
 }
 
+TEST_CASE("valuetype_with_attribute" * doctest::test_suite("valuetypes")) {
+    CHECK((std::is_same<decltype(valuetype_types::WithAttribute::name), std::string>::value));
+    CHECK((std::is_same<decltype(valuetype_types::WithAttribute::count), int32_t>::value));
+    CHECK((std::is_same<decltype(valuetype_types::WithAttribute::iface), valuetype_types::Named*>::value));
+
+    valuetype_types::WithAttribute wa;
+    CHECK(wa.name == "");
+    CHECK(wa.count == 0);
+    CHECK(wa.iface == nullptr);
+}
+
 TEST_CASE("valuetype_with_sequence" * doctest::test_suite("valuetypes")) {
     std::vector<int32_t> nums = {1, 2, 3, 4, 5};
     std::vector<std::string> names = {"a", "b", "c"};
@@ -150,4 +161,9 @@ TEST_CASE("valuetype_comparison_operators" * doctest::test_suite("valuetypes")) 
     CHECK(v1 < v4);
     CHECK(v1 <= v2);
     CHECK(v1 >= v2);
+}
+
+TEST_CASE("valuetype_type_traits" * doctest::test_suite("valuetypes")) {
+    CHECK(std::has_virtual_destructor<valuetype_types::Empty>::value);
+    CHECK(!std::is_abstract<valuetype_types::Empty>::value);
 }

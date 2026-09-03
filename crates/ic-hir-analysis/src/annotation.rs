@@ -26,15 +26,25 @@
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use ic_hir::Context;
-use ic_hir::hir::{Ann, AnnParam, Def, DefFlags, DefKind, Disc, Member, Numeric, Variant};
+use ic_hir::hir::{
+    Ann, AnnParam, Attribute, Def, DefFlags, DefKind, Disc, Member, Numeric, Ty, Variant,
+};
 
 pub trait MemberLike {
     fn annotations(&self) -> &[Ann];
+    fn name(&self) -> &str;
+    fn ty(&self) -> &Ty;
 }
 
 impl MemberLike for Member {
     fn annotations(&self) -> &[Ann] {
         &self.annotations
+    }
+    fn name(&self) -> &str {
+        &self.ident.name
+    }
+    fn ty(&self) -> &Ty {
+        &self.ty
     }
 }
 
@@ -42,11 +52,35 @@ impl MemberLike for Disc {
     fn annotations(&self) -> &[Ann] {
         &self.annotations
     }
+    fn name(&self) -> &'static str {
+        ""
+    }
+    fn ty(&self) -> &Ty {
+        &self.ty
+    }
 }
 
 impl MemberLike for Variant {
     fn annotations(&self) -> &[Ann] {
         &self.annotations
+    }
+    fn name(&self) -> &str {
+        &self.ident.name
+    }
+    fn ty(&self) -> &Ty {
+        &self.ty
+    }
+}
+
+impl MemberLike for Attribute {
+    fn annotations(&self) -> &[Ann] {
+        &self.annotations
+    }
+    fn name(&self) -> &str {
+        &self.ident.name
+    }
+    fn ty(&self) -> &Ty {
+        &self.ty
     }
 }
 

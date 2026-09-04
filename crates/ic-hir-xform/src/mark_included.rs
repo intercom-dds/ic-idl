@@ -28,7 +28,7 @@
 use std::collections::HashSet;
 
 use ic_hir::ResolvedGraph;
-use ic_hir::hir::{DefFlags, DefId};
+use ic_hir::hir::DefFlags;
 use ic_vfs::FileId;
 use tracing::{debug, debug_span};
 
@@ -39,16 +39,9 @@ pub fn transform(mut hir: ResolvedGraph, cmd_files: Vec<FileId>) -> ResolvedGrap
     debug!("applying transform");
 
     let file_set = HashSet::<FileId>::from_iter(cmd_files);
-    let def_ids: Vec<DefId> = hir.context.definitions.iter().map(|(id, _)| id).collect();
-    let mut seen = HashSet::new();
-
-    for def_id in def_ids {
-        if seen.insert(def_id) {
-            let def = hir.context.definitions.get_mut(def_id);
-            let file_id = def.ident.span.start.file_id;
-            if !file_set.contains(&file_id) {
-                def.flags.set(DefFlags::IS_INCLUDED);
-            }
+    for (_, def) in &mut hir.context.definitions {
+        if !file_set.contains(&def.ident.span.start.file_id) {
+            def.flags.set(DefFlags::IS_INCLUDED);
         }
     }
     hir

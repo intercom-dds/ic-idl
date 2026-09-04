@@ -158,8 +158,35 @@ def run_codegen(
     extra_args = extra_args or []
     base_args = [str(idl_compiler), f"--{output_flag}={output_dir}"] + extra_args
 
+    expected_files = list_generated_files(
+        idl_compiler, [idl_file], output_dir, output_flag, extra_args
+    )
+
     result = subprocess.run(
-        base_args + ["-l", str(idl_file)],
+        base_args + [str(idl_file)],
+        check=False,
+        capture_output=True,
+        text=True,
+        timeout=60,
+    )
+    assert result.returncode == 0, f"codegen failed:\n{result.stderr}"
+
+    return expected_files
+
+
+def list_generated_files(
+    idl_compiler: Path,
+    idl_files: list[Path],
+    output_dir: Path,
+    output_flag: str,
+    extra_args: list[str] | None = None,
+) -> list[Path]:
+    extra_args = extra_args or []
+    base_args = [str(idl_compiler), f"--{output_flag}={output_dir}"] + extra_args
+    idl_files: list[str] = [str(f) for f in idl_files]
+
+    result = subprocess.run(
+        base_args + ["-l"] + idl_files,
         check=False,
         capture_output=True,
         text=True,
@@ -171,15 +198,6 @@ def run_codegen(
     for line in result.stdout.splitlines():
         if line.startswith("gen:"):
             expected_files.append(Path(line[4:]))
-
-    result = subprocess.run(
-        base_args + [str(idl_file)],
-        check=False,
-        capture_output=True,
-        text=True,
-        timeout=60,
-    )
-    assert result.returncode == 0, f"codegen failed:\n{result.stderr}"
 
     return expected_files
 

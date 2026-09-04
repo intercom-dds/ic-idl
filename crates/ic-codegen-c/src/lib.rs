@@ -28,6 +28,7 @@
 mod codegen;
 mod deps;
 
+use ic_cli::Command;
 use ic_emit::File;
 use ic_hir_xform::rename::{self, Target};
 
@@ -46,6 +47,13 @@ const KEYWORDS: &[&str] = &[
 
 const RESERVED_PARAMETERS: &[&str] = &["_self", "_result", "_value", "_error"];
 
+#[derive(Command, Debug, Default, Clone)]
+pub struct COptions {
+    /// Do not generate code for included files
+    #[option(long)]
+    pub no_header_follow: bool,
+}
+
 fn escape_c_keyword(ctx: rename::RenameContext) -> Option<String> {
     let reserved = matches!(ctx.kind, rename::IdentifierKind::Parameter)
         && RESERVED_PARAMETERS.contains(&ctx.name);
@@ -58,7 +66,11 @@ fn escape_c_keyword(ctx: rename::RenameContext) -> Option<String> {
 }
 
 #[must_use]
-pub fn codegen_c(hir: &ic_hir::ResolvedGraph, source_map: &ic_vfs::SourceMap) -> Vec<File> {
+pub fn codegen_c(
+    hir: &ic_hir::ResolvedGraph,
+    source_map: &ic_vfs::SourceMap,
+    options: COptions,
+) -> Vec<File> {
     let flattened = ic_hir_xform::flatten::transform(hir.clone(), "_");
     let target = Target {
         keyword_escape: Some(escape_c_keyword),
@@ -67,5 +79,5 @@ pub fn codegen_c(hir: &ic_hir::ResolvedGraph, source_map: &ic_vfs::SourceMap) ->
     };
 
     let hir = rename::transform(flattened.hir, &target);
-    codegen::CGen::new(&hir, source_map).generate()
+    codegen::CGen::new(&hir, source_map, options).generate()
 }

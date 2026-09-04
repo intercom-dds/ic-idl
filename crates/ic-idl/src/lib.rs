@@ -76,7 +76,7 @@ use std::path::{Path, PathBuf};
 
 use ic_diagnostic::Diag;
 use ic_preproc::{ExpansionInfo, ProcArgs};
-use ic_vfs::SourceMap;
+use ic_vfs::{FileId, SourceMap};
 use tracing::{info, info_span};
 
 mod builtin;
@@ -275,6 +275,7 @@ impl Compiler {
         );
 
         // Compile each file to a separate HIR
+        let mut file_ids = Vec::new();
         let mut hirs = Vec::new();
         let mut all_diagnostics = CompileDiagnostics {
             errors: Vec::new(),
@@ -288,7 +289,8 @@ impl Compiler {
 
             for file in &self.options.files.clone() {
                 match self.compile_file(file, true, &builtin_parsed.tree) {
-                    Ok((hir, diag)) => {
+                    Ok((file_id, hir, diag)) => {
+                        file_ids.push(file_id);
                         hirs.push(hir);
                         all_diagnostics.warnings.extend(diag.warnings);
                         all_diagnostics.expansion_info.extend(diag.expansion_info);
@@ -340,6 +342,9 @@ impl Compiler {
             // Mark types with `IS_TRIVIAL` and `TOTAL_ORDER` flags
             let hir = ic_hir_xform::type_flags::transform(hir);
 
+            // Mark types with `IS_INCLUDED` flag
+            let hir = ic_hir_xform::mark_included::transform(hir, file_ids);
+
             // Add implicit default cases to incomplete unions
             let hir = ic_hir_xform::implicit_default::transform(hir);
 
@@ -358,12 +363,13 @@ impl Compiler {
         path: &Path,
         include_builtins: bool,
         builtin_ast: &[ic_syntax::Item],
-    ) -> Result<(hir::ResolvedGraph, CompileDiagnostics), CompileError> {
+    ) -> Result<(FileId, hir::ResolvedGraph, CompileDiagnostics), CompileError> {
         let proc_args = self.proc_args();
         let ast = parse::from_path(path, proc_args, &mut self.source_map).map_err(|e| {
             CompileError::Io(std::io::Error::new(e.kind(), format_io_error(&e, path)))
         })?;
 
+        let file_id = ast.file_id;
         let item_count = ast.tree.len();
         info!(file = %path.display(), items = item_count, "parsed");
 
@@ -437,7 +443,7 @@ impl Compiler {
             return Err(CompileError::Diagnostics(diagnostics));
         }
 
-        Ok((hir, diagnostics))
+        Ok((file_id, hir, diagnostics))
     }
 }
 

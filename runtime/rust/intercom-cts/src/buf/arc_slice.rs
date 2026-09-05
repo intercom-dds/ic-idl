@@ -40,13 +40,13 @@ use super::Cursor;
 #[derive(Clone, Default)]
 pub struct ArcSlice {
     data: Arc<[u8]>,
-    offset: usize,
-    len: usize,
+    offset: u32,
+    len: u32,
 }
 
 impl ArcSlice {
     pub fn new(data: Arc<[u8]>) -> Self {
-        let len = data.len();
+        let len = data.len() as u32;
         Self {
             data,
             offset: 0,
@@ -62,7 +62,7 @@ impl ArcSlice {
             range.end,
         );
         assert!(
-            range.end <= self.len,
+            range.end <= self.len(),
             "slice range end ({}) out of bounds for length {}",
             range.end,
             self.len,
@@ -70,8 +70,8 @@ impl ArcSlice {
 
         ArcSlice {
             data: Arc::clone(&self.data),
-            offset: self.offset + range.start,
-            len: range.end - range.start,
+            offset: self.offset + range.start as u32,
+            len: range.end as u32 - range.start as u32,
         }
     }
 
@@ -81,12 +81,17 @@ impl ArcSlice {
 
     #[must_use]
     pub const fn len(&self) -> usize {
-        self.len
+        self.len as usize
     }
 
     #[must_use]
     pub const fn is_empty(&self) -> bool {
         self.len == 0
+    }
+
+    const fn window_range(&self) -> Range<usize> {
+        let start = self.offset as usize;
+        start..start + self.len as usize
     }
 }
 
@@ -94,14 +99,14 @@ impl std::fmt::Debug for ArcSlice {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("ArcSlice")
             .field("len", &self.len)
-            .field("bytes", &&self.data[self.offset..self.offset + self.len])
+            .field("bytes", &&self.data[self.window_range()])
             .finish()
     }
 }
 
 impl AsRef<[u8]> for ArcSlice {
     fn as_ref(&self) -> &[u8] {
-        &self.data[self.offset..self.offset + self.len]
+        &self.data[self.window_range()]
     }
 }
 
@@ -109,7 +114,7 @@ impl Deref for ArcSlice {
     type Target = [u8];
 
     fn deref(&self) -> &[u8] {
-        &self.data[self.offset..self.offset + self.len]
+        &self.data[self.window_range()]
     }
 }
 

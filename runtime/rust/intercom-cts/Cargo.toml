@@ -34,6 +34,8 @@ rust-version = "1.97"
 license-file = "LICENSE"
 publish = false
 
+[lints]
+
 [dependencies]
 intercom-derive = { path = "../intercom-derive", optional = true }
 

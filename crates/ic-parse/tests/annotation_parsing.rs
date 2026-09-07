@@ -32,6 +32,36 @@ use ic_parse::from_str;
 use ic_syntax::Item;
 
 #[test]
+fn leading_annotations_preserved_parens() {
+    let input = r"
+        struct foo {
+            /// my comment
+            @default((1 + 2))
+            int32 values;
+        };
+    ";
+
+    let result = from_str(input);
+    assert!(result.errors.is_empty());
+    assert!(result.orphaned_annotations.is_empty());
+}
+
+#[test]
+fn leading_annotations_preserved_init_list() {
+    let input = r#"
+        struct foo {
+            /// my comment
+            @default({"*"})
+            sequence<string> values;
+        };
+    "#;
+
+    let result = from_str(input);
+    assert!(result.errors.is_empty());
+    assert!(result.orphaned_annotations.is_empty());
+}
+
+#[test]
 fn annotation_qualified_name_no_spaces() {
     // @foo::bar is a single qualified annotation name
     let result = from_str("struct S { @foo::bar long x; };");

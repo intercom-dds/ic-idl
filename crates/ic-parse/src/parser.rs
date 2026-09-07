@@ -227,7 +227,7 @@ impl<'a> Parser<'a> {
     pub fn skim_annotations(&mut self) {
         loop {
             match self.peek_raw() {
-                Kind::At => match self.annotation_appl() {
+                Kind::At => match self.with_annotation_scope(Self::annotation_appl) {
                     Ok(ann) => self.pending_annotations.push(ann),
                     Err(e) => {
                         self.annotation_errors.push(e);

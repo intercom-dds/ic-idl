@@ -39,6 +39,13 @@
 
 namespace ic_cts {
 namespace detail {
+namespace json {
+// The largest magnitude an integer can have while still being exactly
+// representable as an IEEE-754 double, matching JavaScript's
+// `Number.MAX_SAFE_INTEGER` (`2^53 - 1`).
+constexpr int64_t MAX_SAFE_INTEGER = (1LL << 53) - 1;
+};  // namespace json
+
 template <typename T>
 inline JsonNode json_error(const T& node, const char* str) {
     JsonData data(str, strlen(str), 0, node.line());
@@ -457,8 +464,8 @@ string_to_double_in_string_sequence(std::string_view text, double& value, int* e
     iss.imbue(std::locale::classic());  // Force locale
     iss >> value;
     if (end_ptr != nullptr) {
-        if (iss.eof(
-            ))  // In VS2010 tellg() may not return -1 at eof so we check the eof flag instead.
+        if (iss.eof())  // In VS2010 tellg() may not return -1 at eof so we check the eof flag
+                        // instead.
         {
             *end_ptr = -1;
         } else {
@@ -801,11 +808,22 @@ inline void JsonWriter::write(int32_t value) {
 }
 
 inline void JsonWriter::write(uint64_t value) {
-    write_unsigned(value);
+    if ((m_flags & SERIALIZER_LARGE_INTEGERS_AS_STRINGS) != 0 && !is_key() &&
+        value > ic_cts::detail::json::MAX_SAFE_INTEGER) {
+        write_string(std::to_string(value));
+    } else {
+        write_unsigned(value);
+    }
 }
 
 inline void JsonWriter::write(int64_t value) {
-    write_integer(value);
+    if ((m_flags & SERIALIZER_LARGE_INTEGERS_AS_STRINGS) != 0 && !is_key() &&
+        (value > ic_cts::detail::json::MAX_SAFE_INTEGER ||
+         value < -ic_cts::detail::json::MAX_SAFE_INTEGER)) {
+        write_string(std::to_string(value));
+    } else {
+        write_integer(value);
+    }
 }
 
 inline void JsonWriter::write(const JsonNode& node) {
@@ -911,12 +929,12 @@ inline void JsonWriter::maybe_comma() {
         if (is_key()) {
             newline();
         }
-    } else if (m_level > 0 && stack.pos == 0 &&
-               (stack.info.kind == dcps::xtypes::TK_STRUCTURE ||
-                stack.info.kind == dcps::xtypes::TK_UNION ||
-                stack.info.kind == dcps::xtypes::TK_MAP ||
-                stack.info.kind == dcps::xtypes::TK_ARRAY ||
-                stack.info.kind == dcps::xtypes::TK_SEQUENCE)) {
+    } else if (
+        m_level > 0 && stack.pos == 0 &&
+        (stack.info.kind == dcps::xtypes::TK_STRUCTURE ||
+         stack.info.kind == dcps::xtypes::TK_UNION || stack.info.kind == dcps::xtypes::TK_MAP ||
+         stack.info.kind == dcps::xtypes::TK_ARRAY || stack.info.kind == dcps::xtypes::TK_SEQUENCE)
+    ) {
         newline();
     }
 }

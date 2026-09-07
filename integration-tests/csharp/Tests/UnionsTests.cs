@@ -87,6 +87,30 @@ public class UnionsTests
     }
 
     [Fact]
+    public void IntOrString_SetDiscriminatorInitializesVariant()
+    {
+        var u = new IntOrString();
+        u.IntVal = 42;
+
+        u.Discriminator = 2;
+
+        Assert.Equal(string.Empty, u.StrVal);
+        Assert.Throws<InvalidOperationException>(() => u.IntVal);
+    }
+
+    [Fact]
+    public void IntOrString_SetDefaultDiscriminatorInitializesDefaultVariant()
+    {
+        var u = new IntOrString();
+        u.IntVal = 42;
+
+        u.Discriminator = 10;
+
+        Assert.False(u.DefaultVal);
+        Assert.Throws<InvalidOperationException>(() => u.IntVal);
+    }
+
+    [Fact]
     public void IntOrString_CopyConstructor()
     {
         var u1 = new IntOrString();
@@ -161,6 +185,18 @@ public class UnionsTests
         m.SetSmallVal(10, 2);
         Assert.Equal(2, m.Discriminator);
         Assert.Equal(10, m.SmallVal);
+    }
+
+    [Fact]
+    public void MultiCase_SwitchingDiscriminatorWithinVariantPreservesValue()
+    {
+        var m = new MultiCase();
+        m.SmallVal = 42;
+
+        m.Discriminator = 2;
+
+        Assert.Equal(2, m.Discriminator);
+        Assert.Equal(42, m.SmallVal);
     }
 
     [Fact]

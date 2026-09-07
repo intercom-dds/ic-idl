@@ -400,6 +400,11 @@ impl<'a> CSharpGen<'a> {
         }
     }
 
+    fn union_variant_initializer(&self, ty: &Ty, relative_def: DefId) -> String {
+        self.default_initializer(ty, relative_def)
+            .unwrap_or_else(|| format!("default({})", self.csharp_type(ty, relative_def)))
+    }
+
     fn emit_doc_comments(&self, w: &mut Twine, annotations: &[Ann]) {
         for annotation in annotations {
             let Some(text) = doc(&self.hir.context, annotation) else {
@@ -713,7 +718,7 @@ impl<'a> CSharpGen<'a> {
 
         w!(w, "public partial class ", name, " : IEquatable<", name, ">\n");
         w!(w, "{\n");
-        w!(w, "public ", disc_ty, " Discriminator { get; private set; }\n");
+        w!(w, "private ", disc_ty, " _discriminator;\n");
 
         for variant in &union_ty.variants {
             if matches!(variant.ty.kind, TyKind::Null) {
@@ -723,8 +728,10 @@ impl<'a> CSharpGen<'a> {
             w!(w, "private ", ty_str, "? _", variant.ident.name, ";\n");
         }
 
-        // Default constructor
         w!(w, "\n");
+        self.emit_union_discriminator_property(w, def, union_ty, &disc_ty);
+
+        // Default constructor
         self.emit_union_default_constructor(w, def, union_ty);
 
         // Copy constructor
@@ -820,6 +827,60 @@ impl<'a> CSharpGen<'a> {
         w!(w, "}\n\n");
     }
 
+    fn emit_union_discriminator_property(
+        &self,
+        w: &mut Twine,
+        def: &Def,
+        union_ty: &UnionTy,
+        disc_ty: &str,
+    ) {
+        w!(w, "public ", disc_ty, " Discriminator\n");
+        w!(w, "{\n");
+        w!(w, "get => _discriminator;\n");
+        w!(w, "set\n");
+        w!(w, "{\n");
+        w!(w, "switch (value)\n");
+        w!(w, "{\n");
+
+        for variant in &union_ty.variants {
+            if variant.is_default {
+                w!(w, "default:\n");
+            } else {
+                for label in &variant.labels {
+                    w!(w, "case ", self.format_numeric(&label.value, def.id), ":\n");
+                }
+            }
+
+            let inactive = self.build_inactive_condition(variant, union_ty, def.id);
+            if !inactive.is_empty() {
+                w!(w, "if (", inactive, ")\n");
+                w!(w, "{\n");
+            }
+
+            if !matches!(variant.ty.kind, TyKind::Null) {
+                let initializer = self.union_variant_initializer(&variant.ty, def.id);
+                w!(w, "_", variant.ident.name, " = ", initializer, ";\n");
+            }
+
+            for other in &union_ty.variants {
+                if other.ident.name != variant.ident.name && !matches!(other.ty.kind, TyKind::Null)
+                {
+                    w!(w, "_", other.ident.name, " = default;\n");
+                }
+            }
+
+            if !inactive.is_empty() {
+                w!(w, "}\n");
+            }
+            w!(w, "break;\n");
+        }
+
+        w!(w, "}\n");
+        w!(w, "_discriminator = value;\n");
+        w!(w, "}\n");
+        w!(w, "}\n\n");
+    }
+
     fn emit_union_default_constructor(&self, w: &mut Twine, def: &Def, union_ty: &UnionTy) {
         w!(w, "public ", def.ident.name, "()\n");
         w!(w, "{\n");
@@ -829,14 +890,7 @@ impl<'a> CSharpGen<'a> {
         w!(w, "Discriminator = ", self.format_numeric(&discriminator, def.id), ";\n");
 
         if !matches!(default_case.variant.ty.kind, TyKind::Null) {
-            let initializer = self
-                .default_initializer(&default_case.variant.ty, def.id)
-                .unwrap_or_else(|| {
-                    format!(
-                        "default({})",
-                        self.csharp_type(&default_case.variant.ty, def.id)
-                    )
-                });
+            let initializer = self.union_variant_initializer(&default_case.variant.ty, def.id);
             w!(w, "_", default_case.variant.ident.name, " = ", initializer, ";\n");
         }
         w!(w, "}\n\n");
@@ -856,7 +910,7 @@ impl<'a> CSharpGen<'a> {
                 .flat_map(|v| &v.labels)
                 .map(|label| {
                     let label_val = self.format_numeric(&label.value, relative_def);
-                    format!("Discriminator == {label_val}")
+                    format!("_discriminator == {label_val}")
                 })
                 .collect();
 
@@ -868,7 +922,7 @@ impl<'a> CSharpGen<'a> {
             .iter()
             .map(|label| {
                 let label_val = self.format_numeric(&label.value, relative_def);
-                format!("Discriminator != {label_val}")
+                format!("_discriminator != {label_val}")
             })
             .collect();
 
@@ -944,7 +998,7 @@ impl<'a> CSharpGen<'a> {
 
         // object.Equals override
         w!(w, "public override bool Equals(object? obj)\n");
-        w!(w, "\t => Equals(obj as ", def, ");\n");
+        w!(w, "\t => Equals(obj as ", def, ");\n\n");
     }
 
     fn emit_union_compare_to(&self, w: &mut Twine, def: &Def, union_ty: &UnionTy) {

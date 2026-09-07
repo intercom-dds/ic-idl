@@ -108,6 +108,7 @@ add_executable(cpp_integration_tests
     tests/test_interfaces.cpp
     tests/test_multi_module.cpp
     tests/test_nested_modules.cpp
+    tests/test_serialization.cpp
     tests/test_strings.cpp
     tests/test_structs.cpp
     tests/test_typedefs.cpp

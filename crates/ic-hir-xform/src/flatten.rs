@@ -119,13 +119,19 @@ pub fn transform(mut hir: ResolvedGraph, separator: &str) -> FlattenResult {
                 DefKind::Valuetype(_) => Decl::Valuetype,
                 _ => return None,
             };
-            Some((def_id, def.ident.clone(), def.parent, decl))
+            Some((
+                def_id,
+                def.ident.clone(),
+                def.parent,
+                decl,
+                def.flags & DefFlags::IS_INCLUDED,
+            ))
         })
         .collect();
 
     let declarations: HashMap<_, _> = containing_types
         .into_iter()
-        .map(|(def_id, ident, parent, decl)| {
+        .map(|(def_id, ident, parent, decl, flags)| {
             let decl_id = hir.context.definitions.alloc_with_id(|id| Def {
                 id,
                 span: ident.span,
@@ -133,7 +139,7 @@ pub fn transform(mut hir: ResolvedGraph, separator: &str) -> FlattenResult {
                 parent,
                 annotations: vec![],
                 kind: DefKind::Decl(decl),
-                flags: DefFlags::IS_INCOMPLETE | DefFlags::IS_SYNTHESIZED,
+                flags: DefFlags::IS_INCOMPLETE | DefFlags::IS_SYNTHESIZED | flags,
             });
             (def_id, decl_id)
         })

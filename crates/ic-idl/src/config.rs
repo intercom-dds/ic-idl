@@ -231,6 +231,9 @@ pub struct Options {
     #[option(positional)]
     pub files: Vec<PathBuf>,
 
+    #[option(section = "c options")]
+    pub c: ic_codegen_c::COptions,
+
     #[option(section = "c++ options")]
     pub cpp: ic_codegen_cpp::CppOptions,
 

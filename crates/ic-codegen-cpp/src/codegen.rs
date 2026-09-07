@@ -33,8 +33,8 @@ use ic_emit::File;
 use ic_emit::printer::{Twine, w};
 use ic_hir::ResolvedGraph;
 use ic_hir::hir::{
-    Decl, Def, DefId, DefKind, InterfaceTy, Member, ModuleTy, Numeric, ParamKind, PrimitiveTy,
-    ProtoTy, Ty, TyKind,
+    Decl, Def, DefFlags, DefId, DefKind, InterfaceTy, Member, ModuleTy, Numeric, ParamKind,
+    PrimitiveTy, ProtoTy, Ty, TyKind,
 };
 use ic_hir_analysis::annotation::{MemberLike, bit_bound, default_value, is_external, is_optional};
 use ic_hir_analysis::enum_value::default_enumerator;
@@ -934,6 +934,9 @@ impl<'a> CppGen<'a> {
 
         for &def_id in &self.hir.order {
             let def = self.hir.context.definitions.get(def_id);
+            if self.options.no_header_follow && def.flags.contains(DefFlags::IS_INCLUDED) {
+                continue;
+            }
             let file_id = def.ident.span.start.file_id;
             files_map.entry(file_id).or_default().push(def_id);
         }

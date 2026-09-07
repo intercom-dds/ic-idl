@@ -143,6 +143,10 @@ intercom_cts::bitmask! {
         /// Indicates whether the type consists of members that can form an
         /// ordinal sequence, i.e. a well-ordered set.
         TOTAL_ORDER = 1 << 8,
+
+        /// Indicates whether the type comes from a file
+        /// that was not specified on the command line.
+        IS_INCLUDED = 1 << 9,
     }
 }
 

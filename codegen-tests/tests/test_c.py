@@ -33,7 +33,7 @@ from typing import NamedTuple
 
 import pytest
 
-from conftest import make_output_dir, run_codegen
+from conftest import make_output_dir, run_codegen, list_generated_files
 
 
 class CCompiler(NamedTuple):
@@ -165,3 +165,20 @@ def test_c(
         f"stdout: {result.stdout}\n"
         f"stderr: {result.stderr}"
     )
+
+
+def test_no_header_follow(
+    corpus_dir: Path,
+    idl_compiler: Path,
+    c_output_dir: Path,
+) -> None:
+    idl_files = [
+        corpus_dir / "no_header_follow_a.idl",
+        corpus_dir / "no_header_follow_b.idl",
+    ]
+    expected_files = set(["no_header_follow_a.h", "no_header_follow_b.h"])
+    files = list_generated_files(
+        idl_compiler, idl_files, c_output_dir, "c-out", ["--no-header-follow"]
+    )
+    files = set([file.name for file in files])
+    assert files == expected_files

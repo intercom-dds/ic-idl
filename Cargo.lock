@@ -348,6 +348,7 @@ dependencies = [
 name = "ic-codegen-c"
 version = "0.6.0"
 dependencies = [
+ "ic-cli",
  "ic-emit",
  "ic-hir",
  "ic-hir-analysis",

@@ -32,22 +32,28 @@ use ic_emit::File;
 use ic_emit::printer::{Twine, w};
 use ic_hir::ResolvedGraph;
 use ic_hir::hir::{
-    AliasTy, Attribute, BitmaskTy, ConstTy, Def, DefId, DefKind, EnumTy, InterfaceTy, Member,
-    Numeric, ParamKind, Parameter, PrimitiveTy, ProtoTy, Ty, TyKind, UnionTy, ValueTy,
+    AliasTy, Attribute, BitmaskTy, ConstTy, Def, DefFlags, DefId, DefKind, EnumTy, InterfaceTy,
+    Member, Numeric, ParamKind, Parameter, PrimitiveTy, ProtoTy, Ty, TyKind, UnionTy, ValueTy,
 };
 use ic_hir_analysis::annotation::is_optional;
 use ic_vfs::SourceMap;
 
+use crate::COptions;
 use crate::deps::collect_file_dependencies;
 
 pub struct CGen<'a> {
     hir: &'a ResolvedGraph,
     source_map: &'a SourceMap,
+    options: COptions,
 }
 
 impl<'a> CGen<'a> {
-    pub fn new(hir: &'a ResolvedGraph, source_map: &'a SourceMap) -> Self {
-        Self { hir, source_map }
+    pub fn new(hir: &'a ResolvedGraph, source_map: &'a SourceMap, options: COptions) -> Self {
+        Self {
+            hir,
+            source_map,
+            options,
+        }
     }
 
     fn emit_header(w: &mut Twine) {
@@ -445,6 +451,9 @@ impl<'a> CGen<'a> {
         let mut files = HashMap::<_, Vec<_>>::new();
         for &def_id in &self.hir.order {
             let def = self.hir.context.type_of(def_id);
+            if self.options.no_header_follow && def.flags.contains(DefFlags::IS_INCLUDED) {
+                continue;
+            }
             let file_id = def.ident.span.start.file_id;
             files.entry(file_id).or_default().push(def_id);
         }

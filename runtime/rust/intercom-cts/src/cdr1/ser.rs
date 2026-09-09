@@ -176,7 +176,6 @@ impl<'a, E: Endian> CdrWriter<'a, E> {
             align_base,
         };
         body(&mut writer)?;
-        writer.align(4);
 
         let end = self.buf.pos();
         let written = end - header_pos - 2 * size_of::<u16>();

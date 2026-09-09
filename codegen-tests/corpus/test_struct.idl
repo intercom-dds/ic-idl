@@ -30,3 +30,14 @@ struct TestStruct {
     int32 count;
     float value;
 };
+
+struct B;
+
+struct A {
+   sequence<B> children;
+   float value;
+};
+
+struct B {
+   sequence<A> children;
+};

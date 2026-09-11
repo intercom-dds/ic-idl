@@ -123,6 +123,15 @@ pub fn collect_def_dependencies(
             if let Some(supports) = valuetype.supports {
                 add_def_dependency(hir, supports.def_id, current_file, deps);
             }
+            for attr in &valuetype.attributes {
+                collect_type_dependencies(hir, &attr.ty, current_file, deps);
+                for exc in &attr.getraises {
+                    add_def_dependency(hir, exc.def_id, current_file, deps);
+                }
+                for exc in &attr.setraises {
+                    add_def_dependency(hir, exc.def_id, current_file, deps);
+                }
+            }
             for member in &valuetype.members {
                 collect_type_dependencies(hir, &member.ty, current_file, deps);
             }

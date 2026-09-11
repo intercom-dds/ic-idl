@@ -675,6 +675,15 @@ pub trait Command {
         Self::from_result(&result)
     }
 
+    fn from_args_mut<I>(args: I, opts: &mut Self)
+    where
+        Self: Sized,
+        I: IntoIterator<Item = String>,
+    {
+        let result = Self::command().parse_args(args.into_iter());
+        Self::from_result_mut(&result, opts);
+    }
+
     #[must_use]
     fn parse() -> Self
     where
@@ -683,6 +692,15 @@ pub trait Command {
         Self::from_args(env::args().skip(1))
     }
 
+    fn parse_mut(opts: &mut Self)
+    where
+        Self: Sized,
+    {
+        Self::from_args_mut(env::args().skip(1), opts);
+    }
+
     #[must_use]
     fn from_result(result: &ParseResult) -> Self;
+
+    fn from_result_mut(result: &ParseResult, opts: &mut Self);
 }

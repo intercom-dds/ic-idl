@@ -175,3 +175,25 @@ TEST_CASE("enum_field_default" * doctest::test_suite("defaults")) {
     default_types::EnumDefaults e;
     CHECK(e.priority_high == default_types::Priority::HIGH);
 }
+
+TEST_CASE("complex_defaults" * doctest::test_suite("defaults")) {
+    default_types::ComplexDefaults c;
+    CHECK(c.nested_seq.size() == 2U);
+    CHECK(c.nested_seq[0].size() == 2U);
+    CHECK(c.nested_seq[0][0] == 1);
+    CHECK(c.nested_seq[0][1] == 2);
+    CHECK(c.nested_seq[1].size() == 2U);
+    CHECK(c.nested_seq[1][0] == 3);
+    CHECK(c.nested_seq[1][1] == 4);
+
+    CHECK(c.map_of_seq.size() == 2U);
+    CHECK(c.map_of_seq.at("a").size() == 2U);
+    CHECK(c.map_of_seq.at("a")[0] == 1);
+    CHECK(c.map_of_seq.at("a")[1] == 2);
+    CHECK(c.map_of_seq.at("b").size() == 2U);
+    CHECK(c.map_of_seq.at("b")[0] == 3);
+    CHECK(c.map_of_seq.at("b")[1] == 4);
+
+    CHECK(c.ranged_external_field != nullptr);
+    CHECK(c.ranged_external_field->value() == 1);
+}

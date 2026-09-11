@@ -100,4 +100,12 @@ module union_types {
         @external
         boolean other;
     };
+
+    union DefaultCaseRangeVariant switch (long) {
+    case 1:
+        long value;
+    default:
+        @range(min=10, max=100)
+        int32 other;
+    };
 };

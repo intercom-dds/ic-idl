@@ -26,15 +26,19 @@
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use ic_hir::Context;
-use ic_hir::hir::{Ann, AnnParam, Def, DefFlags, DefKind, Disc, Member, Numeric, Variant};
+use ic_hir::hir::{Ann, AnnParam, Def, DefFlags, DefKind, Disc, Member, Numeric, Ty, Variant};
 
 pub trait MemberLike {
     fn annotations(&self) -> &[Ann];
+    fn ty(&self) -> &Ty;
 }
 
 impl MemberLike for Member {
     fn annotations(&self) -> &[Ann] {
         &self.annotations
+    }
+    fn ty(&self) -> &Ty {
+        &self.ty
     }
 }
 
@@ -42,11 +46,17 @@ impl MemberLike for Disc {
     fn annotations(&self) -> &[Ann] {
         &self.annotations
     }
+    fn ty(&self) -> &Ty {
+        &self.ty
+    }
 }
 
 impl MemberLike for Variant {
     fn annotations(&self) -> &[Ann] {
         &self.annotations
+    }
+    fn ty(&self) -> &Ty {
+        &self.ty
     }
 }
 
@@ -161,6 +171,24 @@ pub fn bit_bound<'a>(ctx: &Context, def: &'a Def) -> Option<&'a Numeric> {
     bit_bound_annotation(ctx, def)
         .and_then(|annotation| annotation.args.first())
         .map(|argument| &argument.value)
+}
+
+#[must_use]
+pub fn range_annotation<'a>(ctx: &Context, target: &'a impl ExternalTarget) -> Option<&'a Ann> {
+    builtin_annotation(ctx, target.annotations(), "range")
+}
+
+#[must_use]
+pub fn range<'a>(
+    ctx: &Context,
+    target: &'a impl ExternalTarget,
+) -> Option<(&'a Numeric, &'a Numeric)> {
+    range_annotation(ctx, target).and_then(|annotation| {
+        Some((
+            &annotation.args.first()?.value, // min
+            &annotation.args.get(1)?.value,  // max
+        ))
+    })
 }
 
 #[must_use]

@@ -73,6 +73,9 @@ pub fn generate_struct_impl(
     // Generate parsing code
     let parse_impl = generate_struct_parse(&options, &sections, &positionals);
 
+    // Generate parsing code for existing structure
+    let parse_mut_impl = generate_struct_parse_mut(&options, &sections, &positionals);
+
     quote! {
         impl ::ic_cli::Command for #ident {
             fn command() -> ::ic_cli::CommandLine {
@@ -82,6 +85,10 @@ pub fn generate_struct_impl(
             #[allow(clippy::needless_update)]
             fn from_result(result: &::ic_cli::ParseResult) -> Self {
                 #parse_impl
+            }
+
+            fn from_result_mut(result: &::ic_cli::ParseResult, opts: &mut Self) {
+                #parse_mut_impl
             }
         }
     }
@@ -112,6 +119,12 @@ pub fn generate_enum_impl(
 
             fn from_result(result: &::ic_cli::ParseResult) -> Self {
                 #parse_impl
+            }
+
+            fn from_result_mut(result: &::ic_cli::ParseResult, opts: &mut Self) {
+                *opts = {
+                    #parse_impl
+                };
             }
         }
     }
@@ -213,6 +226,23 @@ fn generate_struct_parse(
     }
 }
 
+/// Generate the parsing code for an existing struct.
+fn generate_struct_parse_mut(
+    options: &[CliOption],
+    sections: &[CliOption],
+    positionals: &[CliOption],
+) -> proc_macro2::TokenStream {
+    let field_parsers_mut = options
+        .iter()
+        .map(generate_field_parser_mut)
+        .chain(sections.iter().map(generate_section_parser_mut))
+        .chain(positionals.iter().map(generate_positional_parser_mut));
+
+    quote! {
+        #(#field_parsers_mut)*
+    }
+}
+
 /// Generate the parsing code for an enum.
 fn generate_enum_parse(data: &DataEnum) -> proc_macro2::TokenStream {
     let match_arms = data
@@ -294,6 +324,25 @@ fn generate_field_parser(opt: &CliOption) -> proc_macro2::TokenStream {
     }
 }
 
+/// Generate parser for a regular option into an structure field.
+fn generate_field_parser_mut(opt: &CliOption) -> proc_macro2::TokenStream {
+    let field_name = &opt.field_name;
+    let token = if let Some(long) = &opt.long {
+        long.clone()
+    } else if let Some(short) = opt.short {
+        short.to_string()
+    } else {
+        panic!("option must have either short or long form");
+    };
+
+    quote! {
+        if let Some(field) = result.get_vec(#token)
+            .map(|v| ::ic_cli::convert::convert_exit(v)) {
+            opts.#field_name = field;
+        }
+    }
+}
+
 /// Generate parser for a section field.
 fn generate_section_parser(opt: &CliOption) -> proc_macro2::TokenStream {
     let field_name = &opt.field_name;
@@ -301,6 +350,16 @@ fn generate_section_parser(opt: &CliOption) -> proc_macro2::TokenStream {
 
     quote! {
         #field_name: #field_type::from_result(&result),
+    }
+}
+
+/// Generate parser for a section field of an existing structure.
+fn generate_section_parser_mut(opt: &CliOption) -> proc_macro2::TokenStream {
+    let field_name = &opt.field_name;
+    let field_type = &opt.field_type;
+
+    quote! {
+        #field_type::from_result_mut(&result, &mut opts.#field_name);
     }
 }
 
@@ -314,5 +373,16 @@ fn generate_positional_parser(opt: &CliOption) -> proc_macro2::TokenStream {
         } else {
             ::ic_cli::convert::convert_exit(&result.positionals())
         },
+    }
+}
+
+/// Generate parser for a positional argument field of an existing structure
+fn generate_positional_parser_mut(opt: &CliOption) -> proc_macro2::TokenStream {
+    let field_name = &opt.field_name;
+
+    quote! {
+        if !result.positionals().is_empty() {
+            opts.#field_name = ::ic_cli::convert::convert_exit(&result.positionals());
+        }
     }
 }

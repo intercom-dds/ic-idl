@@ -93,6 +93,32 @@ fn test_options() {
 }
 
 #[test]
+fn test_mut() {
+    #[derive(Default, Command)]
+    struct Foo {
+        #[option(short, long)]
+        string: String,
+
+        #[option(short, long)]
+        number: usize,
+    }
+
+    let mut opts = Foo {
+        string: "test".into(),
+        ..Default::default()
+    };
+
+    Foo::from_args_mut(args!["-n", "123"], &mut opts);
+    assert_eq!(opts.string, "test");
+    assert_eq!(opts.number, 123);
+
+    opts.number = 1234;
+    Foo::from_args_mut(args!["-s", "bar"], &mut opts);
+    assert_eq!(opts.string, "bar");
+    assert_eq!(opts.number, 1234);
+}
+
+#[test]
 fn test_short_option_no_space() {
     #[derive(Default, Command)]
     struct Foo {

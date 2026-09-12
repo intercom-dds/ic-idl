@@ -34,10 +34,10 @@ use ic_emit::printer::{Twine, w};
 use ic_hir::ResolvedGraph;
 use ic_hir::hir::{
     Ann, Attribute, BitmaskTy, ConstTy, Def, DefFlags, DefId, DefKind, EnumTy, ExceptTy,
-    InterfaceTy, ModuleTy, Numeric, ParamKind, PrimitiveTy, ProtoTy, StructTy, Ty, TyKind, UnionTy,
-    ValueTy,
+    InterfaceTy, Member, ModuleTy, Numeric, ParamKind, PrimitiveTy, ProtoTy, StructTy, Ty, TyKind,
+    UnionTy, ValueTy, Variant,
 };
-use ic_hir_analysis::annotation::doc;
+use ic_hir_analysis::annotation::{MemberLike, doc, is_optional};
 use ic_hir_analysis::enum_value::default_enumerator;
 use ic_hir_analysis::union_case::{
     default_discriminator, default_union_case, unused_discriminator,
@@ -355,6 +355,32 @@ impl<'a> CSharpGen<'a> {
         }
     }
 
+    fn member_type(&self, ty: &Ty, member: &impl MemberLike, relative_def: DefId) -> String {
+        let ty_str = self.csharp_type(ty, relative_def);
+        if !is_optional(&self.hir.context, member) {
+            return ty_str;
+        }
+
+        if self.is_value_type(ty) {
+            format!("global::System.Nullable<{ty_str}>")
+        } else {
+            format!("{ty_str}?")
+        }
+    }
+
+    fn member_initializer(
+        &self,
+        ty: &Ty,
+        member: &impl MemberLike,
+        relative_def: DefId,
+    ) -> Option<String> {
+        if is_optional(&self.hir.context, member) {
+            return Some("null".to_string());
+        }
+
+        self.default_initializer(ty, relative_def)
+    }
+
     /// Returns the default initializer for reference types, `None` for value types.
     fn default_initializer(&self, ty: &Ty, relative_def: DefId) -> Option<String> {
         match &ty.kind {
@@ -369,6 +395,7 @@ impl<'a> CSharpGen<'a> {
                 Some(format!("new Dictionary<{key_ty}, {elem_ty}>()"))
             }
             TyKind::Array { .. } => {
+                // Collect all dimensions for rectangular array initialization
                 let dims = Self::collect_array_dimensions(ty);
                 let (base_ty, _) = Self::count_array_dimensions(ty);
                 let base_ty_str = self.csharp_type(&base_ty, relative_def);
@@ -400,9 +427,9 @@ impl<'a> CSharpGen<'a> {
         }
     }
 
-    fn union_variant_initializer(&self, ty: &Ty, relative_def: DefId) -> String {
-        self.default_initializer(ty, relative_def)
-            .unwrap_or_else(|| format!("default({})", self.csharp_type(ty, relative_def)))
+    fn union_variant_initializer(&self, variant: &Variant, relative_def: DefId) -> String {
+        self.member_initializer(&variant.ty, variant, relative_def)
+            .unwrap_or_else(|| format!("default({})", self.csharp_type(&variant.ty, relative_def)))
     }
 
     fn emit_doc_comments(&self, w: &mut Twine, annotations: &[Ann]) {
@@ -446,7 +473,7 @@ impl<'a> CSharpGen<'a> {
         w!(w, "}\n\n");
     }
 
-    fn collect_members(&self, struct_def_id: DefId) -> Vec<(String, Ty)> {
+    fn collect_members(&self, struct_def_id: DefId) -> Vec<&Member> {
         let mut members = Vec::new();
 
         for def in self.hir.context.hierarchy_of(struct_def_id) {
@@ -455,7 +482,7 @@ impl<'a> CSharpGen<'a> {
             };
 
             for member in struct_ty.members.iter().rev() {
-                members.push((member.ident.name.clone(), member.ty.clone()));
+                members.push(member);
             }
         }
 
@@ -479,7 +506,7 @@ impl<'a> CSharpGen<'a> {
         // Emit properties for each member
         for member in &struct_ty.members {
             self.emit_doc_comments(w, &member.annotations);
-            self.emit_struct_member(w, def.id, &member.ident.name, &member.ty);
+            self.emit_struct_member(w, def.id, member);
             w!(w, "\n");
         }
 
@@ -500,9 +527,14 @@ impl<'a> CSharpGen<'a> {
         for member in &struct_ty.members {
             let member_name = &member.ident.name;
             if let TyKind::Array { .. } = &member.ty.kind {
+                w!(w, "this.", member_name, " = ");
+                if is_optional(&self.hir.context, member) {
+                    w!(w, "other.", member_name, " is null ? null : ");
+                }
+
                 w!(
-                    w, "this.", member_name, " = (",
-                    self.csharp_type(&member.ty, def.id), ")other.", member_name, ".Clone();\n",
+                    w, "(", self.csharp_type(&member.ty, def.id),
+                    ")other.", member_name, ".Clone();\n",
                 );
             } else {
                 w!(w, "this.", member_name, " = other.", member_name, ";\n");
@@ -516,12 +548,13 @@ impl<'a> CSharpGen<'a> {
 
             w!(w, "public ", def.ident.name, "(");
 
-            for (i, (name, ty)) in all_members.iter().enumerate() {
+            for (i, &member) in all_members.iter().enumerate() {
                 if i > 0 {
                     w!(w, ", ");
                 }
-                let ty_str = self.csharp_type(ty, def.id);
-                w!(w, ty_str, " ", name);
+
+                let ty_str = self.member_type(&member.ty, member, def.id);
+                w!(w, ty_str, " ", member.ident.name);
             }
 
             w!(w, ")");
@@ -530,12 +563,14 @@ impl<'a> CSharpGen<'a> {
                 let parent_members = self.collect_members(parent.def_id);
                 if !parent_members.is_empty() {
                     w!(w, " : base(");
-                    for (i, (name, _)) in parent_members.iter().enumerate() {
+                    for (i, member) in parent_members.iter().enumerate() {
                         if i > 0 {
                             w!(w, ", ");
                         }
-                        w!(w, name);
+
+                        w!(w, member.ident.name);
                     }
+
                     w!(w, ")");
                 }
             }
@@ -556,24 +591,21 @@ impl<'a> CSharpGen<'a> {
     }
 
     /// Emit a struct member property, with array bounds validation if applicable.
-    fn emit_struct_member(&self, w: &mut Twine, def_id: DefId, name: &str, ty: &Ty) {
+    fn emit_struct_member(&self, w: &mut Twine, def_id: DefId, member: &Member) {
+        let name = &member.ident.name;
+        let ty = &member.ty;
         if matches!(ty.kind, TyKind::Array { .. }) {
             // Array with bounds - emit backing field + validated property
-            let ty_str = self.csharp_type(ty, def_id);
+            let ty_str = self.member_type(ty, member, def_id);
             let backing_field = format!("_{name}");
 
-            // Collect all dimensions for rectangular array initialization
-            let dims = Self::collect_array_dimensions(ty);
-            let (base_ty, _) = Self::count_array_dimensions(ty);
-            let base_ty_str = self.csharp_type(&base_ty, def_id);
-            let dims_str = dims
-                .iter()
-                .map(std::string::ToString::to_string)
-                .collect::<Vec<_>>()
-                .join(", ");
-
             // Backing field with initializer
-            w!(w, "private ", &ty_str, " ", &backing_field, " = new ", &base_ty_str, "[", &dims_str, "];\n");
+            w!(w, "private ", &ty_str, " ", &backing_field);
+            if let Some(init) = self.member_initializer(ty, member, def_id) {
+                w!(w, " = ", init);
+            }
+
+            w!(w, ";\n");
 
             // Property with validation of all dimensions
             w!(w, "public ", &ty_str, " ", name, "\n");
@@ -581,6 +613,15 @@ impl<'a> CSharpGen<'a> {
             w!(w, "get => ", &backing_field, ";\n");
             w!(w, "set\n");
             w!(w, "{\n");
+            if is_optional(&self.hir.context, member) {
+                w!(w, "if (value is null)\n");
+                w!(w, "{\n");
+                w!(w, &backing_field, " = null;\n");
+                w!(w, "return;\n");
+                w!(w, "}\n\n");
+            }
+
+            let dims = Self::collect_array_dimensions(ty);
             w!(w, "if (value is null");
             for (i, dim) in dims.iter().enumerate() {
                 if dims.len() == 1 {
@@ -597,9 +638,9 @@ impl<'a> CSharpGen<'a> {
             w!(w, "}\n");
             w!(w, "}");
         } else {
-            let ty_str = self.csharp_type(ty, def_id);
+            let ty_str = self.member_type(ty, member, def_id);
             w!(w, "public ", ty_str, " ", name, " { get; set; }");
-            if let Some(init) = self.default_initializer(ty, def_id) {
+            if let Some(init) = self.member_initializer(ty, member, def_id) {
                 w!(w, " = ", init, ";");
             }
         }
@@ -648,7 +689,7 @@ impl<'a> CSharpGen<'a> {
             let member_name = &member.ident.name;
             w!(
                 w,
-                "if (!EqualityComparer<", self.csharp_type(&member.ty, def.id),
+                "if (!EqualityComparer<", self.member_type(&member.ty, member, def.id),
                 ">.Default.Equals(", member_name, ", other.", member_name, ")) ",
                 "return false;\n",
             );
@@ -679,7 +720,7 @@ impl<'a> CSharpGen<'a> {
         }
 
         for member in &struct_ty.members {
-            let member_type = self.csharp_type(&member.ty, def.id);
+            let member_type = self.member_type(&member.ty, member, def.id);
             w!(
                 w,
                 "result = Comparer<", member_type, ">.Default.Compare(",
@@ -760,14 +801,14 @@ impl<'a> CSharpGen<'a> {
             w!(w, "\n");
             self.emit_doc_comments(w, &variant.annotations);
 
-            let ty_str = self.csharp_type(&variant.ty, def.id);
+            let ty_str = self.member_type(&variant.ty, variant, def.id);
             let var_name = &variant.ident.name;
             let inactive_condition = self.build_inactive_condition(variant, union_ty, def.id);
 
             w!(w, "public ", ty_str, " ", var_name, "\n");
             w!(w, "{\n");
 
-            // Getter with validation (spec: throw InvalidOperationException if not set)
+            // Getter with validation
             w!(w, "get\n");
             w!(w, "{\n");
             if !inactive_condition.is_empty() {
@@ -782,7 +823,9 @@ impl<'a> CSharpGen<'a> {
                 w!(w, "}\n");
             }
 
-            if self.is_value_type(&variant.ty) {
+            if is_optional(&self.hir.context, variant) {
+                w!(w, "return _", var_name, ";\n");
+            } else if self.is_value_type(&variant.ty) {
                 w!(w, "return _", var_name, "!.Value;\n");
             } else {
                 w!(w, "return _", var_name, "!;\n");
@@ -858,7 +901,7 @@ impl<'a> CSharpGen<'a> {
             }
 
             if !matches!(variant.ty.kind, TyKind::Null) {
-                let initializer = self.union_variant_initializer(&variant.ty, def.id);
+                let initializer = self.union_variant_initializer(variant, def.id);
                 w!(w, "_", variant.ident.name, " = ", initializer, ";\n");
             }
 
@@ -890,7 +933,7 @@ impl<'a> CSharpGen<'a> {
         w!(w, "Discriminator = ", self.format_numeric(&discriminator, def.id), ";\n");
 
         if !matches!(default_case.variant.ty.kind, TyKind::Null) {
-            let initializer = self.union_variant_initializer(&default_case.variant.ty, def.id);
+            let initializer = self.union_variant_initializer(default_case.variant, def.id);
             w!(w, "_", default_case.variant.ident.name, " = ", initializer, ";\n");
         }
         w!(w, "}\n\n");
@@ -937,7 +980,7 @@ impl<'a> CSharpGen<'a> {
         disc_ty: &str,
     ) {
         let var_name = &variant.ident.name;
-        let ty_str = self.csharp_type(&variant.ty, def.id);
+        let ty_str = self.member_type(&variant.ty, variant, def.id);
 
         w!(w, "\n");
         w!(w, "public void Set", var_name, "(", ty_str, " value, ", disc_ty, " discriminator)\n");
@@ -1185,10 +1228,10 @@ impl<'a> CSharpGen<'a> {
         // Emit members as properties
         for member in &valuetype.members {
             self.emit_doc_comments(w, &member.annotations);
-            let ty_str = self.csharp_type(&member.ty, def.id);
+            let ty_str = self.member_type(&member.ty, member, def.id);
 
             w!(w, "public ", ty_str, " ", member.ident.name, " { get; set; }");
-            if let Some(init) = self.default_initializer(&member.ty, def.id) {
+            if let Some(init) = self.member_initializer(&member.ty, member, def.id) {
                 w!(w, " = ", init, ";");
             }
             w!(w, "\n");
@@ -1240,7 +1283,7 @@ impl<'a> CSharpGen<'a> {
 
         for member in &except.members {
             self.emit_doc_comments(w, &member.annotations);
-            let ty_str = self.csharp_type(&member.ty, def.id);
+            let ty_str = self.member_type(&member.ty, member, def.id);
 
             // Use `new` keyword if member hides an inherited Exception member
             if crate::EXCEPTION_MEMBER_NAMES.contains(&member.ident.name.as_str()) {
@@ -1249,7 +1292,7 @@ impl<'a> CSharpGen<'a> {
                 w!(w, "public ", ty_str, " ", member.ident.name, " { get; set; }");
             }
 
-            if let Some(init) = self.default_initializer(&member.ty, def.id) {
+            if let Some(init) = self.member_initializer(&member.ty, member, def.id) {
                 w!(w, " = ", init, ";");
             }
             w!(w, "\n");
@@ -1269,7 +1312,7 @@ impl<'a> CSharpGen<'a> {
                 if i > 0 {
                     w!(w, ", ");
                 }
-                let ty_str = self.csharp_type(&member.ty, def.id);
+                let ty_str = self.member_type(&member.ty, member, def.id);
                 w!(w, ty_str, " ", member.ident.name);
             }
             w!(w, ") : base(\"", def.ident.name, "\")\n");

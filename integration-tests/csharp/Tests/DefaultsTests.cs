@@ -194,9 +194,9 @@ public class DefaultsTests
     public void OptionalFields_Defaults()
     {
         var o = new OptionalFields();
-        Assert.Equal(0, o.MaybeInt);
-        Assert.Equal("", o.MaybeString);
-        Assert.NotNull(o.MaybeStruct);
+        Assert.Null(o.MaybeInt);
+        Assert.Null(o.MaybeString);
+        Assert.Null(o.MaybeStruct);
     }
 
     [Fact]

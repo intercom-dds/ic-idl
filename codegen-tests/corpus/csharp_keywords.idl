@@ -43,6 +43,18 @@ module ProblematicTypes {
     struct scoped {
         long x;
     };
+
+    struct System {
+        @optional long x;
+    };
+};
+
+module NamespaceTests {
+    module System {
+        struct OptionalValue {
+            @optional long value;
+        };
+    };
 };
 
 module WarningTypes {

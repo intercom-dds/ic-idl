@@ -27,6 +27,7 @@
 
 module custom_annotations {
     @annotation shared {};
+    @annotation optional {};
 };
 
 @autoid(HASH)
@@ -68,6 +69,57 @@ module annotation_types {
         @optional long optional_int;
         @optional string optional_string;
         @optional sequence<long> optional_seq;
+    };
+
+    enum OptionalKind {
+        FIRST,
+        @default_literal SECOND
+    };
+
+    bitmask OptionalFlags {
+        ENABLED
+    };
+
+    typedef long OptionalAlias;
+
+    struct OptionalTypes {
+        @optional(TRUE) boolean maybe_bool;
+        @optional char maybe_char;
+        @optional @default(1.5) double maybe_double;
+        @optional fixed<10, 2> maybe_fixed;
+        @optional OptionalKind maybe_kind;
+        @optional OptionalFlags maybe_flags;
+        @optional OptionalAlias maybe_alias;
+        @optional map<string, long> maybe_map;
+        @optional long maybe_array[3];
+        @optional long maybe_matrix[2][3];
+    };
+
+    struct OptionalDerived : OptionalStruct {
+        @optional long maybe_other;
+    };
+
+    struct NonOptionalFields {
+        @optional(FALSE) long required_int;
+        @optional(FALSE) string required_string;
+        @optional(FALSE) sequence<long> required_seq;
+        @custom_annotations::optional long custom_int;
+    };
+
+    exception OptionalError {
+        @optional long code;
+        @optional string reason;
+    };
+
+    valuetype OptionalValue {
+        @optional public long number;
+        @optional public string text;
+    };
+
+    union OptionalUnion switch (long) {
+        case 0:
+        case 1: @optional long number;
+        default: @optional string text;
     };
 
     @nested

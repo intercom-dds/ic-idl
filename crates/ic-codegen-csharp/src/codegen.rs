@@ -291,6 +291,13 @@ impl<'a> CSharpGen<'a> {
             }
         }
 
+        let type_name =
+            if self.options.const_classes && matches!(target_def.kind, DefKind::Const(_)) {
+                format!("{type_name}.Value")
+            } else {
+                type_name
+            };
+
         let target_scope = self.get_scope(target_def_id);
         let current_scope = self.get_scope(relative_to_def_id);
 

@@ -56,10 +56,23 @@ def csharp_output_dir(request: pytest.FixtureRequest) -> Path:
     return make_output_dir(request, "csharp")
 
 
+@pytest.mark.parametrize(
+    "extra_args",
+    [
+        pytest.param([], id="default"),
+        pytest.param(["--const-classes"], id="const-classes"),
+    ],
+)
 def test_csharp(
-    idl_file: Path, idl_compiler: Path, dotnet: str, csharp_output_dir: Path
+    idl_file: Path,
+    idl_compiler: Path,
+    dotnet: str,
+    csharp_output_dir: Path,
+    extra_args: list[str],
 ) -> None:
-    cs_files = run_codegen(idl_compiler, idl_file, csharp_output_dir, "csharp-out")
+    cs_files = run_codegen(
+        idl_compiler, idl_file, csharp_output_dir, "csharp-out", extra_args
+    )
     if not cs_files:
         return
 

@@ -119,19 +119,19 @@ impl<'a> CSharpGen<'a> {
             Numeric::String(s) | Numeric::WString(s) => escape_str(s),
             Numeric::Const(def_id) => self.scoped_name(*def_id, relative_to_def_id),
             Numeric::Array { ty, values } => {
+                let (base_ty, dims) = Self::count_array_dimensions(ty);
+                let element_type = self.csharp_type(&base_ty, relative_to_def_id);
+                let commas = ",".repeat(dims);
+                let initializer = self.format_array_initializer(values, relative_to_def_id);
+                format!("new {element_type}[{commas}] {initializer}")
+            }
+            Numeric::Sequence { ty, values } => {
                 let element_type = self.csharp_type(ty, relative_to_def_id);
                 let formatted: Vec<_> = values
                     .iter()
                     .map(|v| self.format_numeric(v, relative_to_def_id))
                     .collect();
-                format!("new {element_type}[] {{ {} }}", formatted.join(", "))
-            }
-            Numeric::Sequence { values, .. } => {
-                let formatted: Vec<_> = values
-                    .iter()
-                    .map(|v| self.format_numeric(v, relative_to_def_id))
-                    .collect();
-                format!("new List<> {{ {} }}", formatted.join(", "))
+                format!("new List<{element_type}> {{ {} }}", formatted.join(", "))
             }
             Numeric::Map { entries, .. } => {
                 let formatted: Vec<_> = entries
@@ -156,6 +156,20 @@ impl<'a> CSharpGen<'a> {
             }
             Numeric::Union { .. } => String::new(),
         }
+    }
+
+    fn format_array_initializer(&self, values: &[Numeric], relative_to_def_id: DefId) -> String {
+        let formatted: Vec<_> = values
+            .iter()
+            .map(|value| match value {
+                Numeric::Array { values, .. } => {
+                    self.format_array_initializer(values, relative_to_def_id)
+                }
+                _ => self.format_numeric(value, relative_to_def_id),
+            })
+            .collect();
+
+        format!("{{ {} }}", formatted.join(", "))
     }
 
     fn get_scope(&self, def_id: DefId) -> Option<DefId> {

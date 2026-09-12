@@ -88,4 +88,15 @@ module constant_tests {
         long data[10];
         string<256> text;
     };
+
+    // Constants of collection types
+    const sequence<int32> MY_INT_SEQ = {1, 2, 3};
+    const sequence<string> MY_STRING_SEQ = {"one", "two", "three"};
+    const int32 MY_INT_ARRAY[3] = {1, 2, 3};
+    const string MY_STRING_ARRAY[3] = {"one", "two", "three"};
+    const int32 MY_MULTI_DIM_ARRAY[3][3] = {
+        {1, 2, 3},
+        {4, 5, 6},
+        {7, 8, 9}
+    };
 };

@@ -454,13 +454,23 @@ impl<'a> CSharpGen<'a> {
     }
 
     fn emit_doc_comments(&self, w: &mut Twine, annotations: &[Ann]) {
-        for annotation in annotations {
-            let Some(text) = doc(&self.hir.context, annotation) else {
-                continue;
-            };
+        let mut docs = annotations
+            .iter()
+            .filter_map(|annotation| doc(&self.hir.context, annotation))
+            .peekable();
 
-            w!(w, "/// <summary>", #text.trim_end(), "</summary>\n");
+        if docs.peek().is_none() {
+            return;
         }
+
+        w!(w, "/// <summary>\n");
+        for text in docs {
+            for line in text.trim_end().lines() {
+                w!(w, "/// ", #line, "\n");
+            }
+        }
+
+        w!(w, "/// </summary>\n");
     }
 
     fn emit_module(&self, w: &mut Twine, def: &Def, module: &ModuleTy) {

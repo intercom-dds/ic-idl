@@ -89,6 +89,7 @@ find_package(
 
 idl_generate(
     LANGUAGE CPP
+    FLAGS --ranged-type
     INPUT_IDL ../corpus
 )
 

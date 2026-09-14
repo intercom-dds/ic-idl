@@ -152,7 +152,7 @@ impl CppGen<'_> {
             }
             w!(decl_w, exception_name, "(\n");
             for member in members {
-                let ty_str = self.member_cpp_type(&member.ty, member, def.id);
+                let ty_str = self.cpp_type_member(member, def.id, false);
                 w!(decl_w, ty_str, " a_", member.ident.name, ",\n");
             }
             w!(decl_w, "const char* what = \"", exception_name, "\"\n");
@@ -172,7 +172,7 @@ impl CppGen<'_> {
         } else {
             w!(impl_w, "inline ", qualified_name, "::", exception_name, "(\n");
             for member in members {
-                let ty_str = self.member_cpp_type(&member.ty, member, def.id);
+                let ty_str = self.cpp_type_member(member, def.id, false);
                 w!(impl_w, ty_str, " a_", member.ident.name, ",\n");
             }
             w!(impl_w, "const char* _what\n");
@@ -215,7 +215,7 @@ impl CppGen<'_> {
             }
             w!(w, struct_name, "(\n");
             for (i, member) in all_members.iter().enumerate() {
-                let ty_str = self.member_cpp_type(&member.ty, member, def.id);
+                let ty_str = self.cpp_type_member(member, def.id, false);
                 w!(w, ty_str, " a_", member.ident.name);
                 if i < all_members.len() - 1 {
                     w!(w, ",\n");
@@ -243,7 +243,7 @@ impl CppGen<'_> {
 
         w!(w, "inline ", qualified_name, "::", struct_name, "(\n");
         for (i, member) in all_members.iter().enumerate() {
-            let ty_str = self.member_cpp_type(&member.ty, member, def.id);
+            let ty_str = self.cpp_type_member(member, def.id, false);
             w!(w, ty_str, " a_", member.ident.name);
             if i < all_members.len() - 1 {
                 w!(w, ",\n");
@@ -387,7 +387,7 @@ impl CppGen<'_> {
         }
         for member in all_members {
             if is_external(&self.hir.context, member) {
-                w!(w, member.ident.name, " = std::make_unique<", self.cpp_type(&member.ty, None), ">(*a_other.", member.ident.name, ");\n");
+                w!(w, member.ident.name, " = std::make_unique<", self.cpp_type_member(member, None, true), ">(*a_other.", member.ident.name, ");\n");
             } else {
                 w!(w, member.ident.name, " = a_other.", member.ident.name, ";\n");
             }
@@ -400,7 +400,7 @@ impl CppGen<'_> {
         }
         for member in all_members {
             if is_external(&self.hir.context, member) {
-                w!(w, member.ident.name, " = std::make_unique<", self.cpp_type(&member.ty, None), ">(*a_other.", member.ident.name, ");\n");
+                w!(w, member.ident.name, " = std::make_unique<", self.cpp_type_member(member, None, true), ">(*a_other.", member.ident.name, ");\n");
             } else {
                 w!(w, member.ident.name, " = a_other.", member.ident.name, ";\n");
             }

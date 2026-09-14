@@ -233,3 +233,9 @@ TEST_CASE("union_default_case_external_variant" * doctest::test_suite("unions"))
     REQUIRE(u._d() == 10);
     REQUIRE(*u.other().get() == true);
 }
+
+TEST_CASE("union_default_case_range_variant" * doctest::test_suite("unions")) {
+    union_types::DefaultCaseRangeVariant u;
+    REQUIRE(u._d() == 0);
+    REQUIRE(u.other() == 10);
+}

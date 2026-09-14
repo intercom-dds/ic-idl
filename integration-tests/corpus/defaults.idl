@@ -110,5 +110,6 @@ module default_types {
     struct ComplexDefaults {
         @default({{1, 2}, {3, 4}}) sequence<sequence<long>> nested_seq;
         @default({{"a", {1, 2}}, {"b", {3, 4}}}) map<string, sequence<long>> map_of_seq;
+        @external @range(min=0, max=100) @default(1) int8 ranged_external_field;
     };
 };

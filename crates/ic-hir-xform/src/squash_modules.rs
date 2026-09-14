@@ -128,12 +128,13 @@ fn build_qualified_name(hir: &ResolvedGraph, module_id: hir::DefId) -> String {
 /// Merge the contents of source module into target module
 fn merge_module_contents(hir: &mut ResolvedGraph, target_id: hir::DefId, source_id: hir::DefId) {
     // Get the definitions from the source module
-    let source_definitions =
-        if let hir::DefKind::Module(module_ty) = &hir.context.type_of(source_id).kind {
-            module_ty.definitions.clone()
-        } else {
-            return;
-        };
+    let source_definitions = if let hir::DefKind::Module(module_ty) =
+        &mut hir.context.definitions.get_mut(source_id).kind
+    {
+        std::mem::take(&mut module_ty.definitions)
+    } else {
+        return;
+    };
 
     // Collect definitions to update parent
     let mut defs_to_update = Vec::new();
@@ -153,5 +154,18 @@ fn merge_module_contents(hir: &mut ResolvedGraph, target_id: hir::DefId, source_
     // Update the parent of the moved definitions
     for def_id in defs_to_update {
         hir.context.definitions.get_mut(def_id).parent = Some(target_id);
+    }
+
+    // Ensure the source module no longer have any parents, and the parent no longer contains it
+    // in definitions, both fails normalize which looks at all definitions whenever they are covered
+    // by hir.order or not
+    hir.context.definitions.get_mut(source_id).parent = None;
+    if let Some(source_parent_id) = hir.context.type_of(source_id).parent
+        && let hir::DefKind::Module(source_parent_module) =
+            &mut hir.context.definitions.get_mut(source_parent_id).kind
+    {
+        source_parent_module
+            .definitions
+            .retain(|&id| id != source_id);
     }
 }

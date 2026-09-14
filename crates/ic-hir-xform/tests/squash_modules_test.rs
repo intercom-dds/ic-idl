@@ -28,7 +28,7 @@
 mod common;
 
 use ic_hir::hir::DefKind;
-use ic_hir_xform::squash_modules;
+use ic_hir_xform::{normalize, squash_modules};
 
 #[test]
 fn test_simple_module_squashing() {
@@ -48,6 +48,8 @@ fn test_simple_module_squashing() {
 
     let hir = common::parse_and_resolve(idl);
     let transformed = squash_modules::transform(hir);
+
+    normalize::normalize(&transformed);
 
     // There should be only one module A in the order list
     let module_count = transformed
@@ -114,6 +116,8 @@ fn test_nested_module_squashing() {
 
     let hir = common::parse_and_resolve(idl);
     let transformed = squash_modules::transform(hir);
+
+    normalize::normalize(&transformed);
 
     // There should be only one module A in the order
     let module_a_count = transformed
@@ -204,6 +208,8 @@ fn test_multiple_reopened_modules() {
     let hir = common::parse_and_resolve(idl);
     let transformed = squash_modules::transform(hir);
 
+    normalize::normalize(&transformed);
+
     // There should be only one module A and one module B in the order list
     let a_modules = transformed
         .iter()
@@ -265,6 +271,7 @@ fn test_preserve_single_modules() {
         .count();
 
     let transformed = squash_modules::transform(hir);
+    normalize::normalize(&transformed);
 
     let transformed_module_count = transformed
         .context

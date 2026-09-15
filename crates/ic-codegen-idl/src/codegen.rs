@@ -594,7 +594,8 @@ impl<'a> IdlGen<'a> {
     fn emit_const(&self, w: &mut Twine, def: &Def, const_ty: &ConstTy) {
         let ty_str = self.idl_type(&const_ty.ty, def.id);
         let value_str = self.format_numeric(&const_ty.value, def.id);
-        w!(w, "const ", ty_str, " ", def.ident.name, " = ", value_str, ";\n");
+        let array_bounds = format_member_name(&const_ty.ty);
+        w!(w, "const ", ty_str, " ", def, array_bounds, " = ", value_str, ";\n");
     }
 
     fn emit_bitmask(&self, w: &mut Twine, def: &Def, bitmask: &BitmaskTy) {

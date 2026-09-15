@@ -119,19 +119,19 @@ impl<'a> CSharpGen<'a> {
             Numeric::String(s) | Numeric::WString(s) => escape_str(s),
             Numeric::Const(def_id) => self.scoped_name(*def_id, relative_to_def_id),
             Numeric::Array { ty, values } => {
+                let (base_ty, dims) = Self::count_array_dimensions(ty);
+                let element_type = self.csharp_type(&base_ty, relative_to_def_id);
+                let commas = ",".repeat(dims);
+                let initializer = self.format_array_initializer(values, relative_to_def_id);
+                format!("new {element_type}[{commas}] {initializer}")
+            }
+            Numeric::Sequence { ty, values } => {
                 let element_type = self.csharp_type(ty, relative_to_def_id);
                 let formatted: Vec<_> = values
                     .iter()
                     .map(|v| self.format_numeric(v, relative_to_def_id))
                     .collect();
-                format!("new {element_type}[] {{ {} }}", formatted.join(", "))
-            }
-            Numeric::Sequence { values, .. } => {
-                let formatted: Vec<_> = values
-                    .iter()
-                    .map(|v| self.format_numeric(v, relative_to_def_id))
-                    .collect();
-                format!("new List<> {{ {} }}", formatted.join(", "))
+                format!("new List<{element_type}> {{ {} }}", formatted.join(", "))
             }
             Numeric::Map { entries, .. } => {
                 let formatted: Vec<_> = entries
@@ -156,6 +156,20 @@ impl<'a> CSharpGen<'a> {
             }
             Numeric::Union { .. } => String::new(),
         }
+    }
+
+    fn format_array_initializer(&self, values: &[Numeric], relative_to_def_id: DefId) -> String {
+        let formatted: Vec<_> = values
+            .iter()
+            .map(|value| match value {
+                Numeric::Array { values, .. } => {
+                    self.format_array_initializer(values, relative_to_def_id)
+                }
+                _ => self.format_numeric(value, relative_to_def_id),
+            })
+            .collect();
+
+        format!("{{ {} }}", formatted.join(", "))
     }
 
     fn get_scope(&self, def_id: DefId) -> Option<DefId> {
@@ -276,6 +290,13 @@ impl<'a> CSharpGen<'a> {
                 _ => {}
             }
         }
+
+        let type_name =
+            if self.options.const_classes && matches!(target_def.kind, DefKind::Const(_)) {
+                format!("{type_name}.Value")
+            } else {
+                type_name
+            };
 
         let target_scope = self.get_scope(target_def_id);
         let current_scope = self.get_scope(relative_to_def_id);
@@ -433,13 +454,23 @@ impl<'a> CSharpGen<'a> {
     }
 
     fn emit_doc_comments(&self, w: &mut Twine, annotations: &[Ann]) {
-        for annotation in annotations {
-            let Some(text) = doc(&self.hir.context, annotation) else {
-                continue;
-            };
+        let mut docs = annotations
+            .iter()
+            .filter_map(|annotation| doc(&self.hir.context, annotation))
+            .peekable();
 
-            w!(w, "/// <summary>", #text.trim_end(), "</summary>\n");
+        if docs.peek().is_none() {
+            return;
         }
+
+        w!(w, "/// <summary>\n");
+        for text in docs {
+            for line in text.trim_end().lines() {
+                w!(w, "/// ", #line, "\n");
+            }
+        }
+
+        w!(w, "/// </summary>\n");
     }
 
     fn emit_module(&self, w: &mut Twine, def: &Def, module: &ModuleTy) {

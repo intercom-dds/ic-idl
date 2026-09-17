@@ -148,8 +148,8 @@ impl Parser<'_> {
         let mut annotations = self.take_annotations();
 
         // Rule 48: forward declaration
-        if self.eat(Kind::Semi) {
-            annotations.extend(self.take_annotations());
+        if self.at(Kind::Semi) {
+            annotations.extend(self.expect_semi()?);
             return Ok(Item::Decl(Decl {
                 meta: Meta {
                     span: self.make_span(start, self.prev_span),
@@ -219,8 +219,8 @@ impl Parser<'_> {
         let mut annotations = self.take_annotations();
 
         // Rule 56: forward declaration
-        if self.eat(Kind::Semi) {
-            annotations.extend(self.take_annotations());
+        if self.at(Kind::Semi) {
+            annotations.extend(self.expect_semi()?);
             return Ok(Item::Decl(Decl {
                 meta: Meta {
                     span: self.make_span(start, self.prev_span),

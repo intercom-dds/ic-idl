@@ -580,3 +580,17 @@ fn unterminated_block_comment_reports_error() {
         "expected error for unterminated comment"
     );
 }
+
+#[test]
+fn decl_does_not_eat_annotations_of_next_def() {
+    for ty in ["struct", "union", "interface", "valuetype"] {
+        let result = from_str(&format!("{ty} A; @external typedef A B;"));
+        assert!(result.errors.is_empty(), "errors: {:?}", result.errors);
+        assert!(matches!(result.tree[0], Item::Decl(_)));
+
+        let Item::Alias(a) = &result.tree[1] else {
+            panic!("expected alias");
+        };
+        assert_eq!(a.meta.annotations.len(), 1, "alias has annotation");
+    }
+}

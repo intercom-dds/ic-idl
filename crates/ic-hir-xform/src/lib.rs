@@ -36,6 +36,7 @@ pub mod default_annotation;
 pub mod flatten;
 pub mod implicit_default;
 pub mod mark_included;
+pub mod modularize_root;
 pub mod move_constants;
 pub mod move_nested;
 pub mod normalize;

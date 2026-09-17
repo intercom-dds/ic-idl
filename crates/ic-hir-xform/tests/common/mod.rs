@@ -49,6 +49,27 @@ pub fn parse_and_resolve(input: &str) -> ResolvedGraph {
     result
 }
 
+/// Parse IDL input and return the HIR with Source Map
+#[track_caller]
+pub fn parse_and_resolve_with_source_map(
+    file_name: &str,
+    input: &str,
+) -> (ResolvedGraph, SourceMap) {
+    let mut source_map = SourceMap::default();
+    let file = source_map.embed_with_name(file_name, input);
+    let parsed = ic_parse::from_file(file, &source_map);
+
+    assert!(
+        parsed.errors.is_empty(),
+        "Parse errors: {:?}",
+        parsed.errors
+    );
+
+    let result = ic_hir_lower::from_ast(AstInput::User(parsed.tree));
+    assert!(result.errors.is_empty(), "HIR errors: {:?}", result.errors);
+    (result, source_map)
+}
+
 /// Parse IDL input with builtin annotations and return the HIR
 #[track_caller]
 pub fn parse_with_builtins(input: &str) -> ResolvedGraph {

@@ -141,11 +141,11 @@ pub fn is_key(ctx: &Context, target: &impl MemberLike) -> bool {
     key_annotation(ctx, target).is_some()
 }
 
-pub fn optional_annotation<'a>(ctx: &Context, target: &'a impl MemberLike) -> Option<&'a Ann> {
+pub fn optional_annotation<'a>(ctx: &Context, target: &'a impl DefaultTarget) -> Option<&'a Ann> {
     enabled_bool_annotation(ctx, target.annotations(), "optional")
 }
 
-pub fn is_optional(ctx: &Context, target: &impl MemberLike) -> bool {
+pub fn is_optional(ctx: &Context, target: &impl DefaultTarget) -> bool {
     optional_annotation(ctx, target).is_some()
 }
 
@@ -195,9 +195,14 @@ pub fn is_extensibility_annotation(ctx: &Context, annotation: &Ann) -> bool {
 }
 
 #[must_use]
+pub fn external_annotation<'a>(ctx: &Context, target: &'a impl ExternalTarget) -> Option<&'a Ann> {
+    enabled_bool_annotation(ctx, target.annotations(), "external")
+        .or_else(|| enabled_bool_annotation(ctx, target.annotations(), "shared"))
+}
+
+#[must_use]
 pub fn is_external(ctx: &Context, target: &impl ExternalTarget) -> bool {
-    bool_annotation(ctx, target.annotations(), "external").unwrap_or(false)
-        || bool_annotation(ctx, target.annotations(), "shared").unwrap_or(false)
+    external_annotation(ctx, target).is_some_and(|ann| annotation_enabled(ctx, ann))
 }
 
 #[must_use]

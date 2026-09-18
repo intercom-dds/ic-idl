@@ -32,6 +32,7 @@
 //! Each transformation will consume the HIR and construct a new one.
 
 // pub mod nested;
+pub mod alias_anonymous_ty;
 pub mod default_annotation;
 pub mod flatten;
 pub mod implicit_default;

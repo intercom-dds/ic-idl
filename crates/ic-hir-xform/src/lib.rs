@@ -32,6 +32,7 @@
 //! Each transformation will consume the HIR and construct a new one.
 
 // pub mod nested;
+pub mod alias_anonymous_ty;
 pub mod default_annotation;
 pub mod flatten;
 pub mod implicit_default;
@@ -45,5 +46,4 @@ pub mod rename;
 pub mod rename_xtypes;
 pub mod squash_modules;
 pub mod strip_typedefs;
-pub mod synthesize_collections;
 pub mod type_flags;

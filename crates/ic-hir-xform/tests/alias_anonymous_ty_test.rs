@@ -1,4 +1,4 @@
-// Copyright 2025 KONGSBERG
+// Copyright 2026 KONGSBERG
 //
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions are met:
@@ -29,7 +29,40 @@ mod common;
 
 use ic_hir::ResolvedGraph;
 use ic_hir::hir::{DefKind, TyKind};
-use ic_hir_xform::synthesize_collections;
+use ic_hir_xform::alias_anonymous_ty;
+
+const CONVENTION: &alias_anonymous_ty::Convention = &alias_anonymous_ty::Convention {
+    array_prefix: "",
+    array_suffix: "_Array",
+    sequence_prefix: "Sequence_",
+    sequence_suffix: "",
+    bounded_sequence_prefix: "BoundedSequence_",
+    bounded_sequence_suffix: "",
+    map_prefix: "Map_",
+    map_suffix: "",
+    bounded_map_prefix: "BoundedMap_",
+    bounded_map_suffix: "",
+    bounded_string_prefix: "BoundedString_",
+    bounded_string_suffix: "",
+    bounded_wide_string_prefix: "BoundedWideString_",
+    bounded_wide_string_suffix: "",
+    optional_alias_prefix: "Optional_",
+    optional_alias_suffix: "",
+    external_alias_suffix: "_Ref",
+    external_alias_prefix: "",
+    seperator: "_",
+
+    array_subtype: "Array",
+    string_subtype: "String",
+    wide_string_subtype: "WideString",
+    bounded_string_subtype: "BoundedString",
+    bounded_wide_string_subtype: "BoundedWideString",
+    sequence_subtype: "Sequence",
+    bounded_sequence_subtype: "BoundSequence",
+    map_subtype: "Map",
+    bounded_map_subtype: "BoundedMap",
+    primitive_name: None,
+};
 
 fn count_array_aliases(hir: &ResolvedGraph) -> usize {
     hir.order
@@ -39,6 +72,46 @@ fn count_array_aliases(hir: &ResolvedGraph) -> usize {
             matches!(def.kind, DefKind::Alias(ref alias) if matches!(alias.ty.kind, TyKind::Array { .. }))
         })
         .count()
+}
+
+fn count_nested_array_aliases(hir: &ResolvedGraph) -> usize {
+    hir.order
+        .iter()
+        .fold(0, |count, &def_id| {
+            let def = hir.context.definitions.get(def_id);
+            let mut total = count;
+            if matches!(def.kind, DefKind::Alias(ref alias) if matches!(alias.ty.kind, TyKind::Array { .. })) {
+                total += 1;
+            }
+            if let DefKind::Module(module_ty) = &def.kind {
+                total += module_ty.definitions.iter().fold(0, |inner, &child_id| {
+                    let child_def = hir.context.definitions.get(child_id);
+                    match &child_def.kind {
+                        DefKind::Alias(alias) if matches!(alias.ty.kind, TyKind::Array { .. }) =>
+                            inner + 1,
+                        DefKind::Module(module_ty) => {
+                            inner + count_nested_array_aliases_in_module(hir, &module_ty.definitions)
+                        }
+                        _ => inner,
+                    }
+                });
+            }
+            total
+        })
+}
+
+fn count_nested_array_aliases_in_module(hir: &ResolvedGraph, defs: &[ic_hir::hir::DefId]) -> usize {
+    defs.iter().fold(0, |count, &def_id| {
+        let def = hir.context.definitions.get(def_id);
+        let mut total = count;
+        if matches!(def.kind, DefKind::Alias(ref alias) if matches!(alias.ty.kind, TyKind::Array { .. })) {
+            total += 1;
+        }
+        if let DefKind::Module(module_ty) = &def.kind {
+            total += count_nested_array_aliases_in_module(hir, &module_ty.definitions);
+        }
+        total
+    })
 }
 
 fn count_inline_arrays(hir: &ResolvedGraph) -> usize {
@@ -65,7 +138,8 @@ fn test_basic_array_synthesis() {
     ";
 
     let hir = common::parse_and_resolve(source);
-    let transformed = synthesize_collections::transform(hir);
+    let transformed = alias_anonymous_ty::transform(hir, CONVENTION);
+    ic_hir_xform::normalize::normalize(&transformed);
 
     assert_eq!(
         count_array_aliases(&transformed),
@@ -89,7 +163,8 @@ fn test_array_reuse() {
     ";
 
     let hir = common::parse_and_resolve(source);
-    let transformed = synthesize_collections::transform(hir);
+    let transformed = alias_anonymous_ty::transform(hir, CONVENTION);
+    ic_hir_xform::normalize::normalize(&transformed);
 
     assert_eq!(
         count_array_aliases(&transformed),
@@ -108,7 +183,8 @@ fn test_different_lengths_different_aliases() {
     ";
 
     let hir = common::parse_and_resolve(source);
-    let transformed = synthesize_collections::transform(hir);
+    let transformed = alias_anonymous_ty::transform(hir, CONVENTION);
+    ic_hir_xform::normalize::normalize(&transformed);
 
     assert_eq!(
         count_array_aliases(&transformed),
@@ -127,7 +203,8 @@ fn test_different_types_different_aliases() {
     ";
 
     let hir = common::parse_and_resolve(source);
-    let transformed = synthesize_collections::transform(hir);
+    let transformed = alias_anonymous_ty::transform(hir, CONVENTION);
+    ic_hir_xform::normalize::normalize(&transformed);
 
     assert_eq!(
         count_array_aliases(&transformed),
@@ -148,7 +225,8 @@ fn test_adt_collision_prevention() {
     ";
 
     let hir = common::parse_and_resolve(source);
-    let transformed = synthesize_collections::transform(hir);
+    let transformed = alias_anonymous_ty::transform(hir, CONVENTION);
+    ic_hir_xform::normalize::normalize(&transformed);
 
     assert_eq!(
         count_array_aliases(&transformed),
@@ -168,7 +246,8 @@ fn test_string_types_no_collision() {
     ";
 
     let hir = common::parse_and_resolve(source);
-    let transformed = synthesize_collections::transform(hir);
+    let transformed = alias_anonymous_ty::transform(hir, CONVENTION);
+    ic_hir_xform::normalize::normalize(&transformed);
 
     assert_eq!(
         count_array_aliases(&transformed),
@@ -188,7 +267,8 @@ fn test_module_nesting() {
     ";
 
     let hir = common::parse_and_resolve(source);
-    let transformed = synthesize_collections::transform(hir);
+    let transformed = alias_anonymous_ty::transform(hir, CONVENTION);
+    ic_hir_xform::normalize::normalize(&transformed);
 
     let module_def_id = transformed
         .order
@@ -212,13 +292,41 @@ fn test_module_nesting() {
 }
 
 #[test]
+fn test_nested_modules_do_not_share_aliases() {
+    let source = r"
+        module Outer {
+            struct Left {
+                long values[10];
+            };
+
+            module Inner {
+                struct Right {
+                    long values[10];
+                };
+            };
+        };
+    ";
+
+    let hir = common::parse_and_resolve(source);
+    let transformed = alias_anonymous_ty::transform(hir, CONVENTION);
+    ic_hir_xform::normalize::normalize(&transformed);
+
+    assert_eq!(
+        count_nested_array_aliases(&transformed),
+        2,
+        "Nested modules should not reuse the same synthesized array alias"
+    );
+}
+
+#[test]
 fn test_typedef_array() {
     let source = r"
         typedef long LongArray[5];
     ";
 
     let hir = common::parse_and_resolve(source);
-    let transformed = synthesize_collections::transform(hir);
+    let transformed = alias_anonymous_ty::transform(hir, CONVENTION);
+    ic_hir_xform::normalize::normalize(&transformed);
 
     assert_eq!(
         count_array_aliases(&transformed),
@@ -237,7 +345,8 @@ fn test_union_arrays() {
     ";
 
     let hir = common::parse_and_resolve(source);
-    let transformed = synthesize_collections::transform(hir);
+    let transformed = alias_anonymous_ty::transform(hir, CONVENTION);
+    ic_hir_xform::normalize::normalize(&transformed);
 
     assert_eq!(
         count_array_aliases(&transformed),
@@ -255,7 +364,8 @@ fn test_exception_arrays() {
     ";
 
     let hir = common::parse_and_resolve(source);
-    let transformed = synthesize_collections::transform(hir);
+    let transformed = alias_anonymous_ty::transform(hir, CONVENTION);
+    ic_hir_xform::normalize::normalize(&transformed);
 
     assert_eq!(
         count_array_aliases(&transformed),
@@ -275,7 +385,8 @@ fn test_sequence_bound_no_collision() {
     ";
 
     let hir = common::parse_and_resolve(source);
-    let transformed = synthesize_collections::transform(hir);
+    let transformed = alias_anonymous_ty::transform(hir, CONVENTION);
+    ic_hir_xform::normalize::normalize(&transformed);
 
     assert_eq!(
         count_array_aliases(&transformed),
@@ -295,7 +406,8 @@ fn test_map_types_no_collision() {
     ";
 
     let hir = common::parse_and_resolve(source);
-    let transformed = synthesize_collections::transform(hir);
+    let transformed = alias_anonymous_ty::transform(hir, CONVENTION);
+    ic_hir_xform::normalize::normalize(&transformed);
 
     assert_eq!(
         count_array_aliases(&transformed),
@@ -313,7 +425,8 @@ fn test_multidimensional_arrays() {
     ";
 
     let hir = common::parse_and_resolve(source);
-    let transformed = synthesize_collections::transform(hir);
+    let transformed = alias_anonymous_ty::transform(hir, CONVENTION);
+    ic_hir_xform::normalize::normalize(&transformed);
 
     assert_eq!(
         count_array_aliases(&transformed),
@@ -361,7 +474,8 @@ fn test_interface_operation_arrays() {
     ";
 
     let hir = common::parse_and_resolve(source);
-    let transformed = synthesize_collections::transform(hir);
+    let transformed = alias_anonymous_ty::transform(hir, CONVENTION);
+    ic_hir_xform::normalize::normalize(&transformed);
 
     assert_eq!(
         count_array_aliases(&transformed),
@@ -380,7 +494,8 @@ fn test_interface_attribute_arrays() {
     ";
 
     let hir = common::parse_and_resolve(source);
-    let transformed = synthesize_collections::transform(hir);
+    let transformed = alias_anonymous_ty::transform(hir, CONVENTION);
+    ic_hir_xform::normalize::normalize(&transformed);
 
     assert_eq!(
         count_array_aliases(&transformed),
@@ -409,6 +524,20 @@ fn count_map_aliases(hir: &ResolvedGraph) -> usize {
         .count()
 }
 
+fn count_annotated_aliases(hir: &ResolvedGraph, annotation: &str) -> usize {
+    hir.order
+        .iter()
+        .filter(|&&def_id| {
+            let def = hir.context.definitions.get(def_id);
+            matches!(def.kind, DefKind::Alias(_))
+                && def
+                    .annotations
+                    .iter()
+                    .any(|ann| ann.ident.name == annotation)
+        })
+        .count()
+}
+
 #[test]
 fn test_basic_sequence_synthesis() {
     let source = r"
@@ -418,7 +547,8 @@ fn test_basic_sequence_synthesis() {
     ";
 
     let hir = common::parse_and_resolve(source);
-    let transformed = synthesize_collections::transform(hir);
+    let transformed = alias_anonymous_ty::transform(hir, CONVENTION);
+    ic_hir_xform::normalize::normalize(&transformed);
 
     assert_eq!(
         count_sequence_aliases(&transformed),
@@ -436,7 +566,8 @@ fn test_bounded_sequence_synthesis() {
     ";
 
     let hir = common::parse_and_resolve(source);
-    let transformed = synthesize_collections::transform(hir);
+    let transformed = alias_anonymous_ty::transform(hir, CONVENTION);
+    ic_hir_xform::normalize::normalize(&transformed);
 
     assert_eq!(
         count_sequence_aliases(&transformed),
@@ -455,7 +586,8 @@ fn test_sequence_reuse() {
     ";
 
     let hir = common::parse_and_resolve(source);
-    let transformed = synthesize_collections::transform(hir);
+    let transformed = alias_anonymous_ty::transform(hir, CONVENTION);
+    ic_hir_xform::normalize::normalize(&transformed);
 
     assert_eq!(
         count_sequence_aliases(&transformed),
@@ -474,7 +606,8 @@ fn test_different_sequence_bounds_different_aliases() {
     ";
 
     let hir = common::parse_and_resolve(source);
-    let transformed = synthesize_collections::transform(hir);
+    let transformed = alias_anonymous_ty::transform(hir, CONVENTION);
+    ic_hir_xform::normalize::normalize(&transformed);
 
     assert_eq!(
         count_sequence_aliases(&transformed),
@@ -493,7 +626,8 @@ fn test_bounded_unbounded_sequences_different_aliases() {
     ";
 
     let hir = common::parse_and_resolve(source);
-    let transformed = synthesize_collections::transform(hir);
+    let transformed = alias_anonymous_ty::transform(hir, CONVENTION);
+    ic_hir_xform::normalize::normalize(&transformed);
 
     assert_eq!(
         count_sequence_aliases(&transformed),
@@ -512,7 +646,8 @@ fn test_different_sequence_element_types() {
     ";
 
     let hir = common::parse_and_resolve(source);
-    let transformed = synthesize_collections::transform(hir);
+    let transformed = alias_anonymous_ty::transform(hir, CONVENTION);
+    ic_hir_xform::normalize::normalize(&transformed);
 
     assert_eq!(
         count_sequence_aliases(&transformed),
@@ -530,7 +665,8 @@ fn test_nested_sequences() {
     ";
 
     let hir = common::parse_and_resolve(source);
-    let transformed = synthesize_collections::transform(hir);
+    let transformed = alias_anonymous_ty::transform(hir, CONVENTION);
+    ic_hir_xform::normalize::normalize(&transformed);
 
     assert_eq!(
         count_sequence_aliases(&transformed),
@@ -548,7 +684,8 @@ fn test_basic_map_synthesis() {
     ";
 
     let hir = common::parse_and_resolve(source);
-    let transformed = synthesize_collections::transform(hir);
+    let transformed = alias_anonymous_ty::transform(hir, CONVENTION);
+    ic_hir_xform::normalize::normalize(&transformed);
 
     assert_eq!(
         count_map_aliases(&transformed),
@@ -566,7 +703,8 @@ fn test_bounded_map_synthesis() {
     ";
 
     let hir = common::parse_and_resolve(source);
-    let transformed = synthesize_collections::transform(hir);
+    let transformed = alias_anonymous_ty::transform(hir, CONVENTION);
+    ic_hir_xform::normalize::normalize(&transformed);
 
     assert_eq!(
         count_map_aliases(&transformed),
@@ -585,7 +723,8 @@ fn test_map_reuse() {
     ";
 
     let hir = common::parse_and_resolve(source);
-    let transformed = synthesize_collections::transform(hir);
+    let transformed = alias_anonymous_ty::transform(hir, CONVENTION);
+    ic_hir_xform::normalize::normalize(&transformed);
 
     assert_eq!(
         count_map_aliases(&transformed),
@@ -604,7 +743,8 @@ fn test_different_map_key_types() {
     ";
 
     let hir = common::parse_and_resolve(source);
-    let transformed = synthesize_collections::transform(hir);
+    let transformed = alias_anonymous_ty::transform(hir, CONVENTION);
+    ic_hir_xform::normalize::normalize(&transformed);
 
     assert_eq!(
         count_map_aliases(&transformed),
@@ -623,7 +763,8 @@ fn test_different_map_value_types() {
     ";
 
     let hir = common::parse_and_resolve(source);
-    let transformed = synthesize_collections::transform(hir);
+    let transformed = alias_anonymous_ty::transform(hir, CONVENTION);
+    ic_hir_xform::normalize::normalize(&transformed);
 
     assert_eq!(
         count_map_aliases(&transformed),
@@ -642,7 +783,8 @@ fn test_different_map_bounds() {
     ";
 
     let hir = common::parse_and_resolve(source);
-    let transformed = synthesize_collections::transform(hir);
+    let transformed = alias_anonymous_ty::transform(hir, CONVENTION);
+    ic_hir_xform::normalize::normalize(&transformed);
 
     assert_eq!(
         count_map_aliases(&transformed),
@@ -661,7 +803,8 @@ fn test_bounded_unbounded_maps_different_aliases() {
     ";
 
     let hir = common::parse_and_resolve(source);
-    let transformed = synthesize_collections::transform(hir);
+    let transformed = alias_anonymous_ty::transform(hir, CONVENTION);
+    ic_hir_xform::normalize::normalize(&transformed);
 
     assert_eq!(
         count_map_aliases(&transformed),
@@ -679,7 +822,8 @@ fn test_nested_maps() {
     ";
 
     let hir = common::parse_and_resolve(source);
-    let transformed = synthesize_collections::transform(hir);
+    let transformed = alias_anonymous_ty::transform(hir, CONVENTION);
+    ic_hir_xform::normalize::normalize(&transformed);
 
     assert_eq!(
         count_map_aliases(&transformed),
@@ -699,7 +843,8 @@ fn test_mixed_collections() {
     ";
 
     let hir = common::parse_and_resolve(source);
-    let transformed = synthesize_collections::transform(hir);
+    let transformed = alias_anonymous_ty::transform(hir, CONVENTION);
+    ic_hir_xform::normalize::normalize(&transformed);
 
     assert_eq!(
         count_sequence_aliases(&transformed),
@@ -728,7 +873,8 @@ fn test_sequence_of_arrays() {
     ";
 
     let hir = common::parse_and_resolve(source);
-    let transformed = synthesize_collections::transform(hir);
+    let transformed = alias_anonymous_ty::transform(hir, CONVENTION);
+    ic_hir_xform::normalize::normalize(&transformed);
 
     assert_eq!(
         count_array_aliases(&transformed),
@@ -752,7 +898,8 @@ fn test_map_with_array_values() {
     ";
 
     let hir = common::parse_and_resolve(source);
-    let transformed = synthesize_collections::transform(hir);
+    let transformed = alias_anonymous_ty::transform(hir, CONVENTION);
+    ic_hir_xform::normalize::normalize(&transformed);
 
     assert_eq!(
         count_array_aliases(&transformed),
@@ -777,7 +924,8 @@ fn test_typedef_with_nested_collections() {
     ";
 
     let hir = common::parse_and_resolve(source);
-    let transformed = synthesize_collections::transform(hir);
+    let transformed = alias_anonymous_ty::transform(hir, CONVENTION);
+    ic_hir_xform::normalize::normalize(&transformed);
 
     assert_eq!(
         count_array_aliases(&transformed),
@@ -801,7 +949,8 @@ fn test_valuetype_operations() {
     ";
 
     let hir = common::parse_and_resolve(source);
-    let transformed = synthesize_collections::transform(hir);
+    let transformed = alias_anonymous_ty::transform(hir, CONVENTION);
+    ic_hir_xform::normalize::normalize(&transformed);
 
     assert_eq!(
         count_sequence_aliases(&transformed),
@@ -819,7 +968,8 @@ fn test_valuetype_attributes() {
     ";
 
     let hir = common::parse_and_resolve(source);
-    let transformed = synthesize_collections::transform(hir);
+    let transformed = alias_anonymous_ty::transform(hir, CONVENTION);
+    ic_hir_xform::normalize::normalize(&transformed);
 
     assert_eq!(
         count_sequence_aliases(&transformed),
@@ -839,7 +989,8 @@ fn test_valuetype_members_operations_and_attributes() {
     ";
 
     let hir = common::parse_and_resolve(source);
-    let transformed = synthesize_collections::transform(hir);
+    let transformed = alias_anonymous_ty::transform(hir, CONVENTION);
+    ic_hir_xform::normalize::normalize(&transformed);
 
     assert_eq!(
         count_array_aliases(&transformed),
@@ -867,7 +1018,8 @@ fn test_nested_collection_ordering() {
     ";
 
     let hir = common::parse_and_resolve(source);
-    let transformed = synthesize_collections::transform(hir);
+    let transformed = alias_anonymous_ty::transform(hir, CONVENTION);
+    ic_hir_xform::normalize::normalize(&transformed);
 
     assert_eq!(
         count_sequence_aliases(&transformed),
@@ -924,7 +1076,8 @@ fn test_sequence_of_map_ordering() {
     ";
 
     let hir = common::parse_and_resolve(source);
-    let transformed = synthesize_collections::transform(hir);
+    let transformed = alias_anonymous_ty::transform(hir, CONVENTION);
+    ic_hir_xform::normalize::normalize(&transformed);
 
     assert_eq!(
         count_sequence_aliases(&transformed),
@@ -970,5 +1123,45 @@ fn test_sequence_of_map_ordering() {
         map_pos < seq_pos,
         "Map typedef must come before sequence typedef that references it (map at {map_pos}, seq \
          at {seq_pos})",
+    );
+}
+
+#[test]
+fn test_optional_annotation_reuses_alias_for_same_type() {
+    let source = r"
+        struct Example {
+            @optional long first;
+            @optional long second;
+        };
+    ";
+
+    let hir = common::parse_with_builtins(source);
+    let transformed = alias_anonymous_ty::transform(hir, CONVENTION);
+    ic_hir_xform::normalize::normalize(&transformed);
+
+    assert_eq!(
+        count_annotated_aliases(&transformed, "optional"),
+        1,
+        "Equivalent optional members should reuse the same synthesized typedef"
+    );
+}
+
+#[test]
+fn test_external_annotation_reuses_alias_for_same_type() {
+    let source = r"
+        struct Example {
+            @external long first;
+            @external long second;
+        };
+    ";
+
+    let hir = common::parse_with_builtins(source);
+    let transformed = alias_anonymous_ty::transform(hir, CONVENTION);
+    ic_hir_xform::normalize::normalize(&transformed);
+
+    assert_eq!(
+        count_annotated_aliases(&transformed, "external"),
+        1,
+        "Equivalent external members should reuse the same synthesized typedef"
     );
 }

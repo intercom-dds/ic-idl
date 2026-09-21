@@ -277,6 +277,8 @@ impl<'a> PyGen<'a> {
             DefKind::Module(_) | DefKind::Bitset(_) | DefKind::Annotation(_) | DefKind::Decl(_) => {
             }
         }
+
+        w.decleared_defs.insert(def_id);
     }
 
     fn source_filename(&self, def_id: DefId) -> Option<String> {
@@ -372,7 +374,7 @@ impl<'a> PyGen<'a> {
         }
     }
 
-    fn path_root(&self, def_id: DefId) -> DefId {
+    pub(crate) fn path_root(&self, def_id: DefId) -> DefId {
         let mut root = def_id;
         let mut current = self.hir.context.type_of(def_id).parent;
 

@@ -36,6 +36,7 @@ pub struct PyWriter {
     printer: PrettyPrinter,
     pub import_context: ImportContext,
     pub deferred_aliases: BTreeSet<DefId>,
+    pub decleared_defs: BTreeSet<DefId>,
 }
 
 impl PyWriter {
@@ -44,6 +45,7 @@ impl PyWriter {
             printer: PrettyPrinter::new(),
             import_context,
             deferred_aliases: BTreeSet::new(),
+            decleared_defs: BTreeSet::new(),
         }
     }
 

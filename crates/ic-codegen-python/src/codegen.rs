@@ -550,7 +550,7 @@ impl<'a> PyGen<'a> {
     }
 
     fn emit_bitmask(&self, w: &mut PyWriter, def: &Def, bitmask_ty: &BitmaskTy) {
-        py!(w, "class ", def, "(_enum_.Flag):\n");
+        py!(w, "class ", def, "(_enum_.Flag, boundary=_enum_.KEEP):\n");
         w.indent();
 
         for &member_id in &bitmask_ty.flags {

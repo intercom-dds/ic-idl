@@ -719,7 +719,7 @@ impl<'a> PyGen<'a> {
             && matches!(self.hir.context.type_of(*def_id).kind, DefKind::Bitmask(_))
             && !matches!(&const_ty.value, Numeric::Const(_))
         {
-            let bitmask_type = self.py_type(w, &resolved_ty);
+            let bitmask_type: String = self.py_type(w, &const_ty.ty);
             format!("{bitmask_type}({value})")
         } else {
             value

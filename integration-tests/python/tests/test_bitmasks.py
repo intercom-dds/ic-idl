@@ -112,6 +112,7 @@ def test_bitmask_all_combined(generated_modules: dict[str, ModuleType]) -> None:
 
     assert all_perms == bitmask.Permissions.all()
 
+
 def test_bitmask_gapped_positions(generated_modules: dict[str, ModuleType]) -> None:
     bitmask = generated_modules["bitmask_types"]
     assert bitmask.GappedFlags.LOW.value == 1

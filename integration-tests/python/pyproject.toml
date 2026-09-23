@@ -29,6 +29,9 @@
 name = "integration-tests"
 version = "0.0.0"
 requires-python = ">=3.11"
+dependencies = [ 
+   "intercom_cts"
+]
 
 [tool.ruff.lint]
 select = ["ALL"]
@@ -45,3 +48,6 @@ dev = [
     "pytest-xdist>=3.0",
     "pytest-sugar>=1.0",
 ]
+
+[tool.uv.sources]
+intercom_cts = { path = "../../runtime/python", editable = true }

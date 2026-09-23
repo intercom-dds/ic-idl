@@ -32,6 +32,7 @@ import pytest
 
 from conftest import run_codegen
 
+RUNTIME_SRC = Path(__file__).resolve().parents[2] / "runtime" / "python" / "src"
 
 @pytest.mark.parametrize(
     "extra_args",
@@ -70,6 +71,7 @@ def test_python(
             "ty",
             "check",
             f"--extra-search-path={output_dir.parent}",
+            f"--extra-search-path={RUNTIME_SRC}",
             str(output_dir),
         ],
         check=False,

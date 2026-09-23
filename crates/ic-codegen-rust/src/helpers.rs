@@ -27,7 +27,9 @@
 
 use std::fmt::Write;
 
-use ic_hir::hir::{AliasTy, Def, DefFlags, DefId, DefKind, Numeric, PrimitiveTy, Ty, TyKind};
+use ic_hir::hir::{
+    AliasTy, Def, DefFlags, DefId, DefKind, Member, Numeric, PrimitiveTy, Ty, TyKind,
+};
 use ic_hir_analysis::annotation::{
     Extensibility, MemberLike, extensibility, is_external, is_key, is_nested, is_newtype,
 };
@@ -270,14 +272,27 @@ pub fn rust_primitive(ty: PrimitiveTy) -> &'static str {
     }
 }
 
+fn all_members<'a>(ctx: &'a ic_hir::Context, def: &'a Def) -> impl Iterator<Item = &'a Member> {
+    let mut members = Vec::new();
+    let mut current = Some(def);
+    while let Some(def) = current {
+        let (parent, m) = match &def.kind {
+            DefKind::Struct(s) => (s.parent, s.members.as_slice()),
+            DefKind::Valuetype(v) => (v.parent, v.members.as_slice()),
+            DefKind::Except(e) => (None, e.members.as_slice()),
+            _ => (None, [].as_slice()),
+        };
+        members.push(m);
+        current = parent.map(|p| ctx.base_def_of(p.def_id));
+    }
+    members.into_iter().rev().flatten()
+}
+
 fn has_key_member(ctx: &ic_hir::Context, def: &Def) -> bool {
-    let members = match &def.kind {
-        DefKind::Struct(s) => &s.members,
-        DefKind::Valuetype(v) => &v.members,
-        DefKind::Except(e) => &e.members,
-        _ => return false,
-    };
-    members.iter().any(|member| is_key(ctx, member))
+    match &def.kind {
+        DefKind::Union(u) => is_key(ctx, &u.disc),
+        _ => all_members(ctx, def).any(|m| is_key(ctx, m)),
+    }
 }
 
 pub fn type_flags(ctx: &ic_hir::Context, def: &Def) -> String {

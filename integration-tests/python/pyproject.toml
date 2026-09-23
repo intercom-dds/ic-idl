@@ -29,6 +29,9 @@
 name = "integration-tests"
 version = "0.0.0"
 requires-python = ">=3.11"
+dependencies = [ 
+   "intercom_cts @ file:///${PROJECT_ROOT}/../../runtime/python"
+]
 
 [tool.ruff.lint]
 select = ["ALL"]

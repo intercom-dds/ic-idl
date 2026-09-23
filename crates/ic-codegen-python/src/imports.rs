@@ -162,6 +162,7 @@ impl ImportContext {
 #[derive(Default)]
 pub struct Stdlib {
     pub abc: bool,
+    pub cts: bool,
     pub builtins: bool,
     pub dataclasses: bool,
     pub decimal: bool,
@@ -185,6 +186,10 @@ impl Stdlib {
         if self.builtins {
             py!(w, "import builtins as _builtins_\n");
         }
+        if self.cts {
+            py!(w, "from functools import cache as _cache_\n");
+            py!(w, "import intercom_cts.type_info as _type_info_\n");
+        }
         if self.dataclasses {
             py!(w, "import dataclasses as _dataclasses_\n");
         }
@@ -200,6 +205,7 @@ impl Stdlib {
 
         if self.abc
             || self.builtins
+            || self.cts
             || self.dataclasses
             || self.decimal
             || self.enum_
@@ -293,6 +299,21 @@ fn resolve_deferred_aliases(
     }
 }
 
+fn resolve_alias_type_info_imports(
+    hir: &ResolvedGraph,
+    def_id: DefId,
+    dep_ids: &mut HashSet<DefId>,
+) {
+    let ty_deps = hir.context.ty_deps(def_id);
+    for dep_id in ty_deps {
+        let dep = hir.context.definitions.get(dep_id);
+        if matches!(dep.kind, DefKind::Alias(_)) {
+            resolve_alias_type_info_imports(hir, dep_id, dep_ids);
+            dep_ids.insert(dep_id);
+        }
+    }
+}
+
 fn collect_module_imports(
     ctx: &ImportCollectorCtx,
     def_id: DefId,
@@ -303,6 +324,7 @@ fn collect_module_imports(
 ) {
     let mut dep_ids = ctx.hir.context.deps(def_id);
     resolve_deferred_aliases(ctx.hir, def_id, deferred, &mut dep_ids);
+    resolve_alias_type_info_imports(ctx.hir, def_id, &mut dep_ids);
 
     for dep_id in dep_ids {
         if !is_exportable(ctx.hir, dep_id) {
@@ -480,17 +502,21 @@ impl<'a> ic_hir::visit::Visitor<'a> for StdlibVisitor<'a> {
         match &def.kind {
             DefKind::Struct(_) => {
                 self.stdlib.dataclasses = true;
+                self.stdlib.cts = true;
             }
             DefKind::Union(_) => {
                 self.stdlib.dataclasses = true;
                 self.stdlib.typing = true;
+                self.stdlib.cts = true;
             }
             DefKind::Except(_) => {
                 self.stdlib.builtins = true;
                 self.stdlib.dataclasses = true;
+                self.stdlib.cts = true;
             }
             DefKind::Enum(_) | DefKind::Bitmask(_) => {
                 self.stdlib.enum_ = true;
+                self.stdlib.cts = true;
             }
             DefKind::Alias(_) => {
                 self.stdlib.typing = true;
@@ -518,6 +544,7 @@ impl<'a> ic_hir::visit::Visitor<'a> for StdlibVisitor<'a> {
                 if !value_ty.prototypes.is_empty() || !value_ty.attributes.is_empty() {
                     self.stdlib.abc = true;
                 }
+                self.stdlib.cts = true;
             }
             _ => {}
         }

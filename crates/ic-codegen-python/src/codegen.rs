@@ -129,15 +129,22 @@ fn collect_adt_refs(ty: &Ty, refs: &mut Vec<DefId>) {
 }
 
 pub struct PyGen<'a> {
-    pub hir: &'a ResolvedGraph,
+    pub(crate) hir: &'a ResolvedGraph,
+    pub(crate) original_hir: &'a ResolvedGraph,
     source_map: &'a SourceMap,
     options: PythonOptions,
 }
 
 impl<'a> PyGen<'a> {
-    pub fn new(hir: &'a ResolvedGraph, source_map: &'a SourceMap, options: PythonOptions) -> Self {
+    pub fn new(
+        hir: &'a ResolvedGraph,
+        original_hir: &'a ResolvedGraph,
+        source_map: &'a SourceMap,
+        options: PythonOptions,
+    ) -> Self {
         Self {
             hir,
+            original_hir,
             source_map,
             options,
         }
@@ -476,11 +483,12 @@ impl<'a> PyGen<'a> {
             }
         }
 
+        self.emit_type_info_def(w, def);
         w.dedent();
         py!(w, "\n\n");
     }
 
-    fn format_numeric(&self, w: &PyWriter, value: &Numeric) -> String {
+    pub(crate) fn format_numeric(&self, w: &PyWriter, value: &Numeric) -> String {
         match value {
             Numeric::Null => "None".to_string(),
             Numeric::Bool(b) => if *b { "True" } else { "False" }.to_string(),
@@ -545,6 +553,7 @@ impl<'a> PyGen<'a> {
             }
         }
 
+        self.emit_type_info_def(w, def);
         w.dedent();
         py!(w, "\n\n");
     }
@@ -561,6 +570,7 @@ impl<'a> PyGen<'a> {
             }
         }
 
+        self.emit_type_info_def(w, def);
         w.dedent();
         py!(w, "\n\n");
     }
@@ -665,6 +675,8 @@ impl<'a> PyGen<'a> {
         py!(w, "self._discriminator = ", disc_runtime_default, "\n");
         py!(w, "self._value = None\n");
         w.dedent();
+
+        self.emit_type_info_def(w, def);
         w.dedent();
         py!(w, "\n\n");
     }
@@ -744,6 +756,7 @@ impl<'a> PyGen<'a> {
             }
         }
 
+        self.emit_type_info_def(w, def);
         w.dedent();
         py!(w, "\n\n");
     }

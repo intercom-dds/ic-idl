@@ -25,26 +25,8 @@
 # OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-[project]
-name = "integration-tests"
-version = "0.0.0"
-requires-python = ">=3.11"
-dependencies = [ 
-   "intercom_cts @ file:///${PROJECT_ROOT}/../../runtime/python"
-]
+from typing import TypeAlias
 
-[tool.ruff.lint]
-select = ["ALL"]
-ignore = ["COM812", "D", "SIM300", "PLR", "S"]
-
-
-[tool.pytest.ini_options]
-testpaths = ["tests"]
-addopts = "--tb=short"
-
-[dependency-groups]
-dev = [
-    "pytest>=8.0",
-    "pytest-xdist>=3.0",
-    "pytest-sugar>=1.0",
-]
+JsonValue: TypeAlias = (
+    None | bool | int | float | str | list["JsonValue"] | dict[str, "JsonValue"]
+)

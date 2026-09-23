@@ -25,62 +25,8 @@
 # OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-import subprocess
-from pathlib import Path
+from typing import TypeAlias
 
-import pytest
-
-from conftest import run_codegen
-
-RUNTIME_SRC = Path(__file__).resolve().parents[2] / "runtime" / "python" / "src"
-
-@pytest.mark.parametrize(
-    "extra_args",
-    [
-        pytest.param([], id="default"),
-        pytest.param(["--no-rename"], id="no-rename"),
-        pytest.param(["--py-typed"], id="py-typed"),
-    ],
+JsonValue: TypeAlias = (
+    None | bool | int | float | str | list["JsonValue"] | dict[str, "JsonValue"]
 )
-def test_python(
-    idl_file: Path,
-    idl_compiler: Path,
-    output_dir: Path,
-    extra_args: list[str],
-) -> None:
-    py_files = run_codegen(idl_compiler, idl_file, output_dir, "python-out", extra_args)
-    if not py_files:
-        return
-
-    ignore = ["B019"]
-
-    if "--no-rename" in extra_args:
-        ignore += ["PYI042", "PYI047"]
-
-    ruff_args = ["uvx", "ruff", "check", "--ignore", ",".join(ignore), str(output_dir)]
-
-
-    result = subprocess.run(
-        ruff_args,
-        check=False,
-        capture_output=True,
-        text=True,
-        timeout=60,
-    )
-    assert result.returncode == 0, f"ruff failed:\n{result.stdout}\n{result.stderr}"
-
-    result = subprocess.run(
-        [
-            "uvx",
-            "ty",
-            "check",
-            f"--extra-search-path={output_dir.parent}",
-            f"--extra-search-path={RUNTIME_SRC}",
-            str(output_dir),
-        ],
-        check=False,
-        capture_output=True,
-        text=True,
-        timeout=60,
-    )
-    assert result.returncode == 0, f"ty failed:\n{result.stdout}\n{result.stderr}"

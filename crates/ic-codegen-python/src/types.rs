@@ -59,7 +59,7 @@ fn primitive_default(prim: PrimitiveTy) -> &'static str {
     match prim {
         PrimitiveTy::Void => "None",
         PrimitiveTy::Bool => "False",
-        PrimitiveTy::Char | PrimitiveTy::WChar => "\"\"",
+        PrimitiveTy::Char | PrimitiveTy::WChar => "\"\\0\"",
         PrimitiveTy::Int8
         | PrimitiveTy::UInt8
         | PrimitiveTy::Int16
@@ -109,7 +109,7 @@ pub(crate) fn wrapping_def<'a>(
 }
 
 pub(crate) fn collect_all_members(ctx: &Context, def_id: DefId) -> Vec<MemberKind<'_>> {
-    let def = ctx.definitions.get(def_id);
+    let def = ctx.base_def_of(def_id);
     let mut all_members = Vec::new();
 
     match &def.kind {
@@ -138,13 +138,33 @@ pub(crate) fn collect_all_members(ctx: &Context, def_id: DefId) -> Vec<MemberKin
 pub(crate) enum MemberKind<'a> {
     Member(&'a Member),
     Attrib(&'a Attribute),
+    Variant(&'a Variant),
 }
 
 impl MemberKind<'_> {
+    pub fn name(&self) -> &str {
+        match self {
+            MemberKind::Member(m) => &m.ident.name,
+            MemberKind::Attrib(a) => &a.ident.name,
+            MemberKind::Variant(v) => &v.ident.name,
+        }
+    }
+
     pub fn ty(&self) -> &Ty {
         match self {
             MemberKind::Member(m) => &m.ty,
             MemberKind::Attrib(a) => &a.ty,
+            MemberKind::Variant(v) => &v.ty,
+        }
+    }
+}
+
+impl MemberLike for MemberKind<'_> {
+    fn annotations(&self) -> &[ic_hir::hir::Ann] {
+        match self {
+            MemberKind::Member(m) => m.annotations(),
+            MemberKind::Attrib(a) => a.annotations(),
+            MemberKind::Variant(v) => v.annotations(),
         }
     }
 }

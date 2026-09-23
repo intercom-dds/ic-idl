@@ -27,6 +27,7 @@
 
 mod codegen;
 mod imports;
+mod type_info;
 mod types;
 mod writer;
 
@@ -108,7 +109,7 @@ pub fn codegen_python(
         ..Target::default()
     };
 
-    let hir = rename::transform(hir.clone(), &target);
-    let generator = codegen::PyGen::new(&hir, source_map, options);
+    let transformed_hir = rename::transform(hir.clone(), &target);
+    let generator = codegen::PyGen::new(&transformed_hir, hir, source_map, options);
     generator.generate()
 }

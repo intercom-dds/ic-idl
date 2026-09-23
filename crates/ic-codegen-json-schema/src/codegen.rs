@@ -495,7 +495,7 @@ impl<'a> JsonSchemaGen<'a> {
             "oneOf".to_string(),
             value!([
                 { "type": "integer", "minimum": 0 },
-                { "type": "string", "pattern": "^[A-Za-z_][A-Za-z0-9_]*(\\|[A-Za-z_][A-Za-z0-9_]*)*$" }
+                { "type": "string", "pattern": "^([A-Za-z_][A-Za-z0-9_]*(\\|[A-Za-z_][A-Za-z0-9_]*)*)?$" }
             ]),
         );
         Value::Object(obj)

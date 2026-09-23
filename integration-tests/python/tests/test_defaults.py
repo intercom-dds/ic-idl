@@ -137,6 +137,7 @@ def test_enum_field_default(generated_modules: dict[str, ModuleType]) -> None:
     e = dt.EnumDefaults()
     assert e.priority_high == dt.Priority.HIGH
 
+
 def test_deepcopy_complex_consts(generated_modules: dict[str, ModuleType]) -> None:
     dt = generated_modules["default_types"]
     dt.OuterDefaults().inner_literal.x = 0

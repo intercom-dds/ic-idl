@@ -26,31 +26,74 @@
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use std::ops::{Deref, Range};
+use std::ptr::NonNull;
 use std::sync::Arc;
 
 use super::Cursor;
 
-/// An owned, cloneable, zero-copy-sliceable byte cursor backed by an `Arc<[u8]>`.
+enum Storage {
+    Vec(Vec<u8>),
+    Arc(Arc<[u8]>),
+}
+
+impl Storage {
+    fn as_slice(&self) -> &[u8] {
+        match self {
+            Storage::Vec(data) => data,
+            Storage::Arc(data) => data,
+        }
+    }
+}
+
+/// An owned, cloneable, zero-copy-sliceable byte cursor backed by a shared,
+/// reference-counted byte buffer.
 ///
 /// `ArcSlice` holds a reference-counted byte buffer and tracks a visible
 /// window into it via an offset and length. Cloning an `ArcSlice` is cheap,
 /// and slicing produces a new cursor that shares the same underlying
 /// allocation.
 #[must_use]
-#[derive(Clone, Default)]
+#[derive(Clone)]
 pub struct ArcSlice {
-    data: Arc<[u8]>,
-    offset: u32,
+    ptr: NonNull<u8>,
     len: u32,
+    owner: Option<Arc<Storage>>,
+}
+
+// SAFETY: `ptr` points into bytes owned by `owner`, which keeps them alive and
+// never mutates them, and `Storage` is `Send` and `Sync`.
+unsafe impl Send for ArcSlice {}
+
+// SAFETY: `ArcSlice` only hands out shared references to immutable bytes.
+unsafe impl Sync for ArcSlice {}
+
+impl Default for ArcSlice {
+    fn default() -> Self {
+        Self {
+            ptr: NonNull::dangling(),
+            len: 0,
+            owner: None,
+        }
+    }
 }
 
 impl ArcSlice {
     pub fn new(data: Arc<[u8]>) -> Self {
-        let len = data.len() as u32;
+        Self::from_storage(Storage::Arc(data))
+    }
+
+    fn from_storage(storage: Storage) -> Self {
+        let bytes = storage.as_slice();
+        if bytes.is_empty() {
+            return Self::default();
+        }
+
+        let len = bytes.len() as u32;
+        let ptr = NonNull::from(bytes).cast::<u8>();
         Self {
-            data,
-            offset: 0,
+            ptr,
             len,
+            owner: Some(Arc::new(storage)),
         }
     }
 
@@ -69,9 +112,11 @@ impl ArcSlice {
         );
 
         ArcSlice {
-            data: Arc::clone(&self.data),
-            offset: self.offset + range.start as u32,
+            // SAFETY: `range.start` is at most `self.len`, so the result stays
+            // within or one past the end of the same allocation.
+            ptr: unsafe { self.ptr.add(range.start) },
             len: range.end as u32 - range.start as u32,
+            owner: self.owner.clone(),
         }
     }
 
@@ -89,9 +134,11 @@ impl ArcSlice {
         self.len == 0
     }
 
-    const fn window_range(&self) -> Range<usize> {
-        let start = self.offset as usize;
-        start..start + self.len as usize
+    fn bytes(&self) -> &[u8] {
+        // SAFETY: `ptr` and `len` describe bytes owned by `owner`, which lives
+        // at least as long as `self` and never mutates them. An empty slice
+        // uses a dangling but aligned pointer.
+        unsafe { std::slice::from_raw_parts(self.ptr.as_ptr(), self.len as usize) }
     }
 }
 
@@ -99,14 +146,14 @@ impl std::fmt::Debug for ArcSlice {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("ArcSlice")
             .field("len", &self.len)
-            .field("bytes", &&self.data[self.window_range()])
+            .field("bytes", &self.bytes())
             .finish()
     }
 }
 
 impl AsRef<[u8]> for ArcSlice {
     fn as_ref(&self) -> &[u8] {
-        &self.data[self.window_range()]
+        self.bytes()
     }
 }
 
@@ -114,7 +161,7 @@ impl Deref for ArcSlice {
     type Target = [u8];
 
     fn deref(&self) -> &[u8] {
-        &self.data[self.window_range()]
+        self.bytes()
     }
 }
 
@@ -134,13 +181,13 @@ impl From<Arc<[u8]>> for ArcSlice {
 
 impl From<Vec<u8>> for ArcSlice {
     fn from(data: Vec<u8>) -> Self {
-        Self::new(Arc::from(data))
+        Self::from_storage(Storage::Vec(data))
     }
 }
 
 impl From<&[u8]> for ArcSlice {
     fn from(data: &[u8]) -> Self {
-        Self::new(Arc::from(data))
+        Self::from_storage(Storage::Vec(data.to_vec()))
     }
 }
 
@@ -253,6 +300,45 @@ mod tests {
             read.read_u32::<Native>().unwrap(),
             u32::from_ne_bytes([0, 0, 0, 42])
         );
+    }
+
+    #[test]
+    fn stays_three_words() {
+        assert_eq!(size_of::<ArcSlice>(), 3 * size_of::<usize>());
+    }
+
+    #[test]
+    fn from_vec_keeps_allocation() {
+        let data = vec![1u8, 2, 3];
+        let ptr = data.as_ptr();
+        let cursor = ArcSlice::from(data);
+        assert_eq!(cursor.as_ref().as_ptr(), ptr);
+    }
+
+    #[test]
+    fn slice_outlives_original() {
+        let cursor = ArcSlice::from(vec![1, 2, 3, 4]);
+        let sub = cursor.slice(1..3);
+        drop(cursor);
+        assert_eq!(sub.as_ref(), &[2, 3]);
+    }
+
+    #[test]
+    fn default_is_empty() {
+        let cursor = ArcSlice::default();
+        assert!(cursor.is_empty());
+        assert_eq!(cursor.as_ref(), &[]);
+        assert!(cursor.slice(0..0).is_empty());
+    }
+
+    #[test]
+    fn crosses_threads() {
+        let cursor = ArcSlice::from(vec![5, 6, 7]);
+        let sub = cursor.slice(1..3);
+        let joined = std::thread::spawn(move || sub.as_ref().to_vec())
+            .join()
+            .unwrap();
+        assert_eq!(joined, vec![6, 7]);
     }
 
     #[test]

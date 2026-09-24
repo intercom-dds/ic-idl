@@ -27,7 +27,6 @@
 
 use std::marker::PhantomData;
 use std::ops::RangeBounds;
-use std::sync::Arc;
 
 use crate::buf::endian::Endian;
 use crate::buf::{ArcSlice, Cursor, Native};
@@ -294,7 +293,7 @@ impl<E: Endian> Buffer<E> {
     /// Consumes the buffer and returns an [`ArcSlice`] over the written bytes.
     pub fn freeze(mut self) -> ArcSlice {
         self.buf.truncate(self.write_idx);
-        ArcSlice::new(Arc::from(self.buf))
+        ArcSlice::from(self.buf)
     }
 }
 

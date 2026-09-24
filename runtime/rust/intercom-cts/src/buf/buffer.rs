@@ -137,12 +137,16 @@ impl<E: Endian> Buffer<E> {
     #[inline]
     pub fn extend(&mut self, slice: &[u8]) {
         let end_idx = self.write_idx + slice.len();
-        if end_idx >= self.remaining() {
-            self.reserve_n(slice.len());
-        }
+        if self.write_idx == self.buf.len() {
+            self.buf.extend_from_slice(slice);
+        } else {
+            if end_idx >= self.remaining() {
+                self.reserve_n(slice.len());
+            }
 
-        self.buf[self.write_idx..end_idx].copy_from_slice(slice);
-        self.write_idx += slice.len();
+            self.buf[self.write_idx..end_idx].copy_from_slice(slice);
+        }
+        self.write_idx = end_idx;
     }
 
     /// Returns the number of bytes remaining in the buffer's current capacity.
@@ -336,6 +340,25 @@ mod tests {
         let mut buf = Buffer::<Little>::with_capacity(32);
         buf.write_i64(i64::MIN);
         assert_eq!(buf.as_ref(), &i64::MIN.to_le_bytes());
+    }
+
+    #[test]
+    fn extend_appends_and_overwrites() {
+        let mut buf = Buffer::<Native>::new();
+        buf.extend(&[1, 2, 3, 4]);
+        assert_eq!(buf.as_ref(), &[1, 2, 3, 4]);
+
+        buf.set_pos(1);
+        buf.extend(&[9, 9]);
+        assert_eq!(buf.as_ref(), &[1, 9, 9, 4]);
+
+        buf.extend(&[7, 7]);
+        assert_eq!(&buf.as_ref()[..5], &[1, 9, 9, 7, 7]);
+        assert_eq!(buf.pos(), 5);
+
+        buf.set_pos(buf.as_ref().len());
+        buf.extend(&[5]);
+        assert_eq!(buf.as_ref().last(), Some(&5));
     }
 
     #[test]

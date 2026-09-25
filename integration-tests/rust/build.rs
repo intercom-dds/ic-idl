@@ -45,8 +45,12 @@ fn main() {
     println!("cargo::rerun-if-env-changed=IDL_COMPILER");
 
     Codegen::new("corpus")
-        .executable(idl_compiler)
+        .executable(&idl_compiler)
         .include("../corpus")
+        .flags([
+            "--json-schema-out",
+            &format!("{}/jsonschema", std::env::var("OUT_DIR").unwrap()),
+        ])
         .input(&idl_files)
         .generate()
         .expect("Generated corpus IDL");

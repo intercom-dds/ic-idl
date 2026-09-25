@@ -277,6 +277,8 @@ impl<'a> PyGen<'a> {
             DefKind::Module(_) | DefKind::Bitset(_) | DefKind::Annotation(_) | DefKind::Decl(_) => {
             }
         }
+
+        w.decleared_defs.insert(def_id);
     }
 
     fn source_filename(&self, def_id: DefId) -> Option<String> {
@@ -467,7 +469,7 @@ impl<'a> PyGen<'a> {
                 let default = if is_optional {
                     "None".to_string()
                 } else {
-                    self.field_default(w, &member.ty)
+                    self.field_default(w, &member.ty, def.parent)
                 };
 
                 py!(w, member.ident.name, ": ", ty_str, " = ", default, "\n");
@@ -548,7 +550,7 @@ impl<'a> PyGen<'a> {
     }
 
     fn emit_bitmask(&self, w: &mut PyWriter, def: &Def, bitmask_ty: &BitmaskTy) {
-        py!(w, "class ", def, "(_enum_.Flag):\n");
+        py!(w, "class ", def, "(_enum_.Flag, boundary=_enum_.KEEP):\n");
         w.indent();
 
         for &member_id in &bitmask_ty.flags {
@@ -581,7 +583,7 @@ impl<'a> PyGen<'a> {
             format!("{} | None", value_types.join(" | "))
         };
 
-        let disc_field_default = self.field_default(w, &union_ty.disc.ty);
+        let disc_field_default = self.field_default(w, &union_ty.disc.ty, def.parent);
         let disc_runtime_default = self.default_value(w, &union_ty.disc.ty);
         py!(w, "@_dataclasses_.dataclass(slots=True, order=True)\n");
         py!(w, "class ", def, ":\n");
@@ -717,7 +719,7 @@ impl<'a> PyGen<'a> {
             && matches!(self.hir.context.type_of(*def_id).kind, DefKind::Bitmask(_))
             && !matches!(&const_ty.value, Numeric::Const(_))
         {
-            let bitmask_type = self.py_type(w, &resolved_ty);
+            let bitmask_type: String = self.py_type(w, &const_ty.ty);
             format!("{bitmask_type}({value})")
         } else {
             value
@@ -737,7 +739,7 @@ impl<'a> PyGen<'a> {
         } else {
             for member in &except_ty.members {
                 let ty_str = self.py_type(w, &member.ty);
-                let default = self.field_default(w, &member.ty);
+                let default = self.field_default(w, &member.ty, def.parent);
                 py!(w, member.ident.name, ": ", ty_str, " = ", default, "\n");
             }
         }
@@ -854,7 +856,7 @@ impl<'a> PyGen<'a> {
 
             for member in &value_ty.members {
                 let ty_str = self.py_type(w, &member.ty);
-                let default = self.field_default(w, &member.ty);
+                let default = self.field_default(w, &member.ty, def.parent);
                 py!(w, member.ident.name, ": ", ty_str, " = ", default, "\n");
             }
 

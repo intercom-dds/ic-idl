@@ -25,6 +25,7 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+use std::cell::Cell;
 use std::collections::{BTreeMap, BTreeSet};
 use std::fmt::Write;
 use std::path::PathBuf;
@@ -40,7 +41,7 @@ use ic_vfs::SourceMap;
 
 use crate::imports::{ImportContext, collect_imports, is_exportable};
 use crate::writer::PyWriter;
-use crate::{PythonOptions, py};
+use crate::{PythonOptions, PythonTypeInfoCallback, py};
 
 const ORDER_IGNORE: &str = "  # ty: ignore[subclass-of-dataclass-with-order]";
 
@@ -128,23 +129,26 @@ fn collect_adt_refs(ty: &Ty, refs: &mut Vec<DefId>) {
     }
 }
 
-pub struct PyGen<'a> {
+pub struct PyGen<'a, 'cb> {
     pub(crate) hir: &'a ResolvedGraph,
     pub(crate) original_hir: &'a ResolvedGraph,
+    pub(crate) type_info_cb: Cell<Option<PythonTypeInfoCallback<'cb>>>,
     source_map: &'a SourceMap,
     options: PythonOptions,
 }
 
-impl<'a> PyGen<'a> {
+impl<'a, 'cb> PyGen<'a, 'cb> {
     pub fn new(
         hir: &'a ResolvedGraph,
         original_hir: &'a ResolvedGraph,
         source_map: &'a SourceMap,
         options: PythonOptions,
+        type_info_cb: Option<PythonTypeInfoCallback<'cb>>,
     ) -> Self {
         Self {
             hir,
             original_hir,
+            type_info_cb: Cell::new(type_info_cb),
             source_map,
             options,
         }

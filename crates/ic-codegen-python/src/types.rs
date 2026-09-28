@@ -69,7 +69,7 @@ fn primitive_default(prim: PrimitiveTy) -> &'static str {
     }
 }
 
-impl PyGen<'_> {
+impl PyGen<'_, '_> {
     pub fn py_def(&self, w: &PyWriter, def_id: DefId) -> String {
         self.py_def_relative_to(w, def_id, None)
     }

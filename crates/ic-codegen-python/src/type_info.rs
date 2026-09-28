@@ -37,7 +37,7 @@ use crate::codegen::{MemberKind, PyGen};
 use crate::py;
 use crate::writer::PyWriter;
 
-impl PyGen<'_> {
+impl PyGen<'_, '_> {
     pub fn emit_type_info_def(&self, w: &mut PyWriter, def: &Def) {
         let orig_def = self.original_hir.context.definitions.get(def.id);
 
@@ -100,6 +100,12 @@ impl PyGen<'_> {
             DefKind::Union(union_ty) => self.emit_union_member_info(w, def, union_ty),
             _ => {}
         }
+
+        let mut cb = self.type_info_cb.take();
+        if let Some(type_info_cb) = &mut cb {
+            type_info_cb(w, orig_def);
+        }
+        self.type_info_cb.set(cb);
     }
 
     pub fn emit_type_info(&self, w: &mut PyWriter, ty: &Ty) {

@@ -561,7 +561,28 @@ impl<'a> PyGen<'a> {
             }
         }
 
-        w.dedent();
+        if !bitmask_ty.flags.is_empty() {
+            py!(w, "\n@classmethod\ndef all(cls) -> ", def, ":\n");
+            w.indent();
+            py!(w, "return ");
+            for (i, &member_id) in bitmask_ty.flags.iter().enumerate() {
+                let member_def = self.hir.context.type_of(member_id);
+                py!(w, def, ".", member_def);
+
+                if i < bitmask_ty.flags.len() - 1 {
+                    py!(w, " | ");
+                }
+            }
+            w.dedent();
+            py!(w, "\n\n");
+
+            py!(w, "\n@classmethod\ndef none(cls) -> ", def, ":\n");
+            w.indent();
+            py!(w, "return cls(0)\n");
+            w.dedent();
+
+            w.dedent();
+        }
         py!(w, "\n\n");
     }
 

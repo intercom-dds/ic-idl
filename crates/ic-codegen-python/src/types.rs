@@ -209,11 +209,7 @@ impl PyGen<'_> {
         }
     }
 
-    fn needs_lambda_default(
-        &self,
-        w: &PyWriter,
-        def_id: DefId,
-    ) -> bool {
+    fn needs_lambda_default(&self, w: &PyWriter, def_id: DefId) -> bool {
         let def = self.hir.context.type_of(def_id);
         if matches!(
             def.kind,

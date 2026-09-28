@@ -561,8 +561,47 @@ impl<'a> PyGen<'a> {
             }
         }
 
+        py!(w, "\n");
+
+        if !bitmask_ty.flags.is_empty() {
+            let path = self.py_def(w, def.id);
+
+            if !bitmask_ty
+                .flags
+                .iter()
+                .any(|id| self.hir.context.type_of(*id).ident.name == "all")
+            {
+                py!(w, "@_builtins_.staticmethod\n");
+                py!(w, "def all() -> ", path, ":\n");
+                w.indent();
+                py!(w, "return ");
+                for (i, &member_id) in bitmask_ty.flags.iter().enumerate() {
+                    let member_def = self.hir.context.type_of(member_id);
+                    py!(w, path, ".", member_def);
+
+                    if i < bitmask_ty.flags.len() - 1 {
+                        py!(w, " | ");
+                    }
+                }
+                w.dedent();
+                py!(w, "\n\n");
+            }
+
+            if !bitmask_ty
+                .flags
+                .iter()
+                .any(|id| self.hir.context.type_of(*id).ident.name == "none")
+            {
+                py!(w, "@_builtins_.staticmethod\n");
+                py!(w, "def none() -> ", path, ":\n");
+                w.indent();
+                py!(w, "return ", path, "(0)\n");
+                w.dedent();
+            }
+        }
+
         w.dedent();
-        py!(w, "\n\n");
+        py!(w, "\n");
     }
 
     fn emit_union(&self, w: &mut PyWriter, def: &Def, union_ty: &UnionTy) {

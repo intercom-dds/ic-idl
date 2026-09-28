@@ -40,6 +40,7 @@ pub struct PyWriter {
 }
 
 impl PyWriter {
+    #[must_use]
     pub fn new(import_context: ImportContext) -> Self {
         Self {
             printer: PrettyPrinter::new(),

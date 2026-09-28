@@ -304,9 +304,7 @@ fn generate_code(
         cpp_out, "cpp" => ic_codegen_cpp::codegen_cpp(hir, vfs, options.cpp.clone());
         csharp_out, "csharp" => ic_codegen_csharp::codegen_csharp(hir, vfs, options.csharp);
         rust_out, "rust" => ic_codegen_rust::codegen_rust(hir, options.rust);
-        python_out, "python" => {
-            ic_codegen_python::codegen_python(hir, vfs, options.python.clone())
-        };
+        python_out, "python" => ic_codegen_python::codegen_python(hir, vfs, options.python.clone());
         idl_out, "idl" => ic_codegen_idl::codegen_idl(hir, vfs, options.idl);
         java_out, "java" => ic_codegen_java::codegen_java(hir, options.java.clone());
         json_out, "json" => ic_codegen_json::codegen_json(hir, vfs);

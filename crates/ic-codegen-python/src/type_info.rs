@@ -38,7 +38,7 @@ use crate::py;
 use crate::types::{MemberKind, collect_all_members};
 use crate::writer::PyWriter;
 
-impl PyGen<'_> {
+impl PyGen<'_, '_> {
     pub fn emit_type_info_def(&self, w: &mut PyWriter, def: &Def) {
         let orig_def = self.original_hir.context.definitions.get(def.id);
 
@@ -105,6 +105,10 @@ impl PyGen<'_> {
             DefKind::Enum(enum_ty) => self.emit_enum_member_info(w, def, enum_ty),
             DefKind::Union(union_ty) => self.emit_union_member_info(w, def, union_ty),
             _ => {}
+        }
+
+        if let Some(type_info_cb) = self.type_info_cb.borrow_mut().as_mut() {
+            type_info_cb(w, orig_def);
         }
     }
 

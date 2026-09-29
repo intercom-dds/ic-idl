@@ -232,6 +232,48 @@ impl<'a> JsonSchemaGen<'a> {
         }
     }
 
+    fn enum_def_id(&self, ty: &Ty) -> Option<DefId> {
+        let TyKind::Adt(def_id) = &ty.kind else {
+            return None;
+        };
+        match &self.hir.context.definitions.get(*def_id).kind {
+            DefKind::Enum(_) => Some(*def_id),
+            DefKind::Alias(alias) => self.enum_def_id(&alias.ty),
+            _ => None,
+        }
+    }
+
+    fn enumerator_name(&self, enum_id: DefId, value: &Numeric) -> Option<String> {
+        let DefKind::Enum(enum_ty) = &self.hir.context.definitions.get(enum_id).kind else {
+            return None;
+        };
+
+        if let Numeric::Const(def_id) = value
+            && enum_ty.fields.contains(def_id)
+        {
+            return Some(self.hir.context.definitions.get(*def_id).ident.name.clone());
+        }
+
+        let target = self.format_numeric(value);
+        enum_ty.fields.iter().find_map(|&field_id| {
+            let field = self.hir.context.definitions.get(field_id);
+            let DefKind::Const(const_ty) = &field.kind else {
+                return None;
+            };
+            (self.format_numeric(&const_ty.value) == target).then(|| field.ident.name.clone())
+        })
+    }
+
+    fn format_discriminator(&self, value: &Numeric, disc_ty: &Ty) -> Value {
+        if let Some(enum_id) = self.enum_def_id(disc_ty)
+            && let Some(name) = self.enumerator_name(enum_id, value)
+        {
+            return Value::String(name);
+        }
+
+        self.format_numeric(value)
+    }
+
     fn annotation_name<'b>(&'b self, annotation: &Ann) -> Option<&'b str> {
         let def = self.hir.context.base_def_of(annotation.def_id?);
         def.flags
@@ -411,7 +453,8 @@ impl<'a> JsonSchemaGen<'a> {
         let mut explicit_discriminators = Vec::new();
         for variant in &union_ty.variants {
             for label in &variant.labels {
-                explicit_discriminators.push(self.format_numeric(&label.value));
+                explicit_discriminators
+                    .push(self.format_discriminator(&label.value, &union_ty.disc.ty));
             }
         }
 
@@ -420,7 +463,7 @@ impl<'a> JsonSchemaGen<'a> {
             .iter()
             .map(|variant| {
                 let discriminator = if let Some(label) = variant.labels.first() {
-                    let const_val = self.format_numeric(&label.value);
+                    let const_val = self.format_discriminator(&label.value, &union_ty.disc.ty);
                     let ty_name = self.json_type(&union_ty.disc.ty);
                     value!({
                         "const": const_val,
@@ -495,7 +538,7 @@ impl<'a> JsonSchemaGen<'a> {
             "oneOf".to_string(),
             value!([
                 { "type": "integer", "minimum": 0 },
-                { "type": "string", "pattern": "^[A-Za-z_][A-Za-z0-9_]*(\\|[A-Za-z_][A-Za-z0-9_]*)*$" }
+                { "type": "string", "pattern": "^([A-Za-z_][A-Za-z0-9_]*(\\|[A-Za-z_][A-Za-z0-9_]*)*)?$" }
             ]),
         );
         Value::Object(obj)

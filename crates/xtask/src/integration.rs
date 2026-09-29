@@ -137,6 +137,15 @@ fn run_java_tests(integration_dir: &Path, build_dir: &Path, idl_compiler: &Path)
     run_command(cmd, "mvn");
 }
 
+fn run_json_schema_tests(integration_dir: &Path, build_dir: &Path, idl_compiler: &Path) {
+    let mut cmd = Command::new("cargo");
+    cmd.current_dir(integration_dir.join("json_schema"))
+        .env("CARGO_TARGET_DIR", build_dir.join("rust"))
+        .env("IDL_COMPILER", idl_compiler)
+        .arg("test");
+    run_command(cmd, "cargo");
+}
+
 fn run_rust_tests(integration_dir: &Path, build_dir: &Path, idl_compiler: &Path) {
     let mut cmd = Command::new("cargo");
     cmd.current_dir(integration_dir.join("rust"))
@@ -151,7 +160,16 @@ pub fn run(opts: &Options) {
     let integration_dir = root.join("integration-tests");
     let build_dir = root.join("target/integration-tests");
     let idl_compiler = crate::idl_compiler(&root, opts.idl_compiler.clone());
-    let all_languages = ["c", "python", "typescript", "csharp", "cpp", "java", "rust"];
+    let all_languages = [
+        "c",
+        "python",
+        "typescript",
+        "csharp",
+        "cpp",
+        "java",
+        "rust",
+        "json_schema",
+    ];
     let languages: HashSet<_> = if opts.lang.is_empty() || opts.lang.contains("all") {
         all_languages.iter().map(ToString::to_string).collect()
     } else {
@@ -174,6 +192,7 @@ pub fn run(opts: &Options) {
                 &idl_compiler,
             ),
             "java" => run_java_tests(&integration_dir, &build_dir, &idl_compiler),
+            "json_schema" => run_json_schema_tests(&integration_dir, &build_dir, &idl_compiler),
             "rust" | "rs" => run_rust_tests(&integration_dir, &build_dir, &idl_compiler),
             _ => {
                 eprintln!("error: unknown or unsupported language '{lang}'");

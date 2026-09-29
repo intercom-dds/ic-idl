@@ -67,8 +67,6 @@ mod test_exceptions;
 #[cfg(test)]
 mod test_interfaces;
 #[cfg(test)]
-mod test_json_schema;
-#[cfg(test)]
 mod test_multi_module;
 #[cfg(test)]
 mod test_nested_modules;

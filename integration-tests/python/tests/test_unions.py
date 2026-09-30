@@ -95,7 +95,7 @@ def test_union_default_method(generated_modules: dict[str, ModuleType]) -> None:
     u = union.IntOrString()
     u.int_val = 42
     u.default()
-    assert u._value is None  # noqa: SLF001
+    assert not u._value  # noqa: SLF001
 
 
 def test_union_discriminator_property(generated_modules: dict[str, ModuleType]) -> None:

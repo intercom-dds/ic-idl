@@ -25,8 +25,13 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use ic_hir::hir::{DefId, DefKind, PrimitiveTy, Ty, TyKind};
+use ic_hir::Context;
+use ic_hir::hir::{
+    Attribute, Def, DefId, DefKind, Member, Numeric, PrimitiveTy, Ty, TyKind, UnionTy, Variant,
+};
+use ic_hir_analysis::annotation::{MemberLike, default_value, is_optional};
 use ic_hir_analysis::enum_value::default_enumerator;
+use ic_hir_analysis::union_case::{default_discriminator, default_union_case, union_case};
 
 use crate::codegen::PyGen;
 use crate::imports::parent_module;
@@ -65,6 +70,82 @@ fn primitive_default(prim: PrimitiveTy) -> &'static str {
         | PrimitiveTy::UInt64 => "0",
         PrimitiveTy::Float32 | PrimitiveTy::Float64 => "0.0",
         PrimitiveTy::Float128 => "_decimal_.Decimal(0)",
+    }
+}
+
+pub(crate) fn default_union_variants<'a>(
+    ctx: &Context,
+    union_ty: &'a UnionTy,
+) -> ((Numeric, &'a Variant), (Numeric, &'a Variant)) {
+    let default_disc = default_discriminator(ctx, union_ty);
+    let default_case = default_union_case(ctx, union_ty);
+
+    let default_disc_init = default_value(ctx, &union_ty.disc)
+        .unwrap_or(&default_disc)
+        .clone();
+    let default_variant_init = union_case(ctx, union_ty, &default_disc_init)
+        .expect("union must have a case for its default discriminator")
+        .variant;
+
+    (
+        (default_disc_init, default_variant_init),
+        (default_disc, default_case.variant),
+    )
+}
+
+pub(crate) fn wrapping_def<'a>(
+    ctx: &'a Context,
+    ty: Option<&Ty>,
+    value: &Numeric,
+) -> Option<&'a Def> {
+    let TyKind::Adt(def_id) = &ty?.kind else {
+        return None;
+    };
+    if matches!(value, Numeric::Const(_)) {
+        return None;
+    }
+    let def = ctx.base_def_of(*def_id);
+    matches!(def.kind, DefKind::Bitmask(_) | DefKind::Enum(_)).then_some(def)
+}
+
+pub(crate) fn collect_all_members(ctx: &Context, def_id: DefId) -> Vec<MemberKind<'_>> {
+    let def = ctx.definitions.get(def_id);
+    let mut all_members = Vec::new();
+
+    match &def.kind {
+        DefKind::Struct(struct_ty) => {
+            if let Some(parent) = struct_ty.parent {
+                all_members.extend(collect_all_members(ctx, parent.def_id));
+            }
+            all_members.extend(struct_ty.members.iter().map(MemberKind::Member));
+        }
+        DefKind::Valuetype(valuetype_ty) => {
+            if let Some(parent) = valuetype_ty.parent {
+                all_members.extend(collect_all_members(ctx, parent.def_id));
+            }
+            all_members.extend(valuetype_ty.members.iter().map(MemberKind::Member));
+            all_members.extend(valuetype_ty.attributes.iter().map(MemberKind::Attrib));
+        }
+        DefKind::Except(except_ty) => {
+            all_members.extend(except_ty.members.iter().map(MemberKind::Member));
+        }
+        _ => {}
+    }
+
+    all_members
+}
+
+pub(crate) enum MemberKind<'a> {
+    Member(&'a Member),
+    Attrib(&'a Attribute),
+}
+
+impl MemberKind<'_> {
+    pub fn ty(&self) -> &Ty {
+        match self {
+            MemberKind::Member(m) => &m.ty,
+            MemberKind::Attrib(a) => &a.ty,
+        }
     }
 }
 
@@ -129,6 +210,14 @@ impl PyGen<'_> {
         self.py_type_relative_to(w, ty, None)
     }
 
+    pub fn py_member_type(&self, w: &PyWriter, ty: &Ty, member: &impl MemberLike) -> String {
+        if is_optional(&self.hir.context, member) {
+            format!("{} | None", self.py_type(w, ty))
+        } else {
+            self.py_type(w, ty)
+        }
+    }
+
     pub(crate) fn py_type_relative_to(
         &self,
         w: &PyWriter,
@@ -168,22 +257,77 @@ impl PyGen<'_> {
                 }
             }
             TyKind::Any | TyKind::Null => "None".to_string(),
-            TyKind::Array { .. } | TyKind::Sequence { .. } => "[]".to_string(),
+            TyKind::Array { ty, len, .. } => format!(
+                "[{} for _ in _builtins_.range({len})]",
+                self.default_value(w, ty)
+            ),
+            TyKind::Sequence { .. } => "[]".to_string(),
             TyKind::Map { .. } => "{}".to_string(),
             TyKind::Fixed => "_decimal_.Decimal(0)".to_string(),
         }
     }
 
-    pub fn field_default(&self, w: &PyWriter, ty: &Ty) -> String {
+    pub(crate) fn numeric_contains_const(numeric: &Numeric) -> bool {
+        match numeric {
+            Numeric::Const(_) => true,
+            Numeric::Array { values, .. } | Numeric::Sequence { values, .. } => {
+                values.iter().any(Self::numeric_contains_const)
+            }
+            Numeric::Map { entries, .. } => entries.iter().any(|(key, value)| {
+                Self::numeric_contains_const(key) || Self::numeric_contains_const(value)
+            }),
+            Numeric::Struct { fields, .. } => fields.iter().any(Self::numeric_contains_const),
+            Numeric::Union {
+                discriminant,
+                value,
+                ..
+            } => Self::numeric_contains_const(discriminant) || Self::numeric_contains_const(value),
+            _ => false,
+        }
+    }
+
+    pub(crate) fn field_default(&self, w: &PyWriter, ty: &Ty, member: &impl MemberLike) -> String {
+        if let Some(default_value) = default_value(&self.hir.context, member) {
+            if matches!(
+                default_value,
+                Numeric::Array { .. }
+                    | Numeric::Const(_)
+                    | Numeric::Sequence { .. }
+                    | Numeric::Map { .. }
+                    | Numeric::Struct { .. }
+                    | Numeric::Union { .. }
+            ) || matches!(ty.kind, TyKind::Adt(def_id) if self.needs_lambda_default(w, def_id))
+            {
+                let initializer = self.format_numeric(w, Some(ty), default_value);
+
+                return format!(
+                    "_dataclasses_.field(default_factory=lambda: {})",
+                    if Self::numeric_contains_const(default_value) {
+                        format!("_copy_.deepcopy({initializer})")
+                    } else {
+                        initializer
+                    }
+                );
+            }
+
+            return self.format_numeric(w, Some(ty), default_value);
+        }
+
+        if is_optional(&self.hir.context, member) {
+            return "None".into();
+        }
+
         let resolved = self.hir.context.resolve_ty(ty);
         match &resolved.kind {
             TyKind::Primitive(prim) => primitive_default(*prim).to_string(),
             TyKind::String { .. } => "\"\"".to_string(),
             TyKind::Any | TyKind::Null => "None".to_string(),
             TyKind::Fixed => "_decimal_.Decimal(0)".to_string(),
-            TyKind::Array { .. } | TyKind::Sequence { .. } => {
-                "_dataclasses_.field(default_factory=list)".to_string()
-            }
+            TyKind::Array { .. } => format!(
+                "_dataclasses_.field(default_factory=lambda: {})",
+                self.default_value(w, ty)
+            ),
+            TyKind::Sequence { .. } => "_dataclasses_.field(default_factory=list)".to_string(),
             TyKind::Map { .. } => "_dataclasses_.field(default_factory=dict)".to_string(),
             TyKind::Adt(def_id) => {
                 if self.needs_lambda_default(w, *def_id)
@@ -209,8 +353,8 @@ impl PyGen<'_> {
         }
     }
 
-    fn needs_lambda_default(&self, w: &PyWriter, def_id: DefId) -> bool {
-        let def = self.hir.context.type_of(def_id);
+    pub(crate) fn needs_lambda_default(&self, w: &PyWriter, def_id: DefId) -> bool {
+        let def = self.hir.context.base_def_of(def_id);
         if matches!(
             def.kind,
             DefKind::Enum(_) | DefKind::Bitmask(_) | DefKind::Const(_)

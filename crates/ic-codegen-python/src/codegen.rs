@@ -26,19 +26,20 @@
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use std::collections::{BTreeMap, BTreeSet};
-use std::fmt::Write;
+use std::fmt::{Display, Write};
 use std::path::PathBuf;
 
 use ic_emit::File;
 use ic_hir::ResolvedGraph;
 use ic_hir::hir::{
     AliasTy, BitmaskTy, ConstTy, Def, DefId, DefKind, EnumTy, ExceptTy, InterfaceTy, Numeric,
-    ParamKind, ProtoTy, StructTy, Ty, TyKind, UnionTy, ValueTy,
+    ParamKind, PrimitiveTy, ProtoTy, StructTy, Ty, TyKind, UnionTy, ValueTy,
 };
-use ic_hir_analysis::annotation::is_optional;
+use ic_hir_analysis::annotation::{default_value, is_optional};
 use ic_vfs::SourceMap;
 
 use crate::imports::{ImportContext, collect_imports, is_exportable};
+use crate::types::{collect_all_members, default_union_variants, wrapping_def};
 use crate::writer::PyWriter;
 use crate::{PythonOptions, py};
 
@@ -70,17 +71,39 @@ fn escape_python_string(s: &str) -> String {
     result
 }
 
-fn format_float(v: f64) -> String {
-    if v.is_nan() {
-        "float('nan')".to_string()
-    } else if v.is_infinite() {
-        if v.is_sign_positive() {
-            "float('inf')".to_string()
+fn format_float(v: f64, is_decimal: bool) -> String {
+    if is_decimal {
+        if v.is_nan() {
+            "_decimal_.Decimal('nan')".to_string()
+        } else if v.is_infinite() {
+            if v.is_sign_positive() {
+                "_decimal_.Decimal('inf')".to_string()
+            } else {
+                "_decimal_.Decimal('-inf')".to_string()
+            }
         } else {
-            "float('-inf')".to_string()
+            format!("_decimal_.Decimal('{v}')")
         }
-    } else if v.fract() == 0.0 {
-        format!("{v:.1}")
+    } else {
+        if v.is_nan() {
+            "float('nan')".to_string()
+        } else if v.is_infinite() {
+            if v.is_sign_positive() {
+                "float('inf')".to_string()
+            } else {
+                "float('-inf')".to_string()
+            }
+        } else if v.fract() == 0.0 {
+            format!("{v:.1}")
+        } else {
+            v.to_string()
+        }
+    }
+}
+
+fn format_integer<T: ToString + Display>(v: T, is_decimal: bool) -> String {
+    if is_decimal {
+        format!("_decimal_.Decimal('{v}')")
     } else {
         v.to_string()
     }
@@ -459,18 +482,8 @@ impl<'a> PyGen<'a> {
             py!(w, "pass\n");
         } else {
             for member in &struct_ty.members {
-                let is_optional = is_optional(&self.hir.context, member);
-                let ty_str = if is_optional {
-                    format!("{} | None", self.py_type(w, &member.ty))
-                } else {
-                    self.py_type(w, &member.ty)
-                };
-
-                let default = if is_optional {
-                    "None".to_string()
-                } else {
-                    self.field_default(w, &member.ty)
-                };
+                let ty_str = self.py_member_type(w, &member.ty, member);
+                let default = self.field_default(w, &member.ty, member);
 
                 py!(w, member.ident.name, ": ", ty_str, " = ", default, "\n");
             }
@@ -480,21 +493,35 @@ impl<'a> PyGen<'a> {
         py!(w, "\n\n");
     }
 
-    fn format_numeric(&self, w: &PyWriter, value: &Numeric) -> String {
+    pub(crate) fn format_numeric(&self, w: &PyWriter, ty: Option<&Ty>, value: &Numeric) -> String {
+        if let Some(def) = wrapping_def(&self.hir.context, ty, value) {
+            return format!(
+                "{}({})",
+                self.py_base(w, def.id),
+                self.format_numeric(w, None, value)
+            );
+        }
+
+        let is_decimal = ty.is_some_and(|ty| {
+            matches!(
+                self.hir.context.resolve_ty(ty).kind,
+                TyKind::Primitive(PrimitiveTy::Float128) | TyKind::Fixed
+            )
+        });
         match value {
             Numeric::Null => "None".to_string(),
             Numeric::Bool(b) => if *b { "True" } else { "False" }.to_string(),
             Numeric::Char(c) | Numeric::WChar(c) => format!("\"{}\"", escape_python_char(*c)),
-            Numeric::Int8(v) => v.to_string(),
-            Numeric::UInt8(v) => v.to_string(),
-            Numeric::Int16(v) => v.to_string(),
-            Numeric::UInt16(v) => v.to_string(),
-            Numeric::Int32(v) => v.to_string(),
-            Numeric::UInt32(v) => v.to_string(),
-            Numeric::Int64(v) => v.to_string(),
-            Numeric::UInt64(v) => v.to_string(),
-            Numeric::Float(v) => format_float(f64::from(*v)),
-            Numeric::Double(v) => format_float(*v),
+            Numeric::Int8(v) => format_integer(v, is_decimal),
+            Numeric::UInt8(v) => format_integer(v, is_decimal),
+            Numeric::Int16(v) => format_integer(v, is_decimal),
+            Numeric::UInt16(v) => format_integer(v, is_decimal),
+            Numeric::Int32(v) => format_integer(v, is_decimal),
+            Numeric::UInt32(v) => format_integer(v, is_decimal),
+            Numeric::Int64(v) => format_integer(v, is_decimal),
+            Numeric::UInt64(v) => format_integer(v, is_decimal),
+            Numeric::Float(v) => format_float(f64::from(*v), is_decimal),
+            Numeric::Double(v) => format_float(*v, is_decimal),
             Numeric::String(s) | Numeric::WString(s) => format!("\"{}\"", escape_python_string(s)),
             Numeric::Const(def_id) => {
                 let def = self.hir.context.type_of(*def_id);
@@ -507,18 +534,26 @@ impl<'a> PyGen<'a> {
                 }
                 self.py_def(w, def.id)
             }
-            Numeric::Array { values, .. } | Numeric::Sequence { values, .. } => {
-                let items: Vec<_> = values.iter().map(|v| self.format_numeric(w, v)).collect();
+            Numeric::Array { values, ty, .. } | Numeric::Sequence { values, ty, .. } => {
+                let items: Vec<_> = values
+                    .iter()
+                    .map(|v| self.format_numeric(w, Some(ty), v))
+                    .collect();
                 format!("[{}]", items.join(", "))
             }
-            Numeric::Map { entries, .. } => {
+            Numeric::Map {
+                entries,
+                key,
+                value,
+                ..
+            } => {
                 let items: Vec<_> = entries
                     .iter()
                     .map(|(k, v)| {
                         format!(
                             "{}: {}",
-                            self.format_numeric(w, k),
-                            self.format_numeric(w, v)
+                            self.format_numeric(w, Some(key), k),
+                            self.format_numeric(w, Some(value), v)
                         )
                     })
                     .collect();
@@ -526,10 +561,30 @@ impl<'a> PyGen<'a> {
             }
             Numeric::Struct { ty, fields } => {
                 let struct_name = self.py_def(w, *ty);
-                let items: Vec<_> = fields.iter().map(|v| self.format_numeric(w, v)).collect();
+                let items: Vec<_> = collect_all_members(&self.hir.context, *ty)
+                    .into_iter()
+                    .zip(fields)
+                    .map(|(member, v)| self.format_numeric(w, Some(member.ty()), v))
+                    .collect();
                 format!("{}({})", struct_name, items.join(", "))
             }
-            Numeric::Union { value, .. } => self.format_numeric(w, value),
+            Numeric::Union {
+                ty: union_id,
+                discriminant,
+                field_index,
+                value,
+            } => {
+                let DefKind::Union(union_ty) = &self.hir.context.definitions.get(*union_id).kind
+                else {
+                    return "None".into();
+                };
+                let disc = self.format_numeric(w, Some(&union_ty.disc.ty), discriminant);
+                let value = match union_ty.variants.get(*field_index) {
+                    Some(variant) => self.format_numeric(w, Some(&variant.ty), value),
+                    None => "None".to_string(),
+                };
+                format!("{}({disc}, {value})", self.py_def(w, *union_id))
+            }
         }
     }
 
@@ -540,7 +595,7 @@ impl<'a> PyGen<'a> {
         for &member_id in &enum_ty.fields {
             let member_def = self.hir.context.type_of(member_id);
             if let DefKind::Const(const_ty) = &member_def.kind {
-                let val = self.format_numeric(w, &const_ty.value);
+                let val = self.format_numeric(w, None, &const_ty.value);
                 py!(w, member_def, " = ", val, "\n");
             }
         }
@@ -556,7 +611,7 @@ impl<'a> PyGen<'a> {
         for &member_id in &bitmask_ty.flags {
             let member_def = self.hir.context.type_of(member_id);
             if let DefKind::Const(const_ty) = &member_def.kind {
-                let val = self.format_numeric(w, &const_ty.value);
+                let val = self.format_numeric(w, None, &const_ty.value);
                 py!(w, member_def, " = ", val, "\n");
             }
         }
@@ -604,6 +659,7 @@ impl<'a> PyGen<'a> {
         py!(w, "\n");
     }
 
+    #[allow(clippy::too_many_lines)]
     fn emit_union(&self, w: &mut PyWriter, def: &Def, union_ty: &UnionTy) {
         let disc_type = self.py_type(w, &union_ty.disc.ty);
         let mut value_types: Vec<_> = union_ty
@@ -622,13 +678,38 @@ impl<'a> PyGen<'a> {
             format!("{} | None", value_types.join(" | "))
         };
 
-        let disc_field_default = self.field_default(w, &union_ty.disc.ty);
-        let disc_runtime_default = self.default_value(w, &union_ty.disc.ty);
+        let ((default_disc_init, default_variant_init), (default_disc, default_case_variant)) =
+            default_union_variants(&self.hir.context, union_ty);
+
+        let default_value_reset = if let Some(default_value) =
+            default_value(&self.hir.context, default_case_variant)
+        {
+            let initializer = self.format_numeric(w, Some(&default_case_variant.ty), default_value);
+            if Self::numeric_contains_const(default_value) {
+                format!("_copy_.deepcopy({initializer})")
+            } else {
+                initializer
+            }
+        } else if is_optional(&self.hir.context, default_case_variant) {
+            "None".to_string()
+        } else {
+            self.default_value(w, &default_case_variant.ty)
+        };
+
         py!(w, "@_dataclasses_.dataclass(slots=True, order=True)\n");
         py!(w, "class ", def, ":\n");
         w.indent();
-        py!(w, "_discriminator: ", disc_type, " = ", disc_field_default, "\n");
-        py!(w, "_value: ", value_type_annotation, " = None\n");
+
+        let disc_init = self.format_numeric(w, Some(&union_ty.disc.ty), &default_disc_init);
+        let value_init = self.field_default(w, &default_variant_init.ty, default_variant_init);
+        if matches!(union_ty.disc.ty.kind, TyKind::Adt(def_id) if self.needs_lambda_default(w, def_id))
+            || matches!(default_disc_init, Numeric::Const(def_id) if self.needs_lambda_default(w, def_id))
+        {
+            py!(w, "_discriminator: ", disc_type, " = _dataclasses_.field(default_factory=lambda: ", disc_init, ")\n");
+        } else {
+            py!(w, "_discriminator: ", disc_type, " = ", disc_init, "\n");
+        }
+        py!(w, "_value: ", value_type_annotation, " = ", value_init, "\n");
         w.dedent();
         py!(w, "\n");
 
@@ -655,26 +736,28 @@ impl<'a> PyGen<'a> {
 
             if variant.is_default {
                 py!(w, "return _typing_.cast(", variant_type, ", self._value)\n");
-            } else if variant.labels.len() == 1 {
-                let label = self.format_numeric(w, &variant.labels[0].value);
-                let cmp = if matches!(variant.labels[0].value, Numeric::Bool(_)) {
-                    "is not"
-                } else {
-                    "!="
-                };
-
-                py!(w, "if self._discriminator ", cmp, " ", label, ":\n");
-                w.indent();
-                py!(w, "raise ValueError(\"", variant.ident.name, " not selected\")\n");
-                w.dedent();
-                py!(w, "return _typing_.cast(", variant_type, ", self._value)\n");
             } else {
                 let labels: Vec<_> = variant
                     .labels
                     .iter()
-                    .map(|l| self.format_numeric(w, &l.value))
+                    .map(|l| self.format_numeric(w, Some(&union_ty.disc.ty), &l.value))
                     .collect();
-                py!(w, "if self._discriminator not in (", labels.join(", "), "):\n");
+
+                let cond = if variant
+                    .labels
+                    .iter()
+                    .all(|label| matches!(label.value, Numeric::Bool(_)))
+                {
+                    labels
+                        .iter()
+                        .map(|label| format!("self._discriminator is not {label}"))
+                        .collect::<Vec<_>>()
+                        .join(" and ")
+                } else {
+                    format!("self._discriminator not in ({},)", labels.join(", "))
+                };
+
+                py!(w, "if ", cond, ":\n");
                 w.indent();
                 py!(w, "raise ValueError(\"", variant.ident.name, " not selected\")\n");
                 w.dedent();
@@ -689,7 +772,8 @@ impl<'a> PyGen<'a> {
             py!(w, "def ", variant.ident.name, "(self, val: ", variant_type, ") -> None:\n");
             w.indent();
             if !variant.labels.is_empty() {
-                let first_label = self.format_numeric(w, &variant.labels[0].value);
+                let first_label =
+                    self.format_numeric(w, Some(&union_ty.disc.ty), &variant.labels[0].value);
                 py!(w, "self._discriminator = ", first_label, "\n");
             }
             py!(w, "self._value = val\n");
@@ -701,8 +785,8 @@ impl<'a> PyGen<'a> {
         w.indent();
         py!(w, "def default(self) -> None:\n");
         w.indent();
-        py!(w, "self._discriminator = ", disc_runtime_default, "\n");
-        py!(w, "self._value = None\n");
+        py!(w, "self._discriminator = ", self.format_numeric(w, Some(&union_ty.disc.ty), &default_disc), "\n");
+        py!(w, format!("self._value = {default_value_reset}\n"));
         w.dedent();
         w.dedent();
         py!(w, "\n\n");
@@ -752,22 +836,9 @@ impl<'a> PyGen<'a> {
 
     fn emit_const(&self, w: &mut PyWriter, def: &Def, const_ty: &ConstTy) {
         let ty_str = self.py_type(w, &const_ty.ty);
-        let resolved_ty = self.hir.context.resolve_ty(&const_ty.ty);
-        let value = self.format_numeric(w, &const_ty.value);
-        let value_str = if let TyKind::Adt(def_id) = &resolved_ty.kind
-            && matches!(self.hir.context.type_of(*def_id).kind, DefKind::Bitmask(_))
-            && !matches!(&const_ty.value, Numeric::Const(_))
-        {
-            let bitmask_type = match &const_ty.ty.kind {
-                TyKind::Adt(id) => self.py_base(w, *id),
-                _ => self.py_type(w, &resolved_ty),
-            };
-            format!("{bitmask_type}({value})")
-        } else {
-            value
-        };
+        let value = self.format_numeric(w, Some(&const_ty.ty), &const_ty.value);
 
-        py!(w, def, ": _typing_.Final[", ty_str, "] = ", value_str, "\n");
+        py!(w, def, ": _typing_.Final[", ty_str, "] = ", value, "\n");
         py!(w, "\n\n");
     }
 
@@ -780,8 +851,8 @@ impl<'a> PyGen<'a> {
             py!(w, "pass\n");
         } else {
             for member in &except_ty.members {
-                let ty_str = self.py_type(w, &member.ty);
-                let default = self.field_default(w, &member.ty);
+                let ty_str = self.py_member_type(w, &member.ty, member);
+                let default = self.field_default(w, &member.ty, member);
                 py!(w, member.ident.name, ": ", ty_str, " = ", default, "\n");
             }
         }
@@ -897,8 +968,8 @@ impl<'a> PyGen<'a> {
             }
 
             for member in &value_ty.members {
-                let ty_str = self.py_type(w, &member.ty);
-                let default = self.field_default(w, &member.ty);
+                let ty_str = self.py_member_type(w, &member.ty, member);
+                let default = self.field_default(w, &member.ty, member);
                 py!(w, member.ident.name, ": ", ty_str, " = ", default, "\n");
             }
 

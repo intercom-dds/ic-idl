@@ -25,7 +25,8 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use ic_hir::hir::{DefId, DefKind, PrimitiveTy, Ty, TyKind};
+use ic_hir::hir::{DefId, DefKind, Numeric, PrimitiveTy, Ty, TyKind};
+use ic_hir_analysis::annotation::{DefaultTarget, default_value};
 use ic_hir_analysis::enum_value::default_enumerator;
 
 use crate::codegen::PyGen;
@@ -174,7 +175,33 @@ impl PyGen<'_> {
         }
     }
 
-    pub fn field_default(&self, w: &PyWriter, ty: &Ty, relative_to: Option<DefId>) -> String {
+    pub fn field_default(
+        &self,
+        w: &PyWriter,
+        ty: &Ty,
+        target: &impl DefaultTarget,
+        relative_to: Option<DefId>,
+    ) -> String {
+        if let Some(default_value) = default_value(&self.hir.context, target) {
+            if matches!(
+                default_value,
+                Numeric::Array { .. }
+                    | Numeric::Const(_)
+                    | Numeric::Sequence { .. }
+                    | Numeric::Map { .. }
+                    | Numeric::Struct { .. }
+                    | Numeric::Union { .. }
+            ) || matches!(ty.kind, TyKind::Adt(def_id) if self.needs_lambda_default(w, def_id, relative_to))
+            {
+                return format!(
+                    "_dataclasses_.field(default_factory=lambda: {})",
+                    self.format_numeric(w, Some(ty), default_value)
+                );
+            }
+
+            return self.format_numeric(w, Some(ty), default_value);
+        }
+
         let resolved = self.hir.context.resolve_ty(ty);
         match &resolved.kind {
             TyKind::Primitive(prim) => primitive_default(*prim).to_string(),

@@ -27,9 +27,11 @@
 
 use std::collections::{BTreeMap, BTreeSet, HashSet};
 
-use ic_hir::hir::{DefFlags, DefId, DefKind, PrimitiveTy, Ty, TyKind};
+use ic_hir::hir::{DefFlags, DefId, DefKind, Member, Numeric, PrimitiveTy, Ty, TyKind};
 use ic_hir::visit::Visitor;
 use ic_hir::{Context, ResolvedGraph};
+use ic_hir_analysis::annotation::{DefaultTarget, MemberLike, default_value, is_optional};
+use ic_hir_analysis::union_case::default_union_case;
 
 use crate::py;
 use crate::writer::PyWriter;
@@ -293,6 +295,58 @@ fn resolve_deferred_aliases(
     }
 }
 
+fn resolve_default_ty(
+    hir: &ResolvedGraph,
+    member: &impl DefaultTarget,
+    dep_ids: &mut HashSet<DefId>,
+) {
+    if let Some(value) = default_value(&hir.context, member) {
+        match value {
+            Numeric::Const(adt) => {
+                resolve_default_tys(hir, *adt, dep_ids);
+                dep_ids.insert(*adt);
+            }
+            Numeric::Struct { ty, .. } => {
+                resolve_default_tys(hir, *ty, dep_ids);
+                dep_ids.insert(*ty);
+            }
+            Numeric::Union { ty, .. } => {
+                dep_ids.insert(*ty);
+            }
+            _ => {}
+        }
+    }
+}
+
+fn resolve_default_tys(hir: &ResolvedGraph, def_id: DefId, dep_ids: &mut HashSet<DefId>) {
+    let def = hir.context.definitions.get(def_id);
+
+    match &def.kind {
+        DefKind::Struct(struct_ty) => {
+            for member in &struct_ty.members {
+                resolve_default_ty(hir, member, dep_ids);
+            }
+        }
+        DefKind::Except(except_ty) => {
+            for member in &except_ty.members {
+                resolve_default_ty(hir, member, dep_ids);
+            }
+        }
+        DefKind::Valuetype(valuetype_ty) => {
+            for attrib in &valuetype_ty.attributes {
+                resolve_default_ty(hir, attrib, dep_ids);
+            }
+            for member in &valuetype_ty.members {
+                resolve_default_ty(hir, member, dep_ids);
+            }
+        }
+        DefKind::Union(union_ty) => {
+            resolve_default_ty(hir, &union_ty.disc, dep_ids);
+        }
+        _ => {}
+    }
+}
+
 fn collect_module_imports(
     ctx: &ImportCollectorCtx,
     def_id: DefId,
@@ -303,6 +357,7 @@ fn collect_module_imports(
 ) {
     let mut dep_ids = ctx.hir.context.deps(def_id);
     resolve_deferred_aliases(ctx.hir, def_id, deferred, &mut dep_ids);
+    resolve_default_tys(ctx.hir, def_id, &mut dep_ids);
 
     for dep_id in dep_ids {
         if !is_exportable(ctx.hir, dep_id) {
@@ -471,6 +526,20 @@ struct StdlibVisitor<'a> {
     stdlib: Stdlib,
 }
 
+impl StdlibVisitor<'_> {
+    fn visit_field_default<M>(&mut self, ty: &Ty, member: &M)
+    where
+        M: MemberLike + DefaultTarget,
+    {
+        if default_value(self.context, member).is_none()
+            && !is_optional(self.context, member)
+            && matches!(self.context.resolve_ty(ty).kind, TyKind::Array { .. })
+        {
+            self.stdlib.builtins = true;
+        }
+    }
+}
+
 impl<'a> ic_hir::visit::Visitor<'a> for StdlibVisitor<'a> {
     fn context(&self) -> &'a Context {
         self.context
@@ -481,9 +550,11 @@ impl<'a> ic_hir::visit::Visitor<'a> for StdlibVisitor<'a> {
             DefKind::Struct(_) => {
                 self.stdlib.dataclasses = true;
             }
-            DefKind::Union(_) => {
+            DefKind::Union(union_ty) => {
                 self.stdlib.dataclasses = true;
                 self.stdlib.typing = true;
+                let default_case = default_union_case(self.context, union_ty);
+                self.visit_field_default(&default_case.variant.ty, default_case.variant);
             }
             DefKind::Except(_) => {
                 self.stdlib.builtins = true;
@@ -537,6 +608,11 @@ impl<'a> ic_hir::visit::Visitor<'a> for StdlibVisitor<'a> {
             _ => {}
         }
         ic_hir::visit::walk_ty(self, ty);
+    }
+
+    fn visit_member(&mut self, member: &'a Member) {
+        self.visit_field_default(&member.ty, member);
+        ic_hir::visit::walk_member(self, member);
     }
 }
 

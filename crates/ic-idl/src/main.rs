@@ -305,7 +305,7 @@ fn generate_code(
         csharp_out, "csharp" => ic_codegen_csharp::codegen_csharp(hir, vfs, options.csharp);
         rust_out, "rust" => ic_codegen_rust::codegen_rust(hir, options.rust);
         python_out, "python" => {
-            ic_codegen_python::codegen_python(hir, vfs, options.python.clone())
+            ic_codegen_python::codegen_python(hir, vfs, options.python.clone(), None)
         };
         idl_out, "idl" => ic_codegen_idl::codegen_idl(hir, vfs, options.idl);
         java_out, "java" => ic_codegen_java::codegen_java(hir, options.java.clone());

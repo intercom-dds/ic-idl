@@ -163,11 +163,14 @@ impl ImportContext {
 #[derive(Default)]
 pub struct Stdlib {
     pub abc: bool,
+    pub cache: bool,
+    pub cts_type_info: bool,
     pub builtins: bool,
     pub dataclasses: bool,
     pub decimal: bool,
     pub enum_: bool,
     pub typing: bool,
+    pub staticmethod: bool,
 }
 
 #[derive(Default)]
@@ -195,18 +198,31 @@ impl Stdlib {
         if self.enum_ {
             py!(w, "import enum as _enum_\n");
         }
+        if self.cache {
+            py!(w, "from functools import cache as _cache_\n");
+        }
         if self.typing {
             py!(w, "import typing as _typing_\n");
         }
 
+        if self.cts_type_info {
+            py!(w, "\n");
+            py!(w, "import intercom_cts.type_info as _type_info_\n");
+        }
+
         if self.abc
             || self.builtins
+            || self.cache
             || self.dataclasses
             || self.decimal
             || self.enum_
             || self.typing
         {
             py!(w, "\n");
+        }
+
+        if self.staticmethod {
+            py!(w, "_staticmethod_ = staticmethod\n\n");
         }
     }
 }
@@ -346,6 +362,26 @@ fn resolve_default_tys(hir: &ResolvedGraph, def_id: DefId, dep_ids: &mut HashSet
     }
 }
 
+fn collect_type_info_deps(hir: &ResolvedGraph, ty: &Ty, refs: &mut HashSet<DefId>) {
+    match &ty.kind {
+        TyKind::Adt(id) => {
+            refs.insert(*id);
+            let resolved = hir.context.resolve_ty(ty);
+            if !matches!(resolved.kind, TyKind::Adt(_)) {
+                collect_type_info_deps(hir, &resolved, refs);
+            }
+        }
+        TyKind::Array { ty, .. } | TyKind::Sequence { ty, .. } => {
+            collect_type_info_deps(hir, ty, refs);
+        }
+        TyKind::Map { key, elem, .. } => {
+            collect_type_info_deps(hir, key, refs);
+            collect_type_info_deps(hir, elem, refs);
+        }
+        _ => {}
+    }
+}
+
 fn collect_module_imports(
     ctx: &ImportCollectorCtx,
     def_id: DefId,
@@ -355,6 +391,11 @@ fn collect_module_imports(
     context: &mut ImportContext,
 ) {
     let mut dep_ids = ctx.hir.context.deps(def_id);
+
+    for dep_id in ctx.hir.context.ty_deps(def_id) {
+        collect_type_info_deps(ctx.hir, &ctx.hir.context.base_type_of(dep_id), &mut dep_ids);
+    }
+
     resolve_deferred_aliases(ctx.hir, def_id, deferred, &mut dep_ids);
     resolve_default_tys(ctx.hir, def_id, &mut dep_ids);
 
@@ -534,17 +575,29 @@ impl<'a> ic_hir::visit::Visitor<'a> for StdlibVisitor<'a> {
         match &def.kind {
             DefKind::Struct(_) => {
                 self.stdlib.dataclasses = true;
+                self.stdlib.cache = true;
+                self.stdlib.cts_type_info = true;
+                self.stdlib.staticmethod = true;
             }
             DefKind::Union(_) => {
                 self.stdlib.dataclasses = true;
                 self.stdlib.typing = true;
+                self.stdlib.cache = true;
+                self.stdlib.cts_type_info = true;
+                self.stdlib.staticmethod = true;
             }
             DefKind::Except(_) => {
                 self.stdlib.builtins = true;
                 self.stdlib.dataclasses = true;
+                self.stdlib.cache = true;
+                self.stdlib.cts_type_info = true;
+                self.stdlib.staticmethod = true;
             }
             DefKind::Enum(_) | DefKind::Bitmask(_) => {
                 self.stdlib.enum_ = true;
+                self.stdlib.cache = true;
+                self.stdlib.cts_type_info = true;
+                self.stdlib.staticmethod = true;
             }
             DefKind::Alias(_) => {
                 self.stdlib.typing = true;
@@ -572,6 +625,9 @@ impl<'a> ic_hir::visit::Visitor<'a> for StdlibVisitor<'a> {
                 if !value_ty.prototypes.is_empty() || !value_ty.attributes.is_empty() {
                     self.stdlib.abc = true;
                 }
+                self.stdlib.cache = true;
+                self.stdlib.cts_type_info = true;
+                self.stdlib.staticmethod = true;
             }
             _ => {}
         }

@@ -25,6 +25,7 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+use std::cell::Cell;
 use std::collections::{BTreeMap, BTreeSet};
 use std::fmt::Write;
 use std::path::PathBuf;
@@ -35,12 +36,12 @@ use ic_hir::hir::{
     AliasTy, Attribute, BitmaskTy, ConstTy, Def, DefId, DefKind, EnumTy, ExceptTy, InterfaceTy,
     Member, Numeric, ParamKind, ProtoTy, StructTy, Ty, TyKind, UnionTy, ValueTy,
 };
-use ic_hir_analysis::annotation::is_optional;
+use ic_hir_analysis::annotation::{MemberLike, is_optional};
 use ic_vfs::SourceMap;
 
 use crate::imports::{ImportContext, collect_imports, is_exportable};
 use crate::writer::PyWriter;
-use crate::{PythonOptions, py};
+use crate::{PythonOptions, PythonTypeInfoCallback, py};
 
 const ORDER_IGNORE: &str = "  # ty: ignore[subclass-of-dataclass-with-order]";
 
@@ -128,16 +129,26 @@ fn collect_adt_refs(ty: &Ty, refs: &mut Vec<DefId>) {
     }
 }
 
-pub struct PyGen<'a> {
-    pub hir: &'a ResolvedGraph,
+pub struct PyGen<'a, 'cb> {
+    pub(crate) hir: &'a ResolvedGraph,
+    pub(crate) original_hir: &'a ResolvedGraph,
+    pub(crate) type_info_cb: Cell<Option<PythonTypeInfoCallback<'cb>>>,
     source_map: &'a SourceMap,
     options: PythonOptions,
 }
 
-impl<'a> PyGen<'a> {
-    pub fn new(hir: &'a ResolvedGraph, source_map: &'a SourceMap, options: PythonOptions) -> Self {
+impl<'a, 'cb> PyGen<'a, 'cb> {
+    pub fn new(
+        hir: &'a ResolvedGraph,
+        original_hir: &'a ResolvedGraph,
+        source_map: &'a SourceMap,
+        options: PythonOptions,
+        type_info_cb: Option<PythonTypeInfoCallback<'cb>>,
+    ) -> Self {
         Self {
             hir,
+            original_hir,
+            type_info_cb: Cell::new(type_info_cb),
             source_map,
             options,
         }
@@ -455,9 +466,7 @@ impl<'a> PyGen<'a> {
 
         w.indent();
 
-        if struct_ty.members.is_empty() {
-            py!(w, "pass\n");
-        } else {
+        if !struct_ty.members.is_empty() {
             for member in &struct_ty.members {
                 let is_optional = is_optional(&self.hir.context, member);
                 let ty_str = if is_optional {
@@ -476,6 +485,7 @@ impl<'a> PyGen<'a> {
             }
         }
 
+        self.emit_type_info_def(w, def);
         w.dedent();
         py!(w, "\n\n");
     }
@@ -546,12 +556,13 @@ impl<'a> PyGen<'a> {
                 format!("{{{}}}", items.join(", "))
             }
             Numeric::Struct { ty, fields } => {
+                let def = self.hir.context.definitions.get(*ty);
                 let struct_name = self.py_def(w, *ty);
                 let items: Vec<_> = self
-                    .collect_all_members(*ty)
+                    .collect_all_members(def)
                     .into_iter()
                     .zip(fields)
-                    .map(|(member, v)| self.format_numeric(w, Some(member.ty()), v))
+                    .map(|((_, member), v)| self.format_numeric(w, Some(member.ty()), v))
                     .collect();
                 format!("{}({})", struct_name, items.join(", "))
             }
@@ -587,6 +598,7 @@ impl<'a> PyGen<'a> {
             }
         }
 
+        self.emit_type_info_def(w, def);
         w.dedent();
         py!(w, "\n\n");
     }
@@ -604,7 +616,7 @@ impl<'a> PyGen<'a> {
         }
 
         if !bitmask_ty.flags.is_empty() {
-            py!(w, "\n@classmethod\ndef all(cls) -> ", def, ":\n");
+            py!(w, "\n@_staticmethod_\ndef all() -> ", def, ":\n");
             w.indent();
             py!(w, "return ");
             for (i, &member_id) in bitmask_ty.flags.iter().enumerate() {
@@ -618,13 +630,15 @@ impl<'a> PyGen<'a> {
             w.dedent();
             py!(w, "\n\n");
 
-            py!(w, "\n@classmethod\ndef none(cls) -> ", def, ":\n");
+            py!(w, "\n@_staticmethod_\ndef none() -> ", def, ":\n");
             w.indent();
-            py!(w, "return cls(0)\n");
-            w.dedent();
-
+            py!(w, "return ", self.py_def(w, def.id), "(0)\n");
             w.dedent();
         }
+        py!(w, "\n");
+
+        self.emit_type_info_def(w, def);
+        w.dedent();
         py!(w, "\n\n");
     }
 
@@ -731,6 +745,8 @@ impl<'a> PyGen<'a> {
         py!(w, "self._discriminator = ", disc_runtime_default, "\n");
         py!(w, "self._value = None\n");
         w.dedent();
+
+        self.emit_type_info_def(w, def);
         w.dedent();
         py!(w, "\n\n");
     }
@@ -803,9 +819,7 @@ impl<'a> PyGen<'a> {
         py!(w, "class ", def, "(_builtins_.Exception):\n");
         w.indent();
 
-        if except_ty.members.is_empty() {
-            py!(w, "pass\n");
-        } else {
+        if !except_ty.members.is_empty() {
             for member in &except_ty.members {
                 let ty_str = self.py_type(w, &member.ty);
                 let default = self.field_default(w, &member.ty, member, def.parent);
@@ -813,6 +827,7 @@ impl<'a> PyGen<'a> {
             }
         }
 
+        self.emit_type_info_def(w, def);
         w.dedent();
         py!(w, "\n\n");
     }
@@ -903,13 +918,11 @@ impl<'a> PyGen<'a> {
         }
         w.indent();
 
-        if value_ty.members.is_empty()
-            && value_ty.attributes.is_empty()
-            && value_ty.prototypes.is_empty()
-            && value_ty.definitions.is_empty()
+        if !value_ty.members.is_empty()
+            || !value_ty.attributes.is_empty()
+            || !value_ty.prototypes.is_empty()
+            || !value_ty.definitions.is_empty()
         {
-            py!(w, "pass\n");
-        } else {
             let (nested_aliases, nested_defs): (Vec<DefId>, Vec<DefId>) =
                 value_ty.definitions.iter().copied().partition(|&id| {
                     matches!(self.hir.context.type_of(id).kind, DefKind::Alias(_))
@@ -946,6 +959,7 @@ impl<'a> PyGen<'a> {
             }
         }
 
+        self.emit_type_info_def(w, def);
         w.dedent();
         py!(w, "\n\n");
     }
@@ -995,31 +1009,49 @@ impl<'a> PyGen<'a> {
         }
     }
 
-    fn collect_all_members(&self, def_id: DefId) -> Vec<MemberKind<'a>> {
-        let def = self.hir.context.definitions.get(def_id);
-        let mut all_members = Vec::new();
+    pub(crate) fn collect_all_members(&self, def: &'a Def) -> Vec<(DefId, MemberKind<'a>)> {
+        let mut members = Vec::new();
+
+        if let Some(parent) = def.parent {
+            let parent_def = self.hir.context.definitions.get(parent);
+            members.extend(self.collect_all_members(parent_def));
+        }
 
         match &def.kind {
             DefKind::Struct(struct_ty) => {
-                if let Some(parent) = struct_ty.parent {
-                    all_members.extend(self.collect_all_members(parent.def_id));
-                }
-                all_members.extend(struct_ty.members.iter().map(MemberKind::Member));
-            }
-            DefKind::Valuetype(valuetype_ty) => {
-                if let Some(parent) = valuetype_ty.parent {
-                    all_members.extend(self.collect_all_members(parent.def_id));
-                }
-                all_members.extend(valuetype_ty.members.iter().map(MemberKind::Member));
-                all_members.extend(valuetype_ty.attributes.iter().map(MemberKind::Attrib));
+                members.extend(
+                    struct_ty
+                        .members
+                        .iter()
+                        .map(|m| (def.id, MemberKind::Member(m))),
+                );
             }
             DefKind::Except(except_ty) => {
-                all_members.extend(except_ty.members.iter().map(MemberKind::Member));
+                members.extend(
+                    except_ty
+                        .members
+                        .iter()
+                        .map(|m| (def.id, MemberKind::Member(m))),
+                );
+            }
+            DefKind::Valuetype(value_ty) => {
+                members.extend(
+                    value_ty
+                        .attributes
+                        .iter()
+                        .map(|a| (def.id, MemberKind::Attrib(a))),
+                );
+                members.extend(
+                    value_ty
+                        .members
+                        .iter()
+                        .map(|m| (def.id, MemberKind::Member(m))),
+                );
             }
             _ => {}
         }
 
-        all_members
+        members
     }
 }
 
@@ -1029,10 +1061,26 @@ pub(crate) enum MemberKind<'a> {
 }
 
 impl MemberKind<'_> {
+    pub fn name(&self) -> &str {
+        match self {
+            MemberKind::Member(m) => &m.ident.name,
+            MemberKind::Attrib(a) => &a.ident.name,
+        }
+    }
+
     pub fn ty(&self) -> &Ty {
         match self {
             MemberKind::Member(m) => &m.ty,
             MemberKind::Attrib(a) => &a.ty,
+        }
+    }
+}
+
+impl MemberLike for MemberKind<'_> {
+    fn annotations(&self) -> &[ic_hir::hir::Ann] {
+        match self {
+            MemberKind::Member(m) => m.annotations(),
+            MemberKind::Attrib(a) => a.annotations(),
         }
     }
 }

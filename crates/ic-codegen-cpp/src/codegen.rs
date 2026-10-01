@@ -337,10 +337,14 @@ impl<'a> CppGen<'a> {
 
     pub fn emit_member(&self, w: &mut Twine, member: &MemberKind<'a>, def_id: DefId) {
         let ty_str = self.member_cpp_type(member.ty(), member, def_id);
+        w!(w, ty_str, " ", member.name(), ";\n");
+    }
+
+    pub fn emit_member_default(&self, w: &mut Twine, member: &MemberKind<'a>, def_id: DefId) {
         let external = is_external(&self.hir.context, member);
 
         let inner_ty = self.cpp_type(member.ty(), def_id);
-        w!(w, ty_str, " ", member.name());
+
         if let Some(default) = default_value(&self.hir.context, member) {
             let is_array = matches!(default, Numeric::Array { .. });
             if !is_array || external {
@@ -366,8 +370,9 @@ impl<'a> CppGen<'a> {
             }
         } else if external {
             w!(w, "{::std::make_unique<", inner_ty ,">(", inner_ty, "())}");
+        } else {
+            w!(w, "{}");
         }
-        w!(w, ";\n");
     }
 
     pub fn collect_members(&self, def_id: DefId) -> Vec<MemberKind<'a>> {

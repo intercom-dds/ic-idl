@@ -26,7 +26,7 @@
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use ic_emit::printer::{Twine, w};
-use ic_hir::hir::{Def, StructTy};
+use ic_hir::hir::{Def, DefKind, StructTy};
 use ic_hir_analysis::annotation::is_external;
 
 use crate::codegen::{CppGen, MemberKind};
@@ -161,7 +161,13 @@ impl CppGen<'_> {
 
         let qualified_name = self.scoped_name(def.id, None);
         w!(impl_w, "inline ", qualified_name, "::", exception_name, "()  :\n");
-        w!(impl_w, "std::runtime_error(\"", exception_name, "\") {}\n\n");
+        w!(impl_w, "std::runtime_error(\"", exception_name, "\")");
+        for member in members {
+            w!(impl_w, ",\n");
+            w!(impl_w, member.ident.name);
+            self.emit_member_default(impl_w, &MemberKind::Member(member), def.id);
+        }
+        w!(impl_w, "{}\n\n");
 
         if members.is_empty() {
             w!(impl_w, "inline ", qualified_name, "::", exception_name, "(\n");
@@ -196,7 +202,12 @@ impl CppGen<'_> {
     fn emit_struct_like_constructors(&self, w: &mut Twine, def: &Def, external_member: bool) {
         let struct_name = &def.ident.name;
 
-        w!(w, struct_name, "() = default;\n");
+        w!(w, struct_name, "()", if matches!(&def.kind, DefKind::Struct(s) if s.members.is_empty()) {
+            " = default"
+        } else {
+            ""
+        }, ";\n");
+
         if external_member {
             w!(w, struct_name, "(const ", struct_name, "&);\n");
             w!(w, struct_name, "& operator=(const ", struct_name, "&);\n");
@@ -240,6 +251,21 @@ impl CppGen<'_> {
         let qualified_name = self.scoped_name(def.id, None);
         let struct_name = &def.ident.name;
         let all_members = self.collect_all_members(def.id);
+
+        let members = self.collect_members(def.id);
+        if !members.is_empty() {
+            w!(w, "inline ", qualified_name, "::", struct_name, "() :\n");
+            w.indent();
+            for (i, member) in members.iter().enumerate() {
+                w!(w, member.name());
+                self.emit_member_default(w, member, def.id);
+                if i < members.len() - 1 {
+                    w!(w, ",\n");
+                }
+            }
+            w.dedent();
+            w!(w, "\n{}\n\n");
+        }
 
         w!(w, "inline ", qualified_name, "::", struct_name, "(\n");
         for (i, member) in all_members.iter().enumerate() {

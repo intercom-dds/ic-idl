@@ -25,7 +25,8 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use ic_hir::hir::{DefId, DefKind, PrimitiveTy, Ty, TyKind};
+use ic_hir::hir::{DefId, DefKind, Numeric, PrimitiveTy, Ty, TyKind};
+use ic_hir_analysis::annotation::{DefaultTarget, default_value};
 use ic_hir_analysis::enum_value::default_enumerator;
 
 use crate::codegen::PyGen;
@@ -174,7 +175,33 @@ impl PyGen<'_> {
         }
     }
 
-    pub fn field_default(&self, w: &PyWriter, ty: &Ty) -> String {
+    pub fn field_default(
+        &self,
+        w: &PyWriter,
+        ty: &Ty,
+        target: &impl DefaultTarget,
+        relative_to: Option<DefId>,
+    ) -> String {
+        if let Some(default_value) = default_value(&self.hir.context, target) {
+            if matches!(
+                default_value,
+                Numeric::Array { .. }
+                    | Numeric::Const(_)
+                    | Numeric::Sequence { .. }
+                    | Numeric::Map { .. }
+                    | Numeric::Struct { .. }
+                    | Numeric::Union { .. }
+            ) || matches!(ty.kind, TyKind::Adt(def_id) if self.needs_lambda_default(w, def_id, relative_to))
+            {
+                return format!(
+                    "_dataclasses_.field(default_factory=lambda: {})",
+                    self.format_numeric(w, Some(ty), default_value)
+                );
+            }
+
+            return self.format_numeric(w, Some(ty), default_value);
+        }
+
         let resolved = self.hir.context.resolve_ty(ty);
         match &resolved.kind {
             TyKind::Primitive(prim) => primitive_default(*prim).to_string(),
@@ -186,7 +213,7 @@ impl PyGen<'_> {
             }
             TyKind::Map { .. } => "_dataclasses_.field(default_factory=dict)".to_string(),
             TyKind::Adt(def_id) => {
-                if self.needs_lambda_default(w, *def_id)
+                if self.needs_lambda_default(w, *def_id, relative_to)
                     || matches!(&ty.kind, TyKind::Adt(id) if w.deferred_aliases.contains(id))
                 {
                     let val = self.default_value(w, ty);
@@ -209,12 +236,21 @@ impl PyGen<'_> {
         }
     }
 
-    fn needs_lambda_default(&self, w: &PyWriter, def_id: DefId) -> bool {
+    fn needs_lambda_default(
+        &self,
+        w: &PyWriter,
+        def_id: DefId,
+        relative_to: Option<DefId>,
+    ) -> bool {
         let def = self.hir.context.type_of(def_id);
         if matches!(
             def.kind,
             DefKind::Enum(_) | DefKind::Bitmask(_) | DefKind::Const(_)
         ) {
+            return true;
+        }
+
+        if def.parent == relative_to && !w.decleared_defs.contains(&def_id) {
             return true;
         }
 

@@ -32,8 +32,8 @@ use std::path::PathBuf;
 use ic_emit::File;
 use ic_hir::ResolvedGraph;
 use ic_hir::hir::{
-    AliasTy, BitmaskTy, ConstTy, Def, DefId, DefKind, EnumTy, ExceptTy, InterfaceTy, Numeric,
-    ParamKind, ProtoTy, StructTy, Ty, TyKind, UnionTy, ValueTy,
+    AliasTy, Attribute, BitmaskTy, ConstTy, Def, DefId, DefKind, EnumTy, ExceptTy, InterfaceTy,
+    Member, Numeric, ParamKind, ProtoTy, StructTy, Ty, TyKind, UnionTy, ValueTy,
 };
 use ic_hir_analysis::annotation::is_optional;
 use ic_vfs::SourceMap;
@@ -277,6 +277,8 @@ impl<'a> PyGen<'a> {
             DefKind::Module(_) | DefKind::Bitset(_) | DefKind::Annotation(_) | DefKind::Decl(_) => {
             }
         }
+
+        w.decleared_defs.insert(def_id);
     }
 
     fn source_filename(&self, def_id: DefId) -> Option<String> {
@@ -467,7 +469,7 @@ impl<'a> PyGen<'a> {
                 let default = if is_optional {
                     "None".to_string()
                 } else {
-                    self.field_default(w, &member.ty)
+                    self.field_default(w, &member.ty, member, def.parent)
                 };
 
                 py!(w, member.ident.name, ": ", ty_str, " = ", default, "\n");
@@ -478,7 +480,20 @@ impl<'a> PyGen<'a> {
         py!(w, "\n\n");
     }
 
-    fn format_numeric(&self, w: &PyWriter, value: &Numeric) -> String {
+    pub(crate) fn format_numeric(&self, w: &PyWriter, ty: Option<&Ty>, value: &Numeric) -> String {
+        if let Some(ty) = ty
+            && let TyKind::Adt(def_id) = &ty.kind
+        {
+            let def = self.hir.context.definitions.get(def_id);
+            if matches!(def.kind, DefKind::Bitmask(_) | DefKind::Enum(_)) {
+                return format!(
+                    "{}({})",
+                    self.py_def(w, def.id),
+                    self.format_numeric(w, None, value)
+                );
+            }
+        }
+
         match value {
             Numeric::Null => "None".to_string(),
             Numeric::Bool(b) => if *b { "True" } else { "False" }.to_string(),
@@ -505,18 +520,26 @@ impl<'a> PyGen<'a> {
                 }
                 self.py_def(w, def.id)
             }
-            Numeric::Array { values, .. } | Numeric::Sequence { values, .. } => {
-                let items: Vec<_> = values.iter().map(|v| self.format_numeric(w, v)).collect();
+            Numeric::Array { values, ty, .. } | Numeric::Sequence { values, ty, .. } => {
+                let items: Vec<_> = values
+                    .iter()
+                    .map(|v| self.format_numeric(w, Some(ty), v))
+                    .collect();
                 format!("[{}]", items.join(", "))
             }
-            Numeric::Map { entries, .. } => {
+            Numeric::Map {
+                entries,
+                key,
+                value,
+                ..
+            } => {
                 let items: Vec<_> = entries
                     .iter()
                     .map(|(k, v)| {
                         format!(
                             "{}: {}",
-                            self.format_numeric(w, k),
-                            self.format_numeric(w, v)
+                            self.format_numeric(w, Some(key), k),
+                            self.format_numeric(w, Some(value), v)
                         )
                     })
                     .collect();
@@ -524,10 +547,31 @@ impl<'a> PyGen<'a> {
             }
             Numeric::Struct { ty, fields } => {
                 let struct_name = self.py_def(w, *ty);
-                let items: Vec<_> = fields.iter().map(|v| self.format_numeric(w, v)).collect();
+                let items: Vec<_> = self
+                    .collect_all_members(*ty)
+                    .into_iter()
+                    .zip(fields)
+                    .map(|(member, v)| self.format_numeric(w, Some(member.ty()), v))
+                    .collect();
                 format!("{}({})", struct_name, items.join(", "))
             }
-            Numeric::Union { value, .. } => self.format_numeric(w, value),
+            Numeric::Union {
+                ty: union_id,
+                discriminant,
+                field_index,
+                value,
+            } => {
+                let DefKind::Union(union_ty) = &self.hir.context.definitions.get(*union_id).kind
+                else {
+                    return "None".into();
+                };
+                let disc = self.format_numeric(w, Some(&union_ty.disc.ty), discriminant);
+                let value = match union_ty.variants.get(*field_index) {
+                    Some(variant) => self.format_numeric(w, Some(&variant.ty), value),
+                    None => "None".to_string(),
+                };
+                format!("{}({disc}, {value})", self.py_def(w, *union_id))
+            }
         }
     }
 
@@ -538,7 +582,7 @@ impl<'a> PyGen<'a> {
         for &member_id in &enum_ty.fields {
             let member_def = self.hir.context.type_of(member_id);
             if let DefKind::Const(const_ty) = &member_def.kind {
-                let val = self.format_numeric(w, &const_ty.value);
+                let val = self.format_numeric(w, None, &const_ty.value);
                 py!(w, member_def, " = ", val, "\n");
             }
         }
@@ -548,18 +592,39 @@ impl<'a> PyGen<'a> {
     }
 
     fn emit_bitmask(&self, w: &mut PyWriter, def: &Def, bitmask_ty: &BitmaskTy) {
-        py!(w, "class ", def, "(_enum_.Flag):\n");
+        py!(w, "class ", def, "(_enum_.Flag, boundary=_enum_.KEEP):\n");
         w.indent();
 
         for &member_id in &bitmask_ty.flags {
             let member_def = self.hir.context.type_of(member_id);
             if let DefKind::Const(const_ty) = &member_def.kind {
-                let val = self.format_numeric(w, &const_ty.value);
+                let val = self.format_numeric(w, None, &const_ty.value);
                 py!(w, member_def, " = ", val, "\n");
             }
         }
 
-        w.dedent();
+        if !bitmask_ty.flags.is_empty() {
+            py!(w, "\n@classmethod\ndef all(cls) -> ", def, ":\n");
+            w.indent();
+            py!(w, "return ");
+            for (i, &member_id) in bitmask_ty.flags.iter().enumerate() {
+                let member_def = self.hir.context.type_of(member_id);
+                py!(w, def, ".", member_def);
+
+                if i < bitmask_ty.flags.len() - 1 {
+                    py!(w, " | ");
+                }
+            }
+            w.dedent();
+            py!(w, "\n\n");
+
+            py!(w, "\n@classmethod\ndef none(cls) -> ", def, ":\n");
+            w.indent();
+            py!(w, "return cls(0)\n");
+            w.dedent();
+
+            w.dedent();
+        }
         py!(w, "\n\n");
     }
 
@@ -581,7 +646,8 @@ impl<'a> PyGen<'a> {
             format!("{} | None", value_types.join(" | "))
         };
 
-        let disc_field_default = self.field_default(w, &union_ty.disc.ty);
+        let disc_field_default =
+            self.field_default(w, &union_ty.disc.ty, &union_ty.disc, def.parent);
         let disc_runtime_default = self.default_value(w, &union_ty.disc.ty);
         py!(w, "@_dataclasses_.dataclass(slots=True, order=True)\n");
         py!(w, "class ", def, ":\n");
@@ -615,7 +681,8 @@ impl<'a> PyGen<'a> {
             if variant.is_default {
                 py!(w, "return _typing_.cast(", variant_type, ", self._value)\n");
             } else if variant.labels.len() == 1 {
-                let label = self.format_numeric(w, &variant.labels[0].value);
+                let label =
+                    self.format_numeric(w, Some(&union_ty.disc.ty), &variant.labels[0].value);
                 let cmp = if matches!(variant.labels[0].value, Numeric::Bool(_)) {
                     "is not"
                 } else {
@@ -631,7 +698,7 @@ impl<'a> PyGen<'a> {
                 let labels: Vec<_> = variant
                     .labels
                     .iter()
-                    .map(|l| self.format_numeric(w, &l.value))
+                    .map(|l| self.format_numeric(w, Some(&union_ty.disc.ty), &l.value))
                     .collect();
                 py!(w, "if self._discriminator not in (", labels.join(", "), "):\n");
                 w.indent();
@@ -648,7 +715,8 @@ impl<'a> PyGen<'a> {
             py!(w, "def ", variant.ident.name, "(self, val: ", variant_type, ") -> None:\n");
             w.indent();
             if !variant.labels.is_empty() {
-                let first_label = self.format_numeric(w, &variant.labels[0].value);
+                let first_label =
+                    self.format_numeric(w, Some(&union_ty.disc.ty), &variant.labels[0].value);
                 py!(w, "self._discriminator = ", first_label, "\n");
             }
             py!(w, "self._value = val\n");
@@ -712,12 +780,15 @@ impl<'a> PyGen<'a> {
     fn emit_const(&self, w: &mut PyWriter, def: &Def, const_ty: &ConstTy) {
         let ty_str = self.py_type(w, &const_ty.ty);
         let resolved_ty = self.hir.context.resolve_ty(&const_ty.ty);
-        let value = self.format_numeric(w, &const_ty.value);
+        let value = self.format_numeric(w, Some(&const_ty.ty), &const_ty.value);
         let value_str = if let TyKind::Adt(def_id) = &resolved_ty.kind
             && matches!(self.hir.context.type_of(*def_id).kind, DefKind::Bitmask(_))
             && !matches!(&const_ty.value, Numeric::Const(_))
         {
-            let bitmask_type = self.py_type(w, &resolved_ty);
+            let bitmask_type = match &const_ty.ty.kind {
+                TyKind::Adt(id) => self.py_base(w, *id),
+                _ => self.py_type(w, &resolved_ty),
+            };
             format!("{bitmask_type}({value})")
         } else {
             value
@@ -737,7 +808,7 @@ impl<'a> PyGen<'a> {
         } else {
             for member in &except_ty.members {
                 let ty_str = self.py_type(w, &member.ty);
-                let default = self.field_default(w, &member.ty);
+                let default = self.field_default(w, &member.ty, member, def.parent);
                 py!(w, member.ident.name, ": ", ty_str, " = ", default, "\n");
             }
         }
@@ -854,7 +925,7 @@ impl<'a> PyGen<'a> {
 
             for member in &value_ty.members {
                 let ty_str = self.py_type(w, &member.ty);
-                let default = self.field_default(w, &member.ty);
+                let default = self.field_default(w, &member.ty, member, def.parent);
                 py!(w, member.ident.name, ": ", ty_str, " = ", default, "\n");
             }
 
@@ -921,6 +992,47 @@ impl<'a> PyGen<'a> {
         File::Generated {
             path,
             source: w.finish(),
+        }
+    }
+
+    fn collect_all_members(&self, def_id: DefId) -> Vec<MemberKind<'a>> {
+        let def = self.hir.context.definitions.get(def_id);
+        let mut all_members = Vec::new();
+
+        match &def.kind {
+            DefKind::Struct(struct_ty) => {
+                if let Some(parent) = struct_ty.parent {
+                    all_members.extend(self.collect_all_members(parent.def_id));
+                }
+                all_members.extend(struct_ty.members.iter().map(MemberKind::Member));
+            }
+            DefKind::Valuetype(valuetype_ty) => {
+                if let Some(parent) = valuetype_ty.parent {
+                    all_members.extend(self.collect_all_members(parent.def_id));
+                }
+                all_members.extend(valuetype_ty.members.iter().map(MemberKind::Member));
+                all_members.extend(valuetype_ty.attributes.iter().map(MemberKind::Attrib));
+            }
+            DefKind::Except(except_ty) => {
+                all_members.extend(except_ty.members.iter().map(MemberKind::Member));
+            }
+            _ => {}
+        }
+
+        all_members
+    }
+}
+
+pub(crate) enum MemberKind<'a> {
+    Member(&'a Member),
+    Attrib(&'a Attribute),
+}
+
+impl MemberKind<'_> {
+    pub fn ty(&self) -> &Ty {
+        match self {
+            MemberKind::Member(m) => &m.ty,
+            MemberKind::Attrib(a) => &a.ty,
         }
     }
 }

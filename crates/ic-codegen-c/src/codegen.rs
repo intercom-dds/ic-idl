@@ -35,7 +35,7 @@ use ic_hir::hir::{
     AliasTy, Attribute, BitmaskTy, ConstTy, Def, DefFlags, DefId, DefKind, EnumTy, InterfaceTy,
     Member, Numeric, ParamKind, Parameter, PrimitiveTy, ProtoTy, Ty, TyKind, UnionTy, ValueTy,
 };
-use ic_hir_analysis::annotation::is_optional;
+use ic_hir_analysis::annotation::{is_external, is_optional};
 use ic_vfs::SourceMap;
 
 use crate::COptions;
@@ -127,7 +127,7 @@ impl<'a> CGen<'a> {
         )
     }
 
-    fn c_optional_member(&self, ty: &Ty, name: impl std::fmt::Display) -> String {
+    fn c_optional_or_external_member(&self, ty: &Ty, name: impl std::fmt::Display) -> String {
         if self.is_pointer_type(ty) {
             return self.c_member(ty, name);
         }
@@ -139,11 +139,12 @@ impl<'a> CGen<'a> {
     }
 
     fn emit_member(&self, w: &mut Twine, member: &Member) {
-        let declaration = if is_optional(&self.hir.context, member) {
-            self.c_optional_member(&member.ty, &member.ident.name)
-        } else {
-            self.c_member(&member.ty, &member.ident.name)
-        };
+        let declaration =
+            if is_optional(&self.hir.context, member) || is_external(&self.hir.context, member) {
+                self.c_optional_or_external_member(&member.ty, &member.ident.name)
+            } else {
+                self.c_member(&member.ty, &member.ident.name)
+            };
         w!(w, declaration, ";\n");
     }
 

@@ -26,7 +26,7 @@
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use ic_emit::printer::{Twine, w};
-use ic_hir::hir::{Def, ValueTy};
+use ic_hir::hir::{Def, DefKind, ValueTy};
 use ic_hir_analysis::annotation::is_external;
 
 use crate::codegen::CppGen;
@@ -92,7 +92,11 @@ impl CppGen<'_> {
     fn emit_valuetype_constructors(&self, w: &mut Twine, def: &Def, _valuetype_ty: &ValueTy) {
         let valuetype_name = &def.ident.name;
 
-        w!(w, valuetype_name, "() = default;\n");
+        w!(w, valuetype_name, "()", if matches!(&def.kind, DefKind::Valuetype(v) if v.members.is_empty() && v.attributes.is_empty()) {
+            " = default"
+        } else {
+            ""
+        }, ";\n");
         w!(w, valuetype_name, "(const ", valuetype_name, "&) = default;\n");
         w!(w, valuetype_name, "& operator=(const ", valuetype_name, "&) = default;\n");
         w!(w, valuetype_name, "(", valuetype_name, " &&) = default;\n");
@@ -175,6 +179,21 @@ impl CppGen<'_> {
         let qualified_name = self.scoped_name(def.id, None);
         let valuetype_name = &def.ident.name;
         let all_members = self.collect_all_members(def.id);
+
+        let members = self.collect_members(def.id);
+        if !members.is_empty() {
+            w!(w, "inline ", qualified_name, "::", valuetype_name, "() :\n");
+            w.indent();
+            for (i, member) in members.iter().enumerate() {
+                w!(w, member.name());
+                self.emit_member_default(w, member, def.id);
+                if i < members.len() - 1 {
+                    w!(w, ",\n");
+                }
+            }
+            w.dedent();
+            w!(w, "\n{}\n\n");
+        }
 
         w!(w, "inline ", qualified_name, "::", valuetype_name, "(\n");
         for (i, member) in all_members.iter().enumerate() {

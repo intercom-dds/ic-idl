@@ -410,3 +410,187 @@ valuetype BadValue {
 
     assert_snapshot!(test_lint_hir(source));
 }
+
+#[test]
+fn valid_nested_const_numeric() {
+    let source = r#"
+
+typedef long Number;
+
+struct Simple {
+    Number a;
+    Number b;
+};
+
+struct SimpleMultiple
+{
+    @default(20.5) double a;
+    @default(20.5) float b;
+    @default(10) short c;
+    @default("Hello!!") string d;
+    @optional float e;
+    @optional string f;
+};
+
+struct NestedStructs
+{
+    Simple simple_struct;
+    SimpleMultiple simple_multiple;
+};
+
+const Number SIMPLE1 = 10;
+const Number SIMPLE2 = 20;
+
+const sequence<sequence<octet>> BYTEARRAY_SEQUENCE_CONST = {{0x05,0x06},{0x07,0x08}};
+const map<octet, octet> MAP_OCTET_CONST = {{0x01, 0x02}};
+
+struct Good {
+    @default({
+        simple_struct = {SIMPLE1, SIMPLE2},
+        simple_multiple = {1, 2, 3, "Test!", 5, "6"}
+    })
+    NestedStructs a;
+    
+    @default({SIMPLE1, SIMPLE2}) Simple b;
+    
+    @default(BYTEARRAY_SEQUENCE_CONST) sequence<sequence<octet>> s;
+
+    @default(MAP_OCTET_CONST) map<octet, octet> m;
+};
+"#;
+
+    let output = test_lint_hir(source);
+    assert!(output.is_empty(), "Expected no errors, but got: {output}");
+}
+
+#[test]
+fn typedef_const_in_collection_mismatch() {
+    let source = r"
+typedef long Number;
+
+const sequence<Number> NUMBERS = {1};
+
+struct Bad {
+    @default(NUMBERS) sequence<short> values;
+};
+";
+
+    assert_snapshot!(test_lint_hir(source));
+}
+
+#[test]
+fn valid_bounded_string_const() {
+    let source = r#"
+const string<5> SHORT = "abc";
+const wstring<5> WIDE_SHORT = L"abc";
+
+struct Good {
+    @default(SHORT) string a;
+    @default(SHORT) string<5> b;
+    @default(SHORT) string<10> c;
+    @default(WIDE_SHORT) wstring d;
+};
+"#;
+
+    let output = test_lint_hir(source);
+    assert!(output.is_empty(), "Expected no errors, but got: {output}");
+}
+
+#[test]
+fn const_sequence_primitive_mismatch() {
+    let source = r"
+const sequence<octet> BYTES = {1};
+
+struct Bad {
+    @default(BYTES) sequence<long> values;
+};
+";
+
+    assert_snapshot!(test_lint_hir(source));
+}
+
+#[test]
+fn bounded_string_const_too_long() {
+    let source = r#"
+const string<10> LONG = "abc";
+
+struct Bad {
+    @default(LONG) string<5> value;
+};
+"#;
+
+    assert_snapshot!(test_lint_hir(source));
+}
+
+#[test]
+fn unbounded_string_const_on_bounded_member() {
+    let source = r#"
+const string TEXT = "abc";
+
+struct Bad {
+    @default(TEXT) string<5> value;
+};
+"#;
+
+    assert_snapshot!(test_lint_hir(source));
+}
+
+#[test]
+fn wide_string_const_on_string_member() {
+    let source = r#"
+const wstring TEXT = L"abc";
+
+struct Bad {
+    @default(TEXT) string value;
+};
+"#;
+
+    assert_snapshot!(test_lint_hir(source));
+}
+
+#[test]
+fn valid_newtype_const() {
+    let source = r#"
+@ext::newtype typedef string NewString;
+
+const NewString NEW = "abc";
+
+struct Good {
+    @default(NEW) NewString a;
+};
+"#;
+
+    let output = test_lint_hir(source);
+    assert!(output.is_empty(), "Expected no errors, but got: {output}");
+}
+
+#[test]
+fn newtype_on_underlying_type_const() {
+    let source = r#"
+@ext::newtype typedef string NewString;
+
+const NewString NEW = "abc";
+
+struct Bad {
+    @default(NEW) string a;
+};
+"#;
+
+    assert_snapshot!(test_lint_hir(source));
+}
+
+#[test]
+fn newtype_on_other_newtype_const() {
+    let source = r#"
+@ext::newtype typedef string NewString;
+@ext::newtype typedef string NewString2;
+
+const NewString NEW = "abc";
+
+struct Bad {
+    @default(NEW) NewString2 a;
+};
+"#;
+
+    assert_snapshot!(test_lint_hir(source));
+}

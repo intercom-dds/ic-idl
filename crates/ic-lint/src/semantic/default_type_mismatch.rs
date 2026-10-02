@@ -98,11 +98,12 @@ impl DefaultTypeMismatch<'_> {
     }
 
     fn is_compatible(&self, value: &Numeric, ty: &Ty) -> bool {
+        let resolved_ty = self.hir.context.resolve_ty(ty);
+
         if let Numeric::Const(const_id) = value {
-            return self.is_const_compatible(*const_id, ty);
+            return self.is_const_compatible(*const_id, &resolved_ty);
         }
 
-        let resolved_ty = self.hir.context.resolve_ty(ty);
         match (&resolved_ty.kind, value) {
             (_, Numeric::Null)
             | (TyKind::String { wide: false, .. }, Numeric::String(_))
@@ -193,18 +194,22 @@ impl DefaultTypeMismatch<'_> {
         let DefKind::Const(const_ty) = &const_def.kind else {
             return false;
         };
-        let const_resolved = self.hir.context.resolve_ty(&const_ty.ty);
-        let target_resolved = self.hir.context.resolve_ty(ty);
-        Self::types_compatible(&const_resolved.kind, &target_resolved.kind)
-    }
 
-    fn types_compatible(a: &TyKind, b: &TyKind) -> bool {
-        match (a, b) {
-            (TyKind::String { .. }, TyKind::String { .. }) => true,
-            (TyKind::Primitive(pa), TyKind::Primitive(pb)) => pa == pb,
-            (TyKind::Adt(id_a), TyKind::Adt(id_b)) => id_a == id_b,
-            _ => false,
+        let const_resolved_ty = self.hir.context.resolve_ty(&const_ty.ty);
+        if matches!((&ty.kind, &const_resolved_ty.kind), (TyKind::Primitive(prim_a), TyKind::Primitive(prim_b)) if prim_a != prim_b)
+        {
+            return false;
         }
+
+        if let TyKind::Adt(adt_id) = &ty.kind
+            && let def = self.hir.context.definitions.get(*adt_id)
+            && matches!(def.kind, DefKind::Bitmask(_) | DefKind::Enum(_))
+            && matches!((&ty.kind, &const_resolved_ty.kind),(TyKind::Adt(id_a), TyKind::Adt(id_b)) if id_a != id_b)
+        {
+            return false;
+        }
+
+        self.is_compatible(&const_ty.value, ty)
     }
 
     fn is_valid_enum_value(&self, value: &Numeric, enum_ty: &EnumTy) -> bool {

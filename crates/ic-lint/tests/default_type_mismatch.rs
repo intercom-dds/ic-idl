@@ -410,3 +410,50 @@ valuetype BadValue {
 
     assert_snapshot!(test_lint_hir(source));
 }
+
+#[test]
+fn valid_nested_const_numeric() {
+    let source = r#"
+
+struct Simple {
+    long a;
+    long b;
+};
+
+struct SimpleMultiple
+{
+    @default(20.5) double a;
+    @default(20.5) float b;
+    @default(10) short c;
+    @default("Hello!!") string d;
+    @optional float e;
+    @optional string f;
+};
+
+struct NestedStructs
+{
+    Simple simple_struct;
+    SimpleMultiple simple_multiple;
+};
+
+const long Simple1 = 10;
+const long Simple2 = 20;
+
+const sequence<sequence<octet>> bytearray_sequence_const = {{0x05,0x06},{0x07,0x08}};
+
+struct Good {
+    @default({
+        simple_struct = {Simple1, Simple2},
+        simple_multiple = {1, 2, 3, "Test!", 5, "6"}
+    })
+    NestedStructs a;
+    
+    @default({Simple1, Simple2}) Simple b;
+    
+    @default(bytearray_sequence_const) sequence<sequence<octet>> s;
+};
+"#;
+
+    let output = test_lint_hir(source);
+    assert!(output.is_empty(), "Expected no errors, but got: {output}");
+}

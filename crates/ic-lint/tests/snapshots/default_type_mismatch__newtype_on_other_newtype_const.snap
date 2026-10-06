@@ -1,0 +1,11 @@
+---
+source: crates/ic-lint/tests/default_type_mismatch.rs
+expression: test_lint_hir(source)
+---
+⨯ default-type-mismatch: @default value is not compatible with member type `NewString2`
+  @ test.idl:8:14
+
+  7 │ struct Bad {
+  8 │     @default(NEW) NewString2 a;
+    │              ˆˆˆ incompatible default value
+  9 │ };

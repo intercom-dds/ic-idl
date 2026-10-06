@@ -34,7 +34,7 @@ use ic_hir::hir::{
     TyKind, UnionTy, Variant,
 };
 use ic_hir::visit::Visitor;
-use ic_hir_analysis::annotation::{DefaultTarget, default_annotation};
+use ic_hir_analysis::annotation::{DefaultTarget, default_annotation, is_newtype};
 
 use crate::{Category, Lint, LintCtx};
 
@@ -78,7 +78,7 @@ impl DefaultTypeMismatch<'_> {
                 Self::category(),
                 format!(
                     "@default value is not compatible with member type `{}`",
-                    self.hir.context.type_name(ty),
+                    self.ctx.slice(ty.span),
                 ),
                 Label::new(arg.ident.span).message("incompatible default value"),
             );
@@ -89,7 +89,7 @@ impl DefaultTypeMismatch<'_> {
                 Self::category(),
                 format!(
                     "integer value out of range for '{}'",
-                    self.hir.context.type_name(ty),
+                    self.ctx.slice(ty.span),
                 ),
                 Label::new(arg.ident.span).message("out of range"),
             );
@@ -193,16 +193,95 @@ impl DefaultTypeMismatch<'_> {
         let DefKind::Const(const_ty) = &const_def.kind else {
             return false;
         };
-        let const_resolved = self.hir.context.resolve_ty(&const_ty.ty);
-        let target_resolved = self.hir.context.resolve_ty(ty);
-        Self::types_compatible(&const_resolved.kind, &target_resolved.kind)
+        self.types_compatible(&const_ty.ty, ty)
     }
 
-    fn types_compatible(a: &TyKind, b: &TyKind) -> bool {
-        match (a, b) {
-            (TyKind::String { .. }, TyKind::String { .. }) => true,
+    fn newtype_alias(&self, ty: &Ty) -> Option<DefId> {
+        let TyKind::Adt(mut def_id) = ty.kind else {
+            return None;
+        };
+
+        loop {
+            let def = self.hir.context.definitions.get(def_id);
+            let DefKind::Alias(alias_ty) = &def.kind else {
+                return None;
+            };
+
+            if is_newtype(&self.hir.context, def) {
+                return Some(def_id);
+            }
+
+            let TyKind::Adt(next_id) = alias_ty.ty.kind else {
+                return None;
+            };
+            def_id = next_id;
+        }
+    }
+
+    fn types_compatible(&self, a: &Ty, b: &Ty) -> bool {
+        if self.newtype_alias(a) != self.newtype_alias(b) {
+            return false;
+        }
+
+        let a = self.hir.context.resolve_ty(a);
+        let b = self.hir.context.resolve_ty(b);
+
+        match (&a.kind, &b.kind) {
+            (
+                TyKind::String {
+                    wide: wide1,
+                    bound: bound1,
+                    ..
+                },
+                TyKind::String {
+                    wide: wide2,
+                    bound: bound2,
+                    ..
+                },
+            ) => {
+                wide1 == wide2
+                    && bound2.is_none_or(|bound2| bound1.is_some_and(|bound1| bound1 <= bound2))
+            }
             (TyKind::Primitive(pa), TyKind::Primitive(pb)) => pa == pb,
             (TyKind::Adt(id_a), TyKind::Adt(id_b)) => id_a == id_b,
+            (
+                TyKind::Array {
+                    ty: ty1, len: len1, ..
+                },
+                TyKind::Array {
+                    ty: ty2, len: len2, ..
+                },
+            ) => len1 == len2 && self.types_compatible(ty1, ty2),
+            (
+                TyKind::Sequence {
+                    ty: ty1,
+                    bound: bound1,
+                    ..
+                },
+                TyKind::Sequence {
+                    ty: ty2,
+                    bound: bound2,
+                    ..
+                },
+            ) => bound1 == bound2 && self.types_compatible(ty1, ty2),
+            (
+                TyKind::Map {
+                    key: key1,
+                    elem: elem1,
+                    bound: bound1,
+                    ..
+                },
+                TyKind::Map {
+                    key: key2,
+                    elem: elem2,
+                    bound: bound2,
+                    ..
+                },
+            ) => {
+                bound1 == bound2
+                    && self.types_compatible(key1, key2)
+                    && self.types_compatible(elem1, elem2)
+            }
             _ => false,
         }
     }

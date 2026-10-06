@@ -160,7 +160,7 @@ impl PyGen<'_> {
                 .is_some_and(|module_id| w.import_context.module_imports.contains_key(&module_id))
     }
 
-    fn py_def_relative_to(
+    pub(crate) fn py_def_relative_to(
         &self,
         w: &PyWriter,
         def_id: DefId,

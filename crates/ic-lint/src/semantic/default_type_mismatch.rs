@@ -78,7 +78,7 @@ impl DefaultTypeMismatch<'_> {
                 Self::category(),
                 format!(
                     "@default value is not compatible with member type `{}`",
-                    self.hir.context.type_name(ty),
+                    self.ctx.slice(ty.span),
                 ),
                 Label::new(arg.ident.span).message("incompatible default value"),
             );
@@ -89,7 +89,7 @@ impl DefaultTypeMismatch<'_> {
                 Self::category(),
                 format!(
                     "integer value out of range for '{}'",
-                    self.hir.context.type_name(ty),
+                    self.ctx.slice(ty.span),
                 ),
                 Label::new(arg.ident.span).message("out of range"),
             );

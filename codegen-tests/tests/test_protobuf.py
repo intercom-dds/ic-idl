@@ -54,7 +54,7 @@ def test_protobuf(
     protoc: str,
     protobuf_output_dir: Path,
 ) -> None:
-    proto_files = run_codegen(idl_compiler, idl_file, protobuf_output_dir, "proto-out")
+    proto_files = run_codegen(idl_compiler, idl_file, protobuf_output_dir, "proto-out", extra_args=["-D", "PROTOBUF=1"])
     if not proto_files:
         return
 

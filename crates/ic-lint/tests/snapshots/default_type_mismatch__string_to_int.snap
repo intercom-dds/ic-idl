@@ -2,7 +2,7 @@
 source: crates/ic-lint/tests/default_type_mismatch.rs
 expression: test_lint_hir(source)
 ---
-⨯ default-type-mismatch: @default value is not compatible with member type `int32`
+⨯ default-type-mismatch: @default value is not compatible with member type `long`
   @ test.idl:3:14
 
  2 │ struct Bad {

@@ -413,12 +413,12 @@ impl<'a> PyGen<'a> {
         root
     }
 
-    fn py_base(&self, w: &PyWriter, def_id: DefId) -> String {
+    fn py_base(&self, w: &PyWriter, def_id: DefId, relative_to: Option<DefId>) -> String {
         if self.is_imported(w, def_id) && !w.deferred_aliases.contains(&def_id) {
-            return self.py_def(w, def_id);
+            return self.py_def_relative_to(w, def_id, relative_to);
         }
 
-        self.py_def(w, self.hir.context.base_id_of(def_id))
+        self.py_def_relative_to(w, self.hir.context.base_id_of(def_id), relative_to)
     }
 
     fn valuetype_parent(&self, def: &Def) -> Option<DefId> {
@@ -470,7 +470,7 @@ impl<'a> PyGen<'a> {
         py!(w, "@_dataclasses_.dataclass(slots=True, order=True)\n");
         py!(w, "class ", def);
         if let Some(parent) = struct_ty.parent {
-            let parent_name = self.py_base(w, parent.def_id);
+            let parent_name = self.py_base(w, parent.def_id, def.parent);
             py!(w, "(", parent_name, "):", ORDER_IGNORE, "\n");
         } else {
             py!(w, ":\n");
@@ -493,13 +493,17 @@ impl<'a> PyGen<'a> {
         py!(w, "\n\n");
     }
 
-    pub(crate) fn format_numeric(&self, w: &PyWriter, ty: Option<&Ty>, value: &Numeric) -> String {
+    fn format_numeric_relative_to(
+        &self,
+        w: &PyWriter,
+        ty: Option<&Ty>,
+        value: &Numeric,
+        relative_to: Option<DefId>,
+    ) -> String {
         if let Some(def) = wrapping_def(&self.hir.context, ty, value) {
-            return format!(
-                "{}({})",
-                self.py_base(w, def.id),
-                self.format_numeric(w, None, value)
-            );
+            let name = self.py_def_relative_to(w, def.id, relative_to);
+            let value = self.format_numeric_relative_to(w, None, value, relative_to);
+            return format!("{name}({value})");
         }
 
         let is_decimal = ty.is_some_and(|ty| {
@@ -527,19 +531,20 @@ impl<'a> PyGen<'a> {
                 let def = self.hir.context.type_of(*def_id);
                 if let Some(parent_id) = def.parent
                     && let parent_def = self.hir.context.type_of(parent_id)
-                    && matches!(parent_def.kind, DefKind::Enum(_))
+                    && matches!(parent_def.kind, DefKind::Bitmask(_) | DefKind::Enum(_))
                 {
-                    let enum_name = self.py_def(w, parent_id);
-                    return format!("{}.{}", enum_name, def.ident.name);
+                    let name = self.py_def_relative_to(w, parent_id, relative_to);
+                    return format!("{name}.{def}");
                 }
-                self.py_def(w, def.id)
+                self.py_def_relative_to(w, def.id, relative_to)
             }
             Numeric::Array { values, ty, .. } | Numeric::Sequence { values, ty, .. } => {
-                let items: Vec<_> = values
+                let items = values
                     .iter()
-                    .map(|v| self.format_numeric(w, Some(ty), v))
-                    .collect();
-                format!("[{}]", items.join(", "))
+                    .map(|v| self.format_numeric_relative_to(w, Some(ty), v, relative_to))
+                    .collect::<Vec<_>>()
+                    .join(", ");
+                format!("[{items}]")
             }
             Numeric::Map {
                 entries,
@@ -547,45 +552,54 @@ impl<'a> PyGen<'a> {
                 value,
                 ..
             } => {
-                let items: Vec<_> = entries
+                let items = entries
                     .iter()
                     .map(|(k, v)| {
-                        format!(
-                            "{}: {}",
-                            self.format_numeric(w, Some(key), k),
-                            self.format_numeric(w, Some(value), v)
-                        )
+                        let key = self.format_numeric_relative_to(w, Some(key), k, relative_to);
+                        let value = self.format_numeric_relative_to(w, Some(value), v, relative_to);
+                        format!("{key}: {value}")
                     })
-                    .collect();
-                format!("{{{}}}", items.join(", "))
+                    .collect::<Vec<_>>()
+                    .join(", ");
+                format!("{{{items}}}")
             }
             Numeric::Struct { ty, fields } => {
-                let struct_name = self.py_def(w, *ty);
-                let items: Vec<_> = collect_all_members(&self.hir.context, *ty)
+                let struct_name = self.py_def_relative_to(w, *ty, relative_to);
+                let items = collect_all_members(&self.hir.context, *ty)
                     .into_iter()
                     .zip(fields)
-                    .map(|(member, v)| self.format_numeric(w, Some(member.ty()), v))
-                    .collect();
-                format!("{}({})", struct_name, items.join(", "))
+                    .map(|(member, v)| {
+                        self.format_numeric_relative_to(w, Some(member.ty()), v, relative_to)
+                    })
+                    .collect::<Vec<_>>()
+                    .join(", ");
+                format!("{struct_name}({items})")
             }
             Numeric::Union {
-                ty: union_id,
-                discriminant,
+                ty: def_id,
+                discriminant: disc,
                 field_index,
                 value,
             } => {
-                let DefKind::Union(union_ty) = &self.hir.context.definitions.get(*union_id).kind
-                else {
+                let DefKind::Union(union_ty) = &self.hir.context.type_of(*def_id).kind else {
                     return "None".into();
                 };
-                let disc = self.format_numeric(w, Some(&union_ty.disc.ty), discriminant);
-                let value = match union_ty.variants.get(*field_index) {
-                    Some(variant) => self.format_numeric(w, Some(&variant.ty), value),
-                    None => "None".to_string(),
-                };
-                format!("{}({disc}, {value})", self.py_def(w, *union_id))
+                let name = self.py_def_relative_to(w, *def_id, relative_to);
+                let disc =
+                    self.format_numeric_relative_to(w, Some(&union_ty.disc.ty), disc, relative_to);
+                let value = union_ty
+                    .variants
+                    .get(*field_index)
+                    .map_or("None".into(), |v| {
+                        self.format_numeric_relative_to(w, Some(&v.ty), value, relative_to)
+                    });
+                format!("{name}({disc}, {value})")
             }
         }
+    }
+
+    pub(crate) fn format_numeric(&self, w: &PyWriter, ty: Option<&Ty>, value: &Numeric) -> String {
+        self.format_numeric_relative_to(w, ty, value, None)
     }
 
     fn emit_enum(&self, w: &mut PyWriter, def: &Def, enum_ty: &EnumTy) {
@@ -836,9 +850,21 @@ impl<'a> PyGen<'a> {
 
     fn emit_const(&self, w: &mut PyWriter, def: &Def, const_ty: &ConstTy) {
         let ty_str = self.py_type(w, &const_ty.ty);
-        let value = self.format_numeric(w, Some(&const_ty.ty), &const_ty.value);
+        let value =
+            self.format_numeric_relative_to(w, Some(&const_ty.ty), &const_ty.value, def.parent);
 
-        py!(w, def, ": _typing_.Final[", ty_str, "] = ", value, "\n");
+        let ann = if def.parent.is_some_and(|id| {
+            matches!(
+                self.hir.context.type_of(id).kind,
+                DefKind::Interface(_) | DefKind::Valuetype(_)
+            )
+        }) {
+            format!("_typing_.ClassVar[{ty_str}]")
+        } else {
+            format!("_typing_.Final[{ty_str}]")
+        };
+
+        py!(w, def, ": ", ann, " = ", value, "\n");
         py!(w, "\n\n");
     }
 
@@ -868,7 +894,7 @@ impl<'a> PyGen<'a> {
             interface_ty
                 .parents
                 .iter()
-                .map(|p| self.py_base(w, p.def_id))
+                .map(|p| self.py_base(w, p.def_id, None))
                 .collect()
         };
 
@@ -926,11 +952,11 @@ impl<'a> PyGen<'a> {
     fn emit_valuetype(&self, w: &mut PyWriter, def: &Def, value_ty: &ValueTy) {
         let mut bases = vec![];
         if let Some(parent) = value_ty.parent {
-            bases.push(self.py_base(w, parent.def_id));
+            bases.push(self.py_base(w, parent.def_id, None));
         }
 
         if let Some(supports) = value_ty.supports {
-            bases.push(self.py_base(w, supports.def_id));
+            bases.push(self.py_base(w, supports.def_id, None));
         }
 
         if bases.is_empty() && !value_ty.prototypes.is_empty() {

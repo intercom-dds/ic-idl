@@ -163,7 +163,7 @@ def test_using_typedef_chain(generated_modules: dict[str, ModuleType]) -> None:
 def test_array_of_seq(generated_modules: dict[str, ModuleType]) -> None:
     dg = generated_modules["deep_generic_types"]
     t = dg.ArrayOfSeq()
-    assert t.items == []
+    assert t.items == [[], [], []]
     t.items = [[1, 2], [3], [4, 5, 6]]
     assert len(t.items) == 3
     assert t.items[2][2] == 6

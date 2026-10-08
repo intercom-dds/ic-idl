@@ -81,14 +81,12 @@ def test_enum_default_literal_exists(generated_modules: dict[str, ModuleType]) -
     assert dt.Priority.MEDIUM.value == 1
 
 
-@pytest.mark.xfail(reason="@default annotation ignored in Python codegen", strict=True)
 def test_primitive_bool_default(generated_modules: dict[str, ModuleType]) -> None:
     dt = generated_modules["default_types"]
     p = dt.PrimitiveDefaults()
     assert p.bool_true is True
 
 
-@pytest.mark.xfail(reason="@default annotation ignored in Python codegen", strict=True)
 def test_primitive_int_default(generated_modules: dict[str, ModuleType]) -> None:
     dt = generated_modules["default_types"]
     p = dt.PrimitiveDefaults()
@@ -96,14 +94,12 @@ def test_primitive_int_default(generated_modules: dict[str, ModuleType]) -> None
     assert p.int_negative == -100
 
 
-@pytest.mark.xfail(reason="@default annotation ignored in Python codegen", strict=True)
 def test_primitive_float_default(generated_modules: dict[str, ModuleType]) -> None:
     dt = generated_modules["default_types"]
     p = dt.PrimitiveDefaults()
     assert abs(p.float_value - 3.14159) < 0.0001
 
 
-@pytest.mark.xfail(reason="@default annotation ignored in Python codegen", strict=True)
 def test_primitive_string_default(generated_modules: dict[str, ModuleType]) -> None:
     dt = generated_modules["default_types"]
     p = dt.PrimitiveDefaults()
@@ -111,14 +107,12 @@ def test_primitive_string_default(generated_modules: dict[str, ModuleType]) -> N
     assert p.string_from_const == "unnamed"
 
 
-@pytest.mark.xfail(reason="@default annotation ignored in Python codegen", strict=True)
 def test_array_default_values(generated_modules: dict[str, ModuleType]) -> None:
     dt = generated_modules["default_types"]
     a = dt.ArrayDefaults()
     assert a.array_values == [1, 2, 3]
 
 
-@pytest.mark.xfail(reason="@default annotation ignored in Python codegen", strict=True)
 def test_sequence_default_values(generated_modules: dict[str, ModuleType]) -> None:
     dt = generated_modules["default_types"]
     s = dt.SequenceDefaults()
@@ -126,7 +120,6 @@ def test_sequence_default_values(generated_modules: dict[str, ModuleType]) -> No
     assert s.string_seq_values == ["a", "b", "c"]
 
 
-@pytest.mark.xfail(reason="@default annotation ignored in Python codegen", strict=True)
 def test_map_default_values(generated_modules: dict[str, ModuleType]) -> None:
     dt = generated_modules["default_types"]
     m = dt.MapDefaults()
@@ -139,8 +132,13 @@ def test_enum_default_literal_value(generated_modules: dict[str, ModuleType]) ->
     assert e.priority_empty == dt.Priority.MEDIUM
 
 
-@pytest.mark.xfail(reason="@default annotation ignored in Python codegen", strict=True)
 def test_enum_field_default(generated_modules: dict[str, ModuleType]) -> None:
     dt = generated_modules["default_types"]
     e = dt.EnumDefaults()
     assert e.priority_high == dt.Priority.HIGH
+
+def test_deepcopy_complex_consts(generated_modules: dict[str, ModuleType]) -> None:
+    dt = generated_modules["default_types"]
+    dt.OuterDefaults().inner_literal.x = 0
+    assert dt.OuterDefaults().inner_literal.x == 99
+    assert dt.NESTED_INNER.x == 99

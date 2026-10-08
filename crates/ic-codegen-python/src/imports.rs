@@ -27,11 +27,14 @@
 
 use std::collections::{BTreeMap, BTreeSet, HashSet};
 
-use ic_hir::hir::{DefFlags, DefId, DefKind, PrimitiveTy, Ty, TyKind};
+use ic_hir::hir::{DefFlags, DefId, DefKind, Member, Numeric, PrimitiveTy, Ty, TyKind};
 use ic_hir::visit::Visitor;
 use ic_hir::{Context, ResolvedGraph};
+use ic_hir_analysis::annotation::{DefaultTarget, MemberLike, default_value, is_optional};
 
+use crate::codegen::PyGen;
 use crate::py;
+use crate::types::{collect_all_members, default_union_variants, wrapping_def};
 use crate::writer::PyWriter;
 
 #[derive(Debug, Clone)]
@@ -163,6 +166,7 @@ impl ImportContext {
 pub struct Stdlib {
     pub abc: bool,
     pub builtins: bool,
+    pub copy: bool,
     pub dataclasses: bool,
     pub decimal: bool,
     pub enum_: bool,
@@ -184,6 +188,9 @@ impl Stdlib {
         }
         if self.builtins {
             py!(w, "import builtins as _builtins_\n");
+        }
+        if self.copy {
+            py!(w, "import copy as _copy_\n");
         }
         if self.dataclasses {
             py!(w, "import dataclasses as _dataclasses_\n");
@@ -293,6 +300,133 @@ fn resolve_deferred_aliases(
     }
 }
 
+fn resolve_numeric(
+    hir: &ResolvedGraph,
+    ty: Option<&Ty>,
+    value: &Numeric,
+    dep_ids: &mut HashSet<DefId>,
+) {
+    if let Some(parent_def) = wrapping_def(&hir.context, ty, value) {
+        dep_ids.insert(parent_def.id);
+    }
+
+    match value {
+        Numeric::Const(adt) => {
+            dep_ids.insert(*adt);
+
+            if let Some(parent_id) = hir.context.type_of(*adt).parent
+                && matches!(
+                    hir.context.type_of(parent_id).kind,
+                    DefKind::Bitmask(_) | DefKind::Enum(_)
+                )
+            {
+                dep_ids.insert(parent_id);
+            }
+        }
+        Numeric::Array { values, ty, .. } | Numeric::Sequence { values, ty, .. } => {
+            for value in values {
+                resolve_numeric(hir, Some(ty), value, dep_ids);
+            }
+        }
+        Numeric::Map {
+            entries,
+            key,
+            value,
+            ..
+        } => {
+            for (k, v) in entries {
+                resolve_numeric(hir, Some(key), k, dep_ids);
+                resolve_numeric(hir, Some(value), v, dep_ids);
+            }
+        }
+        Numeric::Struct { ty, fields, .. } => {
+            for (member, value) in collect_all_members(&hir.context, *ty)
+                .into_iter()
+                .zip(fields)
+            {
+                resolve_numeric(hir, Some(member.ty()), value, dep_ids);
+            }
+
+            dep_ids.insert(*ty);
+        }
+        Numeric::Union {
+            ty,
+            discriminant,
+            value,
+            field_index,
+            ..
+        } => {
+            let DefKind::Union(union_ty) = &hir.context.definitions.get(*ty).kind else {
+                return;
+            };
+            let Some(variant) = union_ty.variants.get(*field_index) else {
+                return;
+            };
+
+            resolve_numeric(hir, Some(&union_ty.disc.ty), discriminant, dep_ids);
+            resolve_numeric(hir, Some(&variant.ty), value, dep_ids);
+            dep_ids.insert(*ty);
+        }
+        _ => {}
+    }
+}
+
+fn resolve_default_ty(
+    hir: &ResolvedGraph,
+    ty: &Ty,
+    member: &impl DefaultTarget,
+    dep_ids: &mut HashSet<DefId>,
+) {
+    if let Some(value) = default_value(&hir.context, member) {
+        resolve_numeric(hir, Some(ty), value, dep_ids);
+    }
+}
+
+fn resolve_default_tys(hir: &ResolvedGraph, def_id: DefId, dep_ids: &mut HashSet<DefId>) {
+    let def = hir.context.definitions.get(def_id);
+
+    match &def.kind {
+        DefKind::Struct(struct_ty) => {
+            for member in &struct_ty.members {
+                resolve_default_ty(hir, &member.ty, member, dep_ids);
+            }
+        }
+        DefKind::Except(except_ty) => {
+            for member in &except_ty.members {
+                resolve_default_ty(hir, &member.ty, member, dep_ids);
+            }
+        }
+        DefKind::Interface(interface_ty) => {
+            for def in &interface_ty.definitions {
+                resolve_default_tys(hir, *def, dep_ids);
+            }
+        }
+        DefKind::Valuetype(valuetype_ty) => {
+            for attrib in &valuetype_ty.attributes {
+                resolve_default_ty(hir, &attrib.ty, attrib, dep_ids);
+            }
+            for def in &valuetype_ty.definitions {
+                resolve_default_tys(hir, *def, dep_ids);
+            }
+            for member in &valuetype_ty.members {
+                resolve_default_ty(hir, &member.ty, member, dep_ids);
+            }
+        }
+        DefKind::Union(union_ty) => {
+            resolve_default_ty(hir, &union_ty.disc.ty, &union_ty.disc, dep_ids);
+
+            let ((disc_init, variant_init), (default_case_disc, default_case_variant)) =
+                default_union_variants(&hir.context, union_ty);
+
+            resolve_numeric(hir, Some(&union_ty.disc.ty), &default_case_disc, dep_ids);
+            resolve_numeric(hir, Some(&union_ty.disc.ty), &disc_init, dep_ids);
+            resolve_default_ty(hir, &variant_init.ty, variant_init, dep_ids);
+            resolve_default_ty(hir, &default_case_variant.ty, default_case_variant, dep_ids);
+        }
+        _ => {}
+    }
+}
+
 fn collect_module_imports(
     ctx: &ImportCollectorCtx,
     def_id: DefId,
@@ -303,6 +437,7 @@ fn collect_module_imports(
 ) {
     let mut dep_ids = ctx.hir.context.deps(def_id);
     resolve_deferred_aliases(ctx.hir, def_id, deferred, &mut dep_ids);
+    resolve_default_tys(ctx.hir, def_id, &mut dep_ids);
 
     for dep_id in dep_ids {
         if !is_exportable(ctx.hir, dep_id) {
@@ -471,6 +606,79 @@ struct StdlibVisitor<'a> {
     stdlib: Stdlib,
 }
 
+impl StdlibVisitor<'_> {
+    fn visit_field_default<M>(&mut self, ty: &Ty, member: &M)
+    where
+        M: MemberLike + DefaultTarget,
+    {
+        let default_value = default_value(self.context, member);
+        if default_value.is_none()
+            && !is_optional(self.context, member)
+            && matches!(self.context.resolve_ty(ty).kind, TyKind::Array { .. })
+        {
+            self.stdlib.builtins = true;
+        }
+
+        if default_value.is_some_and(PyGen::numeric_contains_const) {
+            self.stdlib.copy = true;
+        }
+
+        if default_value.is_some_and(|v| self.default_needs_decimal(ty, v)) {
+            self.stdlib.decimal = true;
+        }
+    }
+
+    fn default_needs_decimal(&self, ty: &Ty, value: &Numeric) -> bool {
+        match value {
+            Numeric::Int8(_)
+            | Numeric::UInt8(_)
+            | Numeric::Int16(_)
+            | Numeric::UInt16(_)
+            | Numeric::Int32(_)
+            | Numeric::UInt32(_)
+            | Numeric::Int64(_)
+            | Numeric::UInt64(_)
+            | Numeric::Float(_)
+            | Numeric::Double(_) => {
+                matches!(
+                    self.context.resolve_ty(ty).kind,
+                    TyKind::Primitive(PrimitiveTy::Float128) | TyKind::Fixed
+                )
+            }
+            Numeric::Array { ty, values } | Numeric::Sequence { ty, values } => {
+                values.iter().any(|v| self.default_needs_decimal(ty, v))
+            }
+            Numeric::Map {
+                key,
+                value,
+                entries,
+            } => entries.iter().any(|(k, v)| {
+                self.default_needs_decimal(key, k) || self.default_needs_decimal(value, v)
+            }),
+            Numeric::Struct { ty, fields } => collect_all_members(self.context, *ty)
+                .iter()
+                .zip(fields)
+                .any(|(member, v)| self.default_needs_decimal(member.ty(), v)),
+            Numeric::Union {
+                ty,
+                discriminant,
+                field_index,
+                value,
+            } => {
+                let DefKind::Union(union_ty) = &self.context.type_of(*ty).kind else {
+                    return false;
+                };
+                self.default_needs_decimal(&union_ty.disc.ty, discriminant)
+                    || union_ty
+                        .variants
+                        .get(*field_index)
+                        .is_some_and(|v| self.default_needs_decimal(&v.ty, value))
+            }
+            _ => false,
+        }
+    }
+}
+
 impl<'a> ic_hir::visit::Visitor<'a> for StdlibVisitor<'a> {
     fn context(&self) -> &'a Context {
         self.context
@@ -481,9 +689,15 @@ impl<'a> ic_hir::visit::Visitor<'a> for StdlibVisitor<'a> {
             DefKind::Struct(_) => {
                 self.stdlib.dataclasses = true;
             }
-            DefKind::Union(_) => {
+            DefKind::Union(union_ty) => {
                 self.stdlib.dataclasses = true;
                 self.stdlib.typing = true;
+
+                let ((_, default_variant_init), (_, default_case_variant)) =
+                    default_union_variants(self.context, union_ty);
+
+                self.visit_field_default(&default_case_variant.ty, default_case_variant);
+                self.visit_field_default(&default_variant_init.ty, default_variant_init);
             }
             DefKind::Except(_) => {
                 self.stdlib.builtins = true;
@@ -541,6 +755,11 @@ impl<'a> ic_hir::visit::Visitor<'a> for StdlibVisitor<'a> {
             _ => {}
         }
         ic_hir::visit::walk_ty(self, ty);
+    }
+
+    fn visit_member(&mut self, member: &'a Member) {
+        self.visit_field_default(&member.ty, member);
+        ic_hir::visit::walk_member(self, member);
     }
 }
 

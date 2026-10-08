@@ -277,6 +277,8 @@ impl<'a> PyGen<'a> {
             DefKind::Module(_) | DefKind::Bitset(_) | DefKind::Annotation(_) | DefKind::Decl(_) => {
             }
         }
+
+        w.decleared_defs.insert(def_id);
     }
 
     fn source_filename(&self, def_id: DefId) -> Option<String> {
@@ -372,7 +374,7 @@ impl<'a> PyGen<'a> {
         }
     }
 
-    fn path_root(&self, def_id: DefId) -> DefId {
+    pub(crate) fn path_root(&self, def_id: DefId) -> DefId {
         let mut root = def_id;
         let mut current = self.hir.context.type_of(def_id).parent;
 
@@ -548,7 +550,7 @@ impl<'a> PyGen<'a> {
     }
 
     fn emit_bitmask(&self, w: &mut PyWriter, def: &Def, bitmask_ty: &BitmaskTy) {
-        py!(w, "class ", def, "(_enum_.Flag):\n");
+        py!(w, "class ", def, "(_enum_.Flag, boundary=_enum_.KEEP):\n");
         w.indent();
 
         for &member_id in &bitmask_ty.flags {
@@ -559,8 +561,47 @@ impl<'a> PyGen<'a> {
             }
         }
 
+        py!(w, "\n");
+
+        if !bitmask_ty.flags.is_empty() {
+            let path = self.py_def(w, def.id);
+
+            if !bitmask_ty
+                .flags
+                .iter()
+                .any(|id| self.hir.context.type_of(*id).ident.name == "all")
+            {
+                py!(w, "@_builtins_.staticmethod\n");
+                py!(w, "def all() -> ", path, ":\n");
+                w.indent();
+                py!(w, "return ");
+                for (i, &member_id) in bitmask_ty.flags.iter().enumerate() {
+                    let member_def = self.hir.context.type_of(member_id);
+                    py!(w, path, ".", member_def);
+
+                    if i < bitmask_ty.flags.len() - 1 {
+                        py!(w, " | ");
+                    }
+                }
+                w.dedent();
+                py!(w, "\n\n");
+            }
+
+            if !bitmask_ty
+                .flags
+                .iter()
+                .any(|id| self.hir.context.type_of(*id).ident.name == "none")
+            {
+                py!(w, "@_builtins_.staticmethod\n");
+                py!(w, "def none() -> ", path, ":\n");
+                w.indent();
+                py!(w, "return ", path, "(0)\n");
+                w.dedent();
+            }
+        }
+
         w.dedent();
-        py!(w, "\n\n");
+        py!(w, "\n");
     }
 
     fn emit_union(&self, w: &mut PyWriter, def: &Def, union_ty: &UnionTy) {
@@ -717,7 +758,10 @@ impl<'a> PyGen<'a> {
             && matches!(self.hir.context.type_of(*def_id).kind, DefKind::Bitmask(_))
             && !matches!(&const_ty.value, Numeric::Const(_))
         {
-            let bitmask_type = self.py_type(w, &resolved_ty);
+            let bitmask_type = match &const_ty.ty.kind {
+                TyKind::Adt(id) => self.py_base(w, *id),
+                _ => self.py_type(w, &resolved_ty),
+            };
             format!("{bitmask_type}({value})")
         } else {
             value

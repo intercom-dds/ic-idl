@@ -489,7 +489,11 @@ impl<'a> ic_hir::visit::Visitor<'a> for StdlibVisitor<'a> {
                 self.stdlib.builtins = true;
                 self.stdlib.dataclasses = true;
             }
-            DefKind::Enum(_) | DefKind::Bitmask(_) => {
+            DefKind::Enum(_) => {
+                self.stdlib.enum_ = true;
+            }
+            DefKind::Bitmask(_) => {
+                self.stdlib.builtins = true;
                 self.stdlib.enum_ = true;
             }
             DefKind::Alias(_) => {

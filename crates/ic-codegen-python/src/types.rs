@@ -218,11 +218,17 @@ impl PyGen<'_> {
             return true;
         }
 
-        if let Some(module_id) = parent_module(self.hir, def_id) {
-            w.import_context.module_imports.contains_key(&module_id)
-        } else {
-            false
+        if w.import_context.file_imports.contains_key(&def_id) {
+            return false;
         }
+
+        if parent_module(self.hir, def_id)
+            .is_some_and(|module_id| w.import_context.module_imports.contains_key(&module_id))
+        {
+            return true;
+        }
+
+        !w.decleared_defs.contains(&self.path_root(def_id))
     }
 
     fn adt_default(&self, w: &PyWriter, def_id: DefId) -> Option<String> {

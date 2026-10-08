@@ -461,7 +461,9 @@ dependencies = [
  "ic-emit",
  "ic-hir",
  "ic-hir-analysis",
+ "ic-hir-lower",
  "ic-hir-xform",
+ "ic-parse",
  "ic-vfs",
 ]
 

@@ -302,22 +302,31 @@ impl<'a> Parser<'a> {
     /// Extracts and cleans the text content from a comment.
     fn clean_comment_text(&self, span: Span) -> String {
         let text = self.text(span);
+        let is_line_comment = text.starts_with("//") && !text.starts_with("/*");
         let trimmed = if text.starts_with("///<") || text.starts_with("//!<") {
             &text[4..]
         } else if text.starts_with("///") || text.starts_with("//!") {
             &text[3..]
         } else if let Some(stripped) = text.strip_prefix("//") {
             stripped
-        } else if text.starts_with("/**<") || text.starts_with("/*!<") {
-            strip_block_comment(text, 4)
-        } else if text.starts_with("/**") || text.starts_with("/*!") {
-            strip_block_comment(text, 3)
-        } else if text.starts_with("/*") {
-            strip_block_comment(text, 2)
+        } else if let Some(prefix) = starts_with_block_comment(text) {
+            strip_block_comment(text, prefix.len()).trim()
         } else {
             text
         };
-        trimmed.trim().to_string()
+
+        if is_line_comment {
+            // For line comments (/// ...), strip at most one leading space (the
+            // conventional separator after ///) and trim trailing whitespace,
+            // but preserve any additional leading whitespace as it carries
+            // markdown indentation (e.g. list-item continuations).
+            let s = trimmed.strip_prefix(' ').unwrap_or(trimmed);
+            s.trim_end().to_string()
+        } else {
+            // For block comments (/** ... */), unindent and trim every line.
+            // The per-line `*` prefixes are stripped later during codegen.
+            unindent_and_clean_block_comment(trimmed)
+        }
     }
 
     /// Takes accumulated annotations, clearing the buffer.
@@ -668,6 +677,15 @@ impl<'a> Parser<'a> {
     }
 }
 
+fn starts_with_block_comment(text: &str) -> Option<&str> {
+    const BLOCK_COMMENT_PREFIXES: &[&str] = &["/**<", "/*!<", "/**", "/*!", "/*"];
+
+    BLOCK_COMMENT_PREFIXES
+        .iter()
+        .find(|&prefix| text.starts_with(prefix))
+        .copied()
+}
+
 fn strip_block_comment(text: &str, prefix_len: usize) -> &str {
     let end = if text.ends_with("*/") {
         text.len() - 2
@@ -680,4 +698,52 @@ fn strip_block_comment(text: &str, prefix_len: usize) -> &str {
     } else {
         ""
     }
+}
+
+fn unindent_and_clean_block_comment(text: &str) -> String {
+    let lines = text.lines();
+
+    // calculate the indenation from the first non-blank line to prevent removing indentation that is part of the comment
+    let initial_whitespace = lines
+        .clone()
+        // The parser only starts parsing the token stream as comment at the comment prefix.
+        // Therefore, the first line does no include indentation and is skipped
+        .skip(1)
+        .find(|line| !line.is_empty())
+        .map_or(0, |first_line_with_identation| {
+            first_line_with_identation
+                .char_indices()
+                .take_while(|(_, char)| char.is_whitespace())
+                .last()
+                .map_or(0, |(index, _)| index)
+        });
+
+    let mut cleaned = String::with_capacity(text.len());
+    for line in lines {
+        let unindented = trim_start_with_limit(line, initial_whitespace);
+        let end_trimmed = unindented.trim_end();
+        cleaned.push_str(end_trimmed);
+        cleaned.push('\n');
+    }
+    if cleaned.ends_with('\n') {
+        cleaned.pop();
+    }
+
+    cleaned
+}
+
+fn trim_start_with_limit(text: &str, limit: usize) -> &str {
+    let trim_index: usize = text
+        .char_indices()
+        .enumerate()
+        .find_map(|(char_number, (char_index, char))| {
+            if char_number > limit || !char.is_whitespace() {
+                Some(char_index)
+            } else {
+                None
+            }
+        })
+        .unwrap_or(0);
+
+    &text[trim_index..]
 }

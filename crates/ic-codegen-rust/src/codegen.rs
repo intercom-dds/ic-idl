@@ -30,8 +30,10 @@ use std::collections::BTreeMap;
 use ic_emit::case::{self, Case};
 use ic_emit::printer::Twine;
 use ic_emit::{File, w};
-use ic_hir::ResolvedGraph;
-use ic_hir::hir::{Def, DefFlags, DefId, DefKind, Numeric, ParamKind, PrimitiveTy, Ty, TyKind};
+use ic_hir::hir::{
+    Ann, Def, DefFlags, DefId, DefKind, Numeric, ParamKind, PrimitiveTy, Ty, TyKind,
+};
+use ic_hir::{Context, ResolvedGraph};
 use ic_hir_analysis::annotation::{default_value, is_newtype, is_optional};
 use ic_hir_analysis::enum_value::default_enumerator;
 use ic_hir_analysis::union_case::{default_union_case, unused_discriminator};
@@ -195,12 +197,48 @@ impl<'a> RustGen<'a> {
         }
     }
 
+    fn emit_doc_comments(&self, w: &mut Twine, annotations: &[Ann]) {
+        for ann in annotations {
+            if !is_doc(&self.hir.context, ann) {
+                continue;
+            }
+
+            for doc in &ann.args {
+                if let Some(ty) = &doc.ty
+                    && let TyKind::String { .. } = ty.kind
+                    && let Some(text) = self.hir.context.string_value(&doc.value)
+                {
+                    let lines = text.split('\n');
+
+                    let lines_contain_star_as_comment_symbol =
+                        lines.clone().all(|line| line.starts_with("* "));
+
+                    for line in lines {
+                        let star_removed = if lines_contain_star_as_comment_symbol {
+                            line.strip_prefix("* ").unwrap_or(line)
+                        } else {
+                            line
+                        };
+                        let escpaed = escape_rust_documentation_comment(star_removed);
+                        if escpaed.is_empty() {
+                            w!(w, "///\n");
+                        } else {
+                            w!(w, "/// ", # escpaed, "\n");
+                        }
+                    }
+                }
+            }
+        }
+    }
+
     fn emit_struct(&self, def: &Def, struct_ty: &ic_hir::hir::StructTy, w: &mut Twine) {
+        self.emit_doc_comments(w, &def.annotations);
         self.emit_derives(def, w);
         w!(w, "pub struct ", def, " {\n");
 
         let members = self.struct_members(struct_ty);
         for member in &members {
+            self.emit_doc_comments(w, &member.annotations);
             let member_ty = self.member_type(&member.ty, member, def.id);
             let field_ty = if is_optional(&self.hir.context, member) {
                 format!("::std::option::Option<{member_ty}>")
@@ -213,10 +251,12 @@ impl<'a> RustGen<'a> {
     }
 
     fn emit_except(&self, def: &Def, except_ty: &ic_hir::hir::ExceptTy, w: &mut Twine) {
+        self.emit_doc_comments(w, &def.annotations);
         self.emit_derives(def, w);
         w!(w, "pub struct ", def, " {\n");
 
         for member in &except_ty.members {
+            self.emit_doc_comments(w, &member.annotations);
             let member_ty = self.member_type(&member.ty, member, def.id);
             let field_ty = if is_optional(&self.hir.context, member) {
                 format!("::std::option::Option<{member_ty}>")
@@ -239,11 +279,13 @@ impl<'a> RustGen<'a> {
     }
 
     fn emit_valuetype(&self, def: &Def, value_ty: &ic_hir::hir::ValueTy, w: &mut Twine) {
+        self.emit_doc_comments(w, &def.annotations);
         self.emit_derives(def, w);
         w!(w, "pub struct ", def, " {\n");
 
         let members = self.valuetype_members(value_ty);
         for member in &members {
+            self.emit_doc_comments(w, &member.annotations);
             let member_ty = self.member_type(&member.ty, member, def.id);
             let field_ty = if is_optional(&self.hir.context, member) {
                 format!("::std::option::Option<{member_ty}>")
@@ -256,6 +298,7 @@ impl<'a> RustGen<'a> {
     }
 
     fn emit_interface(&self, def: &Def, interface_ty: &ic_hir::hir::InterfaceTy, w: &mut Twine) {
+        self.emit_doc_comments(w, &def.annotations);
         w!(w, "pub trait ", def);
 
         if !interface_ty.parents.is_empty() {
@@ -377,10 +420,12 @@ impl<'a> RustGen<'a> {
     }
 
     fn emit_union(&self, def: &Def, union_ty: &ic_hir::hir::UnionTy, w: &mut Twine) {
+        self.emit_doc_comments(w, &def.annotations);
         self.emit_derives(def, w);
         w!(w, "pub enum ", def, " {\n");
 
         for variant in &union_ty.variants {
+            self.emit_doc_comments(w, &variant.annotations);
             if variant.labels.is_empty() {
                 w!(w, variant.ident.name);
                 if !matches!(variant.ty.kind, TyKind::Null) {
@@ -539,6 +584,7 @@ impl<'a> RustGen<'a> {
     fn emit_enum(&self, def: &Def, enum_ty: &ic_hir::hir::EnumTy, w: &mut Twine) {
         let repr_ty = rust_primitive(enum_ty.ty);
 
+        self.emit_doc_comments(w, &def.annotations);
         self.emit_derives(def, w);
         w!(w, "#[repr(", repr_ty, ")]\n");
         w!(w, "pub enum ", def, " {\n");
@@ -546,6 +592,7 @@ impl<'a> RustGen<'a> {
         for &field_id in &enum_ty.fields {
             let field_def = self.hir.context.definitions.get(field_id);
             if let DefKind::Const(const_ty) = &field_def.kind {
+                self.emit_doc_comments(w, &field_def.annotations);
                 w!(w, field_def);
                 if field_def.flags.contains(DefFlags::IS_ENUMERATED) {
                     let value = Self::format_numeric(&const_ty.value);
@@ -600,12 +647,14 @@ impl<'a> RustGen<'a> {
         let element_type = rust_primitive(bitmask_ty.ty);
 
         w!(w, "::intercom_cts::bitmask! {\n");
+        self.emit_doc_comments(w, &def.annotations);
         self.emit_derives(def, w);
         w!(w, "pub ", def, ": ", element_type, " {\n");
 
         for &flag_id in &bitmask_ty.flags {
             let flag_def = self.hir.context.definitions.get(flag_id);
             if let DefKind::Const(const_ty) = &flag_def.kind {
+                self.emit_doc_comments(w, &flag_def.annotations);
                 let value = Self::format_numeric(&const_ty.value);
                 w!(w, flag_def, " = ", value, ",\n");
             }
@@ -632,6 +681,7 @@ impl<'a> RustGen<'a> {
         let ty = self.rust_type(&alias.ty, def.id);
 
         if is_newtype(&self.hir.context, def) {
+            self.emit_doc_comments(w, &def.annotations);
             self.emit_derives(def, w);
             w!(w, "pub struct ", def, "(pub ", ty, ");\n\n");
 
@@ -648,6 +698,7 @@ impl<'a> RustGen<'a> {
             return;
         }
 
+        self.emit_doc_comments(w, &def.annotations);
         // TODO: should be base_type_of, I think?
         if let TyKind::Adt(id) = alias.ty.kind
             && let DefKind::Interface(_) = self.hir.context.type_of(id).kind
@@ -663,7 +714,7 @@ impl<'a> RustGen<'a> {
         let trivial = is_trivial(def) || is_const_str;
         let kind = if trivial { "const" } else { "static" };
 
-        w!(w, "pub ", kind, " " , def, ": ");
+        w!(w, "pub ", kind, " ", def, ": ");
 
         if trivial {
             let ty = self.rust_type(&const_ty.ty, def.id);
@@ -830,4 +881,18 @@ impl<'a> RustGen<'a> {
             DefKind::Annotation(_) | DefKind::Bitset(_) | DefKind::Decl(_) => {}
         }
     }
+}
+
+fn is_doc(ctx: &Context, ann: &Ann) -> bool {
+    if let Some(def_id) = ann.def_id {
+        let def = ctx.type_of(def_id);
+        if def.flags.contains(DefFlags::IS_BUILTIN) && def.ident.name == "doc" {
+            return true;
+        }
+    }
+    false
+}
+
+fn escape_rust_documentation_comment(comment: &str) -> String {
+    comment.replace('[', r"\[").replace('<', r"\<")
 }

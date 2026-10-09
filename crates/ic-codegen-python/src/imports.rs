@@ -30,7 +30,7 @@ use std::collections::{BTreeMap, BTreeSet, HashSet};
 use ic_hir::hir::{DefFlags, DefId, DefKind, Member, Numeric, PrimitiveTy, Ty, TyKind};
 use ic_hir::visit::Visitor;
 use ic_hir::{Context, ResolvedGraph};
-use ic_hir_analysis::annotation::{DefaultTarget, MemberLike, default_value, is_optional};
+use ic_hir_analysis::annotation::{DefaultTarget, MemberLike, default_value};
 
 use crate::codegen::PyGen;
 use crate::py;
@@ -165,6 +165,8 @@ impl ImportContext {
 #[derive(Default)]
 pub struct Stdlib {
     pub abc: bool,
+    pub cache: bool,
+    pub cts_type_info: bool,
     pub builtins: bool,
     pub copy: bool,
     pub dataclasses: bool,
@@ -201,12 +203,21 @@ impl Stdlib {
         if self.enum_ {
             py!(w, "import enum as _enum_\n");
         }
+        if self.cache {
+            py!(w, "from functools import cache as _cache_\n");
+        }
         if self.typing {
             py!(w, "import typing as _typing_\n");
         }
 
+        if self.cts_type_info {
+            py!(w, "\n");
+            py!(w, "import intercom_cts.type_info as _type_info_\n");
+        }
+
         if self.abc
             || self.builtins
+            || self.cache
             || self.dataclasses
             || self.decimal
             || self.enum_
@@ -427,6 +438,47 @@ fn resolve_default_tys(hir: &ResolvedGraph, def_id: DefId, dep_ids: &mut HashSet
     }
 }
 
+fn collect_type_info_deps(hir: &ResolvedGraph, ty: &Ty, refs: &mut HashSet<DefId>) {
+    match &ty.kind {
+        TyKind::Adt(id) => {
+            refs.insert(*id);
+            let resolved = hir.context.resolve_ty(ty);
+            if !matches!(resolved.kind, TyKind::Adt(_)) {
+                collect_type_info_deps(hir, &resolved, refs);
+            }
+        }
+        TyKind::Array { ty, .. } | TyKind::Sequence { ty, .. } => {
+            collect_type_info_deps(hir, ty, refs);
+        }
+        TyKind::Map { key, elem, .. } => {
+            collect_type_info_deps(hir, key, refs);
+            collect_type_info_deps(hir, elem, refs);
+        }
+        _ => {}
+    }
+}
+
+fn collect_type_info_deps_with_parents(
+    hir: &ResolvedGraph,
+    def_id: DefId,
+    refs: &mut HashSet<DefId>,
+) {
+    let base_def = hir.context.base_def_of(def_id);
+    for dep_id in hir.context.ty_deps(base_def.id) {
+        collect_type_info_deps(hir, &hir.context.base_type_of(dep_id), refs);
+    }
+
+    let parent = match &hir.context.type_of(base_def.id).kind {
+        DefKind::Struct(struct_ty) => struct_ty.parent,
+        DefKind::Valuetype(value_ty) => value_ty.parent,
+        _ => None,
+    };
+
+    if let Some(parent) = parent {
+        collect_type_info_deps_with_parents(hir, parent.def_id, refs);
+    }
+}
+
 fn collect_module_imports(
     ctx: &ImportCollectorCtx,
     def_id: DefId,
@@ -436,6 +488,8 @@ fn collect_module_imports(
     context: &mut ImportContext,
 ) {
     let mut dep_ids = ctx.hir.context.deps(def_id);
+
+    collect_type_info_deps_with_parents(ctx.hir, def_id, &mut dep_ids);
     resolve_deferred_aliases(ctx.hir, def_id, deferred, &mut dep_ids);
     resolve_default_tys(ctx.hir, def_id, &mut dep_ids);
 
@@ -612,12 +666,6 @@ impl StdlibVisitor<'_> {
         M: MemberLike + DefaultTarget,
     {
         let default_value = default_value(self.context, member);
-        if default_value.is_none()
-            && !is_optional(self.context, member)
-            && matches!(self.context.resolve_ty(ty).kind, TyKind::Array { .. })
-        {
-            self.stdlib.builtins = true;
-        }
 
         if default_value.is_some_and(PyGen::numeric_contains_const) {
             self.stdlib.copy = true;
@@ -686,10 +734,16 @@ impl<'a> ic_hir::visit::Visitor<'a> for StdlibVisitor<'a> {
 
     fn visit_def(&mut self, def: &'a ic_hir::hir::Def) {
         match &def.kind {
-            DefKind::Struct(_) => {
+            DefKind::Struct(_) | DefKind::Except(_) => {
+                self.stdlib.builtins = true;
+                self.stdlib.cache = true;
+                self.stdlib.cts_type_info = true;
                 self.stdlib.dataclasses = true;
             }
             DefKind::Union(union_ty) => {
+                self.stdlib.builtins = true;
+                self.stdlib.cache = true;
+                self.stdlib.cts_type_info = true;
                 self.stdlib.dataclasses = true;
                 self.stdlib.typing = true;
 
@@ -699,15 +753,10 @@ impl<'a> ic_hir::visit::Visitor<'a> for StdlibVisitor<'a> {
                 self.visit_field_default(&default_case_variant.ty, default_case_variant);
                 self.visit_field_default(&default_variant_init.ty, default_variant_init);
             }
-            DefKind::Except(_) => {
+            DefKind::Enum(_) | DefKind::Bitmask(_) => {
                 self.stdlib.builtins = true;
-                self.stdlib.dataclasses = true;
-            }
-            DefKind::Enum(_) => {
-                self.stdlib.enum_ = true;
-            }
-            DefKind::Bitmask(_) => {
-                self.stdlib.builtins = true;
+                self.stdlib.cache = true;
+                self.stdlib.cts_type_info = true;
                 self.stdlib.enum_ = true;
             }
             DefKind::Alias(_) => {
@@ -732,6 +781,9 @@ impl<'a> ic_hir::visit::Visitor<'a> for StdlibVisitor<'a> {
                 }
             }
             DefKind::Valuetype(value_ty) => {
+                self.stdlib.builtins = true;
+                self.stdlib.cache = true;
+                self.stdlib.cts_type_info = true;
                 self.stdlib.dataclasses = true;
                 if !value_ty.prototypes.is_empty() || !value_ty.attributes.is_empty() {
                     self.stdlib.abc = true;

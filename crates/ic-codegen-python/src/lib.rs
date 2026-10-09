@@ -27,8 +27,9 @@
 
 mod codegen;
 mod imports;
+mod type_info;
 mod types;
-mod writer;
+pub mod writer;
 
 use ic_cli::Command;
 use ic_emit::File;
@@ -90,11 +91,14 @@ pub struct PythonOptions {
     pub py_typed: bool,
 }
 
+pub type PythonTypeInfoCallback<'cb> = &'cb mut dyn FnMut(&mut writer::PyWriter, &ic_hir::hir::Def);
+
 #[must_use]
-pub fn codegen_python(
+pub fn codegen_python_with_type_info_cb(
     hir: &ic_hir::ResolvedGraph,
     source_map: &ic_vfs::SourceMap,
     options: PythonOptions,
+    type_info_cb: Option<PythonTypeInfoCallback>,
 ) -> Vec<File> {
     let convention = if options.no_rename {
         Convention::default()
@@ -108,7 +112,16 @@ pub fn codegen_python(
         ..Target::default()
     };
 
-    let hir = rename::transform(hir.clone(), &target);
-    let generator = codegen::PyGen::new(&hir, source_map, options);
+    let transformed_hir = rename::transform(hir.clone(), &target);
+    let generator = codegen::PyGen::new(&transformed_hir, hir, source_map, options, type_info_cb);
     generator.generate()
+}
+
+#[must_use]
+pub fn codegen_python(
+    hir: &ic_hir::ResolvedGraph,
+    source_map: &ic_vfs::SourceMap,
+    options: PythonOptions,
+) -> Vec<File> {
+    codegen_python_with_type_info_cb(hir, source_map, options, None)
 }

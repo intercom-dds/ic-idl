@@ -69,7 +69,7 @@ pub fn effective_autoid(ctx: &Context, def: &Def) -> Autoid {
 
 #[must_use]
 pub fn member_ids(ctx: &Context, def_id: DefId) -> Vec<u32> {
-    let def = ctx.type_of(def_id);
+    let def = ctx.base_def_of(def_id);
     match &def.kind {
         DefKind::Struct(_) => {
             let mut ids = vec![];
@@ -118,7 +118,7 @@ fn valuetype_member_ids(ctx: &Context, def: &Def, ids: &mut Vec<u32>) -> u32 {
     };
 
     let mut current = valuetype.parent.map_or(u32::MAX, |parent| {
-        valuetype_member_ids(ctx, ctx.type_of(parent.def_id), ids)
+        valuetype_member_ids(ctx, ctx.base_def_of(parent.def_id), ids)
     });
 
     current = append_member_ids(
@@ -144,7 +144,7 @@ fn struct_member_ids(ctx: &Context, def: &Def, ids: &mut Vec<u32>) -> u32 {
     };
 
     let current = struct_ty.parent.map_or(u32::MAX, |parent| {
-        struct_member_ids(ctx, ctx.type_of(parent.def_id), ids)
+        struct_member_ids(ctx, ctx.base_def_of(parent.def_id), ids)
     });
     append_member_ids(
         ctx,

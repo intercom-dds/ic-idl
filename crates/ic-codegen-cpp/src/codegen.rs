@@ -397,7 +397,7 @@ impl<'a> CppGen<'a> {
     }
 
     pub fn collect_all_members(&self, def_id: DefId) -> Vec<MemberKind<'a>> {
-        let def = self.hir.context.definitions.get(def_id);
+        let def = self.hir.context.base_def_of(def_id);
         let mut all_members = Vec::new();
 
         match &def.kind {

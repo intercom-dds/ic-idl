@@ -25,6 +25,7 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+use std::cell::RefCell;
 use std::collections::{BTreeMap, BTreeSet};
 use std::fmt::{Display, Write};
 use std::path::PathBuf;
@@ -41,13 +42,13 @@ use ic_vfs::SourceMap;
 use crate::imports::{ImportContext, collect_imports, is_exportable};
 use crate::types::{collect_all_members, default_union_variants, wrapping_def};
 use crate::writer::PyWriter;
-use crate::{PythonOptions, py};
+use crate::{PythonOptions, PythonTypeInfoCallback, py};
 
 const ORDER_IGNORE: &str = "  # ty: ignore[subclass-of-dataclass-with-order]";
 
 type FileKey = (Vec<String>, String);
 
-fn escape_python_string(s: &str) -> String {
+pub fn escape_python_string(s: &str) -> String {
     let mut result = String::with_capacity(s.len());
     for ch in s.chars() {
         match ch {
@@ -151,16 +152,26 @@ fn collect_adt_refs(ty: &Ty, refs: &mut Vec<DefId>) {
     }
 }
 
-pub struct PyGen<'a> {
-    pub hir: &'a ResolvedGraph,
+pub struct PyGen<'a, 'cb> {
+    pub(crate) hir: &'a ResolvedGraph,
+    pub(crate) original_hir: &'a ResolvedGraph,
+    pub(crate) type_info_cb: RefCell<Option<PythonTypeInfoCallback<'cb>>>,
     source_map: &'a SourceMap,
     options: PythonOptions,
 }
 
-impl<'a> PyGen<'a> {
-    pub fn new(hir: &'a ResolvedGraph, source_map: &'a SourceMap, options: PythonOptions) -> Self {
+impl<'a, 'cb> PyGen<'a, 'cb> {
+    pub fn new(
+        hir: &'a ResolvedGraph,
+        original_hir: &'a ResolvedGraph,
+        source_map: &'a SourceMap,
+        options: PythonOptions,
+        type_info_cb: Option<PythonTypeInfoCallback<'cb>>,
+    ) -> Self {
         Self {
             hir,
+            original_hir,
+            type_info_cb: RefCell::new(type_info_cb),
             source_map,
             options,
         }
@@ -478,9 +489,7 @@ impl<'a> PyGen<'a> {
 
         w.indent();
 
-        if struct_ty.members.is_empty() {
-            py!(w, "pass\n");
-        } else {
+        if !struct_ty.members.is_empty() {
             for member in &struct_ty.members {
                 let ty_str = self.py_member_type(w, &member.ty, member);
                 let default = self.field_default(w, &member.ty, member);
@@ -489,6 +498,7 @@ impl<'a> PyGen<'a> {
             }
         }
 
+        self.emit_type_info_def(w, def);
         w.dedent();
         py!(w, "\n\n");
     }
@@ -600,6 +610,7 @@ impl<'a> PyGen<'a> {
             }
         }
 
+        self.emit_type_info_def(w, def);
         w.dedent();
         py!(w, "\n\n");
     }
@@ -654,7 +665,9 @@ impl<'a> PyGen<'a> {
                 w.dedent();
             }
         }
+        py!(w, "\n");
 
+        self.emit_type_info_def(w, def);
         w.dedent();
         py!(w, "\n");
     }
@@ -788,6 +801,8 @@ impl<'a> PyGen<'a> {
         py!(w, "self._discriminator = ", self.format_numeric(w, Some(&union_ty.disc.ty), &default_disc), "\n");
         py!(w, format!("self._value = {default_value_reset}\n"));
         w.dedent();
+
+        self.emit_type_info_def(w, def);
         w.dedent();
         py!(w, "\n\n");
     }
@@ -847,9 +862,7 @@ impl<'a> PyGen<'a> {
         py!(w, "class ", def, "(_builtins_.Exception):\n");
         w.indent();
 
-        if except_ty.members.is_empty() {
-            py!(w, "pass\n");
-        } else {
+        if !except_ty.members.is_empty() {
             for member in &except_ty.members {
                 let ty_str = self.py_member_type(w, &member.ty, member);
                 let default = self.field_default(w, &member.ty, member);
@@ -857,6 +870,7 @@ impl<'a> PyGen<'a> {
             }
         }
 
+        self.emit_type_info_def(w, def);
         w.dedent();
         py!(w, "\n\n");
     }
@@ -947,13 +961,11 @@ impl<'a> PyGen<'a> {
         }
         w.indent();
 
-        if value_ty.members.is_empty()
-            && value_ty.attributes.is_empty()
-            && value_ty.prototypes.is_empty()
-            && value_ty.definitions.is_empty()
+        if !value_ty.members.is_empty()
+            || !value_ty.attributes.is_empty()
+            || !value_ty.prototypes.is_empty()
+            || !value_ty.definitions.is_empty()
         {
-            py!(w, "pass\n");
-        } else {
             let (nested_aliases, nested_defs): (Vec<DefId>, Vec<DefId>) =
                 value_ty.definitions.iter().copied().partition(|&id| {
                     matches!(self.hir.context.type_of(id).kind, DefKind::Alias(_))
@@ -990,6 +1002,7 @@ impl<'a> PyGen<'a> {
             }
         }
 
+        self.emit_type_info_def(w, def);
         w.dedent();
         py!(w, "\n\n");
     }

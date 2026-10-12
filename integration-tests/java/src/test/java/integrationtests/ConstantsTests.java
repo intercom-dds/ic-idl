@@ -224,4 +224,11 @@ class ConstantsTests {
         assertEquals(2147483646, LONG_MAX_MINUS_ONE.value);
         assertEquals(9223372036854775806L, LONGLONG_MAX_MINUS_ONE.value);
     }
+
+    @Test
+    void unsigned_constant_references() {
+        assertEquals(255, OCTET_MAX_REF.value);
+        assertEquals(65535, USHORT_MAX_REF.value);
+        assertEquals(4294967295L, IDL_ULONG_MAX_REF.value);
+    }
 }

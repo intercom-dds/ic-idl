@@ -1653,19 +1653,21 @@ impl<'a> JavaGen<'a> {
 
     fn emit_const(&self, w: &mut Twine, def: &Def, const_ty: &ConstTy, nested: bool) {
         let ty = self.hir.context.resolve_ty(&const_ty.ty);
-        let (java_type, value) = match (&ty.kind, &const_ty.value) {
-            (TyKind::Primitive(_), Numeric::UInt8(i)) if *i > i8::MAX as u8 => {
-                ("short", i.to_string())
+        let unsigned = self.hir.context.unsigned_value(&const_ty.value);
+
+        let (java_type, value) = match &ty.kind {
+            TyKind::Primitive(PrimitiveTy::UInt8) if unsigned > i8::MAX as u64 => {
+                ("short", unsigned.to_string())
             }
-            (TyKind::Primitive(_), Numeric::UInt16(i)) if *i > i16::MAX as u16 => {
-                ("int", i.to_string())
+            TyKind::Primitive(PrimitiveTy::UInt16) if unsigned > i16::MAX as u64 => {
+                ("int", unsigned.to_string())
             }
-            (TyKind::Primitive(_), Numeric::UInt32(i)) if *i > i32::MAX as u32 => {
-                ("long", format!("{i}L"))
+            TyKind::Primitive(PrimitiveTy::UInt32) if unsigned > i32::MAX as u64 => {
+                ("long", format!("{unsigned}L"))
             }
-            (TyKind::Primitive(_), Numeric::UInt64(i)) if *i > i64::MAX as u64 => (
+            TyKind::Primitive(PrimitiveTy::UInt64) if unsigned > i64::MAX as u64 => (
                 "java.math.BigInteger",
-                format!("new java.math.BigInteger(\"{i}\")"),
+                format!("new java.math.BigInteger(\"{unsigned}\")"),
             ),
             _ => {
                 let ty = self.java_type(&const_ty.ty, def.id);
@@ -1678,6 +1680,12 @@ impl<'a> JavaGen<'a> {
                     w!(w, "}\n");
                 };
             }
+        };
+
+        let value = if let Numeric::Const(const_def_id) = &const_ty.value {
+            format!("{}.value", self.scoped_name(*const_def_id, def.id))
+        } else {
+            value
         };
 
         if nested {

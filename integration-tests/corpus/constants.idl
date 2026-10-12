@@ -147,4 +147,8 @@ module large_integer_types {
 
     const long LONG_MAX_MINUS_ONE = 2147483646;
     const long long LONGLONG_MAX_MINUS_ONE = 9223372036854775806;
+
+    const octet OCTET_MAX_REF = OCTET_MAX;
+    const unsigned short USHORT_MAX_REF = USHORT_MAX;
+    const unsigned long IDL_ULONG_MAX_REF = IDL_ULONG_MAX;
 };

@@ -397,6 +397,9 @@ fn resolve_default_tys(hir: &ResolvedGraph, def_id: DefId, dep_ids: &mut HashSet
     let def = hir.context.definitions.get(def_id);
 
     match &def.kind {
+        DefKind::Const(const_ty) => {
+            resolve_numeric(hir, Some(&const_ty.ty), &const_ty.value, dep_ids);
+        }
         DefKind::Struct(struct_ty) => {
             for member in &struct_ty.members {
                 resolve_default_ty(hir, &member.ty, member, dep_ids);

@@ -127,6 +127,7 @@ jobs:
           - cpp
           - csharp
           - java
+          - json_schema
           - python
           - rust
           - typescript

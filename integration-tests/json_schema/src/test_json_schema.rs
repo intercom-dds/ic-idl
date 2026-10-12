@@ -64,7 +64,7 @@ fn read_schema_files(schema_dir: &Path, schemas: &mut Vec<(String, Value)>) -> R
 }
 
 fn get_schemas() -> Result<Vec<(String, Value)>> {
-    let out_dir = std::env::var("OUT_DIR")?;
+    let out_dir = env!("OUT_DIR");
     let mut schema_dir = std::path::PathBuf::from(out_dir);
     schema_dir.push("jsonschema");
     let mut schemas = Vec::new();

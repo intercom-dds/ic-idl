@@ -114,6 +114,7 @@ module annotation_types {
     valuetype OptionalValue {
         @optional public long number;
         @optional public string text;
+        @optional public sequence<long> numbers;
     };
 
     union OptionalUnion switch (long) {

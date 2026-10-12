@@ -31,7 +31,6 @@ import static org.junit.jupiter.api.Assertions.*;
 
 import annotation_types.*;
 import java.util.ArrayList;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 
 class AnnotationsTests {
@@ -59,7 +58,6 @@ class AnnotationsTests {
     }
 
     @Test
-    @Disabled("@optional is not yet mapped to a nullable type in the Java backend")
     void optional_fields_default_values() {
         var o = new OptionalStruct();
         assertNull(o.getOptionalInt());
@@ -80,12 +78,31 @@ class AnnotationsTests {
     }
 
     @Test
-    @Disabled("@optional is not yet mapped to a nullable type in the Java backend")
     void optional_type_annotations() {
         var o = new OptionalStruct();
         assertNull(o.getOptionalInt());
         o.setOptionalInt(100);
         assertEquals(100, o.getOptionalInt());
+    }
+
+    @Test
+    void optional_copies_preserve_absence_and_copy_present_values() {
+        var absent = new OptionalStruct();
+        var copy = new OptionalStruct(absent);
+        assertNull(copy.getOptionalInt());
+        assertNull(copy.getOptionalString());
+        assertNull(copy.getOptionalSeq());
+        assertEquals(absent, copy);
+
+        absent.setOptionalInt(1000);
+        absent.setOptionalString("value");
+        absent.setOptionalSeq(new ArrayList<>());
+        absent.getOptionalSeq().add(42);
+        copy = absent.clone();
+        assertEquals(absent, copy);
+        assertNotSame(absent.getOptionalSeq(), copy.getOptionalSeq());
+        copy.setOptionalInt(null);
+        assertNotEquals(absent, copy);
     }
 
     @Test

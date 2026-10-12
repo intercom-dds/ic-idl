@@ -67,4 +67,57 @@ module bitmask_types {
         TWO,
         THREE
     };
+
+    const BitBoundFlags ZERO7 = 0;
+    const BitBoundFlags HIGH7 = 0x40;
+    const BitBoundFlags ALL7 = 0x7f;
+    const BitBoundFlags ANY7 = ALL7;
+
+    @bit_bound(8)
+    bitmask Flags8 {
+        BIT8
+    };
+    typedef Flags8 Mask8;
+    const Mask8 ZERO8 = 0;
+    const Mask8 HIGH8 = 0x80;
+    const Mask8 ALL8 = -1;
+    const Mask8 ANY8 = ALL8;
+    const Mask8 HIGH_REF8 = HIGH8;
+    const Mask8 ZERO_REF8 = ZERO8;
+
+    @bit_bound(16)
+    bitmask Flags16 {
+        BIT16
+    };
+    typedef Flags16 Mask16;
+    const Mask16 ZERO16 = 0;
+    const Mask16 HIGH16 = 0x8000;
+    const Mask16 ALL16 = -1;
+    const Mask16 ANY16 = ALL16;
+    const Mask16 HIGH_REF16 = HIGH16;
+    const Mask16 ZERO_REF16 = ZERO16;
+
+    @bit_bound(32)
+    bitmask Flags32 {
+        BIT32
+    };
+    typedef Flags32 Mask32;
+    const Mask32 ZERO32 = 0;
+    const Mask32 HIGH32 = 0x80000000;
+    const Mask32 ALL32 = -1;
+    const Mask32 ANY32 = ALL32;
+    const Mask32 HIGH_REF32 = HIGH32;
+    const Mask32 ZERO_REF32 = ZERO32;
+
+    @bit_bound(64)
+    bitmask Flags64 {
+        BIT64
+    };
+    typedef Flags64 Mask64;
+    const Mask64 ZERO64 = 0;
+    const Mask64 HIGH64 = 0x8000000000000000;
+    const Mask64 ALL64 = -1;
+    const Mask64 ANY64 = ALL64;
+    const Mask64 HIGH_REF64 = HIGH64;
+    const Mask64 ZERO_REF64 = ZERO64;
 };

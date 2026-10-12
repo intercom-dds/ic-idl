@@ -35,6 +35,22 @@ import union_types.*;
 class UnionsTests {
 
     @Test
+    void unsignedByteConstantsAndDefaultDiscriminators() {
+        var value = new ByteSwitch();
+        for (byte discriminator : new byte[] {(byte) 128, (byte) 255}) {
+            value.setNumber(42, discriminator);
+            assertEquals(discriminator, value.getDiscriminator());
+            assertEquals(42, value.getNumber());
+            assertEquals(value, value.clone());
+        }
+
+        value.setText("default", (byte) 17);
+        assertEquals((byte) 17, value.getDiscriminator());
+        assertEquals("default", value.getText());
+        assertThrows(IllegalStateException.class, () -> value.setText("invalid", (byte) 255));
+    }
+
+    @Test
     void intOrString_defaultsToDefaultVal() {
         var u = new IntOrString();
         assertEquals(0, u.getDiscriminator());

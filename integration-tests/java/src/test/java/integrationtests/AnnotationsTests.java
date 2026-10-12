@@ -106,6 +106,30 @@ class AnnotationsTests {
     }
 
     @Test
+    void optional_valuetype_members() {
+        var absent = new OptionalValue();
+        assertNull(absent.number);
+        assertNull(absent.text);
+        assertNull(absent.numbers);
+
+        var copy = new OptionalValue(absent);
+        assertNull(copy.number);
+        assertNull(copy.text);
+        assertNull(copy.numbers);
+
+        absent.number = 1000;
+        absent.text = "value";
+        absent.numbers = new ArrayList<>();
+        absent.numbers.add(42);
+
+        copy = new OptionalValue(absent);
+        assertEquals(1000, copy.number);
+        assertEquals("value", copy.text);
+        assertEquals(absent.numbers, copy.numbers);
+        assertNotSame(absent.numbers, copy.numbers);
+    }
+
+    @Test
     void nested_struct() {
         var n = new NestedStruct();
         assertNotNull(n);

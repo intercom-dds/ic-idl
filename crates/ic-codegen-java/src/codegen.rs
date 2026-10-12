@@ -1586,7 +1586,7 @@ impl<'a> JavaGen<'a> {
         }
 
         for mem in &value_ty.members {
-            let attr_ty = self.java_type(&mem.ty, def.id);
+            let attr_ty = self.member_type(mem, def.id);
             w!(w, "public ", attr_ty, " ", mem.ident.name, ";\n");
         }
 
@@ -1618,7 +1618,9 @@ impl<'a> JavaGen<'a> {
             self.emit_container_init(w, &attr.ident.name, &attr.ty, def.id);
         }
         for mem in &value_ty.members {
-            self.emit_container_init(w, &mem.ident.name, &mem.ty, def.id);
+            if !is_optional(&self.hir.context, mem) {
+                self.emit_container_init(w, &mem.ident.name, &mem.ty, def.id);
+            }
         }
         w!(w, "}\n\n");
 
@@ -1628,7 +1630,15 @@ impl<'a> JavaGen<'a> {
             self.emit_field_copy(w, &attr.ident.name, &attr.ty, def.id);
         }
         for mem in &value_ty.members {
+            let optional = is_optional(&self.hir.context, mem);
+            if optional {
+                w!(w, "if (other.", mem.ident.name, " != null) {\n");
+            }
+
             self.emit_field_copy(w, &mem.ident.name, &mem.ty, def.id);
+            if optional {
+                w!(w, "}\n");
+            }
         }
         w!(w, "}\n\n");
 

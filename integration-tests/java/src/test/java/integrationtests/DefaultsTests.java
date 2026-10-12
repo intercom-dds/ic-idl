@@ -54,7 +54,6 @@ class DefaultsTests {
     }
 
     @Test
-    @Disabled("@optional is not yet mapped to a nullable type in the Java backend")
     void optional_fields_are_null_by_default() {
         var o = new OptionalFields();
         assertNull(o.getMaybeInt());

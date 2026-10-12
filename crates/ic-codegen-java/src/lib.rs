@@ -27,6 +27,7 @@
 
 mod codegen;
 
+pub use codegen::JavaGen;
 use ic_cli::Command;
 use ic_emit::File;
 use ic_emit::case::Case;
@@ -79,7 +80,7 @@ pub struct JavaOptions {
 }
 
 #[must_use]
-pub fn codegen_java(hir: &ic_hir::ResolvedGraph, options: JavaOptions) -> Vec<File> {
+pub fn transform_java(hir: &ic_hir::ResolvedGraph, options: &JavaOptions) -> ic_hir::ResolvedGraph {
     let convention = if options.no_rename {
         Convention::default()
     } else {
@@ -98,7 +99,12 @@ pub fn codegen_java(hir: &ic_hir::ResolvedGraph, options: JavaOptions) -> Vec<Fi
         ..Target::default()
     };
 
-    let hir = rename::transform(hir.clone(), &target);
-    let generator = codegen::JavaGen::new(&hir, options);
+    rename::transform(hir.clone(), &target)
+}
+
+#[must_use]
+pub fn codegen_java(hir: &ic_hir::ResolvedGraph, options: JavaOptions) -> Vec<File> {
+    let hir = transform_java(hir, &options);
+    let generator = JavaGen::new(&hir, options);
     generator.generate()
 }

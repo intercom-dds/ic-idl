@@ -30,9 +30,38 @@ package integrationtests;
 import static org.junit.jupiter.api.Assertions.*;
 
 import bitmask_types.*;
+import java.util.BitSet;
 import org.junit.jupiter.api.Test;
 
 class BitmasksTests {
+
+    @Test
+    void typedConstants_preserveUnsignedBitsAndReferences() {
+        int[] widths = {7, 8, 16, 32, 64};
+        BitSet[] zero = {ZERO7.value, ZERO8.value, ZERO16.value, ZERO32.value, ZERO64.value};
+        BitSet[] high = {HIGH7.value, HIGH8.value, HIGH16.value, HIGH32.value, HIGH64.value};
+        BitSet[] all = {ALL7.value, ALL8.value, ALL16.value, ALL32.value, ALL64.value};
+        BitSet[] any = {ANY7.value, ANY8.value, ANY16.value, ANY32.value, ANY64.value};
+        for (int i = 0; i < widths.length; i++) {
+            BitSet expectedHigh = new BitSet();
+            expectedHigh.set(widths[i] - 1);
+            BitSet expectedAll = new BitSet();
+            expectedAll.set(0, widths[i]);
+            assertEquals(new BitSet(), zero[i]);
+            assertEquals(expectedHigh, high[i]);
+            assertEquals(expectedAll, all[i]);
+            assertEquals(expectedAll, any[i]);
+        }
+
+        assertEquals(HIGH8.value, HIGH_REF8.value);
+        assertEquals(HIGH16.value, HIGH_REF16.value);
+        assertEquals(HIGH32.value, HIGH_REF32.value);
+        assertEquals(HIGH64.value, HIGH_REF64.value);
+        assertEquals(ZERO8.value, ZERO_REF8.value);
+        assertEquals(ZERO16.value, ZERO_REF16.value);
+        assertEquals(ZERO32.value, ZERO_REF32.value);
+        assertEquals(ZERO64.value, ZERO_REF64.value);
+    }
 
     @Test
     void permissions_values() {

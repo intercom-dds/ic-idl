@@ -26,6 +26,16 @@
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 module union_types {
+    const octet HIGH_BYTE = 255;
+
+    union ByteSwitch switch (octet) {
+    case HIGH_BYTE:
+    case 128:
+        long number;
+    default:
+        string text;
+    };
+
     union IntOrString switch (long) {
     case 1:
         long int_val;

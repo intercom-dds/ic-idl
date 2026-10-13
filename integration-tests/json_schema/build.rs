@@ -48,6 +48,7 @@ fn main() {
         .executable(&idl_compiler)
         .include("../corpus")
         .flags([
+            "-Wno-any-type",
             "--json-schema-out",
             &format!("{}/jsonschema", std::env::var("OUT_DIR").unwrap()),
         ])

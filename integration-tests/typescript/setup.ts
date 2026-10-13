@@ -51,6 +51,7 @@ if (!existsSync(generatedDir)) {
 
 const result = spawnSync([
   compilerPath,
+  "-Wno-any-type",
   "--typescript-out",
   generatedDir,
   corpusDir,

@@ -94,7 +94,12 @@ def generated_modules(
 
         for idl_file in idl_files:
             result = subprocess.run(
-                [str(idl_compiler), f"--python-out={output_dir}", str(idl_file)],
+                [
+                    str(idl_compiler),
+                    "-Wno-any-type",
+                    f"--python-out={output_dir}",
+                    str(idl_file),
+                ],
                 capture_output=True,
                 text=True,
                 check=False,

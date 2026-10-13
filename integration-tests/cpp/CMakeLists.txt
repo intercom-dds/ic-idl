@@ -90,6 +90,7 @@ find_package(
 idl_generate(
     LANGUAGE CPP
     INPUT_IDL ../corpus
+    FLAGS -Wno-any-type
 )
 
 add_executable(cpp_integration_tests
@@ -144,7 +145,7 @@ if(HAVE_STD_FORMAT)
         LANGUAGE CPP
         INPUT_IDL ../corpus
         DESTINATION use_fmt
-        FLAGS --use-fmt
+        FLAGS --use-fmt -Wno-any-type
         OUTPUT_VAR IDL_FORMAT_OUTPUTS
     )
 

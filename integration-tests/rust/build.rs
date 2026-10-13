@@ -47,6 +47,7 @@ fn main() {
     Codegen::new("corpus")
         .executable(idl_compiler)
         .include("../corpus")
+        .flags(["-Wno-any-type"])
         .input(&idl_files)
         .generate()
         .expect("Generated corpus IDL");

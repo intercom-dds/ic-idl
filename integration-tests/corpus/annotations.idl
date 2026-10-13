@@ -130,7 +130,7 @@ module annotation_types {
     };
 
     struct SharedRefs {
-        @shared string shared_string;
+        @external string shared_string;
         @external NestedStruct shared_struct;
     };
 

@@ -71,6 +71,7 @@ find_package(
 idl_generate(
     LANGUAGE C
     INPUT_IDL ../corpus
+    FLAGS -Wno-any-type
 )
 
 add_library(c_generated STATIC

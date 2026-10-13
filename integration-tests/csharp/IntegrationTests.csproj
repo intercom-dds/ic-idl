@@ -56,7 +56,7 @@
     </PropertyGroup>
 
     <MakeDir Directories="$(GeneratedSourcesPath)" />
-    <Exec Command="$(IdlCompiler) --csharp-out $(GeneratedSourcesPath) %(IdlFiles.Identity)" />
+    <Exec Command="$(IdlCompiler) -Wno-any-type --csharp-out $(GeneratedSourcesPath) %(IdlFiles.Identity)" />
     <Touch Files="$(GeneratedSourcesPath)/sentinel.txt" AlwaysCreate="true" />
 
     <ItemGroup>

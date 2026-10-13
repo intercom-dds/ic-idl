@@ -71,6 +71,7 @@
                                 <apply executable="${idl.compiler}"
                                        failonerror="true"
                                        parallel="false">
+                                    <arg value="-Wno-any-type"/>
                                     <arg value="--java-out"/>
                                     <arg value="${project.build.directory}/generated-sources/idl"/>
                                     <fileset dir="${project.basedir}/../corpus" includes="*.idl"/>

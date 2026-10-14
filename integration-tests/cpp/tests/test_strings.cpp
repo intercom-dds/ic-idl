@@ -26,7 +26,11 @@
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include <doctest/doctest.h>
+#include <ic_cts/cdr_serializer.h>
+#include <ic_cts/json_serializer.h>
+#include <ic_cts/omg_types.h>
 
+#include <sstream>
 #include <string>
 #include <string_view>
 #include <type_traits>
@@ -97,9 +101,71 @@ TEST_CASE("char_fields_struct" * doctest::test_suite("strings")) {
 }
 
 TEST_CASE("wstring_fields_struct" * doctest::test_suite("strings")) {
-    char_wstring_types::WstringFields wf(L"Wide", "Narrow");
-    CHECK(wf.wide_text == L"Wide");
+    char_wstring_types::WstringFields wf(u"Wide", "Narrow");
+    CHECK(wf.wide_text == u"Wide");
     CHECK(wf.narrow_text == "Narrow");
+}
+
+TEST_CASE("wstring_fields_utf16_roundtrip" * doctest::test_suite("strings")) {
+    const char_wstring_types::WstringFields original(u"日本語🎉🚀", "Narrow");
+    char_wstring_types::WstringFields decoded;
+
+    std::stringstream stream;
+    ic_cts::marshal_json(stream, original);
+    ic_cts::unmarshal_json(stream, decoded);
+    CHECK(decoded.wide_text == original.wide_text);
+    CHECK(decoded.narrow_text == original.narrow_text);
+
+    {
+        ic_cts::Buffer buffer;
+        ic_cts::marshal_cdr(buffer, ic_cts::CDR_LITTLE_ENDIAN, original);
+        char_wstring_types::WstringFields decoded_little_endian;
+        ic_cts::unmarshal_cdr(buffer, ic_cts::CDR_LITTLE_ENDIAN, decoded_little_endian);
+        CHECK(decoded_little_endian.wide_text == original.wide_text);
+        CHECK(decoded_little_endian.narrow_text == original.narrow_text);
+    }
+
+    {
+        ic_cts::Buffer buffer;
+        ic_cts::marshal_cdr(buffer, ic_cts::CDR_BIG_ENDIAN, original);
+        char_wstring_types::WstringFields decoded_big_endian;
+        ic_cts::unmarshal_cdr(buffer, ic_cts::CDR_BIG_ENDIAN, decoded_big_endian);
+        CHECK(decoded_big_endian.wide_text == original.wide_text);
+        CHECK(decoded_big_endian.narrow_text == original.narrow_text);
+    }
+}
+
+TEST_CASE("bounded_wstring_utf16" * doctest::test_suite("strings")) {
+    CHECK((std::is_same_v<char_wstring_types::BoundedWstring, ic_cts::bounded_u16string<16>>));
+    char_wstring_types::BoundedWstring original(u"日本語🎉🚀");
+    char_wstring_types::BoundedWstring decoded;
+
+    std::stringstream stream;
+    ic_cts::marshal_json(stream, original);
+    ic_cts::unmarshal_json(stream, decoded);
+    CHECK(decoded == original);
+
+    {
+        ic_cts::Buffer buffer;
+        ic_cts::marshal_cdr(buffer, ic_cts::CDR_LITTLE_ENDIAN, original);
+        char_wstring_types::BoundedWstring decoded_little_endian;
+        ic_cts::unmarshal_cdr(buffer, ic_cts::CDR_LITTLE_ENDIAN, decoded_little_endian);
+        CHECK(decoded_little_endian == original);
+    }
+
+    {
+        ic_cts::Buffer buffer;
+        ic_cts::marshal_cdr(buffer, ic_cts::CDR_BIG_ENDIAN, original);
+        char_wstring_types::BoundedWstring decoded_big_endian;
+        ic_cts::unmarshal_cdr(buffer, ic_cts::CDR_BIG_ENDIAN, decoded_big_endian);
+        CHECK(decoded_big_endian == original);
+    }
+}
+
+TEST_CASE("omg_wstring_type_annotations" * doctest::test_suite("strings")) {
+    CHECK((std::is_same_v<omg::types::wstring, std::u16string>));
+    CHECK((std::is_same_v<omg::types::wstring_view, std::u16string_view>));
+    CHECK((std::is_same_v<omg::types::bounded_wstring<16>, ic_cts::bounded_u16string<16>>));
 }
 
 TEST_CASE("char_sequences" * doctest::test_suite("strings")) {
@@ -113,11 +179,11 @@ TEST_CASE("char_sequences" * doctest::test_suite("strings")) {
 }
 
 TEST_CASE("mixed_char_types" * doctest::test_suite("strings")) {
-    char_wstring_types::MixedCharTypes mct('A', u'Ω', "text", L"wide");
+    char_wstring_types::MixedCharTypes mct('A', u'Ω', "text", u"wide");
     CHECK(mct.letter == 'A');
     CHECK(mct.wide_letter == u'Ω');
     CHECK(mct.text == "text");
-    CHECK(mct.wide_text == L"wide");
+    CHECK(mct.wide_text == u"wide");
 }
 
 TEST_CASE("unicode_french" * doctest::test_suite("strings")) {
@@ -242,7 +308,7 @@ TEST_CASE("char_fields_type_annotations" * doctest::test_suite("strings")) {
 }
 
 TEST_CASE("wstring_fields_type_annotations" * doctest::test_suite("strings")) {
-    CHECK((std::is_same_v<decltype(char_wstring_types::WstringFields::wide_text), std::wstring>));
+    CHECK((std::is_same_v<decltype(char_wstring_types::WstringFields::wide_text), std::u16string>));
     CHECK((std::is_same_v<decltype(char_wstring_types::WstringFields::narrow_text), std::string>));
 }
 

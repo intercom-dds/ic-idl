@@ -229,7 +229,7 @@ impl<'a> CppGen<'a> {
                 wide, bound: None, ..
             } => {
                 if *wide {
-                    "::std::wstring".to_string()
+                    "::std::u16string".to_string()
                 } else {
                     "::std::string".to_string()
                 }
@@ -240,7 +240,7 @@ impl<'a> CppGen<'a> {
                 ..
             } => {
                 if *wide {
-                    format!("::ic_cts::bounded_wstring<{bound}>")
+                    format!("::ic_cts::bounded_u16string<{bound}>")
                 } else {
                     format!("::ic_cts::bounded_string<{bound}>")
                 }
@@ -844,7 +844,7 @@ impl<'a> CppGen<'a> {
                 (
                     true,
                     if *wide {
-                        "::std::wstring_view".into()
+                        "::std::u16string_view".into()
                     } else {
                         "::std::string_view".into()
                     },

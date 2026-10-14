@@ -43,10 +43,10 @@ using string_view = std::string_view;
 template <size_t N>
 using bounded_string = ::ic_cts::bounded_string<N>;
 
-using wstring = std::wstring;
-using wstring_view = std::wstring_view;
+using wstring = std::u16string;
+using wstring_view = std::u16string_view;
 template <size_t N>
-using bounded_wstring = ::ic_cts::bounded_wstring<N>;
+using bounded_wstring = ::ic_cts::bounded_u16string<N>;
 
 template <typename T, size_t N>
 using array = std::array<T, N>;

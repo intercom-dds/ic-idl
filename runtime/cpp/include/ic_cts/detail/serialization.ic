@@ -801,7 +801,7 @@ inline void copy_string8(WRITER& writer, READER& reader, const TypeInfo&) {
 
 template <typename WRITER, typename READER>
 inline void copy_string16(WRITER& writer, READER& reader, const TypeInfo&) {
-    std::wstring str;
+    std::u16string str;
     reader.read(str);
     writer.write(str);
 }

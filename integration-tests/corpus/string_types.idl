@@ -58,6 +58,8 @@ module char_wstring_types {
         string narrow_text;
     };
 
+    typedef wstring<16> BoundedWstring;
+
     // Sequence of chars
     struct CharSequences {
         sequence<char> char_seq;

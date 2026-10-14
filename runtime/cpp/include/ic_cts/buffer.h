@@ -27,6 +27,8 @@
 
 #pragma once
 
+#include <cstdint>
+
 #include "ic_cts/span.h"
 
 namespace ic_cts {

@@ -56,6 +56,18 @@
 #    define INTERCOM_MUSL
 #  endif
 
+#elif defined(__APPLE__) && defined(__MACH__)
+#  define INTERCOM_PLATFORM "MACOS"
+#  define INTERCOM_PLATFORM_MACOS
+#  if __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
+#    define INTERCOM_PLATFORM_ENDIAN LittleEndian
+#  elif __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
+#    define INTERCOM_PLATFORM_ENDIAN BigEndian
+#  else
+#    error "Unable to figure out target byte order"
+#  endif
+#  define INTERCOM_PLATFORM_PRINTABLE "macOS"
+
 #elif defined(WIN32) || defined(_WIN32) || defined(__WIN32__)
 #  define INTERCOM_PLATFORM "WINDOWS"
 #  define INTERCOM_PLATFORM_WINDOWS

@@ -102,6 +102,41 @@ module union_types {
         double float_val;
     };
 
+    struct ExternalData {
+        long number;
+    };
+
+    struct StructDefaults {
+        @default(42) long number;
+        @external ExternalData external_data;
+        @optional long optional_number;
+    };
+
+    union ComplexDefaults switch (long) {
+    case 0:
+        StructDefaults record;
+    case 1:
+        wstring wide_text;
+    case 2:
+        wstring<16> bounded_wide_text;
+    case 3:
+        string<16> bounded_text;
+    };
+
+    module first {
+        union Value switch (long) {
+        case 0:
+            long number;
+        };
+    };
+
+    module second {
+        union Value switch (long) {
+        case 0:
+            string text;
+        };
+    };
+
     union DefaultCaseExternalVariant switch (long) {
     case 1:
     case 0:

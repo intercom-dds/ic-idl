@@ -224,6 +224,46 @@ TEST_CASE("union_implicit_enum_discriminator_default" * doctest::test_suite("uni
     REQUIRE(u._d() == union_types::ValueKind::STRING_KIND);
 }
 
+TEST_CASE("union_struct_defaults" * doctest::test_suite("unions")) {
+    union_types::ComplexDefaults u;
+    REQUIRE(u._d() == 0);
+    CHECK(u.record().number == 42);
+    REQUIRE(u.record().external_data != nullptr);
+    CHECK(u.record().external_data->number == 0);
+    CHECK_FALSE(u.record().optional_number.has_value());
+
+    u.record().number = 99;
+    u._d(1);
+    u._d(0);
+    CHECK(u.record().number == 42);
+    REQUIRE(u.record().external_data != nullptr);
+    CHECK(u.record().external_data->number == 0);
+    CHECK_FALSE(u.record().optional_number.has_value());
+}
+
+TEST_CASE("union_string_defaults" * doctest::test_suite("unions")) {
+    union_types::ComplexDefaults u;
+    u._d(1);
+    CHECK(u.wide_text().empty());
+    u.wide_text(u"wide");
+    CHECK(u.wide_text() == u"wide");
+
+    u._d(2);
+    CHECK(u.bounded_wide_text().empty());
+    u._d(3);
+    CHECK(u.bounded_text().empty());
+}
+
+TEST_CASE("union_sequence_alias_scope" * doctest::test_suite("unions")) {
+    union_types::first::ValueSeq numbers(1);
+    numbers.front().number(42);
+    CHECK(numbers.front().number() == 42);
+
+    union_types::second::ValueSeq strings(1);
+    strings.front().text("value");
+    CHECK(strings.front().text() == "value");
+}
+
 TEST_CASE("union_default_case_external_variant" * doctest::test_suite("unions")) {
     union_types::DefaultCaseExternalVariant u;
     REQUIRE(u._d() == 0);

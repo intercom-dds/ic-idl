@@ -90,7 +90,7 @@ impl CppGen<'_> {
         w!(decl_w, "void free_union_();\n");
         w!(decl_w, "};\n\n");
 
-        self.emit_typedef_sequence(impl_w, def);
+        self.emit_typedef_sequence(decl_w, def);
         self.emit_type_traits(impl_w, def);
         self.emit_hash_declaration(impl_w, def);
         self.emit_union_serializer(impl_w, def, union_ty);
@@ -333,8 +333,10 @@ impl CppGen<'_> {
 
     fn get_default_value_expr(&self, ty: &Ty, relative_def: DefId) -> String {
         match &ty.kind {
-            TyKind::String { .. } => "::std::string{}".to_string(),
-            TyKind::Array { .. } | TyKind::Sequence { .. } | TyKind::Map { .. } => {
+            TyKind::String { .. }
+            | TyKind::Array { .. }
+            | TyKind::Sequence { .. }
+            | TyKind::Map { .. } => {
                 let type_name = self.cpp_type(ty, relative_def);
                 format!("{type_name}{{}}")
             }
@@ -342,39 +344,14 @@ impl CppGen<'_> {
             TyKind::Adt(def_id) => {
                 let def = self.hir.context.definitions.get(*def_id);
                 match &def.kind {
-                    DefKind::Struct(struct_ty) => {
-                        let type_name = self.cpp_type(ty, relative_def);
-                        let mut result = format!("{type_name}{{");
-                        for (i, member) in struct_ty.members.iter().enumerate() {
-                            let field_default =
-                                self.get_default_value_expr(&member.ty, relative_def);
-                            if i > 0 {
-                                result.push_str(", ");
-                            }
-                            result.push_str(&field_default);
-                        }
-                        result.push('}');
-                        result
-                    }
-                    DefKind::Valuetype(valuetype_ty) => {
-                        let type_name = self.cpp_type(ty, relative_def);
-                        let mut result = format!("{type_name}{{");
-                        for (i, member) in valuetype_ty.members.iter().enumerate() {
-                            let field_default =
-                                self.get_default_value_expr(&member.ty, relative_def);
-                            if i > 0 {
-                                result.push_str(", ");
-                            }
-                            result.push_str(&field_default);
-                        }
-                        result.push('}');
-                        result
-                    }
                     DefKind::Enum(enum_ty) => {
                         let field_id = default_enumerator(&self.hir.context, enum_ty);
                         self.scoped_name(field_id, relative_def)
                     }
-                    DefKind::Union(_) | DefKind::Alias(_) => {
+                    DefKind::Struct(_)
+                    | DefKind::Valuetype(_)
+                    | DefKind::Union(_)
+                    | DefKind::Alias(_) => {
                         let type_name = self.cpp_type(ty, relative_def);
                         format!("{type_name}{{}}")
                     }

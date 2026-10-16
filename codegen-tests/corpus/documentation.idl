@@ -1,0 +1,317 @@
+// Copyright 2026 KONGSBERG
+//
+// Redistribution and use in source and binary forms, with or without
+// modification, are permitted provided that the following conditions are met:
+//
+// 1. Redistributions of source code must retain the above copyright notice,
+//    this list of conditions and the following disclaimer.
+//
+// 2. Redistributions in binary form must reproduce the above copyright notice,
+//    this list of conditions and the following disclaimer in the documentation
+//    and/or other materials provided with the distribution.
+//
+// 3. Neither the name of the copyright holder nor the names of its contributors
+//    may be used to endorse or promote products derived from this software
+//    without specific prior written permission.
+//
+// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
+// ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+// WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+// DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
+// FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+// DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+// SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+// CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+// OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+// OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+// Documentation comment and @doc annotation tests
+
+/// Top-level constant.
+const long TOP_LEVEL_CONST = 1;
+
+/// Top-level struct.
+struct TopLevelStruct {
+    long value; ///< Trailing member doc.
+};
+
+/// Module documentation.
+/// Spans multiple lines.
+module documentation {
+    /// Line doc on a constant.
+    const long LINE_DOC_CONST = 10;
+
+    //! Bang line doc on a constant.
+    const long BANG_DOC_CONST = 11;
+
+    /** Block doc on a constant. */
+    const long BLOCK_DOC_CONST = 12;
+
+    /*! Bang block doc on a constant. */
+    const long BANG_BLOCK_DOC_CONST = 13;
+
+    @doc("Annotation doc on a constant.")
+    const long ANNOTATION_DOC_CONST = 14;
+
+    const long TRAILING_DOC_CONST = 15; ///< Trailing doc on a constant.
+
+    /// Doc on a string constant.
+    const string STRING_CONST = "text";
+
+    /**
+     * Multi-line block doc.
+     *
+     * Contains a blank line, "quotes", a backslash \ and a triple quote """.
+     * Also {braces}, <angle> brackets, & ampersands and a percent % sign.
+     */
+    const long SPECIAL_CHARS_CONST = 16;
+
+    @doc("Annotation doc with \"quotes\", a backslash \\ and \"\"\" triple quotes.")
+    const long ESCAPED_ANNOTATION_CONST = 17;
+
+    /// Line doc combined with an annotation doc.
+    @doc("Second documentation entry.")
+    const long COMBINED_DOC_CONST = 18;
+
+    /// Ends with a backslash \
+    const long BACKSLASH_END_CONST = 19;
+
+    /// Ends with a quote "
+    const long QUOTE_END_CONST = 20;
+
+    /// Typedef of a primitive.
+    typedef long DocLong;
+
+    /// Typedef of a sequence.
+    typedef sequence<long> DocSequence;
+
+    /// Typedef of a bounded string.
+    typedef string<32> DocBoundedString;
+
+    /// Typedef of an array.
+    typedef long DocArray[4];
+
+    /// Typedef with multiple declarators.
+    typedef double DocFirstAlias, DocSecondAlias;
+
+    typedef short DocTrailingAlias; ///< Trailing doc on a typedef.
+
+    /// Enum documentation.
+    enum DocColor {
+        /// Line doc on an enumerator.
+        RED,
+        @doc("Annotation doc on an enumerator.")
+        GREEN,
+        BLUE, ///< Trailing doc on an enumerator.
+        /** Block doc on the last enumerator. */
+        YELLOW
+    };
+
+    /// Bitmask documentation.
+    bitmask DocFlags {
+        /// Line doc on a bit.
+        FLAG_READ,
+        @doc("Annotation doc on a bit.")
+        FLAG_WRITE,
+        FLAG_EXECUTE, ///< Trailing doc on a bit.
+        /** Block doc on the last bit. */
+        FLAG_DELETE
+    };
+
+    /// Struct documentation.
+    struct DocStruct {
+        /// Line doc on a member.
+        long line_member;
+
+        @doc("Annotation doc on a member.")
+        string annotation_member;
+
+        double trailing_member; ///< Trailing doc on a member.
+
+        /** Block doc on a member. */
+        DocColor enum_member;
+
+        /// Doc on an optional member.
+        @optional long optional_member;
+
+        /// Doc on a key member.
+        @key long key_member;
+
+        /// Doc on a sequence member.
+        sequence<DocStruct> recursive_member;
+
+        /// Doc on an array member.
+        short array_member[2];
+
+        /// Doc on a member with a "quote" and a backslash \.
+        long special_member;
+    };
+
+    /// Empty struct documentation.
+    struct DocEmptyStruct {
+    };
+
+    /// Derived struct documentation.
+    struct DocDerivedStruct : DocStruct {
+        /// Doc on a derived member.
+        long derived_member;
+    };
+
+    /// Union documentation.
+    union DocUnion switch (long) {
+        /// Line doc on a case.
+        case 1:
+            long line_case;
+        @doc("Annotation doc on a case.")
+        case 2:
+            string annotation_case;
+        case 3:
+        case 4:
+            double trailing_case; ///< Trailing doc on a case with two labels.
+        /** Block doc on the default case. */
+        default:
+            short default_case;
+    };
+
+    /// Union with an enum discriminator.
+    union DocEnumUnion switch (DocColor) {
+        /// Doc on the red case.
+        case RED:
+            long red_value;
+        /// Doc on the green case.
+        case GREEN:
+            DocStruct green_value;
+    };
+
+    /// Exception documentation.
+    exception DocException {
+        /// Line doc on an exception member.
+        string reason;
+        long code; ///< Trailing doc on an exception member.
+    };
+
+    /// Empty exception documentation.
+    exception DocEmptyException {
+    };
+
+    /// Empty interface documentation.
+    interface DocEmptyInterface {
+    };
+
+    /// Interface documentation.
+    interface DocInterface {
+        /// Doc on a nested struct.
+        struct NestedStruct {
+            /// Doc on a nested member.
+            long nested_member;
+        };
+
+        /// Doc on a nested constant.
+        const long NESTED_CONST = 5;
+
+        /// Doc on a nested typedef.
+        typedef sequence<NestedStruct> NestedSequence;
+
+        /// Doc on an attribute.
+        attribute long doc_attribute;
+
+        /// Doc on a readonly attribute.
+        readonly attribute string doc_readonly_attribute;
+
+        attribute double trailing_attribute; ///< Trailing doc on an attribute.
+
+        /// Doc on an attribute with multiple declarators.
+        attribute short first_attribute, second_attribute;
+
+        /// Doc on an attribute with raises.
+        attribute long raising_attribute getraises (DocException) setraises (DocException);
+
+        /// Doc on an operation.
+        long doc_operation(
+            /// Doc on an in parameter.
+            in long in_param,
+            out string out_param, ///< Trailing doc on an out parameter.
+            /// Doc on an inout parameter.
+            inout double inout_param
+        );
+
+        /// Doc on a void operation without parameters.
+        void doc_void_operation();
+
+        /// Doc on a oneway operation.
+        oneway void doc_oneway_operation(in long value);
+
+        /// Doc on an operation that raises.
+        void doc_raising_operation() raises (DocException, DocEmptyException);
+
+        void trailing_operation(); ///< Trailing doc on an operation.
+
+        /// Doc on an operation using nested types.
+        NestedSequence doc_nested_operation(in NestedStruct value);
+
+        @doc("Annotation doc with \"quotes\" and a backslash \\ on an operation.")
+        DocUnion doc_special_operation(in DocStruct value);
+    };
+
+    /// Derived interface documentation.
+    interface DocDerivedInterface : DocInterface {
+        /// Doc on a derived operation.
+        void derived_operation();
+    };
+
+    /// Empty valuetype documentation.
+    valuetype DocEmptyValue {
+    };
+
+    /// Valuetype documentation.
+    valuetype DocValue {
+        /// Doc on a public state member.
+        public long public_member;
+
+        /// Doc on a private state member.
+        private string private_member;
+
+        public double trailing_member; ///< Trailing doc on a state member.
+
+        /// Doc on a valuetype attribute.
+        attribute long value_attribute;
+
+        /// Doc on a readonly valuetype attribute.
+        readonly attribute string value_readonly_attribute;
+
+        /// Doc on a valuetype operation.
+        long value_operation();
+
+        void trailing_value_operation(); ///< Trailing doc on a valuetype operation.
+    };
+
+    /// Derived valuetype documentation.
+    valuetype DocDerivedValue : DocValue {
+        /// Doc on a derived state member.
+        public long derived_member;
+    };
+
+    /// Doc on a forward-declared struct.
+    struct DocForwardStruct;
+
+    /// Struct referencing a forward declaration.
+    struct DocForwardUser {
+        /// Doc on a member referencing a forward-declared struct.
+        sequence<DocForwardStruct> forward_member;
+    };
+
+    /// Definition of the forward-declared struct.
+    struct DocForwardStruct {
+        /// Doc on a forward-declared struct member.
+        long forward_value;
+    };
+
+    /// Nested module documentation.
+    module nested {
+        /// Doc on a struct in a nested module.
+        struct NestedModuleStruct {
+            /// Doc on a member in a nested module.
+            documentation::DocColor color;
+        };
+    };
+};

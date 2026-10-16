@@ -39,6 +39,8 @@ mod type_info;
 mod unions;
 mod valuetypes;
 
+pub use codegen::CppGen;
+
 #[rustfmt::skip]
 const KEYWORDS: &[&str] = &[
     "alignas", "alignof", "and", "and_eq", "asm", "auto", "bitand", "bitor", "bool", "break",
@@ -90,6 +92,9 @@ pub struct CppOptions {
     /// Store header files inside a subdirectory
     #[option(long, arg = "dir")]
     pub header_subdir: Option<String>,
+
+    /// Additional headers to include in the generated code
+    pub additional_headers: Vec<String>,
 }
 
 fn escape_cpp_keyword(ctx: rename::RenameContext) -> Option<String> {
@@ -104,6 +109,16 @@ fn escape_cpp_keyword(ctx: rename::RenameContext) -> Option<String> {
     }
 }
 
+#[must_use]
+pub fn transform_cpp(hir: &ic_hir::ResolvedGraph) -> ic_hir::ResolvedGraph {
+    let target = Target {
+        keyword_escape: Some(escape_cpp_keyword),
+        ..Target::default()
+    };
+
+    rename::transform(hir.clone(), &target)
+}
+
 /// # Panics
 ///
 /// May panic if some of the passed string parameters contain a NUL byte.
@@ -113,12 +128,6 @@ pub fn codegen_cpp(
     source_map: &ic_vfs::SourceMap,
     options: CppOptions,
 ) -> Vec<File> {
-    let target = Target {
-        keyword_escape: Some(escape_cpp_keyword),
-        ..Target::default()
-    };
-
-    let original_hir = hir;
-    let hir = ic_hir_xform::rename::transform(hir.clone(), &target);
-    codegen::CppGen::new(&hir, original_hir, source_map, options).generate()
+    let mapped = transform_cpp(hir);
+    CppGen::new(&mapped, hir, source_map, options).generate()
 }

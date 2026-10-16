@@ -53,6 +53,7 @@ pub struct CppGen<'a> {
 }
 
 impl<'a> CppGen<'a> {
+    #[must_use]
     pub fn new(
         hir: &'a ResolvedGraph,
         original_hir: &'a ResolvedGraph,
@@ -185,6 +186,7 @@ impl<'a> CppGen<'a> {
         }
     }
 
+    #[must_use]
     pub fn has_default_value(&self, ty: &Ty) -> bool {
         let resolved_ty = match &ty.kind {
             TyKind::Adt(def_id) => self.hir.context.base_type_of(*def_id),
@@ -302,6 +304,7 @@ impl<'a> CppGen<'a> {
         }
     }
 
+    #[must_use]
     pub fn should_use_move<T>(&self, ty: &Ty, member: Option<&T>) -> bool
     where
         T: MemberLike,
@@ -335,12 +338,17 @@ impl<'a> CppGen<'a> {
         }
     }
 
-    pub fn emit_member(&self, w: &mut Twine, member: &MemberKind<'a>, def_id: DefId) {
+    pub(crate) fn emit_member(&self, w: &mut Twine, member: &MemberKind<'a>, def_id: DefId) {
         let ty_str = self.member_cpp_type(member.ty(), member, def_id);
         w!(w, ty_str, " ", member.name(), ";\n");
     }
 
-    pub fn emit_member_default(&self, w: &mut Twine, member: &MemberKind<'a>, def_id: DefId) {
+    pub(crate) fn emit_member_default(
+        &self,
+        w: &mut Twine,
+        member: &MemberKind<'a>,
+        def_id: DefId,
+    ) {
         let external = is_external(&self.hir.context, member);
 
         let inner_ty = self.cpp_type(member.ty(), def_id);
@@ -375,7 +383,7 @@ impl<'a> CppGen<'a> {
         }
     }
 
-    pub fn collect_members(&self, def_id: DefId) -> Vec<MemberKind<'a>> {
+    pub(crate) fn collect_members(&self, def_id: DefId) -> Vec<MemberKind<'a>> {
         let def = self.hir.context.definitions.get(def_id);
         let mut all_members = Vec::new();
 
@@ -396,7 +404,7 @@ impl<'a> CppGen<'a> {
         all_members
     }
 
-    pub fn collect_all_members(&self, def_id: DefId) -> Vec<MemberKind<'a>> {
+    pub(crate) fn collect_all_members(&self, def_id: DefId) -> Vec<MemberKind<'a>> {
         let def = self.hir.context.base_def_of(def_id);
         let mut all_members = Vec::new();
 
@@ -584,6 +592,7 @@ impl<'a> CppGen<'a> {
         }
     }
 
+    #[must_use]
     pub fn primitive_default(prim: PrimitiveTy) -> &'static str {
         match prim {
             PrimitiveTy::Bool => "false",
@@ -982,6 +991,18 @@ impl<'a> CppGen<'a> {
         }
     }
 
+    #[must_use]
+    pub fn header_path(&self, file_id: FileId) -> PathBuf {
+        let file_name = self.output_filename(file_id, self.output_extension());
+        PathBuf::from(self.build_path(&file_name))
+    }
+
+    #[must_use]
+    pub fn source_path(&self, file_id: FileId) -> PathBuf {
+        PathBuf::from(self.output_filename(file_id, "cpp"))
+    }
+
+    #[must_use]
     pub fn generate(&self) -> Vec<File> {
         let mut files_map: HashMap<FileId, Vec<DefId>> = HashMap::new();
 
@@ -1017,6 +1038,9 @@ impl<'a> CppGen<'a> {
             }
             w!(header, "#include <ic_cts/member_info.h>\n");
             w!(header, "#include <ic_cts/memory.h>\n");
+            for include in &self.options.additional_headers {
+                w!(header, "#include <", include, ">\n");
+            }
 
             let mut dependencies = std::collections::HashSet::new();
             for &def_id in &def_ids {
@@ -1042,20 +1066,18 @@ impl<'a> CppGen<'a> {
                 self.emit_definition(&mut decls, &mut impls, *def_id);
             }
 
-            let output_file_name = self.output_filename(file_id, self.output_extension());
-
             let mut header_content = header.finish();
             header_content.push_str(&decls.finish());
             header_content.push_str(&impls.finish());
 
-            let header_path = self.build_path(&output_file_name);
+            let header_path = self.header_path(file_id);
             result.push(File::Generated {
-                path: PathBuf::from(&header_path),
+                path: header_path.clone(),
                 source: header_content,
             });
 
             self.emit_generated_header(&mut cpp_impls);
-            w!(cpp_impls, "#include \"", header_path, "\"\n\n");
+            w!(cpp_impls, "#include \"", #header_path.display(), "\"\n\n");
             w!(cpp_impls, "#include <ic_cts/dds_xtypes_constants.h>\n");
             w!(cpp_impls, "#include <ic_cts/hash.h>\n\n");
 
@@ -1064,9 +1086,8 @@ impl<'a> CppGen<'a> {
             }
 
             let cpp_content = cpp_impls.finish();
-            let cpp_file_name = self.output_filename(file_id, "cpp");
             result.push(File::Generated {
-                path: PathBuf::from(cpp_file_name),
+                path: self.source_path(file_id),
                 source: cpp_content,
             });
         }

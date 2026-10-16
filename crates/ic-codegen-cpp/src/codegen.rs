@@ -25,7 +25,7 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::fmt::Write;
 use std::path::PathBuf;
 
@@ -727,6 +727,10 @@ impl<'a> CppGen<'a> {
         };
 
         let param = if has_members { " s" } else { "" };
+        if self.options.header_only {
+            w!(w, "inline ");
+        }
+
         w!(
             w,
             "std::size_t std::hash<",
@@ -999,7 +1003,12 @@ impl<'a> CppGen<'a> {
 
     #[must_use]
     pub fn source_path(&self, file_id: FileId) -> PathBuf {
-        PathBuf::from(self.output_filename(file_id, "cpp"))
+        if self.options.header_only {
+            let file_name = self.output_filename(file_id, "ic");
+            PathBuf::from(self.build_path(&file_name))
+        } else {
+            PathBuf::from(self.output_filename(file_id, "cpp"))
+        }
     }
 
     #[must_use]
@@ -1038,11 +1047,12 @@ impl<'a> CppGen<'a> {
             }
             w!(header, "#include <ic_cts/member_info.h>\n");
             w!(header, "#include <ic_cts/memory.h>\n");
+
             for include in &self.options.additional_headers {
                 w!(header, "#include <", include, ">\n");
             }
 
-            let mut dependencies = std::collections::HashSet::new();
+            let mut dependencies = HashSet::new();
             for &def_id in &def_ids {
                 collect_def_dependencies(self.hir, def_id, file_id, &mut dependencies);
             }
@@ -1066,6 +1076,11 @@ impl<'a> CppGen<'a> {
                 self.emit_definition(&mut decls, &mut impls, *def_id);
             }
 
+            if self.options.header_only {
+                let implementation_file = self.output_filename(file_id, "ic");
+                w!(impls, "\n#include \"", implementation_file, "\"\n");
+            }
+
             let mut header_content = header.finish();
             header_content.push_str(&decls.finish());
             header_content.push_str(&impls.finish());
@@ -1077,6 +1092,10 @@ impl<'a> CppGen<'a> {
             });
 
             self.emit_generated_header(&mut cpp_impls);
+            if self.options.header_only {
+                w!(cpp_impls, "#pragma once\n\n");
+            }
+
             w!(cpp_impls, "#include \"", #header_path.display(), "\"\n\n");
             w!(cpp_impls, "#include <ic_cts/dds_xtypes_constants.h>\n");
             w!(cpp_impls, "#include <ic_cts/hash.h>\n\n");

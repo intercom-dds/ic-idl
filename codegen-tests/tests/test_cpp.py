@@ -166,6 +166,12 @@ def cpp_output_dir(request: pytest.FixtureRequest) -> Path:
         pytest.param(["--char-ptr-constants"], "c++17", id="char-ptr-constants"),
         pytest.param(["--unscoped-enums"], "c++17", id="unscoped-enums"),
         pytest.param(["--use-fmt"], "c++20", id="use-fmt"),
+        pytest.param(["--header-only"], "c++17", id="header-only"),
+        pytest.param(
+            ["--header-only", "--header-ext=hpp", "--header-subdir=generated"],
+            "c++17",
+            id="header-only-custom-path",
+        ),
     ],
 )
 def test_cpp(
@@ -188,6 +194,18 @@ def test_cpp(
         return
 
     source_files = [f for f in generated_files if f.suffix == ".cpp"]
+    if "--header-only" in extra_args:
+        assert not source_files
+        probe = cpp_output_dir / "header_only.cpp"
+        probe.write_text(
+            "".join(
+                f'#include "{header.relative_to(cpp_output_dir).as_posix()}"\n'
+                for header in generated_files
+                if header.suffix != ".ic"
+            )
+        )
+        source_files = [probe]
+
     if not source_files:
         return
 

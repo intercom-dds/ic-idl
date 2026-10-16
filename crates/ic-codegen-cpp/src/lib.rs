@@ -73,6 +73,10 @@ pub struct CppOptions {
     #[option(long)]
     pub no_header_follow: bool,
 
+    /// Only generate headers with inline definitions
+    #[option(long)]
+    pub header_only: bool,
+
     /// Use const char* instead of `std::string_view` for constants
     #[option(long)]
     pub char_ptr_constants: bool,

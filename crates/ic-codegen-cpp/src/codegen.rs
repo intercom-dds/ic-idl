@@ -1001,10 +1001,20 @@ impl<'a> CppGen<'a> {
         PathBuf::from(self.build_path(&file_name))
     }
 
+    fn inline_filename(&self, file_id: FileId) -> String {
+        let file_name = self.output_filename(file_id, "ic");
+        match &self.options.inline_subdir {
+            Some(directory) if !directory.is_empty() => {
+                format!("{directory}/{file_name}").replace('\\', "/")
+            }
+            _ => file_name,
+        }
+    }
+
     #[must_use]
     pub fn source_path(&self, file_id: FileId) -> PathBuf {
         if self.options.header_only {
-            let file_name = self.output_filename(file_id, "ic");
+            let file_name = self.inline_filename(file_id);
             PathBuf::from(self.build_path(&file_name))
         } else {
             PathBuf::from(self.output_filename(file_id, "cpp"))
@@ -1077,7 +1087,7 @@ impl<'a> CppGen<'a> {
             }
 
             if self.options.header_only {
-                let implementation_file = self.output_filename(file_id, "ic");
+                let implementation_file = self.inline_filename(file_id);
                 w!(impls, "\n#include \"", implementation_file, "\"\n");
             }
 

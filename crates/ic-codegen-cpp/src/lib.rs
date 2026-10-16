@@ -93,9 +93,13 @@ pub struct CppOptions {
     #[option(long, arg = "ext")]
     pub header_ext: Option<String>,
 
-    /// Store header files inside a subdirectory
+    /// Store header files in a subdirectory
     #[option(long, arg = "dir")]
     pub header_subdir: Option<String>,
+
+    /// Store inline header files in a subdirectory
+    #[option(long, arg = "dir")]
+    pub inline_subdir: Option<String>,
 
     /// Additional headers to include in the generated code
     pub additional_headers: Vec<String>,

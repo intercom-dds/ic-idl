@@ -32,6 +32,7 @@
 #include <cstdarg>
 #include <cstdio>
 #include <memory>
+#include <stdexcept>
 
 #include "ic_cts/dds_xtypes_constants.h"
 #include "ic_cts/json_parser.h"

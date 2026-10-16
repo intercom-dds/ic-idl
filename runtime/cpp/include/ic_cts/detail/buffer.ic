@@ -29,6 +29,7 @@
 
 #include <cstring>
 #include <memory>
+#include <stdexcept>
 
 #include "ic_cts/buffer.h"
 

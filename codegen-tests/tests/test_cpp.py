@@ -172,6 +172,23 @@ def cpp_output_dir(request: pytest.FixtureRequest) -> Path:
             "c++17",
             id="header-only-custom-path",
         ),
+        pytest.param(
+            ["--header-only", "--inline-subdir=detail"],
+            "c++17",
+            id="header-only-inline-subdir",
+        ),
+        pytest.param(
+            [
+                "--header-only",
+                "--header-subdir=generated",
+                "--inline-subdir=impl/detail",
+            ],
+            "c++17",
+            id="header-only-nested-inline-subdir",
+        ),
+        pytest.param(
+            ["--inline-subdir=detail"], "c++17", id="cpp-inline-subdir-ignored"
+        ),
     ],
 )
 def test_cpp(

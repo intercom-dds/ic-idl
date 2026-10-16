@@ -33,10 +33,10 @@ use std::path::PathBuf;
 use ic_emit::File;
 use ic_hir::ResolvedGraph;
 use ic_hir::hir::{
-    AliasTy, BitmaskTy, ConstTy, Def, DefId, DefKind, EnumTy, ExceptTy, InterfaceTy, Numeric,
+    AliasTy, Ann, BitmaskTy, ConstTy, Def, DefId, DefKind, EnumTy, ExceptTy, InterfaceTy, Numeric,
     ParamKind, PrimitiveTy, ProtoTy, StructTy, Ty, TyKind, UnionTy, ValueTy,
 };
-use ic_hir_analysis::annotation::{default_value, is_optional};
+use ic_hir_analysis::annotation::{default_value, doc, is_optional};
 use ic_vfs::SourceMap;
 
 use crate::imports::{ImportContext, collect_imports, is_exportable};
@@ -70,6 +70,22 @@ pub fn escape_python_string(s: &str) -> String {
         }
     }
     result
+}
+
+fn escape_docstring(s: &str) -> String {
+    let mut out = String::new();
+    for c in s.chars() {
+        match c {
+            '\\' => out.push_str("\\\\"),
+            '"' => out.push_str("\\\""),
+            '\n' | '\t' => out.push(c),
+            c if c.is_control() => {
+                _ = write!(out, "\\x{:02x}", c as u32);
+            }
+            c => out.push(c),
+        }
+    }
+    out
 }
 
 fn format_float(v: f64, is_decimal: bool) -> String {
@@ -219,11 +235,22 @@ impl<'a, 'cb> PyGen<'a, 'cb> {
             }
         }
 
+        let mut module_annotations = BTreeMap::new();
+        for &def_id in &self.hir.order {
+            self.collect_module_annotations(def_id, &mut module_annotations);
+        }
+
         let mut files = vec![];
 
         for module_path in &all_paths {
             let mut w = PyWriter::new(ImportContext::default());
             Self::emit_header(&mut w);
+
+            if let Some(annotations) = module_annotations.get(module_path)
+                && self.emit_docstring(&mut w, annotations)
+            {
+                py!(w, "\n");
+            }
 
             let file_defs: BTreeMap<_, _> = groups
                 .iter()
@@ -287,6 +314,34 @@ impl<'a, 'cb> PyGen<'a, 'cb> {
         files
     }
 
+    fn emit_docstring(&self, w: &mut PyWriter, annotations: &[Ann]) -> bool {
+        let mut docs = annotations
+            .iter()
+            .filter_map(|a| doc(&self.hir.context, a))
+            .peekable();
+
+        if docs.peek().is_none() {
+            return false;
+        }
+
+        py!(w, "\"\"\"\n");
+        for doc in docs {
+            let lines_has_star_prefix = doc.lines().all(|line| line.starts_with("* "));
+
+            for line in doc.lines() {
+                let line = if lines_has_star_prefix {
+                    line.strip_prefix("* ").unwrap_or(line)
+                } else {
+                    line
+                };
+                py!(w, escape_docstring(line), "\n");
+            }
+        }
+        py!(w, "\"\"\"\n");
+
+        true
+    }
+
     fn emit_definition(&self, w: &mut PyWriter, def_id: DefId) {
         let def = self.hir.context.type_of(def_id);
 
@@ -347,6 +402,23 @@ impl<'a, 'cb> PyGen<'a, 'cb> {
         }
 
         groups
+    }
+
+    fn collect_module_annotations(
+        &self,
+        def_id: DefId,
+        module_annotations: &mut BTreeMap<Vec<String>, Vec<Ann>>,
+    ) {
+        let def = self.hir.context.type_of(def_id);
+        if let DefKind::Module(module_ty) = &def.kind {
+            module_annotations
+                .entry(self.module_path(def_id))
+                .or_default()
+                .extend_from_slice(&def.annotations);
+            for &child_id in &module_ty.definitions {
+                self.collect_module_annotations(child_id, module_annotations);
+            }
+        }
     }
 
     fn collect_definitions(&self, def_id: DefId, groups: &mut BTreeMap<FileKey, Vec<DefId>>) {
@@ -488,6 +560,7 @@ impl<'a, 'cb> PyGen<'a, 'cb> {
         }
 
         w.indent();
+        self.emit_docstring(w, &def.annotations);
 
         if !struct_ty.members.is_empty() {
             for member in &struct_ty.members {
@@ -495,6 +568,7 @@ impl<'a, 'cb> PyGen<'a, 'cb> {
                 let default = self.field_default(w, &member.ty, member);
 
                 py!(w, member.ident.name, ": ", ty_str, " = ", default, "\n");
+                self.emit_docstring(w, &member.annotations);
             }
         }
 
@@ -615,12 +689,14 @@ impl<'a, 'cb> PyGen<'a, 'cb> {
     fn emit_enum(&self, w: &mut PyWriter, def: &Def, enum_ty: &EnumTy) {
         py!(w, "class ", def, "(_enum_.Enum):\n");
         w.indent();
+        self.emit_docstring(w, &def.annotations);
 
         for &member_id in &enum_ty.fields {
             let member_def = self.hir.context.type_of(member_id);
             if let DefKind::Const(const_ty) = &member_def.kind {
                 let val = self.format_numeric(w, None, &const_ty.value);
                 py!(w, member_def, " = ", val, "\n");
+                self.emit_docstring(w, &member_def.annotations);
             }
         }
 
@@ -632,12 +708,14 @@ impl<'a, 'cb> PyGen<'a, 'cb> {
     fn emit_bitmask(&self, w: &mut PyWriter, def: &Def, bitmask_ty: &BitmaskTy) {
         py!(w, "class ", def, "(_enum_.Flag, boundary=_enum_.KEEP):\n");
         w.indent();
+        self.emit_docstring(w, &def.annotations);
 
         for &member_id in &bitmask_ty.flags {
             let member_def = self.hir.context.type_of(member_id);
             if let DefKind::Const(const_ty) = &member_def.kind {
                 let val = self.format_numeric(w, None, &const_ty.value);
                 py!(w, member_def, " = ", val, "\n");
+                self.emit_docstring(w, &member_def.annotations);
             }
         }
 
@@ -726,6 +804,7 @@ impl<'a, 'cb> PyGen<'a, 'cb> {
         py!(w, "@_dataclasses_.dataclass(slots=True, order=True)\n");
         py!(w, "class ", def, ":\n");
         w.indent();
+        self.emit_docstring(w, &def.annotations);
 
         let disc_init = self.format_numeric(w, Some(&union_ty.disc.ty), &default_disc_init);
         let value_init = self.field_default(w, &default_variant_init.ty, default_variant_init);
@@ -744,6 +823,8 @@ impl<'a, 'cb> PyGen<'a, 'cb> {
         py!(w, "@property\n");
         py!(w, "def discriminator(self) -> ", disc_type, ":\n");
         w.indent();
+        self.emit_docstring(w, &union_ty.disc.annotations);
+
         py!(w, "return self._discriminator\n");
         w.dedent();
         w.dedent();
@@ -760,6 +841,7 @@ impl<'a, 'cb> PyGen<'a, 'cb> {
             py!(w, "@property\n");
             py!(w, "def ", variant.ident.name, "(self) -> ", variant_type, ":\n");
             w.indent();
+            self.emit_docstring(w, &variant.annotations);
 
             if variant.is_default {
                 py!(w, "return _typing_.cast(", variant_type, ", self._value)\n");
@@ -828,6 +910,7 @@ impl<'a, 'cb> PyGen<'a, 'cb> {
             py!(w, "if _typing_.TYPE_CHECKING:\n");
             w.indent();
             py!(w, def, ": _typing_.TypeAlias = \"", ty_str, "\"\n");
+            self.emit_docstring(w, &def.annotations);
             w.dedent();
             py!(w, "\n\n");
             return;
@@ -839,6 +922,7 @@ impl<'a, 'cb> PyGen<'a, 'cb> {
         } else {
             py!(w, def, ": _typing_.TypeAlias = ", ty_str, "\n");
         }
+        self.emit_docstring(w, &def.annotations);
         py!(w, "\n\n");
     }
 
@@ -880,6 +964,7 @@ impl<'a, 'cb> PyGen<'a, 'cb> {
         };
 
         py!(w, def, ": ", ann, " = ", value, "\n");
+        self.emit_docstring(w, &def.annotations);
         py!(w, "\n\n");
     }
 
@@ -887,12 +972,14 @@ impl<'a, 'cb> PyGen<'a, 'cb> {
         py!(w, "@_dataclasses_.dataclass(order=True)\n");
         py!(w, "class ", def, "(_builtins_.Exception):\n");
         w.indent();
+        self.emit_docstring(w, &def.annotations);
 
         if !except_ty.members.is_empty() {
             for member in &except_ty.members {
                 let ty_str = self.py_member_type(w, &member.ty, member);
                 let default = self.field_default(w, &member.ty, member);
                 py!(w, member.ident.name, ": ", ty_str, " = ", default, "\n");
+                self.emit_docstring(w, &member.annotations);
             }
         }
 
@@ -914,10 +1001,12 @@ impl<'a, 'cb> PyGen<'a, 'cb> {
 
         py!(w, "class ", def, "(", bases.join(", "), "):\n");
         w.indent();
+        let emitted_docstring = self.emit_docstring(w, &def.annotations);
 
         if interface_ty.attributes.is_empty()
             && interface_ty.prototypes.is_empty()
             && interface_ty.definitions.is_empty()
+            && !emitted_docstring
         {
             py!(w, "pass\n");
         } else {
@@ -929,7 +1018,12 @@ impl<'a, 'cb> PyGen<'a, 'cb> {
                 let ty_str = self.py_type(w, &attr.ty);
                 py!(w, "@property\n");
                 py!(w, "@_abc_.abstractmethod\n");
-                py!(w, "def ", attr.ident.name, "(self) -> ", ty_str, ": ...\n");
+                py!(w, "def ", attr.ident.name, "(self) -> ", ty_str, ":\n");
+                w.indent();
+                if !self.emit_docstring(w, &attr.annotations) {
+                    py!(w, "...\n");
+                }
+                w.dedent();
                 py!(w, "\n");
             }
 
@@ -959,7 +1053,12 @@ impl<'a, 'cb> PyGen<'a, 'cb> {
         };
 
         py!(w, "@_abc_.abstractmethod\n");
-        py!(w, "def ", proto.ident.name, "(", params_str, ") -> ", ret_ty, ": ...\n");
+        py!(w, "def ", proto.ident.name, "(", params_str, ") -> ", ret_ty, ":\n");
+        w.indent();
+        if !self.emit_docstring(w, &proto.annotations) {
+            py!(w, "...\n");
+        }
+        w.dedent();
         py!(w, "\n");
     }
 
@@ -986,6 +1085,7 @@ impl<'a, 'cb> PyGen<'a, 'cb> {
             py!(w, "class ", def, "(", bases.join(", "), "):\n");
         }
         w.indent();
+        self.emit_docstring(w, &def.annotations);
 
         if !value_ty.members.is_empty()
             || !value_ty.attributes.is_empty()
@@ -1009,6 +1109,7 @@ impl<'a, 'cb> PyGen<'a, 'cb> {
                 let ty_str = self.py_member_type(w, &member.ty, member);
                 let default = self.field_default(w, &member.ty, member);
                 py!(w, member.ident.name, ": ", ty_str, " = ", default, "\n");
+                self.emit_docstring(w, &member.annotations);
             }
 
             if !value_ty.members.is_empty() {
@@ -1019,7 +1120,12 @@ impl<'a, 'cb> PyGen<'a, 'cb> {
                 let ty_str = self.py_type(w, &attr.ty);
                 py!(w, "@property\n");
                 py!(w, "@_abc_.abstractmethod\n");
-                py!(w, "def ", attr.ident.name, "(self) -> ", ty_str, ": ...\n");
+                py!(w, "def ", attr.ident.name, "(self) -> ", ty_str, ":\n");
+                w.indent();
+                if !self.emit_docstring(w, &attr.annotations) {
+                    py!(w, "...\n");
+                }
+                w.dedent();
                 py!(w, "\n");
             }
 

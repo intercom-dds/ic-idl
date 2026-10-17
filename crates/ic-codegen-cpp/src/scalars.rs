@@ -194,9 +194,9 @@ impl CppGen<'_> {
                 "const char*"
             }
         } else if wide {
-            "::std::u16string_view"
+            &self.options.collection_mapping.wstring_view
         } else {
-            "::std::string_view"
+            &self.options.collection_mapping.string_view
         }
     }
 

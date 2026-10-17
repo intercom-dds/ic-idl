@@ -223,28 +223,30 @@ impl<'a> CppGen<'a> {
         }
     }
 
+    fn sequence_type(&self, inner: &str, bound: Option<usize>) -> String {
+        let mapping = &self.options.collection_mapping;
+        if let Some(bound) = bound {
+            format!("{}<{inner}, {bound}>", mapping.bounded_sequence)
+        } else {
+            format!("{}<{inner}>", mapping.sequence)
+        }
+    }
+
     pub fn cpp_type(&self, ty: &Ty, relative_def: impl Into<Option<DefId>>) -> String {
         let relative_def_opt = relative_def.into();
+        let mapping = &self.options.collection_mapping;
         match &ty.kind {
             TyKind::Primitive(prim) => cpp_primitive(*prim).to_string(),
-            TyKind::String {
-                wide, bound: None, ..
-            } => {
-                if *wide {
-                    "::std::u16string".to_string()
-                } else {
-                    "::std::string".to_string()
-                }
-            }
-            TyKind::String {
-                wide,
-                bound: Some(bound),
-                ..
-            } => {
-                if *wide {
-                    format!("::ic_cts::bounded_u16string<{bound}>")
-                } else {
-                    format!("::ic_cts::bounded_string<{bound}>")
+            TyKind::String { wide, bound, .. } => {
+                let ty = match (wide, bound) {
+                    (false, None) => &mapping.string,
+                    (true, None) => &mapping.wstring,
+                    (false, Some(_)) => &mapping.bounded_string,
+                    (true, Some(_)) => &mapping.bounded_wstring,
+                };
+                match bound {
+                    Some(bound) => format!("{ty}<{bound}>"),
+                    None => ty.clone(),
                 }
             }
             TyKind::Adt(def_id) => format!(
@@ -261,43 +263,24 @@ impl<'a> CppGen<'a> {
                     ""
                 }
             ),
-            TyKind::Sequence {
-                ty, bound: None, ..
-            } => {
+            TyKind::Sequence { ty, bound, .. } => {
                 let inner = self.cpp_type(ty, relative_def_opt);
-                format!("::std::vector<{inner}>")
-            }
-            TyKind::Sequence {
-                ty,
-                bound: Some(bound),
-                ..
-            } => {
-                let inner = self.cpp_type(ty, relative_def_opt);
-                format!("::ic_cts::bounded_vector<{inner}, {bound}>")
+                self.sequence_type(&inner, *bound)
             }
             TyKind::Map {
-                key,
-                elem,
-                bound: None,
-                ..
+                key, elem, bound, ..
             } => {
-                let key_ty = self.cpp_type(key, relative_def_opt);
-                let elem_ty = self.cpp_type(elem, relative_def_opt);
-                format!("::std::map<{key_ty}, {elem_ty}>")
-            }
-            TyKind::Map {
-                key,
-                elem,
-                bound: Some(bound),
-                ..
-            } => {
-                let key_ty = self.cpp_type(key, relative_def_opt);
-                let elem_ty = self.cpp_type(elem, relative_def_opt);
-                format!("::ic_cts::bounded_map<{key_ty}, {elem_ty}, {bound}>")
+                let key = self.cpp_type(key, relative_def_opt);
+                let elem = self.cpp_type(elem, relative_def_opt);
+                if let Some(bound) = bound {
+                    format!("{}<{key}, {elem}, {bound}>", mapping.bounded_map)
+                } else {
+                    format!("{}<{key}, {elem}>", mapping.map)
+                }
             }
             TyKind::Array { ty, len, .. } => {
                 let inner = self.cpp_type(ty, relative_def_opt);
-                format!("::std::array<{inner}, {len}>")
+                format!("{}<{inner}, {len}>", mapping.array)
             }
             TyKind::Any | TyKind::Fixed => "::ic_cts::Any".to_string(),
             TyKind::Null => "void".to_string(),
@@ -651,7 +634,8 @@ impl<'a> CppGen<'a> {
         if let DefKind::Struct(_) | DefKind::Union(_) | DefKind::Valuetype(_) | DefKind::Except(_) =
             &def.kind
         {
-            w!(w, "using sequence_type = std::vector<", qualified_name, ">;\n");
+            let sequence = self.sequence_type(&qualified_name, None);
+            w!(w, "using sequence_type = ", sequence, ";\n");
         }
 
         w!(w, "static const ic_cts::TypeInfo type_info;\n");
@@ -690,7 +674,8 @@ impl<'a> CppGen<'a> {
 
     pub fn emit_typedef_sequence(&self, w: &mut Twine, def: &Def) {
         let type_name = self.scoped_name(def.id, None);
-        w!(w, "using ", def, "Seq = ::std::vector<", type_name, ">;\n\n");
+        let sequence = self.sequence_type(&type_name, None);
+        w!(w, "using ", def, "Seq = ", sequence, ";\n\n");
     }
 
     pub fn emit_hash_declaration(&self, w: &mut Twine, def: &Def) {
@@ -857,9 +842,9 @@ impl<'a> CppGen<'a> {
                 (
                     true,
                     if *wide {
-                        "::std::u16string_view".into()
+                        self.options.collection_mapping.wstring_view.clone()
                     } else {
-                        "::std::string_view".into()
+                        self.options.collection_mapping.string_view.clone()
                     },
                 )
             } else {

@@ -59,6 +59,39 @@ const KEYWORDS: &[&str] = &[
     "typeof", "assert",
 ];
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct CollectionPreset {
+    pub string: String,
+    pub wstring: String,
+    pub string_view: String,
+    pub wstring_view: String,
+    pub bounded_string: String,
+    pub bounded_wstring: String,
+    pub sequence: String,
+    pub bounded_sequence: String,
+    pub map: String,
+    pub bounded_map: String,
+    pub array: String,
+}
+
+impl Default for CollectionPreset {
+    fn default() -> Self {
+        Self {
+            string: "::std::string".to_string(),
+            wstring: "::std::u16string".to_string(),
+            string_view: "::std::string_view".to_string(),
+            wstring_view: "::std::u16string_view".to_string(),
+            bounded_string: "::ic_cts::bounded_string".to_string(),
+            bounded_wstring: "::ic_cts::bounded_u16string".to_string(),
+            sequence: "::std::vector".to_string(),
+            bounded_sequence: "::ic_cts::bounded_vector".to_string(),
+            map: "::std::map".to_string(),
+            bounded_map: "::ic_cts::bounded_map".to_string(),
+            array: "::std::array".to_string(),
+        }
+    }
+}
+
 #[derive(Command, Debug, Default, Clone)]
 pub struct CppOptions {
     /// Generate unscoped enums
@@ -103,6 +136,9 @@ pub struct CppOptions {
 
     /// Additional headers to include in the generated code
     pub additional_headers: Vec<String>,
+
+    /// Types used for strings and collections, emitted verbatim
+    pub collection_mapping: CollectionPreset,
 }
 
 fn escape_cpp_keyword(ctx: rename::RenameContext) -> Option<String> {

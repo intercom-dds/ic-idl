@@ -38,6 +38,9 @@
 #include "ic_cts/any.h"
 #include "ic_cts/json_parser.h"
 #include "ic_cts/member_info.h"
+#ifndef IC_NO_OMG_NAMESPACE
+#  include "ic_cts/omg_types.h"
+#endif
 
 #ifdef INTERCOM_COMPILER_MICROSOFT
 #  pragma warning(push)
@@ -446,6 +449,17 @@ template <class Archive>
 struct Serializer<Archive, ic_cts::Any> {
     void operator()(Archive&, ic_cts::Any&, const TypeInfo*) {}
 };
+
+#ifndef IC_NO_OMG_NAMESPACE
+template <class Archive, typename T, T Min, T Max>
+struct Serializer<Archive, omg::types::ranged<T, Min, Max>> {
+    void operator()(Archive& a, omg::types::ranged<T, Min, Max>& value, const TypeInfo* type_info) {
+        T copy = value.value();
+        a.primitive_io(copy, type_info);
+        value = copy;
+    }
+};
+#endif
 
 CTS_DEFINE_PRIMITIVE_TYPE(bool);
 CTS_DEFINE_PRIMITIVE_TYPE(char);

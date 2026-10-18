@@ -1358,7 +1358,7 @@ fn collect_from_ty(
 }
 
 fn collect_from_annotations(
-    member: &impl MemberKind,
+    member: &impl MemberLike,
     member_index: usize,
     def_id: DefId,
     parent: Option<DefId>,
@@ -1770,23 +1770,7 @@ pub fn type_name(hir: &ResolvedGraph, ty: &Ty, convention: &Convention) -> Strin
     }
 }
 
-trait MemberKind: MemberLike {
-    fn ty(&self) -> &Ty;
-}
-
-impl MemberKind for hir::Member {
-    fn ty(&self) -> &Ty {
-        &self.ty
-    }
-}
-
-impl MemberKind for hir::Variant {
-    fn ty(&self) -> &Ty {
-        &self.ty
-    }
-}
-
-trait MemberKindMut: MemberKind {
+trait MemberKindMut: MemberLike {
     fn ty_mut(&mut self) -> &mut Ty;
     fn annotations_mut(&mut self) -> &mut Vec<hir::Ann>;
 }

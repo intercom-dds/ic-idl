@@ -26,8 +26,8 @@
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use ic_emit::printer::{Twine, w};
-use ic_hir::hir::{Def, DefId, DefKind, Label, Ty, TyKind, UnionTy, Variant};
-use ic_hir_analysis::annotation::{default_value, is_external};
+use ic_hir::hir::{Def, DefId, DefKind, Label, TyKind, UnionTy, Variant};
+use ic_hir_analysis::annotation::{MemberLike, default_value, is_external};
 use ic_hir_analysis::enum_value::default_enumerator;
 use ic_hir_analysis::union_case::{
     default_discriminator, default_union_case, unused_discriminator,
@@ -81,7 +81,7 @@ impl CppGen<'_> {
         w!(decl_w, "~ICUnionType_() {}\n");
         for variant in &union_ty.variants {
             if !matches!(variant.ty.kind, TyKind::Null) {
-                let member_type = self.member_cpp_type(&variant.ty, variant, def.id);
+                let member_type = self.cpp_type_member(variant, def.id, false);
                 w!(decl_w, member_type, " ", variant.ident.name, ";\n");
             }
         }
@@ -130,7 +130,7 @@ impl CppGen<'_> {
         variant: &Variant,
         disc_type: &str,
     ) {
-        let member_type = self.member_cpp_type(&variant.ty, variant, def.id);
+        let member_type = self.cpp_type_member(variant, def.id, false);
         let member_name = &variant.ident.name;
         let is_complex = self.should_use_move(&variant.ty, Some(variant));
 
@@ -246,7 +246,7 @@ impl CppGen<'_> {
         } else if let Some(discriminator) = unused_discriminator(&self.hir.context, union_ty) {
             self.emit_numeric_value(w, &discriminator, def_id);
         } else {
-            let default_value = self.get_default_value_expr(&union_ty.disc.ty, def_id);
+            let default_value = self.get_default_value_expr(&union_ty.disc, def_id);
             w!(w, default_value);
         }
         w!(w, ";\n");
@@ -255,7 +255,7 @@ impl CppGen<'_> {
     fn emit_variant_init(&self, w: &mut Twine, variant: &Variant, value_expr: &str) {
         if self.should_use_move(&variant.ty, Some(variant)) {
             if is_external(&self.hir.context, variant) {
-                w!(w, "::ic_cts::construct_at(&ic_union_value_.", variant.ident.name, ", new ", self.cpp_type(&variant.ty, None), "(", value_expr, "));\n");
+                w!(w, "::ic_cts::construct_at(&ic_union_value_.", variant.ident.name, ", new ", self.cpp_type_member(variant, None, true), "(", value_expr, "));\n");
             } else {
                 w!(w, "::ic_cts::construct_at(&ic_union_value_.", variant.ident.name, ", ", value_expr, ");\n");
             }
@@ -270,7 +270,7 @@ impl CppGen<'_> {
             self.emit_numeric_value_with_ty(&mut w, default, &variant.ty, def_id, false);
             w.finish()
         } else {
-            self.get_default_value_expr(&variant.ty, def_id)
+            self.get_default_value_expr(variant, def_id)
         }
     }
 
@@ -331,16 +331,19 @@ impl CppGen<'_> {
         w!(w, "}\n\n");
     }
 
-    fn get_default_value_expr(&self, ty: &Ty, relative_def: DefId) -> String {
-        match &ty.kind {
+    fn get_default_value_expr(&self, member_like: &impl MemberLike, relative_def: DefId) -> String {
+        match &member_like.ty().kind {
             TyKind::String { .. }
             | TyKind::Array { .. }
             | TyKind::Sequence { .. }
             | TyKind::Map { .. } => {
-                let type_name = self.cpp_type(ty, relative_def);
+                let type_name = self.cpp_type(member_like.ty(), relative_def);
                 format!("{type_name}{{}}")
             }
-            TyKind::Primitive(prim) => Self::primitive_default(*prim).to_string(),
+            TyKind::Primitive(_) => format!(
+                "{}()",
+                self.cpp_type_member(member_like, relative_def, true)
+            ),
             TyKind::Adt(def_id) => {
                 let def = self.hir.context.definitions.get(*def_id);
                 match &def.kind {
@@ -352,7 +355,7 @@ impl CppGen<'_> {
                     | DefKind::Valuetype(_)
                     | DefKind::Union(_)
                     | DefKind::Alias(_) => {
-                        let type_name = self.cpp_type(ty, relative_def);
+                        let type_name = self.cpp_type(member_like.ty(), relative_def);
                         format!("{type_name}{{}}")
                     }
                     DefKind::Bitmask(bitmask_ty) => {
@@ -384,7 +387,7 @@ impl CppGen<'_> {
                             w,
                             "::ic_cts::construct_at(&ic_union_value_.",
                             variant.ident.name,
-                            ", new ", self.cpp_type(&variant.ty, None),"( *a_other.ic_union_value_.",
+                            ", new ", self.cpp_type_member(variant, None, true),"( *a_other.ic_union_value_.",
                             variant.ident.name,
                             "));\n",
                         );
@@ -436,7 +439,7 @@ impl CppGen<'_> {
                             w,
                             "::ic_cts::construct_at(&ic_union_value_.",
                             variant.ident.name,
-                            ", new ", self.cpp_type(&variant.ty, None),"( *a_other.ic_union_value_.",
+                            ", new ", self.cpp_type_member(variant, None, true),"( *a_other.ic_union_value_.",
                             variant.ident.name,
                             "));\n",
                         );
@@ -630,7 +633,7 @@ impl CppGen<'_> {
                 self.emit_numeric_value(w, &discriminator, def.id);
                 w!(w, ");\n");
             } else {
-                w!(w, "_d(", self.get_default_value_expr(&union_ty.disc.ty, def.id), ");\n");
+                w!(w, "_d(", self.get_default_value_expr(&union_ty.disc, def.id), ");\n");
             }
             w!(w, "}\n\n");
         }
@@ -659,7 +662,7 @@ impl CppGen<'_> {
         variant: &Variant,
     ) {
         let qualified_name = self.scoped_name(def.id, None);
-        let member_type = self.member_cpp_type(&variant.ty, variant, None);
+        let member_type = self.cpp_type_member(variant, None, false);
         let member_name = &variant.ident.name;
 
         // Reference getter
@@ -699,7 +702,7 @@ impl CppGen<'_> {
         variant: &Variant,
         disc_type: &str,
     ) {
-        let member_type = self.member_cpp_type(&variant.ty, variant, None);
+        let member_type = self.cpp_type_member(variant, None, false);
         let member_name = &variant.ident.name;
 
         if !is_external(&self.hir.context, variant) {

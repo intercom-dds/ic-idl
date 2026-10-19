@@ -327,10 +327,10 @@ impl<'a, 'cb> PyGen<'a, 'cb> {
         py!(w, "\"\"\"\n");
         for doc in docs {
             let lines_has_star_prefix = doc
-                .lines()
+                .split('\n')
                 .all(|line| line == "*" || line.starts_with("* "));
 
-            for line in doc.lines() {
+            for line in doc.split('\n') {
                 let line = if lines_has_star_prefix {
                     line.strip_prefix("* ")
                         .or_else(|| line.strip_prefix('*'))

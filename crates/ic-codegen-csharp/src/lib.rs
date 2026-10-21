@@ -32,6 +32,7 @@
 
 mod codegen;
 
+pub use codegen::CSharpGen;
 use ic_cli::Command;
 use ic_emit::File;
 use ic_emit::case::Case;
@@ -138,13 +139,11 @@ const DOTNET_CONVENTION: rename::Convention = rename::Convention {
     strip_enum_prefix: true,
 };
 
-/// Generate C# code from the HIR.
 #[must_use]
-pub fn codegen_csharp(
+pub fn transform_csharp(
     hir: &ic_hir::ResolvedGraph,
-    source_map: &ic_vfs::SourceMap,
-    options: CSharpOptions,
-) -> Vec<File> {
+    options: &CSharpOptions,
+) -> ic_hir::ResolvedGraph {
     // Resolve and strip typedefs
     let hir = ic_hir_xform::strip_typedefs::transform(hir.clone());
 
@@ -165,15 +164,24 @@ pub fn codegen_csharp(
         DOTNET_CONVENTION
     };
 
-    let hir = ic_hir_xform::rename::transform(
+    ic_hir_xform::rename::transform(
         hir,
         &rename::Target {
             convention,
             keyword_escape: Some(escape_csharp),
             ..Default::default()
         },
-    );
+    )
+}
 
+/// Generate C# code from the HIR.
+#[must_use]
+pub fn codegen_csharp(
+    hir: &ic_hir::ResolvedGraph,
+    source_map: &ic_vfs::SourceMap,
+    options: CSharpOptions,
+) -> Vec<File> {
+    let hir = transform_csharp(hir, &options);
     let generator = codegen::CSharpGen::new(&hir, source_map, options);
     generator.generate()
 }

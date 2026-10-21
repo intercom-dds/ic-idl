@@ -53,6 +53,7 @@ pub struct CSharpGen<'a> {
 }
 
 impl<'a> CSharpGen<'a> {
+    #[must_use]
     pub fn new(hir: &'a ResolvedGraph, source_map: &'a SourceMap, options: CSharpOptions) -> Self {
         Self {
             hir,
@@ -101,7 +102,8 @@ impl<'a> CSharpGen<'a> {
         }
     }
 
-    fn format_numeric(&self, value: &Numeric, relative_to_def_id: DefId) -> String {
+    #[must_use]
+    pub fn format_numeric(&self, value: &Numeric, relative_to_def_id: DefId) -> String {
         match value {
             Numeric::Null => "null".to_string(),
             Numeric::Bool(b) => if *b { "true" } else { "false" }.to_string(),
@@ -264,6 +266,27 @@ impl<'a> CSharpGen<'a> {
         path
     }
 
+    #[must_use]
+    pub fn namespace_path(&self, def_id: DefId) -> Vec<String> {
+        match self.get_scope(def_id) {
+            Some(scope) => self.build_path_from(scope, None),
+            None => Vec::new(),
+        }
+    }
+
+    #[must_use]
+    #[allow(clippy::missing_panics_doc)]
+    pub fn file_name(&self, file_id: FileId) -> String {
+        let stem = self
+            .source_map
+            .name(file_id)
+            .file_stem()
+            .and_then(|s| s.to_str())
+            .unwrap();
+
+        format!("{stem}.cs")
+    }
+
     fn base_scoped_name(&self, target_def_id: DefId, relative_to_def_id: DefId) -> String {
         self.scoped_name(
             self.hir.context.base_id_of(target_def_id),
@@ -271,7 +294,8 @@ impl<'a> CSharpGen<'a> {
         )
     }
 
-    fn scoped_name(&self, target_def_id: DefId, relative_to_def_id: DefId) -> String {
+    #[must_use]
+    pub fn scoped_name(&self, target_def_id: DefId, relative_to_def_id: DefId) -> String {
         let target_def = self.hir.context.type_of(target_def_id);
         let type_name = if matches!(target_def.kind, DefKind::Interface(_)) {
             format!("I{}", target_def.ident.name)
@@ -338,7 +362,8 @@ impl<'a> CSharpGen<'a> {
 
     /// Check if a type is a C# value type (struct/primitive) vs reference type.
     /// Value types need `.Value` to unwrap from nullable, reference types use `!`.
-    fn is_value_type(&self, ty: &Ty) -> bool {
+    #[must_use]
+    pub fn is_value_type(&self, ty: &Ty) -> bool {
         match &ty.kind {
             TyKind::Primitive(_) | TyKind::Fixed => true,
             TyKind::Adt(def_id) => {
@@ -350,7 +375,8 @@ impl<'a> CSharpGen<'a> {
     }
 
     /// Convert IDL type to C# type string
-    fn csharp_type(&self, ty: &Ty, relative_def: DefId) -> String {
+    #[must_use]
+    pub fn csharp_type(&self, ty: &Ty, relative_def: DefId) -> String {
         match &ty.kind {
             TyKind::Primitive(prim) => Self::primitive_type(*prim).to_string(),
             TyKind::String { .. } => "string".to_string(),
@@ -376,7 +402,8 @@ impl<'a> CSharpGen<'a> {
         }
     }
 
-    fn member_type(&self, ty: &Ty, member: &impl MemberLike, relative_def: DefId) -> String {
+    #[must_use]
+    pub fn member_type(&self, ty: &Ty, member: &impl MemberLike, relative_def: DefId) -> String {
         let ty_str = self.csharp_type(ty, relative_def);
         if !is_optional(&self.hir.context, member) {
             return ty_str;
@@ -495,7 +522,7 @@ impl<'a> CSharpGen<'a> {
     fn emit_constants_class(&self, w: &mut Twine, def: &Def, module: &ModuleTy) {
         self.emit_doc_comments(w, &def.annotations);
 
-        w!(w, "public static class ", def.ident.name, "\n");
+        w!(w, "public static partial class ", def.ident.name, "\n");
         w!(w, "{\n");
         for &nested_id in &module.definitions {
             self.emit_definition(w, nested_id);
@@ -691,7 +718,8 @@ impl<'a> CSharpGen<'a> {
 
     /// Collect array dimension sizes for rectangular array initialization.
     /// For `Array { ty: Array { ty: double, len: 3 }, len: 2 }`, returns `[2, 3]`.
-    fn collect_array_dimensions(ty: &Ty) -> Vec<usize> {
+    #[must_use]
+    pub fn collect_array_dimensions(ty: &Ty) -> Vec<usize> {
         match &ty.kind {
             TyKind::Array { ty: inner, len, .. } => {
                 let mut dims = vec![*len];
@@ -1443,6 +1471,7 @@ impl<'a> CSharpGen<'a> {
         }
     }
 
+    #[must_use]
     pub fn generate(&self) -> Vec<File> {
         const IC_VERSION: &str = env!("CARGO_PKG_VERSION");
 
@@ -1457,13 +1486,6 @@ impl<'a> CSharpGen<'a> {
         let mut result = Vec::new();
 
         for (file_id, def_ids) in files_map {
-            let file_name = self
-                .source_map
-                .name(file_id)
-                .file_stem()
-                .and_then(|s| s.to_str())
-                .unwrap();
-
             let mut w = Twine::new();
 
             // File header
@@ -1482,7 +1504,7 @@ impl<'a> CSharpGen<'a> {
             }
 
             let content = w.finish();
-            let output_path = PathBuf::from(format!("{file_name}.cs"));
+            let output_path = PathBuf::from(self.file_name(file_id));
 
             result.push(File::Generated {
                 path: output_path,

@@ -34,14 +34,17 @@
 // pub mod nested;
 pub mod alias_anonymous_ty;
 pub mod default_annotation;
+pub mod exclude;
 pub mod flatten;
 pub mod implicit_default;
 pub mod mark_included;
 pub mod modularize_root;
+mod module_tree;
 pub mod move_constants;
 pub mod move_nested;
 pub mod normalize;
 pub mod order;
+pub mod remap_modules;
 pub mod rename;
 pub mod rename_xtypes;
 pub mod squash_modules;

@@ -194,10 +194,8 @@ impl<'a, E: Endian> CdrWriter<'a, E> {
             self.buf.set_pos(header_pos);
 
             // Shift the contents to make place for the extended header
-            // TODO: get rid of really_reserve_n. in this case we want to make
-            // space for two additional ints, regardless of the current
-            // position of the buffer.
-            self.buf.really_reserve_n(2 * size_of::<u32>());
+            let len = self.buf.len();
+            self.buf.resize(len + shift);
             self.buf.mem_move(header_pos..end, header_pos + shift);
 
             // Fill in the long PL header

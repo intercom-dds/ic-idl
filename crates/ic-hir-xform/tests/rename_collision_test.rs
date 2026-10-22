@@ -213,3 +213,335 @@ fn collision_after_suffix_removal() {
     // Verify transformation succeeded
     assert!(renamed.iter().any(|def| def.ident.name == "mod_collision"));
 }
+
+fn case_insensitive(mut target: Target) -> Target {
+    target.case_insensitive = true;
+    target
+}
+
+fn module_children(hir: &ic_hir::ResolvedGraph, module: &str) -> Vec<(String, &'static str)> {
+    let m = hir
+        .context
+        .definitions
+        .iter()
+        .find_map(|(_, def)| match &def.kind {
+            DefKind::Module(m) if def.ident.name == module => Some(m),
+            _ => None,
+        })
+        .unwrap();
+
+    m.definitions
+        .iter()
+        .map(|&id| {
+            let child = hir.context.type_of(id);
+            let kind = match child.kind {
+                DefKind::Struct(_) => "struct",
+                DefKind::Module(_) => "module",
+                _ => "other",
+            };
+            (child.ident.name.clone(), kind)
+        })
+        .collect()
+}
+
+fn struct_members(hir: &ic_hir::ResolvedGraph, name: &str) -> Vec<String> {
+    hir.context
+        .definitions
+        .iter()
+        .find_map(|(_, def)| match &def.kind {
+            DefKind::Struct(s) if def.ident.name == name => {
+                Some(s.members.iter().map(|m| m.ident.name.clone()).collect())
+            }
+            _ => None,
+        })
+        .unwrap()
+}
+
+#[test]
+fn case_insensitive_definitions_collide_across_case() {
+    let idl = r"
+        module test {
+            struct property_t {};
+            module Property {};
+        };
+    ";
+
+    let sensitive = rename::transform(common::parse_and_resolve(idl), &test_rust_target());
+    assert_eq!(
+        module_children(&sensitive, "test"),
+        vec![
+            ("Property".to_string(), "struct"),
+            ("property".to_string(), "module"),
+        ]
+    );
+
+    let insensitive = rename::transform(
+        common::parse_and_resolve(idl),
+        &case_insensitive(test_rust_target()),
+    );
+    assert_eq!(
+        module_children(&insensitive, "test"),
+        vec![
+            ("Property_".to_string(), "struct"),
+            ("property".to_string(), "module"),
+        ]
+    );
+}
+
+#[test]
+fn case_insensitive_case_only_rename_is_not_escaped() {
+    let idl = r"
+        module test {
+            struct value {
+                long Count;
+            };
+        };
+    ";
+
+    let mut target = case_insensitive(test_rust_target());
+    target.convention.member = Some(Case::Snake);
+    let renamed = rename::transform(common::parse_and_resolve(idl), &target);
+
+    assert_eq!(
+        module_children(&renamed, "test"),
+        vec![("Value".to_string(), "struct")]
+    );
+    assert_eq!(struct_members(&renamed, "Value"), vec!["count"]);
+}
+
+#[test]
+fn case_insensitive_keeps_existing_definition_name() {
+    let idl = r"
+        module test {
+            struct Value {};
+            module value_t {};
+        };
+    ";
+
+    let mut target = case_insensitive(test_rust_target());
+    target.convention.module = None;
+    let renamed = rename::transform(common::parse_and_resolve(idl), &target);
+
+    assert_eq!(
+        module_children(&renamed, "test"),
+        vec![
+            ("Value".to_string(), "struct"),
+            ("value_".to_string(), "module"),
+        ]
+    );
+}
+
+#[test]
+fn case_insensitive_struct_members_collide_across_case() {
+    let idl = r"
+        module test {
+            struct Holder {
+                long value_t;
+                long Value;
+            };
+        };
+    ";
+
+    let target = Target {
+        convention: Convention {
+            name_preprocessor: Some(strip_common_suffixes),
+            ..Default::default()
+        },
+        ..Default::default()
+    };
+
+    let sensitive = rename::transform(common::parse_and_resolve(idl), &target);
+    assert_eq!(struct_members(&sensitive, "Holder"), vec!["value", "Value"]);
+
+    let insensitive = rename::transform(common::parse_and_resolve(idl), &case_insensitive(target));
+    assert_eq!(
+        struct_members(&insensitive, "Holder"),
+        vec!["value_", "Value"]
+    );
+}
+
+#[test]
+fn case_insensitive_interface_operations_and_attributes_share_names() {
+    let idl = r"
+        module test {
+            interface Api {
+                void get_value();
+                attribute long getvalue;
+            };
+        };
+    ";
+
+    let target = Target {
+        convention: Convention {
+            operation: Some(Case::Pascal),
+            attribute: Some(Case::Snake),
+            ..Default::default()
+        },
+        ..Default::default()
+    };
+
+    let names = |hir: &ic_hir::ResolvedGraph| {
+        hir.context
+            .definitions
+            .iter()
+            .find_map(|(_, def)| match &def.kind {
+                DefKind::Interface(i) => Some((
+                    i.prototypes[0].ident.name.clone(),
+                    i.attributes[0].ident.name.clone(),
+                )),
+                _ => None,
+            })
+            .unwrap()
+    };
+
+    let sensitive = rename::transform(common::parse_and_resolve(idl), &target);
+    assert_eq!(
+        names(&sensitive),
+        ("GetValue".to_string(), "getvalue".to_string())
+    );
+
+    let insensitive = rename::transform(common::parse_and_resolve(idl), &case_insensitive(target));
+    assert_eq!(
+        names(&insensitive),
+        ("GetValue_".to_string(), "getvalue".to_string())
+    );
+}
+
+#[test]
+fn case_insensitive_unrenamed_definition_reserves_its_name() {
+    let idl = r"
+        module test {
+            typedef long SOMEVALUE;
+            struct some_value {};
+        };
+    ";
+
+    let target = Target {
+        case_insensitive: true,
+        convention: Convention {
+            struct_type: Some(Case::Pascal),
+            ..Default::default()
+        },
+        ..Default::default()
+    };
+    let renamed = rename::transform(common::parse_and_resolve(idl), &target);
+
+    assert_eq!(
+        module_children(&renamed, "test"),
+        vec![
+            ("SOMEVALUE".to_string(), "other"),
+            ("SomeValue_".to_string(), "struct"),
+        ]
+    );
+}
+
+#[test]
+fn case_insensitive_case_only_rename_wins_regardless_of_order() {
+    let target = Target {
+        case_insensitive: true,
+        convention: Convention {
+            struct_type: Some(Case::Pascal),
+            ..Default::default()
+        },
+        ..Default::default()
+    };
+
+    let forward = rename::transform(
+        common::parse_and_resolve("module test { struct foo_bar {}; struct foobar {}; };"),
+        &target,
+    );
+    assert_eq!(
+        module_children(&forward, "test"),
+        vec![
+            ("FooBar_".to_string(), "struct"),
+            ("Foobar".to_string(), "struct"),
+        ]
+    );
+
+    let reversed = rename::transform(
+        common::parse_and_resolve("module test { struct foobar {}; struct foo_bar {}; };"),
+        &target,
+    );
+    assert_eq!(
+        module_children(&reversed, "test"),
+        vec![
+            ("Foobar".to_string(), "struct"),
+            ("FooBar_".to_string(), "struct"),
+        ]
+    );
+}
+
+#[test]
+fn vacated_name_is_not_reassigned_after_being_claimed() {
+    let idl = r"
+        module test {
+            typedef long foo_t_t;
+            module foo_t {};
+            struct foo_t_e {};
+        };
+    ";
+
+    let target = Target {
+        convention: Convention {
+            name_preprocessor: Some(strip_common_suffixes),
+            ..Default::default()
+        },
+        ..Default::default()
+    };
+
+    let sensitive = rename::transform(common::parse_and_resolve(idl), &target);
+    assert_eq!(
+        module_children(&sensitive, "test"),
+        vec![
+            ("foo_t".to_string(), "other"),
+            ("foo".to_string(), "module"),
+            ("foo_t_".to_string(), "struct"),
+        ]
+    );
+
+    let mut target = case_insensitive(target);
+    target.convention.struct_type = Some(Case::UpperSnake);
+    let insensitive = rename::transform(common::parse_and_resolve(idl), &target);
+    assert_eq!(
+        module_children(&insensitive, "test"),
+        vec![
+            ("foo_t".to_string(), "other"),
+            ("foo".to_string(), "module"),
+            ("FOO_T_".to_string(), "struct"),
+        ]
+    );
+}
+
+#[test]
+fn case_insensitive_moved_definition_yields_to_ordinary_rename() {
+    let idl = r"
+        struct foo_bar {};
+        module Foo {
+            typedef long Bar;
+        };
+    ";
+
+    let flattened = flatten::transform(common::parse_and_resolve(idl), "_");
+    let target = Target {
+        case_insensitive: true,
+        moved_defs: flattened.moved_defs,
+        convention: Convention {
+            struct_type: Some(Case::Camel),
+            alias: Some(Case::Pascal),
+            ..Default::default()
+        },
+        ..Default::default()
+    };
+    let renamed = rename::transform(flattened.hir, &target);
+
+    let names: Vec<_> = renamed
+        .iter()
+        .filter_map(|def| match def.kind {
+            DefKind::Struct(_) => Some((def.ident.name.as_str(), "struct")),
+            DefKind::Alias(_) => Some((def.ident.name.as_str(), "alias")),
+            _ => None,
+        })
+        .collect();
+
+    assert_eq!(names, vec![("fooBar", "struct"), ("FooBar_", "alias")]);
+}

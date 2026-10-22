@@ -153,8 +153,8 @@ public class BitmaskTests
     {
         Assert.Equal(1u, (uint)MixedFlags.AutoFirst);
         Assert.Equal(16u, (uint)MixedFlags.ExplicitFour);
-        Assert.Equal(4u, (uint)MixedFlags.AutoFive);
-        Assert.Equal(8u, (uint)MixedFlags.AutoSix);
+        Assert.Equal(32u, (uint)MixedFlags.AutoFive);
+        Assert.Equal(64u, (uint)MixedFlags.AutoSix);
     }
 
     [Fact]

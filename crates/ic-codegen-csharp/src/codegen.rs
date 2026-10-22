@@ -1476,14 +1476,8 @@ impl<'a> CSharpGen<'a> {
                 w!(w, ",\n");
             }
 
-            if flag_def.flags.contains(DefFlags::IS_ENUMERATED)
-                && let DefKind::Const(const_ty) = &flag_def.kind
-            {
+            if let DefKind::Const(const_ty) = &flag_def.kind {
                 let value = Self::format_numeric_bare(&const_ty.value);
-                w!(w, flag_name, " = ", value);
-            } else {
-                // Auto-generate power of 2 values
-                let value = 1u64 << i;
                 w!(w, flag_name, " = ", value);
             }
         }

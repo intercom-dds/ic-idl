@@ -639,3 +639,31 @@ fn test_struct_with_inherited_float_not_ordered() {
         "Derived inheriting from Base with float should NOT have total order"
     );
 }
+
+#[test]
+fn test_has_children_is_recomputed() {
+    let idl = r"
+        struct Base {
+            long value;
+        };
+
+        struct Child : Base {
+            long extra;
+        };
+    ";
+
+    let hir = common::parse_and_resolve(idl);
+    let mut hir = type_flags::transform(hir);
+    let child_id = hir.context.lookup_symbol("Child").expect("Child exists");
+    let DefKind::Struct(child) = &mut hir.context.definitions.get_mut(child_id).kind else {
+        panic!("Child is a struct");
+    };
+    child.parent = None;
+
+    let transformed = type_flags::transform(hir);
+    assert!(
+        transformed
+            .iter()
+            .all(|def| !def.flags.contains(DefFlags::HAS_CHILDREN))
+    );
+}

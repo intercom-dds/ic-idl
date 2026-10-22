@@ -69,7 +69,7 @@ impl<E: Endian> Buffer<E> {
     }
 
     #[inline(always)]
-    fn write_array<const N: usize>(&mut self, bytes: [u8; N]) {
+    pub fn write_bytes<const N: usize>(&mut self, bytes: [u8; N]) {
         let end = self.write_idx + N;
         if end > self.buf.capacity() {
             self.buf.reserve(end - self.buf.len());
@@ -97,7 +97,7 @@ impl<E: Endian> Buffer<E> {
     /// position.
     #[inline]
     pub fn write_u8(&mut self, val: u8) {
-        self.write_array([val]);
+        self.write_bytes([val]);
     }
 
     /// Writes an `i8` to the current position in the buffer, advancing the
@@ -113,7 +113,7 @@ impl<E: Endian> Buffer<E> {
     pub fn write_u16(&mut self, val: u16) {
         let mut bytes = [0; size_of::<u16>()];
         E::write_u16(val, &mut bytes);
-        self.write_array(bytes);
+        self.write_bytes(bytes);
     }
 
     /// Writes an `i16` to the buffer using the specified endianness and
@@ -129,7 +129,7 @@ impl<E: Endian> Buffer<E> {
     pub fn write_u32(&mut self, val: u32) {
         let mut bytes = [0; size_of::<u32>()];
         E::write_u32(val, &mut bytes);
-        self.write_array(bytes);
+        self.write_bytes(bytes);
     }
 
     /// Writes an `i32` to the buffer using the specified endianness and
@@ -145,7 +145,7 @@ impl<E: Endian> Buffer<E> {
     pub fn write_u64(&mut self, val: u64) {
         let mut bytes = [0; size_of::<u64>()];
         E::write_u64(val, &mut bytes);
-        self.write_array(bytes);
+        self.write_bytes(bytes);
     }
 
     /// Writes an `i64` to the buffer using the specified endianness and

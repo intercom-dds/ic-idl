@@ -37,7 +37,7 @@ use ic_hir::hir::{
     InterfaceTy, Member, ModuleTy, Numeric, ParamKind, PrimitiveTy, ProtoTy, StructTy, Ty, TyKind,
     UnionTy, ValueTy, Variant,
 };
-use ic_hir_analysis::annotation::{MemberLike, doc, is_optional};
+use ic_hir_analysis::annotation::{self, MemberLike, doc, is_optional};
 use ic_hir_analysis::enum_value::default_enumerator;
 use ic_hir_analysis::union_case::{
     default_discriminator, default_union_case, unused_discriminator,
@@ -64,7 +64,7 @@ impl<'a> CSharpGen<'a> {
 
     #[must_use]
     pub fn is_struct(&self, def: &Def) -> bool {
-        self.options.trivial_structs
+        (self.options.trivial_structs || annotation::is_value_type(&self.hir.context, def))
             && def.flags.contains(DefFlags::IS_TRIVIAL)
             && matches!(&def.kind, DefKind::Struct(struct_ty) if struct_ty.parent.is_none())
             && !def.flags.contains(DefFlags::HAS_CHILDREN)

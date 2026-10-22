@@ -213,6 +213,7 @@ pub fn transform(mut hir: ResolvedGraph) -> ResolvedGraph {
     // Set flags opimistically once so we don't overwrite computed `false` states during iteration.
     for def_id in &def_ids {
         let def = hir.context.definitions.get_mut(*def_id);
+        def.flags.unset(DefFlags::HAS_CHILDREN);
         if !def.flags.contains(DefFlags::IS_BUILTIN) {
             def.flags.set(DefFlags::IS_TRIVIAL);
             def.flags.set(DefFlags::TOTAL_ORDER);
@@ -220,6 +221,35 @@ pub fn transform(mut hir: ResolvedGraph) -> ResolvedGraph {
             if def.flags.contains(DefFlags::IS_CIRCULAR) {
                 def.flags.unset(DefFlags::IS_TRIVIAL);
             }
+        }
+    }
+
+    let mut parents = vec![];
+    for def_id in &def_ids {
+        match &hir.context.type_of(*def_id).kind {
+            DefKind::Struct(ty) => {
+                parents.extend(ty.parent.into_iter().map(|parent| parent.def_id));
+            }
+            DefKind::Bitset(ty) => {
+                parents.extend(ty.parent.into_iter().map(|parent| parent.def_id));
+            }
+            DefKind::Interface(ty) => parents.extend(ty.parents.iter().map(|parent| parent.def_id)),
+            DefKind::Valuetype(ty) => parents.extend(
+                ty.parent
+                    .into_iter()
+                    .chain(ty.supports)
+                    .map(|parent| parent.def_id),
+            ),
+            _ => {}
+        }
+
+        for parent_id in parents.drain(..) {
+            let base_id = hir.context.base_id_of(parent_id);
+            hir.context
+                .definitions
+                .get_mut(base_id)
+                .flags
+                .set(DefFlags::HAS_CHILDREN);
         }
     }
 

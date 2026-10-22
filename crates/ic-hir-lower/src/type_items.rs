@@ -26,8 +26,8 @@
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use ic_hir::hir::{
-    AliasTy, Attribute, Decl, DefFlags, DefId, DefKind, ExceptTy, InterfaceTy, Label, Member,
-    Parameter, PrimitiveTy, ProtoTy, Spanned, StructTy, Ty, TyKind, UnionTy, ValueTy, Variant,
+    AliasTy, Attribute, Decl, DefId, DefKind, ExceptTy, InterfaceTy, Label, Member, Parameter,
+    PrimitiveTy, ProtoTy, Spanned, StructTy, Ty, TyKind, UnionTy, ValueTy, Variant,
 };
 use ic_hir::scope::ScopeId;
 use ic_syntax::{AliasDef, ExceptDef, InterfaceDef, StructDef, UnionDef, ValuetypeDef};
@@ -46,8 +46,8 @@ pub struct TypeItemProcessor<'ctx> {
 }
 
 /// Validates that `parent_id` is complete, not a forward declaration, for
-/// an inheritance-like relationship, and marks it `HAS_CHILDREN` on
-/// success. `relationship` is a verb phrase for the diagnostic message,
+/// an inheritance-like relationship.
+/// `relationship` is a verb phrase for the diagnostic message,
 /// e.g. `"inherit from"` or `"support"`.
 pub(super) fn validate_parent_inheritance(
     ctx: &mut LoweringContext,
@@ -74,9 +74,6 @@ pub(super) fn validate_parent_inheritance(
         );
         None
     } else {
-        // Mark parent as having children
-        let parent_def = ctx.context.definitions.get_mut(parent_id);
-        parent_def.flags |= DefFlags::HAS_CHILDREN;
         Some(parent_id)
     }
 }

@@ -61,6 +61,7 @@ def csharp_output_dir(request: pytest.FixtureRequest) -> Path:
     [
         pytest.param([], id="default"),
         pytest.param(["--const-classes"], id="const-classes"),
+        pytest.param(["--trivial-structs"], id="trivial-structs"),
     ],
 )
 def test_csharp(

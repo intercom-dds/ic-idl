@@ -62,6 +62,14 @@ impl<'a> CSharpGen<'a> {
         }
     }
 
+    #[must_use]
+    pub fn is_struct(&self, def: &Def) -> bool {
+        self.options.trivial_structs
+            && def.flags.contains(DefFlags::IS_TRIVIAL)
+            && matches!(&def.kind, DefKind::Struct(struct_ty) if struct_ty.parent.is_none())
+            && !def.flags.contains(DefFlags::HAS_CHILDREN)
+    }
+
     fn primitive_type(prim: PrimitiveTy) -> &'static str {
         match prim {
             PrimitiveTy::Void => "void",
@@ -368,7 +376,7 @@ impl<'a> CSharpGen<'a> {
             TyKind::Primitive(_) | TyKind::Fixed => true,
             TyKind::Adt(def_id) => {
                 let def = self.hir.context.type_of(*def_id);
-                matches!(def.kind, DefKind::Enum(_) | DefKind::Bitmask(_))
+                matches!(def.kind, DefKind::Enum(_) | DefKind::Bitmask(_)) || self.is_struct(def)
             }
             _ => false,
         }
@@ -551,7 +559,10 @@ impl<'a> CSharpGen<'a> {
     fn emit_struct(&self, w: &mut Twine, def: &Def, struct_ty: &StructTy) {
         self.emit_doc_comments(w, &def.annotations);
 
-        w!(w, "public partial class ", def.ident.name);
+        let is_struct = self.is_struct(def);
+        let kind = if is_struct { "struct" } else { "class" };
+
+        w!(w, "public partial ", kind, " ", def.ident.name);
         if let Some(parent) = struct_ty.parent {
             let parent_name = self.base_scoped_name(parent.def_id, def.id);
             w!(w, " : ", parent_name);
@@ -575,12 +586,18 @@ impl<'a> CSharpGen<'a> {
         w!(w, "}\n\n");
 
         // Copy constructor
-        w!(w, "public ", def.ident.name, "(", def.ident.name, " other)\n");
-        w!(w, "{\n");
-        w!(w, "if (other is null)\n");
-        w!(w, "{\n");
-        w!(w, "throw new ArgumentNullException(nameof(other));\n");
-        w!(w, "}\n\n");
+        w!(w, "public ", def.ident.name, "(", def.ident.name, " other)");
+        if is_struct {
+            w!(w, " : this()");
+        }
+
+        w!(w, "\n{\n");
+        if !is_struct {
+            w!(w, "if (other is null)\n");
+            w!(w, "{\n");
+            w!(w, "throw new ArgumentNullException(nameof(other));\n");
+            w!(w, "}\n\n");
+        }
 
         for member in &struct_ty.members {
             let member_name = &member.ident.name;
@@ -616,6 +633,10 @@ impl<'a> CSharpGen<'a> {
             }
 
             w!(w, ")");
+
+            if is_struct {
+                w!(w, " : this()");
+            }
 
             if let Some(parent) = struct_ty.parent {
                 let parent_members = self.collect_members(parent.def_id);
@@ -732,10 +753,16 @@ impl<'a> CSharpGen<'a> {
 
     fn emit_struct_equals(&self, w: &mut Twine, def: &Def, struct_ty: &StructTy) {
         // IEquatable<T>.Equals
-        w!(w, "public bool Equals(", def, "? other)\n");
+        let is_struct = self.is_struct(def);
+        let nullable = if is_struct { "" } else { "?" };
+
+        w!(w, "public bool Equals(", def, nullable, " other)\n");
         w!(w, "{\n");
-        w!(w, "if (other is null) return false;\n");
-        w!(w, "if (ReferenceEquals(this, other)) return true;\n");
+
+        if !is_struct {
+            w!(w, "if (other is null) return false;\n");
+            w!(w, "if (ReferenceEquals(this, other)) return true;\n");
+        }
 
         if struct_ty.parent.is_some() {
             w!(w, "if (!base.Equals(other))\n");
@@ -759,15 +786,25 @@ impl<'a> CSharpGen<'a> {
 
         // object.Equals override
         w!(w, "public override bool Equals(object? obj)\n");
-        w!(w, "\t => Equals(obj as ", def, ");\n\n");
+        if is_struct {
+            w!(w, "\t => obj is ", def, " other && Equals(other);\n\n");
+        } else {
+            w!(w, "\t => Equals(obj as ", def, ");\n\n");
+        }
     }
 
     fn emit_struct_compare_to(&self, w: &mut Twine, def: &Def, struct_ty: &StructTy) {
         // IEquatable<T>.Equals
-        w!(w, "public int CompareTo(", def, "? other)\n");
+        let is_struct = self.is_struct(def);
+        let nullable = if is_struct { "" } else { "?" };
+
+        w!(w, "public int CompareTo(", def, nullable, " other)\n");
         w!(w, "{\n");
-        w!(w, "if (other is null) return 1;\n");
-        w!(w, "if (ReferenceEquals(this, other)) return 0;\n");
+
+        if !is_struct {
+            w!(w, "if (other is null) return 1;\n");
+            w!(w, "if (ReferenceEquals(this, other)) return 0;\n");
+        }
 
         if struct_ty.parent.is_some() || !struct_ty.members.is_empty() {
             w!(w, "int result;\n");

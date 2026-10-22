@@ -87,6 +87,10 @@ pub struct CSharpOptions {
     /// Emit each constant in its own class
     #[option(long)]
     pub const_classes: bool,
+
+    /// Generate structs for trivial types
+    #[option(long)]
+    pub trivial_structs: bool,
 }
 
 fn escape_csharp(ctx: rename::RenameContext) -> Option<String> {

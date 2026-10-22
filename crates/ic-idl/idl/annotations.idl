@@ -310,6 +310,11 @@ module ext {
         boolean value default TRUE;
     };
 
+    @ext::annotation_target(STRUCT_DEF)
+    @annotation value_type {
+        boolean value default TRUE;
+    };
+
     @annotation listener {
         boolean value default TRUE;
     };

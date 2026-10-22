@@ -210,6 +210,11 @@ pub fn is_newtype(ctx: &Context, def: &Def) -> bool {
     bool_annotation(ctx, &def.annotations, "newtype").unwrap_or(false)
 }
 
+#[must_use]
+pub fn is_value_type(ctx: &Context, def: &Def) -> bool {
+    bool_annotation(ctx, &def.annotations, "value_type").unwrap_or(false)
+}
+
 pub fn is_must_understand(ctx: &Context, target: &impl MemberLike) -> bool {
     bool_annotation(ctx, target.annotations(), "must_understand").unwrap_or(false)
 }

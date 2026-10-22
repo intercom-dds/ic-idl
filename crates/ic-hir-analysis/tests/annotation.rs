@@ -31,7 +31,7 @@ mod common;
 use ic_hir::hir::{Def, DefKind};
 use ic_hir_analysis::annotation::{
     Extensibility, bit_bound, default_value, doc, extensibility, is_external, is_key,
-    is_must_understand, is_nested, is_newtype, is_non_serialized, is_optional,
+    is_must_understand, is_nested, is_newtype, is_non_serialized, is_optional, is_value_type,
 };
 
 fn def<'a>(hir: &'a ic_hir::ResolvedGraph, name: &str) -> &'a Def {
@@ -116,6 +116,9 @@ fn resolves_annotation_properties() {
         @EXT::NEWTYPE typedef long NewtypeAlias;
         @ext::newtype(FALSE) typedef long PlainAlias;
 
+        @EXT::VALUE_TYPE struct ValueType {};
+        @ext::value_type(FALSE) struct ReferenceType {};
+
         const string DOC_TEXT = "Built-in documentation";
         @DOC(DOC_TEXT) struct Documented {};
 
@@ -161,6 +164,8 @@ fn resolves_annotation_properties() {
     assert!(!is_external(&hir.context, def(&hir, "DirectAlias")));
     assert!(is_newtype(&hir.context, def(&hir, "NewtypeAlias")));
     assert!(!is_newtype(&hir.context, def(&hir, "PlainAlias")));
+    assert!(is_value_type(&hir.context, def(&hir, "ValueType")));
+    assert!(!is_value_type(&hir.context, def(&hir, "ReferenceType")));
     assert_eq!(
         doc(&hir.context, &def(&hir, "Documented").annotations[0]).as_deref(),
         Some("Built-in documentation")

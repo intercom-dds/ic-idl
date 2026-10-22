@@ -133,16 +133,15 @@ impl<E: Endian> Buffer<E> {
     }
 
     /// Appends a byte slice to the end of the buffer, resizing if necessary.
-    #[inline]
+    #[inline(always)]
     pub fn extend(&mut self, slice: &[u8]) {
         let end_idx = self.write_idx + slice.len();
-        if self.write_idx == self.buf.len() {
+        if end_idx <= self.buf.len() {
+            self.buf[self.write_idx..end_idx].copy_from_slice(slice);
+        } else if self.write_idx == self.buf.len() {
             self.buf.extend_from_slice(slice);
         } else {
-            if end_idx >= self.remaining() {
-                self.reserve_n(slice.len());
-            }
-
+            self.reserve_n(slice.len());
             self.buf[self.write_idx..end_idx].copy_from_slice(slice);
         }
         self.write_idx = end_idx;

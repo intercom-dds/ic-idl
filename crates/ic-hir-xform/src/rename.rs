@@ -898,7 +898,6 @@ fn process_priority2_renames(
     target: &Target,
 ) {
     let mut to_process: Vec<&NodeRename> = priority2.to_vec();
-    let mut vacated: HashSet<String> = HashSet::new();
 
     while !to_process.is_empty() {
         let mut deferred = Vec::new();
@@ -923,17 +922,6 @@ fn process_priority2_renames(
             if !occupied.contains(&desired_key) && !will_keep_original.contains(&desired_key) {
                 final_assignments.insert(rename.def_id, desired.clone());
                 occupied.insert(desired_key.clone());
-                if desired_key != original_key && !will_keep_original.contains(&original_key) {
-                    vacated.insert(original_key);
-                }
-                made_progress = true;
-            } else if vacated.contains(&desired_key) {
-                final_assignments.insert(rename.def_id, desired.clone());
-                occupied.insert(desired_key.clone());
-                vacated.remove(&desired_key);
-                if desired_key != original_key && !will_keep_original.contains(&original_key) {
-                    vacated.insert(original_key);
-                }
                 made_progress = true;
             } else {
                 deferred.push(rename);
@@ -945,7 +933,6 @@ fn process_priority2_renames(
             let rename = deferred[0];
             let mut name = rename.desired.clone();
             let mut name_key = occupied_key(&name, target);
-            let original_key = occupied_key(&rename.original, target);
 
             // Find an available escaped name
             while occupied.contains(&name_key) || will_keep_original.contains(&name_key) {
@@ -955,10 +942,6 @@ fn process_priority2_renames(
 
             final_assignments.insert(rename.def_id, name.clone());
             occupied.insert(name_key);
-            if !will_keep_original.contains(&original_key) {
-                vacated.insert(original_key);
-            }
-
             deferred.remove(0);
         }
 

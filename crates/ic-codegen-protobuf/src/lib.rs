@@ -62,6 +62,7 @@ pub fn codegen_proto(hir: &ic_hir::ResolvedGraph, options: ProtoOptions) -> Vec<
         moved_defs,
         convention: Convention::default(),
         keyword_escape: Some(escape_kw),
+        ..Default::default()
     };
     let hir = rename::transform(hir, &target);
 

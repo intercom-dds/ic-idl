@@ -219,12 +219,6 @@ impl<E: Endian> Buffer<E> {
         }
     }
 
-    /// Unconditionally increases the buffer's capacity by `n` bytes.
-    #[inline]
-    pub fn really_reserve_n(&mut self, n: usize) {
-        self.resize(self.buf.len() + n);
-    }
-
     /// Returns the current write position (index) in the buffer.
     #[inline]
     #[must_use]

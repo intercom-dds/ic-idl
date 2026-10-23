@@ -132,6 +132,7 @@ fn prepare_hir(
             convention,
             keyword_escape: Some(escape_rust_keyword),
             moved_defs,
+            ..Default::default()
         },
     );
 

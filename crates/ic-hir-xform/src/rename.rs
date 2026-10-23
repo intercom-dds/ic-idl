@@ -211,6 +211,9 @@ pub struct Convention {
 /// Configuration for the rename transformation.
 #[derive(Clone, Default)]
 pub struct Target {
+    /// Case insensitive renaming
+    pub case_insensitive: bool,
+
     /// Case conversion settings for different definition kinds
     pub convention: Convention,
 
@@ -646,8 +649,12 @@ fn rename_breadth(hir: &mut ResolvedGraph, def_ids: &[hir::DefId], target: &Targ
 
         // Add to renames if:
         // 1. The name changed (for any reason: case, preprocessor, or keyword)
-        // 2. We're doing case conversion (even if unchanged, for collision detection)
-        if original != desired || case.is_some() || !target.moved_defs.is_empty() {
+        // 2. We're doing case conversion (even if unchanged, for collision detection) or case insensitive renaming
+        if target.case_insensitive
+            || original != desired
+            || case.is_some()
+            || !target.moved_defs.is_empty()
+        {
             renames.push(NodeRename {
                 def_id: id,
                 original,
@@ -658,7 +665,7 @@ fn rename_breadth(hir: &mut ResolvedGraph, def_ids: &[hir::DefId], target: &Targ
     }
 
     // Apply collision-aware renaming at this breadth level
-    apply_renames_with_collision_handling(hir, &renames, &groups);
+    apply_renames_with_collision_handling(hir, &renames, &groups, target);
 
     // Rename members within each definition at this level
     for &id in def_ids {
@@ -679,7 +686,7 @@ fn rename_items<T, F>(
 {
     let mut occupied: HashSet<String> = items
         .iter_mut()
-        .map(|item| get_ident(item).name.clone())
+        .map(|item| occupied_key(get_ident(item).name.as_str(), target))
         .collect();
 
     rename_items_with_occupied(items, case, kind, get_ident, &mut occupied, target);
@@ -698,18 +705,21 @@ fn rename_items_with_occupied<T, F>(
     for item in items {
         let ident = get_ident(item);
         let original = ident.name.clone();
+        let original_key = occupied_key(&original, target);
 
         // Apply case conversion and keyword escaping
         let mut desired = apply_rename(&original, case, kind, target);
 
         // Handle collisions
-        while occupied.contains(&desired) && desired != original {
+        let mut desired_key = occupied_key(&desired, target);
+        while occupied.contains(&desired_key) && desired_key != original_key {
             desired.push('_');
+            desired_key = occupied_key(&desired, target);
         }
 
         if desired != original {
-            occupied.remove(&original);
-            occupied.insert(desired.clone());
+            occupied.remove(&original_key);
+            occupied.insert(desired_key);
             ident.name = desired;
         }
     }
@@ -749,8 +759,12 @@ fn rename_members(target: &Target, mut def: hir::Def) -> hir::Def {
             let mut occupied: HashSet<_> = i
                 .prototypes
                 .iter()
-                .map(|p| p.ident.name.clone())
-                .chain(i.attributes.iter().map(|a| a.ident.name.clone()))
+                .map(|p| occupied_key(&p.ident.name, target))
+                .chain(
+                    i.attributes
+                        .iter()
+                        .map(|a| occupied_key(&a.ident.name, target)),
+                )
                 .collect();
 
             rename_items_with_occupied(
@@ -785,9 +799,17 @@ fn rename_members(target: &Target, mut def: hir::Def) -> hir::Def {
             let mut occupied: HashSet<_> = v
                 .members
                 .iter()
-                .map(|m| m.ident.name.clone())
-                .chain(v.prototypes.iter().map(|p| p.ident.name.clone()))
-                .chain(v.attributes.iter().map(|a| a.ident.name.clone()))
+                .map(|m| occupied_key(&m.ident.name, target))
+                .chain(
+                    v.prototypes
+                        .iter()
+                        .map(|p| occupied_key(&p.ident.name, target)),
+                )
+                .chain(
+                    v.attributes
+                        .iter()
+                        .map(|a| occupied_key(&a.ident.name, target)),
+                )
                 .collect();
 
             rename_items_with_occupied(
@@ -842,9 +864,14 @@ fn rename_members(target: &Target, mut def: hir::Def) -> hir::Def {
     def
 }
 
-fn categorize_renames(
-    renames: &[NodeRename],
-) -> (Vec<&NodeRename>, Vec<&NodeRename>, Vec<&NodeRename>) {
+fn categorize_renames<'a>(
+    renames: &'a [NodeRename],
+    target: &Target,
+) -> (
+    Vec<&'a NodeRename>,
+    Vec<&'a NodeRename>,
+    Vec<&'a NodeRename>,
+) {
     let mut priority1 = vec![];
     let mut priority2 = vec![];
     let mut moved_nodes = vec![];
@@ -852,7 +879,7 @@ fn categorize_renames(
     for rename in renames {
         if rename.is_moved {
             moved_nodes.push(rename);
-        } else if rename.desired == rename.original {
+        } else if occupied_key(&rename.desired, target) == occupied_key(&rename.original, target) {
             priority1.push(rename);
         } else {
             priority2.push(rename);
@@ -868,9 +895,9 @@ fn process_priority2_renames(
     final_assignments: &mut HashMap<hir::DefId, String>,
     occupied: &mut HashSet<String>,
     will_keep_original: &HashSet<String>,
+    target: &Target,
 ) {
     let mut to_process: Vec<&NodeRename> = priority2.to_vec();
-    let mut vacated: HashSet<String> = HashSet::new();
 
     while !to_process.is_empty() {
         let mut deferred = Vec::new();
@@ -882,28 +909,19 @@ fn process_priority2_renames(
             }
 
             // Check if this node should keep its original name
-            if will_keep_original.contains(&rename.original) {
+            let original_key = occupied_key(&rename.original, target);
+            if will_keep_original.contains(&original_key) {
                 final_assignments.insert(rename.def_id, rename.original.clone());
                 made_progress = true;
                 continue;
             }
 
-            let target = &rename.desired;
+            let desired = &rename.desired;
+            let desired_key = occupied_key(desired, target);
 
-            if !occupied.contains(target) && !will_keep_original.contains(target) {
-                final_assignments.insert(rename.def_id, target.clone());
-                occupied.insert(target.clone());
-                if target != &rename.original && !will_keep_original.contains(&rename.original) {
-                    vacated.insert(rename.original.clone());
-                }
-                made_progress = true;
-            } else if vacated.contains(target) {
-                final_assignments.insert(rename.def_id, target.clone());
-                occupied.insert(target.clone());
-                vacated.remove(target);
-                if target != &rename.original && !will_keep_original.contains(&rename.original) {
-                    vacated.insert(rename.original.clone());
-                }
+            if !occupied.contains(&desired_key) && !will_keep_original.contains(&desired_key) {
+                final_assignments.insert(rename.def_id, desired.clone());
+                occupied.insert(desired_key.clone());
                 made_progress = true;
             } else {
                 deferred.push(rename);
@@ -914,18 +932,16 @@ fn process_priority2_renames(
         if !made_progress && !deferred.is_empty() {
             let rename = deferred[0];
             let mut name = rename.desired.clone();
+            let mut name_key = occupied_key(&name, target);
 
             // Find an available escaped name
-            while occupied.contains(&name) || will_keep_original.contains(&name) {
+            while occupied.contains(&name_key) || will_keep_original.contains(&name_key) {
                 name.push('_');
+                name_key = occupied_key(&name, target);
             }
 
             final_assignments.insert(rename.def_id, name.clone());
-            occupied.insert(name.clone());
-            if !will_keep_original.contains(&rename.original) {
-                vacated.insert(rename.original.clone());
-            }
-
+            occupied.insert(name_key);
             deferred.remove(0);
         }
 
@@ -963,43 +979,46 @@ fn apply_renames_with_collision_handling(
     hir: &mut ResolvedGraph,
     renames: &[NodeRename],
     groups: &HashMap<hir::DefId, Vec<hir::DefId>>,
+    target: &Target,
 ) {
     // Categorize nodes by priority
-    let (priority1, priority2, moved_nodes) = categorize_renames(renames);
+    let (priority1, priority2, moved_nodes) = categorize_renames(renames, target);
     let mut final_assignments: HashMap<hir::DefId, String> = HashMap::new();
     let mut occupied: HashSet<String> = HashSet::new();
 
     // Process priority 1: nodes that want to keep their original name
     for rename in &priority1 {
-        final_assignments.insert(rename.def_id, rename.original.clone());
-        occupied.insert(rename.original.clone());
+        final_assignments.insert(rename.def_id, rename.desired.clone());
+        occupied.insert(occupied_key(&rename.original, target));
     }
 
     // Process moved nodes
     for rename in &moved_nodes {
         let mut name = rename.desired.clone();
-        while occupied.contains(&name) {
+        let mut name_key = occupied_key(&name, target);
+        while occupied.contains(&name_key) {
             name.push('_');
+            name_key = occupied_key(&name, target);
         }
         final_assignments.insert(rename.def_id, name.clone());
-        occupied.insert(name);
+        occupied.insert(name_key);
     }
 
     // Determine which priority2 nodes should keep their original names
     let mut will_keep_original: HashSet<String> = HashSet::new();
     for rename in &priority2 {
-        if occupied.contains(&rename.desired)
-            && !occupied.contains(&rename.original)
-            && is_natural_fallback(&rename.original, &rename.desired)
+        let desired_key = occupied_key(&rename.desired, target);
+        let original_key = occupied_key(&rename.original, target);
+        if occupied.contains(&desired_key)
+            && !occupied.contains(&original_key)
+            && is_natural_fallback(&original_key, &desired_key)
         {
-            will_keep_original.insert(rename.original.clone());
+            will_keep_original.insert(original_key);
         }
     }
 
     // Mark natural fallback names as occupied
-    for name in &will_keep_original {
-        occupied.insert(name.clone());
-    }
+    occupied.extend(will_keep_original.iter().cloned());
 
     // Process priority2 nodes with chain substitution support
     process_priority2_renames(
@@ -1007,8 +1026,17 @@ fn apply_renames_with_collision_handling(
         &mut final_assignments,
         &mut occupied,
         &will_keep_original,
+        target,
     );
 
     // Apply all the renames
     apply_final_renames(hir, &final_assignments, groups);
+}
+
+fn occupied_key(key: &str, target: &Target) -> String {
+    if target.case_insensitive {
+        key.to_ascii_lowercase()
+    } else {
+        key.to_string()
+    }
 }

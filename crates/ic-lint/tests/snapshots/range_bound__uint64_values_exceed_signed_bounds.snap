@@ -1,0 +1,27 @@
+---
+source: crates/ic-lint/tests/range_bound.rs
+expression: test_lint_hir(source)
+---
+⨯ range-bound: @range max value 18446744073709551615 exceeds type maximum 9223372036854775807
+  @ test.idl:4:10
+
+ 2 │ module MyModule {
+ 3 │     struct BadBounds {
+ 4 │         @range(min=0, max=18446744073709551615) int64 range_value;
+   │          ˆˆˆˆˆ value out of bounds
+ 5 │         @max(9223372036854775808) int64 max_value;
+ 6 │     };
+
+  ? valid range is -9223372036854775808..9223372036854775807
+
+⨯ range-bound: @max value 9223372036854775808 exceeds type maximum 9223372036854775807
+  @ test.idl:5:10
+
+ 3 │     struct BadBounds {
+ 4 │         @range(min=0, max=18446744073709551615) int64 range_value;
+ 5 │         @max(9223372036854775808) int64 max_value;
+   │          ˆˆˆ value out of bounds
+ 6 │     };
+ 7 │ };
+
+  ? valid range is -9223372036854775808..9223372036854775807

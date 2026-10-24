@@ -260,6 +260,57 @@ module MyModule {
 }
 
 #[test]
+fn valid_64_bit_bounds() {
+    let source = r"
+module MyModule {
+    const uint64 MAX_VALUE = 18446744073709551615;
+    typedef uint64 Counter;
+
+    struct GoodBounds {
+        @range(min=0, max=18446744073709551615) uint64 full_range;
+        @range(min=9223372036854775808, max=MAX_VALUE) Counter upper_range;
+        @min(9223372036854775808) @max(18446744073709551615) uint64 upper_bounds;
+        @range(min=-9223372036854775808, max=9223372036854775807) int64 signed_range;
+    };
+};
+";
+
+    let output = test_lint_hir(source);
+    assert!(
+        output.is_empty(),
+        "Expected no diagnostics, but got: {output}"
+    );
+}
+
+#[test]
+fn inverted_uint64_bounds() {
+    let source = r"
+module MyModule {
+    struct BadBounds {
+        @range(min=18446744073709551615, max=9223372036854775808) uint64 inverted_range;
+        @min(18446744073709551615) @max(9223372036854775808) uint64 inverted_bounds;
+    };
+};
+";
+
+    assert_snapshot!(test_lint_hir(source));
+}
+
+#[test]
+fn uint64_values_exceed_signed_bounds() {
+    let source = r"
+module MyModule {
+    struct BadBounds {
+        @range(min=0, max=18446744073709551615) int64 range_value;
+        @max(9223372036854775808) int64 max_value;
+    };
+};
+";
+
+    assert_snapshot!(test_lint_hir(source));
+}
+
+#[test]
 fn char_exceeds_max_bounds() {
     let source = r"
 module MyModule {

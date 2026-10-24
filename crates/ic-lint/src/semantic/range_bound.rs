@@ -42,7 +42,7 @@ pub struct RangeBound<'a> {
 
 #[derive(Clone, Copy)]
 enum BoundValue {
-    Integer(i64),
+    Integer(i128),
     Float(f64),
 }
 
@@ -149,17 +149,17 @@ impl RangeBound<'_> {
         Ok(Some(value))
     }
 
-    fn numeric_integer(&self, value: &Numeric) -> Option<i64> {
+    fn numeric_integer(&self, value: &Numeric) -> Option<i128> {
         match value {
-            Numeric::Char(value) | Numeric::WChar(value) => Some(i64::from(u32::from(*value))),
-            Numeric::Int8(value) => Some(i64::from(*value)),
-            Numeric::UInt8(value) => Some(i64::from(*value)),
-            Numeric::Int16(value) => Some(i64::from(*value)),
-            Numeric::UInt16(value) => Some(i64::from(*value)),
-            Numeric::Int32(value) => Some(i64::from(*value)),
-            Numeric::UInt32(value) => Some(i64::from(*value)),
-            Numeric::Int64(value) => Some(*value),
-            Numeric::UInt64(value) => i64::try_from(*value).ok(),
+            Numeric::Char(value) | Numeric::WChar(value) => Some(i128::from(u32::from(*value))),
+            Numeric::Int8(value) => Some(i128::from(*value)),
+            Numeric::UInt8(value) => Some(i128::from(*value)),
+            Numeric::Int16(value) => Some(i128::from(*value)),
+            Numeric::UInt16(value) => Some(i128::from(*value)),
+            Numeric::Int32(value) => Some(i128::from(*value)),
+            Numeric::UInt32(value) => Some(i128::from(*value)),
+            Numeric::Int64(value) => Some(i128::from(*value)),
+            Numeric::UInt64(value) => Some(i128::from(*value)),
             Numeric::Const(def_id) => {
                 let def = self.hir.context.type_of(*def_id);
                 let DefKind::Const(constant) = &def.kind else {
@@ -202,17 +202,17 @@ impl RangeBound<'_> {
     }
 
     /// Get the valid range for a type, resolving through aliases
-    fn get_type_bounds(&self, ty: &Ty) -> Option<(i64, i64)> {
+    fn get_type_bounds(&self, ty: &Ty) -> Option<(i128, i128)> {
         match &self.hir.context.resolve_ty(ty).kind {
             TyKind::Primitive(prim) => match prim {
-                PrimitiveTy::Int8 => Some((i64::from(i8::MIN), i64::from(i8::MAX))),
-                PrimitiveTy::Int16 => Some((i64::from(i16::MIN), i64::from(i16::MAX))),
-                PrimitiveTy::Int32 => Some((i64::from(i32::MIN), i64::from(i32::MAX))),
-                PrimitiveTy::Int64 => Some((i64::MIN, i64::MAX)),
-                PrimitiveTy::UInt8 => Some((0, i64::from(u8::MAX))),
-                PrimitiveTy::UInt16 => Some((0, i64::from(u16::MAX))),
-                PrimitiveTy::UInt32 => Some((0, i64::from(u32::MAX))),
-                PrimitiveTy::UInt64 => Some((0, 9_223_372_036_854_775_807)),
+                PrimitiveTy::Int8 => Some((i128::from(i8::MIN), i128::from(i8::MAX))),
+                PrimitiveTy::Int16 => Some((i128::from(i16::MIN), i128::from(i16::MAX))),
+                PrimitiveTy::Int32 => Some((i128::from(i32::MIN), i128::from(i32::MAX))),
+                PrimitiveTy::Int64 => Some((i128::from(i64::MIN), i128::from(i64::MAX))),
+                PrimitiveTy::UInt8 => Some((0, i128::from(u8::MAX))),
+                PrimitiveTy::UInt16 => Some((0, i128::from(u16::MAX))),
+                PrimitiveTy::UInt32 => Some((0, i128::from(u32::MAX))),
+                PrimitiveTy::UInt64 => Some((0, i128::from(u64::MAX))),
                 PrimitiveTy::Char => Some((0, 127)),
                 PrimitiveTy::WChar => Some((0, 65535)),
                 _ => None,
@@ -221,7 +221,7 @@ impl RangeBound<'_> {
         }
     }
 
-    fn check_value_in_bounds(&mut self, value: i64, ty: &Ty, ann: &Ann, annotation_type: &str) {
+    fn check_value_in_bounds(&mut self, value: i128, ty: &Ty, ann: &Ann, annotation_type: &str) {
         if let Some((min_bound, max_bound)) = self.get_type_bounds(ty) {
             if value < min_bound {
                 let diag = self

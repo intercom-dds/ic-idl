@@ -1,0 +1,28 @@
+---
+source: crates/ic-lint/tests/range_bound.rs
+expression: test_lint_hir(source)
+---
+⨯ range-bound: @range min value (18446744073709551615) is greater than max value (9223372036854775808)
+  @ test.idl:4:10
+
+ 2 │ module MyModule {
+ 3 │     struct BadBounds {
+ 4 │         @range(min=18446744073709551615, max=9223372036854775808) uint64 inverted_range;
+   │          ˆˆˆˆˆ invalid range
+ 5 │         @min(18446744073709551615) @max(9223372036854775808) uint64 inverted_bounds;
+ 6 │     };
+
+  ? swap min and max values
+
+⨯ range-bound: @min value (18446744073709551615) is greater than @max value (9223372036854775808)
+  @ test.idl:5:10
+
+ 3 │     struct BadBounds {
+ 4 │         @range(min=18446744073709551615, max=9223372036854775808) uint64 inverted_range;
+ 5 │         @min(18446744073709551615) @max(9223372036854775808) uint64 inverted_bounds;
+   │          ˆˆˆ                        ˆˆˆ max value here
+   │          └─ min value here
+ 6 │     };
+ 7 │ };
+
+  ? ensure @min is less than or equal to @max

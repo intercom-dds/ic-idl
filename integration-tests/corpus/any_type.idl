@@ -52,6 +52,16 @@ module any_types {
         map<string, any> properties;
     };
 
+    struct MapWithAnySequence {
+        map<long, sequence<any>> properties;
+    };
+
+    typedef any AnyArray[2];
+
+    struct MapWithAnyArray {
+        map<long, AnyArray> properties;
+    };
+
     struct OptionalAny {
         @optional any maybe_value;
     };

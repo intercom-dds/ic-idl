@@ -26,9 +26,11 @@
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include <doctest/doctest.h>
+#include <ic_cts/cdr_serializer.h>
 #include <ic_cts/json_serializer.h>
 
 #include <algorithm>
+#include <vector>
 
 #include "serialization.h"
 
@@ -85,4 +87,120 @@ TEST_CASE(
         json(unsafe, ic_cts::SERIALIZER_LARGE_INTEGERS_AS_STRINGS) ==
         R"({"a":"9007199254740992","b":"9007199254740992","c":"-9007199254740992","d":{"9007199254740992":"-9007199254740992"}})"
     );
+}
+
+TEST_CASE("map_member_type_info" * doctest::test_suite("serialization")) {
+    const auto& info = ic_cts::TypeTraits<serialization_types::MapMembers>::type_info;
+    REQUIRE(info.member_count == 8);
+
+    for (uint32_t i = 0; i < 6; ++i) {
+        CAPTURE(i);
+        const auto* map = info.members[i].type;
+        REQUIRE(map != nullptr);
+        CHECK(map->kind == ic_cts::dcps::xtypes::TK_MAP);
+        CHECK(map->bit_size == 32);
+        CHECK(map->max_length == ((i == 2 || i == 4) ? 5U : 0U));
+        REQUIRE(map->key_type != nullptr);
+        REQUIRE(map->element_type != nullptr);
+        CHECK(
+            ((info.members[i].flags & ic_cts::dcps::xtypes::IS_OPTIONAL) != 0) == (i == 3 || i == 4)
+        );
+    }
+
+    const auto* primitive = info.members[0].type;
+    CHECK(primitive->key_type == &ic_cts::LONG_TYPE_INFO);
+    CHECK(primitive->element_type == &ic_cts::LONG_TYPE_INFO);
+
+    const auto* unbounded = info.members[1].type;
+    CHECK(unbounded->key_type->kind == ic_cts::dcps::xtypes::TK_STRING8);
+    CHECK(unbounded->key_type->max_length == 0);
+    CHECK(unbounded->key_type->element_type == &ic_cts::CHAR_TYPE_INFO);
+
+    const auto* bounded = info.members[2].type;
+    CHECK(bounded->key_type->kind == ic_cts::dcps::xtypes::TK_STRING8);
+    CHECK(bounded->key_type->max_length == 8);
+
+    for (uint32_t i = 1; i < 5; ++i) {
+        CHECK(
+            info.members[i].type->element_type ==
+            &ic_cts::TypeTraits<serialization_types::MapValue>::type_info
+        );
+    }
+
+    const auto* nested = info.members[5].type->element_type;
+    REQUIRE(nested != nullptr);
+    CHECK(nested->kind == ic_cts::dcps::xtypes::TK_SEQUENCE);
+    REQUIRE(nested->element_type != nullptr);
+    CHECK(nested->element_type->kind == ic_cts::dcps::xtypes::TK_MAP);
+    CHECK(nested->element_type->key_type == &ic_cts::LONG_TYPE_INFO);
+    CHECK(
+        nested->element_type->element_type ==
+        &ic_cts::TypeTraits<serialization_types::MapValue>::type_info
+    );
+
+    for (uint32_t i = 6; i < 8; ++i) {
+        const auto* collection = info.members[i].type;
+        REQUIRE(collection != nullptr);
+        CHECK(
+            collection->kind ==
+            (i == 6 ? ic_cts::dcps::xtypes::TK_SEQUENCE : ic_cts::dcps::xtypes::TK_ARRAY)
+        );
+        const auto* map = collection->element_type;
+        REQUIRE(map != nullptr);
+        CHECK(map->kind == ic_cts::dcps::xtypes::TK_MAP);
+        CHECK(map->max_length == 5);
+        CHECK(map->key_type == &ic_cts::SHORT_TYPE_INFO);
+        REQUIRE(map->element_type != nullptr);
+        CHECK(map->element_type->kind == ic_cts::dcps::xtypes::TK_STRING8);
+    }
+}
+
+TEST_CASE("map_union_type_info" * doctest::test_suite("serialization")) {
+    const auto& info = ic_cts::TypeTraits<serialization_types::MapUnion>::type_info;
+    REQUIRE(info.member_count == 3);
+    const auto* map = info.members[1].type;
+    REQUIRE(map != nullptr);
+    CHECK(map->kind == ic_cts::dcps::xtypes::TK_MAP);
+    CHECK(map->key_type == &ic_cts::LONG_TYPE_INFO);
+    CHECK(map->element_type == &ic_cts::TypeTraits<serialization_types::MapValue>::type_info);
+}
+
+TEST_CASE("bounded_map_cdr_dheader" * doctest::test_suite("serialization")) {
+    serialization_types::MyMap5 source;
+    source.value[1] = "abc";
+
+    {
+        const auto encoding = ic_cts::CDR_XCDR1 | ic_cts::CDR_LITTLE_ENDIAN;
+        ic_cts::Buffer buffer;
+        ic_cts::CdrWriter writer(buffer, encoding);
+        ic_cts::CdrMarshal(writer).io(source);
+
+        const std::vector<uint8_t> expected = {
+            1, 0, 0, 0, 1, 0, 0, 0, 4, 0, 0, 0, 'a', 'b', 'c', 0
+        };
+        CHECK(std::vector<uint8_t>(buffer.begin(), buffer.end()) == expected);
+
+        ic_cts::Buffer input(expected.data(), expected.size());
+        serialization_types::MyMap5 decoded;
+        ic_cts::CdrReader reader(input, encoding);
+        ic_cts::CdrUnmarshal(reader).io(decoded);
+        CHECK(decoded == source);
+    }
+
+    {
+        const auto encoding = ic_cts::CDR_XCDR2 | ic_cts::CDR_LITTLE_ENDIAN;
+        ic_cts::Buffer buffer;
+        ic_cts::CdrWriter writer(buffer, encoding);
+        ic_cts::CdrMarshal(writer).io(source);
+
+        const std::vector<uint8_t> expected = {20, 0, 0, 0, 16, 0, 0, 0, 1,   0,   0,   0,
+                                               1,  0, 0, 0, 4,  0, 0, 0, 'a', 'b', 'c', 0};
+        CHECK(std::vector<uint8_t>(buffer.begin(), buffer.end()) == expected);
+
+        ic_cts::Buffer input(expected.data(), expected.size());
+        serialization_types::MyMap5 decoded;
+        ic_cts::CdrReader reader(input, encoding);
+        ic_cts::CdrUnmarshal(reader).io(decoded);
+        CHECK(decoded == source);
+    }
 }

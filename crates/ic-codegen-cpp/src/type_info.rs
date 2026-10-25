@@ -67,6 +67,13 @@ impl TypeInfo {
         w!(w, self.member_count, ", ", self.members.as_deref().unwrap_or("nullptr"));
         w!(w, "\n}");
     }
+
+    fn emit_variable(&self, w: &mut Twine, linkage: &str, var_name: &str) -> String {
+        w!(w, linkage, " const ::ic_cts::TypeInfo ", var_name, " = ");
+        self.emit(w);
+        w!(w, ";\n");
+        format!("&{var_name}")
+    }
 }
 
 fn default_value_of(def: &Def, ctx: &ic_hir::Context) -> i64 {
@@ -140,6 +147,7 @@ fn ty_kind_name(ty: &TyKind) -> &'static str {
         TyKind::String { wide: false, .. } => "::ic_cts::dcps::xtypes::TK_STRING8",
         TyKind::String { wide: true, .. } => "::ic_cts::dcps::xtypes::TK_STRING16",
         TyKind::Sequence { .. } => "::ic_cts::dcps::xtypes::TK_SEQUENCE",
+        TyKind::Map { .. } => "::ic_cts::dcps::xtypes::TK_MAP",
         TyKind::Array { .. } => "::ic_cts::dcps::xtypes::TK_ARRAY",
         TyKind::Primitive(p) => match p {
             PrimitiveTy::Void => "::ic_cts::dcps::xtypes::TK_NONE",
@@ -273,6 +281,17 @@ impl CppGen<'_> {
                     format!("sequence<{elem}>")
                 }
             }
+            TyKind::Map {
+                key, elem, bound, ..
+            } => {
+                let key = self.type_name(key);
+                let value = self.type_name(elem);
+                if let Some(b) = bound {
+                    format!("map<{key},{value},{b}>")
+                } else {
+                    format!("map<{key},{value}>")
+                }
+            }
             TyKind::Array { ty, len, .. } => {
                 let elem = self.type_name(ty);
                 format!("{elem}[{len}]")
@@ -310,10 +329,20 @@ impl CppGen<'_> {
         match &resolved.kind {
             TyKind::Primitive(p) => format!("&{}", primitive_type_info(*p)),
             TyKind::Adt(_) => self.type_info_ref(ty),
-            TyKind::String { .. } | TyKind::Sequence { .. } | TyKind::Array { .. } => {
-                self.emit_type_info(w, ty, var_name, Some(parent))
-            }
+            TyKind::String { .. }
+            | TyKind::Sequence { .. }
+            | TyKind::Map { .. }
+            | TyKind::Array { .. } => self.emit_type_info(w, ty, var_name, Some(parent)),
             _ => "nullptr".to_string(),
+        }
+    }
+
+    fn emit_collection_info(&self, w: &mut Twine, ty: &Ty, var_name: &str) -> String {
+        let type_info = self.emit_type_info(w, ty, var_name, None);
+        if type_info == "nullptr" {
+            "&::ic_cts::NULL_TYPE_INFO".to_string()
+        } else {
+            type_info
         }
     }
 
@@ -330,11 +359,8 @@ impl CppGen<'_> {
             TyKind::Primitive(p) => format!("&{}", primitive_type_info(*p)),
             TyKind::Adt(_) => self.type_info_ref(ty),
             TyKind::String { wide, bound, .. } => {
-                let base_name = string_type_name(*wide);
-                let name = base_name.to_string();
-
                 let info = TypeInfo {
-                    name,
+                    name: string_type_name(*wide).to_string(),
                     kind: ty_kind_name(&resolved.kind).to_string(),
                     flags: "0".to_string(),
                     bit_size: 32,
@@ -349,16 +375,24 @@ impl CppGen<'_> {
                     members: None,
                 };
 
-                w!(w, self.linkage(), " const ::ic_cts::TypeInfo ", var_name, " = ");
-                info.emit(w);
-                w!(w, ";\n");
-                format!("&{var_name}")
+                info.emit_variable(w, self.linkage(), var_name)
             }
             TyKind::Sequence {
                 ty: elem_ty, bound, ..
+            }
+            | TyKind::Map {
+                elem: elem_ty,
+                bound,
+                ..
             } => {
+                let key_info = if let TyKind::Map { key, .. } = &resolved.kind {
+                    let key_var = format!("{var_name}_key");
+                    Some(self.emit_collection_info(w, key, &key_var))
+                } else {
+                    None
+                };
                 let elem_var = format!("{var_name}_element");
-                let elem_info = self.emit_type_info(w, elem_ty, &elem_var, None);
+                let elem_info = self.emit_collection_info(w, elem_ty, &elem_var);
 
                 let base_name = self.type_name(ty);
                 let name = if let Some(p) = parent {
@@ -376,22 +410,19 @@ impl CppGen<'_> {
                     default_value: None,
                     min_value: None,
                     max_value: None,
-                    key_type: None,
+                    key_type: key_info,
                     element_type: Some(elem_info),
                     member_count: 0,
                     members: None,
                 };
 
-                w!(w, self.linkage(), " const ::ic_cts::TypeInfo ", var_name, " = ");
-                info.emit(w);
-                w!(w, ";\n");
-                format!("&{var_name}")
+                info.emit_variable(w, self.linkage(), var_name)
             }
             TyKind::Array {
                 ty: elem_ty, len, ..
             } => {
                 let elem_var = format!("{var_name}_dim_element");
-                let elem_info = self.emit_type_info(w, elem_ty, &elem_var, None);
+                let elem_info = self.emit_collection_info(w, elem_ty, &elem_var);
 
                 let base_name = self.type_name(ty);
                 let name = if let Some(p) = parent {
@@ -415,10 +446,7 @@ impl CppGen<'_> {
                     members: None,
                 };
 
-                w!(w, self.linkage(), " const ::ic_cts::TypeInfo ", var_name, " = ");
-                info.emit(w);
-                w!(w, ";\n");
-                format!("&{var_name}")
+                info.emit_variable(w, self.linkage(), var_name)
             }
             _ => "nullptr".to_string(),
         }

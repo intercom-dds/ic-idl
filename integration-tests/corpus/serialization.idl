@@ -32,4 +32,30 @@ module serialization_types {
         int64 c;
         map<int64, int64> d;
     };
+
+    @final
+    struct MapValue {
+        long number;
+    };
+
+    typedef map<short, string, 5> ShortStringMap5;
+
+    struct MyMap5 {
+        ShortStringMap5 value;
+    };
+
+    struct MapMembers {
+        map<long, long> primitive;
+        map<string, MapValue> unbounded;
+        map<string<8>, MapValue, 5> bounded;
+        @optional map<long, MapValue> optional_unbounded;
+        @optional map<long, MapValue, 5> optional_bounded;
+        map<string, sequence<map<long, MapValue>>> nested;
+        sequence<ShortStringMap5> sequence_of_maps;
+        ShortStringMap5 array_of_maps[2];
+    };
+
+    union MapUnion switch (long) {
+        case 0: map<long, MapValue> value;
+    };
 };

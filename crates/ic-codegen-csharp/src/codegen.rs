@@ -1537,7 +1537,7 @@ impl<'a> CSharpGen<'a> {
             let content = w.finish();
             let output_path = PathBuf::from(self.file_name(file_id));
 
-            result.push(File::Generated {
+            result.push(File {
                 path: output_path,
                 source: content,
             });

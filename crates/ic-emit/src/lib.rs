@@ -32,7 +32,7 @@
 //!
 //! - Case conversion utilities for different naming conventions
 //! - Pretty-printing infrastructure for code formatting
-//! - File abstraction for generated code and dependencies
+//! - File abstraction for generated code
 //!
 //! # Example
 //!
@@ -72,19 +72,13 @@ pub mod printer;
 
 /// Represents a file in the code generation output.
 #[derive(Debug)]
-pub enum File {
-    /// A dependency file that should be tracked but not generated.
-    Dep(String),
-
-    /// A generated source file with its path and contents.
-    Generated { path: PathBuf, source: String },
+pub struct File {
+    pub path: PathBuf,
+    pub source: String,
 }
 
 impl std::fmt::Display for File {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            File::Dep(v) => write!(f, "dep:{v}"),
-            File::Generated { path, .. } => write!(f, "gen:{}", path.display()),
-        }
+        write!(f, "gen:{}", self.path.display())
     }
 }

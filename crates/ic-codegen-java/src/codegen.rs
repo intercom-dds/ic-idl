@@ -584,7 +584,7 @@ impl<'a> JavaGen<'a> {
         emit_fn(&mut w);
 
         let path = self.file_path(def, suffix);
-        File::Generated {
+        File {
             path,
             source: w.finish(),
         }

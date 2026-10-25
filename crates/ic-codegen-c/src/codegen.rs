@@ -507,7 +507,7 @@ impl<'a> CGen<'a> {
             w!(w, "}\n");
             w!(w, "#endif\n");
 
-            result.push(File::Generated {
+            result.push(File {
                 path: PathBuf::from(file_name),
                 source: w.finish(),
             });

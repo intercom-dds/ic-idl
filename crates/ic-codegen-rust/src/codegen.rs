@@ -150,7 +150,7 @@ impl<'a> RustGen<'a> {
             format!("{path}.rs")
         };
 
-        files.push(File::Generated {
+        files.push(File {
             path: file_path.into(),
             source: content,
         });

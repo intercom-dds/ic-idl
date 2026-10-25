@@ -1081,7 +1081,7 @@ impl<'a> CppGen<'a> {
             header_content.push_str(&impls.finish());
 
             let header_path = self.header_path(file_id);
-            result.push(File::Generated {
+            result.push(File {
                 path: header_path.clone(),
                 source: header_content,
             });
@@ -1100,7 +1100,7 @@ impl<'a> CppGen<'a> {
             }
 
             let cpp_content = cpp_impls.finish();
-            result.push(File::Generated {
+            result.push(File {
                 path: self.source_path(file_id),
                 source: cpp_content,
             });

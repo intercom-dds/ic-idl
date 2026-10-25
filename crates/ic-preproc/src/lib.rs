@@ -25,7 +25,7 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 use std::io;
 use std::path::{Path, PathBuf};
 use std::string::FromUtf8Error;
@@ -48,7 +48,7 @@ const RECURSION_DEPTH: usize = 200;
 #[must_use]
 #[derive(Clone, Debug)]
 pub struct ProcArgs {
-    include_dirs: HashSet<PathBuf>,
+    include_dirs: Vec<PathBuf>,
     defines: HashMap<String, Option<String>>,
     skip_comments: bool,
     recursion_depth: usize,
@@ -57,7 +57,7 @@ pub struct ProcArgs {
 impl Default for ProcArgs {
     fn default() -> Self {
         Self {
-            include_dirs: HashSet::default(),
+            include_dirs: vec![],
             defines: HashMap::default(),
             skip_comments: false,
             recursion_depth: RECURSION_DEPTH,
@@ -70,7 +70,11 @@ impl ProcArgs {
     where
         S: Into<PathBuf>,
     {
-        self.include_dirs.insert(dir.into());
+        let dir = dir.into();
+        if !self.include_dirs.contains(&dir) {
+            self.include_dirs.push(dir);
+        }
+
         self
     }
 
@@ -79,7 +83,10 @@ impl ProcArgs {
         I: IntoIterator<Item = S>,
         S: Into<PathBuf>,
     {
-        self.include_dirs.extend(dirs.into_iter().map(Into::into));
+        for dir in dirs {
+            self = self.include(dir);
+        }
+
         self
     }
 
@@ -189,4 +196,23 @@ where
         processor::to_string(file_id, args, &mut state, &mut vfs),
         state.errors,
     ))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn include_directories_keep_first_occurrence() {
+        let args = ProcArgs::default()
+            .include("first")
+            .include("first")
+            .includes(["second", "first", "second", "third"])
+            .include("second");
+
+        assert_eq!(
+            args.include_dirs,
+            ["first", "second", "third"].map(PathBuf::from)
+        );
+    }
 }

@@ -211,6 +211,15 @@ fn try_compile(options: CompilerOptions) {
 
     // Handle output
     if compiler.options().list {
+        for path in compiler
+            .source_map()
+            .files()
+            .keys()
+            .filter(|path| path.is_absolute())
+        {
+            println!("dep:{}", path.display());
+        }
+
         for f in &generated {
             println!("{f}");
         }
@@ -334,12 +343,9 @@ fn invoke_backend(
 
     let files = backend_fn()
         .into_iter()
-        .map(move |v| match v {
-            File::Generated { path, source } => File::Generated {
-                path: output_dir.join(path),
-                source,
-            },
-            File::Dep(_) => v,
+        .map(|file| File {
+            path: output_dir.join(file.path),
+            source: file.source,
         })
         .collect();
 
@@ -347,15 +353,15 @@ fn invoke_backend(
 }
 
 fn write_files(files: &[File]) -> std::io::Result<()> {
-    for file in files {
-        if let File::Generated { path, source } = file {
-            if let Some(parent) = path.parent() {
-                std::fs::create_dir_all(parent)?;
-            }
-            tracing::debug!(file = %path.display(), bytes = source.len(), "generated");
-            util::write_if_changed(path, source)?;
+    for File { path, source } in files {
+        if let Some(parent) = path.parent() {
+            std::fs::create_dir_all(parent)?;
         }
+
+        tracing::debug!(file = %path.display(), bytes = source.len(), "generated");
+        util::write_if_changed(path, source)?;
     }
+
     Ok(())
 }
 

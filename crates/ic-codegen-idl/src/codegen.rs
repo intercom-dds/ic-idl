@@ -747,7 +747,7 @@ impl<'a> IdlGen<'a> {
             }
 
             let content = w.finish();
-            result.push(File::Generated {
+            result.push(File {
                 path: PathBuf::from(file_name),
                 source: content,
             });

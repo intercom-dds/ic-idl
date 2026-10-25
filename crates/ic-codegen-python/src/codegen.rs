@@ -215,7 +215,7 @@ impl<'a, 'cb> PyGen<'a, 'cb> {
         if self.options.py_typed {
             let mut w = PyWriter::new(ImportContext::default());
             Self::emit_header(&mut w);
-            files.push(File::Generated {
+            files.push(File {
                 path: "py.typed".into(),
                 source: w.finish(),
             });
@@ -305,7 +305,7 @@ impl<'a, 'cb> PyGen<'a, 'cb> {
             let mut path: PathBuf = module_path.iter().collect();
             path.push("__init__.py");
 
-            files.push(File::Generated {
+            files.push(File {
                 path,
                 source: w.finish(),
             });
@@ -1182,7 +1182,7 @@ impl<'a, 'cb> PyGen<'a, 'cb> {
         let mut path: PathBuf = module_path.iter().collect();
         path.push(format!("_{filename}.py"));
 
-        File::Generated {
+        File {
             path,
             source: w.finish(),
         }

@@ -595,7 +595,7 @@ impl<'a> JsonSchemaGen<'a> {
         root.insert("$defs".to_string(), Value::Object(defs_map));
         let source = json::to_string(&root, true).ok()?;
 
-        Some(File::Generated {
+        Some(File {
             path: self.output_path(file_id),
             source,
         })

@@ -26,7 +26,6 @@
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use ic_codegen_rust::{RustOptions, codegen_rust};
-use ic_emit::File as EmitFile;
 use ic_hir_lower::{AstInput, from_ast};
 use ic_parse::from_str;
 
@@ -61,11 +60,9 @@ fn generate_rust(idl: &str) -> String {
 
     files
         .into_iter()
-        .find_map(|f| match f {
-            EmitFile::Generated { source, .. } => Some(source),
-            EmitFile::Dep(_) => None,
-        })
+        .next()
         .expect("expected at least one generated file")
+        .source
 }
 
 /// Extract all `///` doc-comment lines from generated source, stripping

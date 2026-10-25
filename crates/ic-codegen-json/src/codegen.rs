@@ -106,7 +106,7 @@ impl<'a> JsonGen<'a> {
         let file_path = source_map.name(file_id);
         let file_name = file_path.file_name()?.to_str()?.replace(".idl", ".json");
 
-        Some(File::Generated {
+        Some(File {
             path: file_name.into(),
             source,
         })

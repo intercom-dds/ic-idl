@@ -697,7 +697,7 @@ impl<'a> TsGen<'a> {
 
         path.push(file_stem);
         path.set_extension("ts");
-        File::Generated {
+        File {
             path,
             source: w.finish(),
         }

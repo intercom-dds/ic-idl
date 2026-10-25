@@ -107,7 +107,7 @@ impl<'a> XmlGen<'a> {
         let file_path = self.source_map.name(file_id);
         let file_name = file_path.file_name()?.to_str()?.replace(".idl", ".xml");
 
-        Some(File::Generated {
+        Some(File {
             path: file_name.into(),
             source,
         })

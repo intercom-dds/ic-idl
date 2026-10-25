@@ -640,7 +640,7 @@ impl<'a> ProtoGen<'a> {
                 FileKind::Definition(ids) => self.emit_file_multi(&ids, &def_to_file),
                 FileKind::Facade(def_id, target) => self.emit_facade(def_id, &target),
             };
-            files.push(File::Generated {
+            files.push(File {
                 path: PathBuf::from(file_name),
                 source: content,
             });

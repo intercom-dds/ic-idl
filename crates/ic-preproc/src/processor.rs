@@ -37,7 +37,7 @@ use ic_expr::{Binary, Op, Ternary, Unary};
 use ic_lexer::cursor::Cursor;
 use ic_lexer::token::{Base, Kind, Token};
 use ic_vfs::{FileId, Include, Location, SourceMap};
-use rustc_hash::{FxHashMap, FxHashSet};
+use rustc_hash::FxHashMap;
 use tracing::{debug, trace};
 
 use crate::directives::{DirectiveHandler, IfState};
@@ -73,19 +73,25 @@ impl File {
     }
 }
 
+#[derive(Eq, PartialEq, Hash)]
+struct IncludeCacheKey {
+    path: PathBuf,
+    local_dir: Option<PathBuf>,
+}
+
 struct Parser<'a, S> {
     stack: Vec<File>,
     state: S,
     vfs: &'a mut SourceMap,
-    includes: FxHashSet<PathBuf>,
+    includes: Vec<PathBuf>,
     recursion_depth: usize,
 
     /// Whether to process #pragma once
     enable_pragma_once: bool,
 
     /// Cache for include file resolution to avoid repeated directory traversals
-    /// Maps `(relative_path, is_local)` -> `resolved_path`
-    include_cache: FxHashMap<(PathBuf, bool), Option<PathBuf>>,
+    /// Maps relative paths and optional local directories to resolved paths.
+    include_cache: FxHashMap<IncludeCacheKey, Option<PathBuf>>,
 }
 
 impl<S> ExpressionContext for Parser<'_, S>
@@ -108,7 +114,7 @@ where
             state,
             stack: vec![file],
             enable_pragma_once: true,
-            includes: args.include_dirs.into_iter().collect(),
+            includes: args.include_dirs,
             recursion_depth: args.recursion_depth,
             vfs,
             include_cache: FxHashMap::default(),
@@ -272,8 +278,18 @@ where
             return Some(path.to_owned());
         }
 
+        let local_dir = if kind == Include::Local {
+            let cur_id = self.cursor().file_id();
+            self.vfs.path(cur_id).parent().map(Path::to_path_buf)
+        } else {
+            None
+        };
+
         // Check cache first
-        let cache_key = (path.to_path_buf(), kind == Include::Local);
+        let cache_key = IncludeCacheKey {
+            path: path.to_path_buf(),
+            local_dir: local_dir.clone(),
+        };
         if let Some(cached_result) = self.include_cache.get(&cache_key) {
             trace!(path = %path.display(), cached = true, "include cache hit");
             return cached_result.clone();
@@ -283,15 +299,11 @@ where
         let mut result = None;
 
         // Include relative to the current file
-        if kind == Include::Local {
-            let cur_id = self.cursor().file_id();
-            let local = self.vfs.path(cur_id);
-            if let Some(parent) = local.parent() {
-                let file = parent.join(path);
-                trace!(path = %path.display(), trying = %file.display(), "trying local include");
-                if file.exists() {
-                    result = Some(file);
-                }
+        if let Some(parent) = local_dir {
+            let file = parent.join(path);
+            trace!(path = %path.display(), trying = %file.display(), "trying local include");
+            if file.exists() {
+                result = Some(file);
             }
         }
 

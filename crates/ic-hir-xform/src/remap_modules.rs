@@ -56,16 +56,14 @@ pub fn transform(mut hir: ResolvedGraph, maps: &[ModuleMap]) -> ResolvedGraph {
             continue;
         };
 
-        let first = hir.context.definitions.get(matches[0]);
-        let span = first.span;
-        let flags = DefFlags::IS_SYNTHESIZED | (first.flags & DefFlags::IS_INCLUDED);
-        let root_position = root_position(&hir, matches[0]);
-
-        let target = synthesize_chain(&mut hir, chain, span, flags, root_position);
-
-        let mut position = root_position;
         for module_id in matches {
-            let old_parent = hir.context.definitions.get(module_id).parent;
+            let def = hir.context.definitions.get(module_id);
+            let span = def.span;
+            let flags = DefFlags::IS_SYNTHESIZED | (def.flags & DefFlags::IS_INCLUDED);
+            let old_parent = def.parent;
+            let position = root_position(&hir, module_id);
+            let target = synthesize_chain(&mut hir, chain, span, flags, position);
+
             detach(&mut hir, module_id);
             prune_empty(&mut hir, old_parent);
 
@@ -80,7 +78,6 @@ pub fn transform(mut hir: ResolvedGraph, maps: &[ModuleMap]) -> ResolvedGraph {
                 attach(&mut hir, target, module_id, None);
             } else {
                 attach(&mut hir, None, module_id, position);
-                position = position.map(|index| index + 1);
             }
         }
     }

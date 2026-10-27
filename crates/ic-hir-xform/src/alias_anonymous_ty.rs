@@ -149,6 +149,9 @@ pub struct Convention {
     /// Separator used between sub types when composing an identifier.
     pub seperator: &'static str,
 
+    /// Whether to split multidimensional arrays into multiple aliases instead of a single one.
+    pub split_multidimensional_arrays: bool,
+
     /// Callback for the name of primitive types used in subtypes.
     pub primitive_name: Option<fn(PrimitiveTy) -> String>,
 }
@@ -449,6 +452,7 @@ pub fn transform(mut hir: ResolvedGraph, convention: &Convention) -> ResolvedGra
     {
         let mut ctx = CollectionContext {
             hir: &hir,
+            convention,
             arrays: &mut arrays_to_synthesize,
             sequences: &mut sequences_to_synthesize,
             maps: &mut maps_to_synthesize,
@@ -558,6 +562,7 @@ pub fn transform(mut hir: ResolvedGraph, convention: &Convention) -> ResolvedGra
             &map_types,
             &bounded_string_types,
             &synthesized_ids,
+            convention.split_multidimensional_arrays,
         );
     }
 
@@ -656,19 +661,15 @@ fn synthesize_arrays(
     let Convention {
         array_prefix,
         array_suffix,
-        seperator,
         ..
     } = convention;
     for replacement in arrays_to_synthesize {
-        let elem_name = type_name(hir, &replacement.elem_ty, convention);
+        let array_name = array_type_name(hir, &replacement.elem_ty, replacement.len, convention);
         let key = make_array_key(&replacement.elem_ty, replacement.len);
         let scope_types = array_types.entry(replacement.parent).or_default();
 
         if let std::collections::hash_map::Entry::Vacant(e) = scope_types.entry(key) {
-            let type_name: String = format!(
-                "{array_prefix}{elem_name}{seperator}{}{array_suffix}",
-                replacement.len
-            );
+            let type_name = format!("{array_prefix}{array_name}{array_suffix}");
 
             let ty_kind = TyKind::Array {
                 ty: replacement.elem_ty.clone(),
@@ -1165,6 +1166,7 @@ fn replace_collections_recursive(
     map_types: &HashMap<Option<DefId>, HashMap<MapKey, DefId>>,
     bounded_string_types: &HashMap<Option<DefId>, HashMap<BoundedStringKey, DefId>>,
     synthesized_ids: &std::collections::HashSet<DefId>,
+    split_multidimensional_arrays: bool,
 ) {
     let child_ids = {
         let def = hir.context.definitions.get(def_id);
@@ -1185,6 +1187,7 @@ fn replace_collections_recursive(
             map_types,
             bounded_string_types,
             synthesized_ids,
+            split_multidimensional_arrays,
         );
     }
 
@@ -1201,7 +1204,23 @@ fn replace_collections_recursive(
         // not the top-level collection type itself.
         if let DefKind::Alias(alias_ty) = &mut def.kind {
             match &mut alias_ty.ty.kind {
-                TyKind::Array { ty: elem_ty, .. } | TyKind::Sequence { ty: elem_ty, .. } => {
+                TyKind::Array { ty: elem_ty, .. } => {
+                    let mut elem_ty: &mut Ty = elem_ty;
+                    if !split_multidimensional_arrays {
+                        while let TyKind::Array { ref mut ty, .. } = elem_ty.kind {
+                            elem_ty = ty;
+                        }
+                    }
+                    replace_type_if_collection(
+                        elem_ty,
+                        array_types,
+                        sequence_types,
+                        map_types,
+                        bounded_string_types,
+                        scope_id,
+                    );
+                }
+                TyKind::Sequence { ty: elem_ty, .. } => {
                     replace_type_if_collection(
                         elem_ty,
                         array_types,
@@ -1277,6 +1296,7 @@ fn replace_annotated_ty(member: &mut impl MemberKindMut, typedef_id: DefId) {
 /// - Type aliases
 struct CollectionContext<'a> {
     hir: &'a ResolvedGraph,
+    convention: &'a Convention,
     arrays: &'a mut Vec<ArrayReplacement>,
     sequences: &'a mut Vec<SequenceReplacement>,
     maps: &'a mut Vec<MapReplacement>,
@@ -1297,7 +1317,13 @@ fn collect_from_ty(
         TyKind::Array {
             ty: elem_ty, len, ..
         } => {
-            collect_from_ty(elem_ty, span, parent, used_by, ctx);
+            let mut inner_elem_ty = elem_ty;
+            if !ctx.convention.split_multidimensional_arrays {
+                while let TyKind::Array { ty: inner, .. } = &inner_elem_ty.kind {
+                    inner_elem_ty = inner;
+                }
+            }
+            collect_from_ty(inner_elem_ty, span, parent, used_by, ctx);
             ctx.arrays.push(ArrayReplacement {
                 elem_ty: elem_ty.clone(),
                 len: *len,
@@ -1740,16 +1766,12 @@ pub fn type_name(hir: &ResolvedGraph, ty: &Ty, convention: &Convention) -> Strin
             }
         }
         TyKind::Array {
-            ty: elem_ty,
-            len: elem_len,
-            ..
-        } => {
-            let elem_name = type_name(hir, elem_ty, convention);
-            format!(
-                "{}{sep}{elem_name}{sep}{elem_len}",
-                convention.array_subtype
-            )
-        }
+            ty: elem_ty, len, ..
+        } => format!(
+            "{}{sep}{}",
+            convention.array_subtype,
+            array_type_name(hir, elem_ty, *len, convention)
+        ),
         TyKind::Map {
             key, elem, bound, ..
         } => {
@@ -1768,6 +1790,25 @@ pub fn type_name(hir: &ResolvedGraph, ty: &Ty, convention: &Convention) -> Strin
         TyKind::Fixed => "Fixed".to_string(),
         TyKind::Null => "Null".to_string(),
     }
+}
+
+fn array_type_name(
+    hir: &ResolvedGraph,
+    elem_ty: &Ty,
+    len: usize,
+    convention: &Convention,
+) -> String {
+    let sep = convention.seperator;
+    let mut dims = vec![len.to_string()];
+    let mut inner_elem_ty: &Ty = elem_ty;
+
+    while let TyKind::Array { ty: inner, len, .. } = &inner_elem_ty.kind {
+        dims.push(len.to_string());
+        inner_elem_ty = inner;
+    }
+
+    let elem_name = type_name(hir, inner_elem_ty, convention);
+    format!("{elem_name}{sep}{}", dims.join(sep))
 }
 
 trait MemberKind: MemberLike {

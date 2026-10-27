@@ -33,6 +33,7 @@
 #include "use_fmt/bitmasks.h"
 #include "use_fmt/enums.h"
 #include "use_fmt/exceptions.h"
+#include "use_fmt/string_types.h"
 #include "use_fmt/structs.h"
 #include "use_fmt/unions.h"
 #include "use_fmt/valuetypes.h"
@@ -98,6 +99,15 @@ TEST_CASE("format_exception" * doctest::test_suite("format")) {
 TEST_CASE("format_empty_exception" * doctest::test_suite("format")) {
     exception_types::EmptyError error;
     CHECK(std::format("{}", error) == "{}");
+}
+
+TEST_CASE("format_narrow_character_bytes" * doctest::test_suite("format")) {
+    const char_wstring_types::CharFields fields(static_cast<char>(0xe9), u'A');
+    CHECK(std::format("{}", fields) == R"(CharFields { single_char: '\xe9', wide_char: 'A' })");
+    CHECK(
+        std::format("{:#}", fields) ==
+        "CharFields {\n    single_char: '\\xe9',\n    wide_char: 'A',\n}"
+    );
 }
 
 TEST_CASE("format_pretty" * doctest::test_suite("format")) {

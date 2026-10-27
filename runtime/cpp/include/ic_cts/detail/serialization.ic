@@ -33,6 +33,7 @@
 #include <sstream>
 #include <stdexcept>
 #include <string>
+#include <valarray>
 #include <vector>
 
 #include "ic_cts/any.h"
@@ -310,25 +311,24 @@ struct Serializer<Archive, ic_cts::span<T>> {
 
 template <class Archive>
 struct Serializer<Archive, std::vector<bool>> {
-    static_assert(sizeof(bool) == sizeof(uint8_t));
-
     void operator()(Archive& a, std::vector<bool>& value, const TypeInfo* type_info) {
         typename Archive::template VectorValue<bool> serializer(a, type_info);
-        std::vector<uint8_t> copy;
-        if (Archive::IS_WRITER) {
-            copy.reserve(value.size());
-            for (auto elem : value) {
-                copy.push_back(elem != 0);
+        std::valarray<bool> copy;
+        if constexpr (Archive::IS_WRITER) {
+            copy.resize(value.size());
+            for (size_t i = 0; i < value.size(); ++i) {
+                copy[i] = value[i];
             }
         }
-        serializer.io(reinterpret_cast<bool*>(copy.data()), copy.size());
-        if (Archive::IS_READER) {
-            value.clear();
-            value.reserve(copy.size());
-            for (auto elem : copy) {
-                value.push_back(elem != 0);
+
+        serializer.io(copy);
+        if constexpr (Archive::IS_READER) {
+            value.resize(copy.size());
+            for (size_t i = 0; i < copy.size(); ++i) {
+                value[i] = copy[i];
             }
         }
+
         if (type_info && type_info->max_length > 0 && value.size() > type_info->max_length) {
             if (type_info->flags & dcps::xtypes::IS_TRIM_TRY_CONSTRUCT) {
                 value.resize(type_info->max_length);

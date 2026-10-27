@@ -34,11 +34,91 @@
 
 #include "serialization.h"
 
+namespace {
+template <bool Reading>
+struct DelimitedBooleanArchive {
+    static constexpr bool IS_READER = Reading;
+    static constexpr bool IS_WRITER = !Reading;
+
+    std::stringstream& stream;
+
+    template <typename T>
+    struct VectorValue {
+        DelimitedBooleanArchive& archive;
+
+        VectorValue(DelimitedBooleanArchive& a, const ic_cts::TypeInfo*) : archive(a) {}
+
+        template <typename Vector>
+        void io(Vector& value) {
+            if constexpr (Reading) {
+                std::vector<T> elements;
+                for (char element; archive.stream.get(element) && element != ';';) {
+                    elements.push_back(element == '1');
+                }
+
+                value.resize(elements.size());
+                for (size_t i = 0; i < elements.size(); ++i) {
+                    value[i] = elements[i];
+                }
+            } else {
+                for (size_t i = 0; i < value.size(); ++i) {
+                    archive.stream.put(value[i] ? '1' : '0');
+                }
+
+                archive.stream.put(';');
+            }
+        }
+    };
+};
+}
+
 template <typename T>
-std::string json(T& value, ic_cts::SerializerFlags flags = {}) {
+static std::string json(T& value, ic_cts::SerializerFlags flags = {}) {
     std::stringstream ss;
     ic_cts::marshal_json(ss, value, flags);
     return ss.str();
+}
+
+template <typename T>
+static void decode_json(const char* text, T& value) {
+    std::stringstream stream(text);
+    ic_cts::unmarshal_json(stream, value);
+}
+
+template <typename T>
+static std::vector<uint8_t>
+encode_cdr(const T& value, ic_cts::SerializerFlags encoding, const ic_cts::TypeInfo* type_info) {
+    ic_cts::Buffer buffer;
+    ic_cts::CdrWriter writer(buffer, encoding);
+    ic_cts::CdrMarshal(writer).io(value, type_info);
+
+    return {buffer.begin(), buffer.end()};
+}
+
+template <typename T>
+static void decode_cdr(
+    const std::vector<uint8_t>& bytes,
+    T& value,
+    ic_cts::SerializerFlags encoding,
+    const ic_cts::TypeInfo* type_info
+) {
+    ic_cts::Buffer buffer(bytes.data(), bytes.size());
+    ic_cts::CdrReader reader(buffer, encoding);
+    ic_cts::CdrUnmarshal(reader).io(value, type_info);
+}
+
+static std::string encode_delimited(std::vector<bool>& value) {
+    std::stringstream stream;
+    DelimitedBooleanArchive<false> writer{stream};
+    ic_cts::Serializer<DelimitedBooleanArchive<false>, std::vector<bool>>{}(writer, value, nullptr);
+
+    return stream.str();
+}
+
+static void decode_delimited(const char* text, std::vector<bool>& value) {
+    std::stringstream stream(text);
+    DelimitedBooleanArchive<true> reader{stream};
+    ic_cts::Serializer<DelimitedBooleanArchive<true>, std::vector<bool>>{}(reader, value, nullptr);
 }
 
 TEST_CASE("serialization_json_numbers_large_integers" * doctest::test_suite("interfaces")) {
@@ -87,6 +167,298 @@ TEST_CASE(
         json(unsafe, ic_cts::SERIALIZER_LARGE_INTEGERS_AS_STRINGS) ==
         R"({"a":"9007199254740992","b":"9007199254740992","c":"-9007199254740992","d":{"9007199254740992":"-9007199254740992"}})"
     );
+}
+
+TEST_CASE("boolean_sequence_delimited_archive" * doctest::test_suite("serialization")) {
+    SUBCASE("empty") {
+        std::vector<bool> source;
+        CHECK(encode_delimited(source) == ";");
+
+        std::vector<bool> decoded = {false, true};
+        decode_delimited(";", decoded);
+        CHECK(decoded == source);
+    }
+
+    SUBCASE("true") {
+        std::vector<bool> source = {true};
+        CHECK(encode_delimited(source) == "1;");
+
+        std::vector<bool> decoded = {false, true};
+        decode_delimited("1;", decoded);
+        CHECK(decoded == source);
+    }
+
+    SUBCASE("false") {
+        std::vector<bool> source = {false};
+        CHECK(encode_delimited(source) == "0;");
+
+        std::vector<bool> decoded = {false, true};
+        decode_delimited("0;", decoded);
+        CHECK(decoded == source);
+    }
+
+    SUBCASE("mixed") {
+        std::vector<bool> source = {true, false, true, true, false};
+        CHECK(encode_delimited(source) == "10110;");
+
+        std::vector<bool> decoded = {false, true};
+        decode_delimited("10110;", decoded);
+        CHECK(decoded == source);
+    }
+}
+
+TEST_CASE("boolean_sequence_json" * doctest::test_suite("serialization")) {
+    SUBCASE("empty") {
+        const std::vector<bool> source;
+        CHECK(json(source) == "[]");
+
+        std::vector<bool> decoded = {false, true};
+        decode_json("[]", decoded);
+        CHECK(decoded == source);
+    }
+
+    SUBCASE("true") {
+        const std::vector<bool> source = {true};
+        CHECK(json(source) == "[true]");
+
+        std::vector<bool> decoded = {false, true};
+        decode_json("[true]", decoded);
+        CHECK(decoded == source);
+    }
+
+    SUBCASE("false") {
+        const std::vector<bool> source = {false};
+        CHECK(json(source) == "[false]");
+
+        std::vector<bool> decoded = {false, true};
+        decode_json("[false]", decoded);
+        CHECK(decoded == source);
+    }
+
+    SUBCASE("mixed") {
+        const std::vector<bool> source = {true, false, true, true, false};
+        CHECK(json(source) == "[true,false,true,true,false]");
+
+        std::vector<bool> decoded = {false, true};
+        decode_json("[true,false,true,true,false]", decoded);
+        CHECK(decoded == source);
+    }
+}
+
+TEST_CASE("boolean_sequence_cdr" * doctest::test_suite("serialization")) {
+    auto type_info = ic_cts::NULL_SEQ_TYPE_INFO;
+    type_info.element_type = &ic_cts::BOOLEAN_TYPE_INFO;
+
+    SUBCASE("xcdr1 little endian empty") {
+        const auto encoding = ic_cts::CDR_XCDR1 | ic_cts::CDR_LITTLE_ENDIAN;
+        const std::vector<bool> source;
+        const std::vector<uint8_t> expected = {0, 0, 0, 0};
+        CHECK(encode_cdr(source, encoding, &type_info) == expected);
+
+        std::vector<bool> decoded = {false, true};
+        decode_cdr(expected, decoded, encoding, &type_info);
+        CHECK(decoded == source);
+    }
+
+    SUBCASE("xcdr1 little endian true") {
+        const auto encoding = ic_cts::CDR_XCDR1 | ic_cts::CDR_LITTLE_ENDIAN;
+        const std::vector<bool> source = {true};
+        const std::vector<uint8_t> expected = {1, 0, 0, 0, 1};
+        CHECK(encode_cdr(source, encoding, &type_info) == expected);
+
+        std::vector<bool> decoded = {false, true};
+        decode_cdr(expected, decoded, encoding, &type_info);
+        CHECK(decoded == source);
+    }
+
+    SUBCASE("xcdr1 little endian false") {
+        const auto encoding = ic_cts::CDR_XCDR1 | ic_cts::CDR_LITTLE_ENDIAN;
+        const std::vector<bool> source = {false};
+        const std::vector<uint8_t> expected = {1, 0, 0, 0, 0};
+        CHECK(encode_cdr(source, encoding, &type_info) == expected);
+
+        std::vector<bool> decoded = {false, true};
+        decode_cdr(expected, decoded, encoding, &type_info);
+        CHECK(decoded == source);
+    }
+
+    SUBCASE("xcdr1 little endian mixed") {
+        const auto encoding = ic_cts::CDR_XCDR1 | ic_cts::CDR_LITTLE_ENDIAN;
+        const std::vector<bool> source = {true, false, true, true, false};
+        const std::vector<uint8_t> expected = {5, 0, 0, 0, 1, 0, 1, 1, 0};
+        CHECK(encode_cdr(source, encoding, &type_info) == expected);
+
+        std::vector<bool> decoded = {false, true};
+        decode_cdr(expected, decoded, encoding, &type_info);
+        CHECK(decoded == source);
+    }
+
+    SUBCASE("xcdr1 big endian empty") {
+        const auto encoding = ic_cts::CDR_XCDR1 | ic_cts::CDR_BIG_ENDIAN;
+        const std::vector<bool> source;
+        const std::vector<uint8_t> expected = {0, 0, 0, 0};
+        CHECK(encode_cdr(source, encoding, &type_info) == expected);
+
+        std::vector<bool> decoded = {false, true};
+        decode_cdr(expected, decoded, encoding, &type_info);
+        CHECK(decoded == source);
+    }
+
+    SUBCASE("xcdr1 big endian true") {
+        const auto encoding = ic_cts::CDR_XCDR1 | ic_cts::CDR_BIG_ENDIAN;
+        const std::vector<bool> source = {true};
+        const std::vector<uint8_t> expected = {0, 0, 0, 1, 1};
+        CHECK(encode_cdr(source, encoding, &type_info) == expected);
+
+        std::vector<bool> decoded = {false, true};
+        decode_cdr(expected, decoded, encoding, &type_info);
+        CHECK(decoded == source);
+    }
+
+    SUBCASE("xcdr1 big endian false") {
+        const auto encoding = ic_cts::CDR_XCDR1 | ic_cts::CDR_BIG_ENDIAN;
+        const std::vector<bool> source = {false};
+        const std::vector<uint8_t> expected = {0, 0, 0, 1, 0};
+        CHECK(encode_cdr(source, encoding, &type_info) == expected);
+
+        std::vector<bool> decoded = {false, true};
+        decode_cdr(expected, decoded, encoding, &type_info);
+        CHECK(decoded == source);
+    }
+
+    SUBCASE("xcdr1 big endian mixed") {
+        const auto encoding = ic_cts::CDR_XCDR1 | ic_cts::CDR_BIG_ENDIAN;
+        const std::vector<bool> source = {true, false, true, true, false};
+        const std::vector<uint8_t> expected = {0, 0, 0, 5, 1, 0, 1, 1, 0};
+        CHECK(encode_cdr(source, encoding, &type_info) == expected);
+
+        std::vector<bool> decoded = {false, true};
+        decode_cdr(expected, decoded, encoding, &type_info);
+        CHECK(decoded == source);
+    }
+
+    SUBCASE("xcdr2 little endian empty") {
+        const auto encoding = ic_cts::CDR_XCDR2 | ic_cts::CDR_LITTLE_ENDIAN;
+        const std::vector<bool> source;
+        const std::vector<uint8_t> expected = {0, 0, 0, 0};
+        CHECK(encode_cdr(source, encoding, &type_info) == expected);
+
+        std::vector<bool> decoded = {false, true};
+        decode_cdr(expected, decoded, encoding, &type_info);
+        CHECK(decoded == source);
+    }
+
+    SUBCASE("xcdr2 little endian true") {
+        const auto encoding = ic_cts::CDR_XCDR2 | ic_cts::CDR_LITTLE_ENDIAN;
+        const std::vector<bool> source = {true};
+        const std::vector<uint8_t> expected = {1, 0, 0, 0, 1};
+        CHECK(encode_cdr(source, encoding, &type_info) == expected);
+
+        std::vector<bool> decoded = {false, true};
+        decode_cdr(expected, decoded, encoding, &type_info);
+        CHECK(decoded == source);
+    }
+
+    SUBCASE("xcdr2 little endian false") {
+        const auto encoding = ic_cts::CDR_XCDR2 | ic_cts::CDR_LITTLE_ENDIAN;
+        const std::vector<bool> source = {false};
+        const std::vector<uint8_t> expected = {1, 0, 0, 0, 0};
+        CHECK(encode_cdr(source, encoding, &type_info) == expected);
+
+        std::vector<bool> decoded = {false, true};
+        decode_cdr(expected, decoded, encoding, &type_info);
+        CHECK(decoded == source);
+    }
+
+    SUBCASE("xcdr2 little endian mixed") {
+        const auto encoding = ic_cts::CDR_XCDR2 | ic_cts::CDR_LITTLE_ENDIAN;
+        const std::vector<bool> source = {true, false, true, true, false};
+        const std::vector<uint8_t> expected = {5, 0, 0, 0, 1, 0, 1, 1, 0};
+        CHECK(encode_cdr(source, encoding, &type_info) == expected);
+
+        std::vector<bool> decoded = {false, true};
+        decode_cdr(expected, decoded, encoding, &type_info);
+        CHECK(decoded == source);
+    }
+
+    SUBCASE("xcdr2 big endian empty") {
+        const auto encoding = ic_cts::CDR_XCDR2 | ic_cts::CDR_BIG_ENDIAN;
+        const std::vector<bool> source;
+        const std::vector<uint8_t> expected = {0, 0, 0, 0};
+        CHECK(encode_cdr(source, encoding, &type_info) == expected);
+
+        std::vector<bool> decoded = {false, true};
+        decode_cdr(expected, decoded, encoding, &type_info);
+        CHECK(decoded == source);
+    }
+
+    SUBCASE("xcdr2 big endian true") {
+        const auto encoding = ic_cts::CDR_XCDR2 | ic_cts::CDR_BIG_ENDIAN;
+        const std::vector<bool> source = {true};
+        const std::vector<uint8_t> expected = {0, 0, 0, 1, 1};
+        CHECK(encode_cdr(source, encoding, &type_info) == expected);
+
+        std::vector<bool> decoded = {false, true};
+        decode_cdr(expected, decoded, encoding, &type_info);
+        CHECK(decoded == source);
+    }
+
+    SUBCASE("xcdr2 big endian false") {
+        const auto encoding = ic_cts::CDR_XCDR2 | ic_cts::CDR_BIG_ENDIAN;
+        const std::vector<bool> source = {false};
+        const std::vector<uint8_t> expected = {0, 0, 0, 1, 0};
+        CHECK(encode_cdr(source, encoding, &type_info) == expected);
+
+        std::vector<bool> decoded = {false, true};
+        decode_cdr(expected, decoded, encoding, &type_info);
+        CHECK(decoded == source);
+    }
+
+    SUBCASE("xcdr2 big endian mixed") {
+        const auto encoding = ic_cts::CDR_XCDR2 | ic_cts::CDR_BIG_ENDIAN;
+        const std::vector<bool> source = {true, false, true, true, false};
+        const std::vector<uint8_t> expected = {0, 0, 0, 5, 1, 0, 1, 1, 0};
+        CHECK(encode_cdr(source, encoding, &type_info) == expected);
+
+        std::vector<bool> decoded = {false, true};
+        decode_cdr(expected, decoded, encoding, &type_info);
+        CHECK(decoded == source);
+    }
+}
+
+TEST_CASE("boolean_sequence_bounds" * doctest::test_suite("serialization")) {
+    auto type_info = ic_cts::NULL_SEQ_TYPE_INFO;
+    type_info.element_type = &ic_cts::BOOLEAN_TYPE_INFO;
+    type_info.max_length = 2;
+
+    SUBCASE("trim") {
+        type_info.flags = ic_cts::dcps::xtypes::IS_TRIM_TRY_CONSTRUCT;
+        std::stringstream stream("[true,false,true]");
+        ic_cts::JsonReader reader(stream, {});
+        ic_cts::bounded_vector<bool, 2> decoded;
+        ic_cts::JsonUnmarshal(reader).io(decoded, &type_info);
+        CHECK(decoded == std::vector<bool>{true, false});
+    }
+
+    SUBCASE("use default") {
+        type_info.flags = ic_cts::dcps::xtypes::IS_USE_DEFAULT_TRY_CONSTRUCT;
+        std::stringstream stream("[true,false,true]");
+        ic_cts::JsonReader reader(stream, {});
+        ic_cts::bounded_vector<bool, 2> decoded;
+        ic_cts::JsonUnmarshal(reader).io(decoded, &type_info);
+        CHECK(decoded.empty());
+    }
+
+    SUBCASE("discard") {
+        type_info.flags = ic_cts::dcps::xtypes::IS_DISCARD_TRY_CONSTRUCT;
+        std::stringstream stream("[true,false,true]");
+        ic_cts::JsonReader reader(stream, {});
+        ic_cts::bounded_vector<bool, 2> decoded;
+        CHECK_THROWS_WITH(
+            ic_cts::JsonUnmarshal(reader).io(decoded, &type_info),
+            "Sequence length out of bounds in vector serializer"
+        );
+    }
 }
 
 TEST_CASE("map_member_type_info" * doctest::test_suite("serialization")) {

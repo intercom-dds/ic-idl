@@ -61,7 +61,13 @@ const CONVENTION: &alias_anonymous_ty::Convention = &alias_anonymous_ty::Convent
     bounded_sequence_subtype: "BoundSequence",
     map_subtype: "Map",
     bounded_map_subtype: "BoundedMap",
+    split_multidimensional_arrays: true,
     primitive_name: None,
+};
+
+const NO_SPLIT_CONVENTION: &alias_anonymous_ty::Convention = &alias_anonymous_ty::Convention {
+    split_multidimensional_arrays: false,
+    ..*CONVENTION
 };
 
 fn count_array_aliases(hir: &ResolvedGraph) -> usize {
@@ -432,6 +438,10 @@ fn test_multidimensional_arrays() {
         count_array_aliases(&transformed),
         2,
         "Should synthesize two array types for multidimensional array (inner and outer)"
+    );
+    assert_eq!(
+        array_alias_names(&transformed),
+        ["int32_10_Array", "int32_5_10_Array"]
     );
 
     let outer_alias_def = transformed
@@ -1163,5 +1173,300 @@ fn test_external_annotation_reuses_alias_for_same_type() {
         count_annotated_aliases(&transformed, "external"),
         1,
         "Equivalent external members should reuse the same synthesized typedef"
+    );
+}
+
+fn array_alias_ids(hir: &ResolvedGraph) -> Vec<ic_hir::hir::DefId> {
+    hir.order
+        .iter()
+        .copied()
+        .filter(|&def_id| {
+            let def = hir.context.definitions.get(def_id);
+            matches!(def.kind, DefKind::Alias(ref alias) if matches!(alias.ty.kind, TyKind::Array { .. }))
+        })
+        .collect()
+}
+
+fn array_alias_names(hir: &ResolvedGraph) -> Vec<String> {
+    let mut names: Vec<String> = array_alias_ids(hir)
+        .into_iter()
+        .map(|id| hir.context.definitions.get(id).ident.name.clone())
+        .collect();
+    names.sort();
+    names
+}
+
+fn struct_member_ty<'a>(hir: &'a ResolvedGraph, name: &str, member: &str) -> &'a TyKind {
+    let def_id = hir
+        .order
+        .iter()
+        .find(|&&id| hir.context.definitions.get(id).ident.name == name)
+        .expect("struct should exist");
+    let DefKind::Struct(struct_ty) = &hir.context.definitions.get(*def_id).kind else {
+        panic!("{name} should be a struct");
+    };
+    &struct_ty
+        .members
+        .iter()
+        .find(|m| m.ident.name == member)
+        .expect("member should exist")
+        .ty
+        .kind
+}
+
+#[test]
+fn test_multidimensional_array_no_split() {
+    let source = r"
+        struct Test {
+            long matrix[5][10];
+        };
+    ";
+
+    let hir = common::parse_and_resolve(source);
+    let transformed = alias_anonymous_ty::transform(hir, NO_SPLIT_CONVENTION);
+    ic_hir_xform::normalize::normalize(&transformed);
+
+    let aliases = array_alias_ids(&transformed);
+    assert_eq!(
+        aliases.len(),
+        1,
+        "Should synthesize a single multidimensional alias"
+    );
+
+    let alias = transformed.context.definitions.get(aliases[0]);
+    assert_eq!(alias.ident.name, "int32_5_10_Array");
+    let DefKind::Alias(alias_ty) = &alias.kind else {
+        unreachable!()
+    };
+    let TyKind::Array { ty: inner, len, .. } = &alias_ty.ty.kind else {
+        unreachable!()
+    };
+    assert_eq!(*len, 5);
+    assert!(
+        matches!(inner.kind, TyKind::Array { len: 10, ref ty, .. } if matches!(ty.kind, TyKind::Primitive(_))),
+        "Inner dimension should stay inline, got: {:?}",
+        inner.kind
+    );
+
+    assert!(
+        matches!(struct_member_ty(&transformed, "Test", "matrix"), TyKind::Adt(id) if *id == aliases[0]),
+        "Member should reference the multidimensional alias"
+    );
+}
+
+#[test]
+fn test_three_dimensional_array_no_split() {
+    let source = r"
+        struct Test {
+            long cube[2][3][4];
+        };
+    ";
+
+    let hir = common::parse_and_resolve(source);
+    let transformed = alias_anonymous_ty::transform(hir, NO_SPLIT_CONVENTION);
+    ic_hir_xform::normalize::normalize(&transformed);
+
+    let aliases = array_alias_ids(&transformed);
+    assert_eq!(
+        aliases.len(),
+        1,
+        "Should synthesize a single alias for all dimensions"
+    );
+
+    let DefKind::Alias(alias_ty) = &transformed.context.definitions.get(aliases[0]).kind else {
+        unreachable!()
+    };
+    let TyKind::Array {
+        ty: mid, len: 2, ..
+    } = &alias_ty.ty.kind
+    else {
+        panic!("Outer dimension should be 2, got: {:?}", alias_ty.ty.kind);
+    };
+    let TyKind::Array {
+        ty: inner, len: 3, ..
+    } = &mid.kind
+    else {
+        panic!("Middle dimension should be 3, got: {:?}", mid.kind);
+    };
+    assert!(matches!(inner.kind, TyKind::Array { len: 4, .. }));
+
+    assert_eq!(array_alias_names(&transformed), ["int32_2_3_4_Array"]);
+}
+
+#[test]
+fn test_three_dimensional_array_split() {
+    let source = r"
+        struct Test {
+            long cube[2][3][4];
+        };
+    ";
+
+    let hir = common::parse_and_resolve(source);
+    let transformed = alias_anonymous_ty::transform(hir, CONVENTION);
+    ic_hir_xform::normalize::normalize(&transformed);
+
+    let aliases = array_alias_ids(&transformed);
+    assert_eq!(
+        aliases.len(),
+        3,
+        "Should synthesize one alias per dimension"
+    );
+    for &id in &aliases {
+        let DefKind::Alias(alias_ty) = &transformed.context.definitions.get(id).kind else {
+            unreachable!()
+        };
+        let TyKind::Array { ty: elem, .. } = &alias_ty.ty.kind else {
+            unreachable!()
+        };
+        assert!(
+            !matches!(elem.kind, TyKind::Array { .. }),
+            "No alias should contain an inline array, got: {:?}",
+            elem.kind
+        );
+    }
+
+    assert_eq!(
+        array_alias_names(&transformed),
+        ["int32_2_3_4_Array", "int32_3_4_Array", "int32_4_Array",]
+    );
+}
+
+#[test]
+fn test_multidimensional_array_name_uses_separator() {
+    let source = r"
+        struct Test {
+            long cube[2][3][4];
+        };
+    ";
+
+    for (split, expected) in [
+        (false, &["int32__2__3__4"][..]),
+        (true, &["int32__2__3__4", "int32__3__4", "int32__4"][..]),
+    ] {
+        let convention = alias_anonymous_ty::Convention {
+            array_prefix: "",
+            array_suffix: "",
+            seperator: "__",
+            split_multidimensional_arrays: split,
+            ..*CONVENTION
+        };
+
+        let hir = common::parse_and_resolve(source);
+        let transformed = alias_anonymous_ty::transform(hir, &convention);
+        ic_hir_xform::normalize::normalize(&transformed);
+
+        assert_eq!(
+            array_alias_names(&transformed),
+            expected,
+            "split_multidimensional_arrays: {split}"
+        );
+    }
+}
+
+#[test]
+fn test_multidimensional_array_no_split_reuse() {
+    let source = r"
+        struct Test {
+            long a[5][10];
+            long b[5][10];
+            long c[10][5];
+        };
+    ";
+
+    let hir = common::parse_and_resolve(source);
+    let transformed = alias_anonymous_ty::transform(hir, NO_SPLIT_CONVENTION);
+    ic_hir_xform::normalize::normalize(&transformed);
+
+    assert_eq!(
+        count_array_aliases(&transformed),
+        2,
+        "Equal shapes should share an alias and transposed shapes should not"
+    );
+    assert_eq!(
+        struct_member_ty(&transformed, "Test", "a"),
+        struct_member_ty(&transformed, "Test", "b")
+    );
+    assert_ne!(
+        struct_member_ty(&transformed, "Test", "a"),
+        struct_member_ty(&transformed, "Test", "c")
+    );
+}
+
+#[test]
+fn test_multidimensional_typedef_no_split() {
+    let source = r"
+        typedef long Matrix[2][3];
+    ";
+
+    let hir = common::parse_and_resolve(source);
+    let transformed = alias_anonymous_ty::transform(hir, NO_SPLIT_CONVENTION);
+    ic_hir_xform::normalize::normalize(&transformed);
+
+    assert_eq!(count_array_aliases(&transformed), 1);
+    assert_eq!(array_alias_names(&transformed), ["int32_2_3_Array"]);
+}
+
+#[test]
+fn test_multidimensional_array_no_split_with_matching_one_dimensional_array() {
+    let source = r"
+        struct Test {
+            long matrix[5][10];
+            long row[10];
+        };
+    ";
+
+    let hir = common::parse_and_resolve(source);
+    let transformed = alias_anonymous_ty::transform(hir, NO_SPLIT_CONVENTION);
+    ic_hir_xform::normalize::normalize(&transformed);
+
+    assert_eq!(count_array_aliases(&transformed), 2);
+
+    let TyKind::Adt(matrix_id) = struct_member_ty(&transformed, "Test", "matrix") else {
+        panic!("matrix should reference an alias");
+    };
+    let DefKind::Alias(alias_ty) = &transformed.context.definitions.get(*matrix_id).kind else {
+        unreachable!()
+    };
+    let TyKind::Array { ty: inner, .. } = &alias_ty.ty.kind else {
+        unreachable!()
+    };
+    assert!(
+        matches!(inner.kind, TyKind::Array { len: 10, .. }),
+        "Inner dimension should stay inline even when a matching 1D alias exists, got: {:?}",
+        inner.kind
+    );
+}
+
+#[test]
+fn test_multidimensional_array_of_sequence_no_split() {
+    let source = r"
+        struct Test {
+            sequence<long> grid[2][3];
+        };
+    ";
+
+    let hir = common::parse_and_resolve(source);
+    let transformed = alias_anonymous_ty::transform(hir, NO_SPLIT_CONVENTION);
+    ic_hir_xform::normalize::normalize(&transformed);
+
+    assert_eq!(count_array_aliases(&transformed), 1);
+    assert_eq!(count_sequence_aliases(&transformed), 1);
+
+    let TyKind::Adt(grid_id) = struct_member_ty(&transformed, "Test", "grid") else {
+        panic!("grid should reference an alias");
+    };
+    let DefKind::Alias(alias_ty) = &transformed.context.definitions.get(*grid_id).kind else {
+        unreachable!()
+    };
+    let TyKind::Array { ty: inner, .. } = &alias_ty.ty.kind else {
+        unreachable!()
+    };
+    let TyKind::Array { ty: elem, .. } = &inner.kind else {
+        panic!("Inner dimension should stay inline, got: {:?}", inner.kind);
+    };
+    assert!(
+        matches!(elem.kind, TyKind::Adt(_)),
+        "Sequence element should reference the synthesized sequence alias, got: {:?}",
+        elem.kind
     );
 }

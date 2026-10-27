@@ -28,5 +28,6 @@
 pub mod annotation;
 pub mod enum_value;
 pub mod member_id;
+pub mod numeric;
 pub mod type_size;
 pub mod union_case;

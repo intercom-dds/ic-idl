@@ -1,0 +1,40 @@
+---
+source: crates/ic-lint/tests/range_bound.rs
+expression: test_lint_hir(source)
+---
+⨯ range-bound: @min value must be an integer
+  @ test.idl:3:10
+
+ 2 │ struct Bad {
+ 3 │     @min(-32769.0) @max(32768.0) short limits;
+   │          ˆˆˆˆˆˆˆˆ must be an integer
+ 4 │     @range(min = -1.0, max = 65536.0) unsigned short bounded;
+ 5 │     @min(1.5) char character;
+
+⨯ range-bound: @max value must be an integer
+  @ test.idl:3:25
+
+ 2 │ struct Bad {
+ 3 │     @min(-32769.0) @max(32768.0) short limits;
+   │                         ˆˆˆˆˆˆˆ must be an integer
+ 4 │     @range(min = -1.0, max = 65536.0) unsigned short bounded;
+ 5 │     @min(1.5) char character;
+
+⨯ range-bound: @range argument 'min' must be an integer
+  @ test.idl:4:12
+
+ 2 │ struct Bad {
+ 3 │     @min(-32769.0) @max(32768.0) short limits;
+ 4 │     @range(min = -1.0, max = 65536.0) unsigned short bounded;
+   │            ˆˆˆ must be an integer
+ 5 │     @min(1.5) char character;
+ 6 │ };
+
+⨯ range-bound: @min value must be an integer
+  @ test.idl:5:10
+
+ 3 │     @min(-32769.0) @max(32768.0) short limits;
+ 4 │     @range(min = -1.0, max = 65536.0) unsigned short bounded;
+ 5 │     @min(1.5) char character;
+   │          ˆˆˆ must be an integer
+ 6 │ };

@@ -65,6 +65,31 @@ module MyModule {
 }
 
 #[test]
+fn float_to_integer_bounds() {
+    let source = r"
+struct Good {
+    @min(-23.75) @max(23.75) short limits;
+    @range(min = -23.75, max = 23.75) short bounded;
+};
+";
+
+    assert_eq!(test_lint_hir(source), "");
+}
+
+#[test]
+fn invalid_float_to_integer_bounds() {
+    let source = r"
+struct Bad {
+    @min(-32769.0) @max(32768.0) short limits;
+    @range(min = -1.0, max = 65536.0) unsigned short bounded;
+    @min(1.5) char character;
+};
+";
+
+    assert_snapshot!(test_lint_hir(source));
+}
+
+#[test]
 fn inverted_range() {
     let source = r"
 module MyModule {

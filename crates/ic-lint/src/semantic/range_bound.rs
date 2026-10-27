@@ -31,6 +31,7 @@ use ic_diagnostic::Label;
 use ic_hir::hir::{Ann, AnnArg, Def, DefFlags, DefKind, Numeric, PrimitiveTy, Ty, TyKind};
 use ic_hir::visit::Visitor;
 use ic_hir::{ResolvedGraph, visit};
+use ic_hir_analysis::numeric::coerce;
 
 use crate::{Category, Lint, LintCtx};
 
@@ -116,16 +117,26 @@ impl RangeBound<'_> {
         argument: &str,
         position: usize,
         annotation_type: &str,
-        floating: bool,
+        ty: &Ty,
     ) -> Result<Option<BoundValue>, ()> {
         let Some(argument_value) = Self::annotation_argument(annotation, argument, position) else {
             return Ok(None);
         };
+        let target_ty = self.hir.context.resolve_ty(ty);
+        let floating = matches!(
+            target_ty.kind,
+            TyKind::Primitive(PrimitiveTy::Float32 | PrimitiveTy::Float64 | PrimitiveTy::Float128)
+        );
         let value = if floating {
             self.numeric_float(&argument_value.value)
                 .map(BoundValue::Float)
         } else {
-            self.numeric_integer(&argument_value.value)
+            let coerced = if let TyKind::Primitive(primitive) = target_ty.kind {
+                coerce(&argument_value.value, primitive)
+            } else {
+                None
+            };
+            self.numeric_integer(coerced.as_ref().unwrap_or(&argument_value.value))
                 .map(BoundValue::Integer)
         };
         let Some(value) = value else {
@@ -254,15 +265,15 @@ impl RangeBound<'_> {
         }
     }
 
-    fn check_range_annotation(&mut self, annotation: &Ann, ty: &Ty, floating: bool) {
+    fn check_range_annotation(&mut self, annotation: &Ann, ty: &Ty) {
         if self.annotation_name(annotation) != Some("range") {
             return;
         }
 
-        let Ok(min) = self.annotation_value(annotation, "min", 0, "range", floating) else {
+        let Ok(min) = self.annotation_value(annotation, "min", 0, "range", ty) else {
             return;
         };
-        let Ok(max) = self.annotation_value(annotation, "max", 1, "range", floating) else {
+        let Ok(max) = self.annotation_value(annotation, "max", 1, "range", ty) else {
             return;
         };
 
@@ -300,7 +311,7 @@ impl RangeBound<'_> {
         }
     }
 
-    fn check_min_max_annotations(&mut self, annotations: &[Ann], ty: &Ty, floating: bool) {
+    fn check_min_max_annotations(&mut self, annotations: &[Ann], ty: &Ty) {
         let mut min_value = None;
         let mut max_value = None;
         let mut min_span = None;
@@ -311,18 +322,14 @@ impl RangeBound<'_> {
         for annotation in annotations {
             match self.annotation_name(annotation) {
                 Some("min") => {
-                    if let Ok(value) =
-                        self.annotation_value(annotation, "value", 0, "min", floating)
-                    {
+                    if let Ok(value) = self.annotation_value(annotation, "value", 0, "min", ty) {
                         min_value = value;
                         min_span = Some(annotation.ident.span);
                         min_annotation = Some(annotation);
                     }
                 }
                 Some("max") => {
-                    if let Ok(value) =
-                        self.annotation_value(annotation, "value", 0, "max", floating)
-                    {
+                    if let Ok(value) = self.annotation_value(annotation, "value", 0, "max", ty) {
                         max_value = value;
                         max_span = Some(annotation.ident.span);
                         max_annotation = Some(annotation);
@@ -359,15 +366,10 @@ impl RangeBound<'_> {
     }
 
     fn check_annotations(&mut self, annotations: &[Ann], ty: &Ty) {
-        let floating = matches!(
-            self.hir.context.resolve_ty(ty).kind,
-            TyKind::Primitive(PrimitiveTy::Float32 | PrimitiveTy::Float64 | PrimitiveTy::Float128)
-        );
-
         for ann in annotations {
-            self.check_range_annotation(ann, ty, floating);
+            self.check_range_annotation(ann, ty);
         }
-        self.check_min_max_annotations(annotations, ty, floating);
+        self.check_min_max_annotations(annotations, ty);
     }
 }
 

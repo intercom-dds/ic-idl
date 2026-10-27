@@ -669,7 +669,10 @@ class TGenericMarshalBase {
     {
       public:
         VectorValue(MARSHAL& a_marshal, const TypeInfo* a_info)
-            : m_marshal(a_marshal), m_type_info(a_info ? *a_info : NULL_SEQ_TYPE_INFO) {
+            : m_marshal(a_marshal),
+              m_type_info(
+                  a_info && a_info->kind != dcps::xtypes::TK_NONE ? *a_info : NULL_SEQ_TYPE_INFO
+              ) {
             m_marshal.writer().begin_type(m_type_info);
         }
 
@@ -701,7 +704,10 @@ class TGenericMarshalBase {
     {
       public:
         MapValue(MARSHAL& a_marshal, const TypeInfo* a_info)
-            : m_marshal(a_marshal), m_type_info(a_info ? *a_info : NULL_MAP_TYPE_INFO) {
+            : m_marshal(a_marshal),
+              m_type_info(
+                  a_info && a_info->kind != dcps::xtypes::TK_NONE ? *a_info : NULL_MAP_TYPE_INFO
+              ) {
             m_marshal.writer().begin_type(m_type_info);
         }
 

@@ -118,6 +118,10 @@ pub struct CppOptions {
     #[option(long)]
     pub use_fmt: bool,
 
+    /// Do not generate stream insertion operators
+    #[option(long)]
+    pub no_stream_op: bool,
+
     /// Use <sym> as dllexport symbol
     #[option(long, arg = "sym")]
     pub dll_export: Option<String>,

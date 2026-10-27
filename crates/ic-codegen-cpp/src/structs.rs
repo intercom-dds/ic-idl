@@ -65,6 +65,7 @@ impl CppGen<'_> {
         self.emit_hash_declaration(impl_w, def);
         self.emit_serializer_specialization(impl_w, def);
         self.emit_formatter_specialization(impl_w, def);
+        self.emit_stream_operator(decl_w, def);
 
         if !all_members.is_empty() {
             self.emit_struct_like_constructor_impl(impl_w, def);
@@ -105,6 +106,7 @@ impl CppGen<'_> {
         self.emit_hash_declaration(impl_w, def);
         self.emit_serializer_specialization(impl_w, def);
         self.emit_formatter_specialization(impl_w, def);
+        self.emit_stream_operator(decl_w, def);
 
         let all_members = self.collect_all_members(def.id);
         if external_member {

@@ -30,9 +30,17 @@
 #include <ic_cts/json_serializer.h>
 
 #include <algorithm>
+#include <sstream>
 #include <vector>
 
+#include "bitmasks.h"
+#include "enums.h"
+#include "exceptions.h"
+#include "nested_modules.h"
 #include "serialization.h"
+#include "structs.h"
+#include "unions.h"
+#include "valuetypes.h"
 
 namespace {
 template <bool Reading>
@@ -119,6 +127,53 @@ static void decode_delimited(const char* text, std::vector<bool>& value) {
     std::stringstream stream(text);
     DelimitedBooleanArchive<true> reader{stream};
     ic_cts::Serializer<DelimitedBooleanArchive<true>, std::vector<bool>>{}(reader, value, nullptr);
+}
+
+TEST_CASE("stream_insertion_debug" * doctest::test_suite("serialization")) {
+    const auto print = [](const auto& value) {
+        std::ostringstream stream;
+        stream << value;
+        return stream.str();
+    };
+
+    CHECK(print(struct_types::Point(10, 20)) == "Point { x: 10, y: 20 }");
+    CHECK(print(struct_types::Point3D(1, 2, 3)) == "Point3D { x: 1, y: 2, z: 3 }");
+    CHECK(print(struct_types::Empty{}) == "Empty {}");
+    CHECK(
+        print(struct_types::Rectangle(struct_types::Point(0, 1), struct_types::Point(2, 3))) ==
+        "Rectangle { top_left: Point { x: 0, y: 1 }, bottom_right: Point { x: 2, y: 3 } }"
+    );
+    CHECK(print(enum_types::Color::BLUE) == "Color::BLUE");
+
+    bitmask_types::Permissions permissions;
+    permissions |= bitmask_types::Permissions::READ;
+    permissions |= bitmask_types::Permissions::WRITE;
+    CHECK(print(permissions) == "Permissions(READ | WRITE)");
+
+    union_types::IntOrString value;
+    value.str_val("quote\" backslash\\");
+    CHECK(print(value) == R"(IntOrString { _d: 2, str_val: "quote\" backslash\\" })");
+    CHECK(
+        print(valuetype_types::SimpleValue(42, "answer")) ==
+        R"(SimpleValue { id: 42, name: "answer" })"
+    );
+    CHECK(
+        print(exception_types::SimpleError(7, "broken")) ==
+        R"(SimpleError { error_code: 7, message: "broken" })"
+    );
+    CHECK(print(exception_types::EmptyError{}) == "EmptyError {}");
+    CHECK(print(nested_module_types::level1::Level1Enum::B) == "Level1Enum::B");
+    CHECK(print(valuetype_types::WithNestedAlias::Nested(42)) == "Nested { value: 42 }");
+}
+
+TEST_CASE("stream_insertion_chaining" * doctest::test_suite("serialization")) {
+    const struct_types::Point point(10, 20);
+    std::ostringstream stream;
+    std::ostream& result = stream << point;
+    CHECK(&result == &stream);
+
+    stream << '|' << enum_types::Color::BLUE << std::endl;
+    CHECK(stream.str() == "Point { x: 10, y: 20 }|Color::BLUE\n");
 }
 
 TEST_CASE("serialization_json_numbers_large_integers" * doctest::test_suite("interfaces")) {

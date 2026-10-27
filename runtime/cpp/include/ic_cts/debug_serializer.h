@@ -47,10 +47,11 @@ namespace ic_cts {
 
 class DebugWriter {
   public:
-    explicit DebugWriter(std::ostream& stream) : m_stream(stream) {}
+    explicit DebugWriter(std::ostream& stream, bool pretty = false)
+        : m_stream(stream), m_pretty(pretty) {}
 
     SerializerFlags flags() const {
-        return 0;
+        return m_pretty ? SERIALIZER_PRETTY : SerializerFlagsBits{};
     }
 
     void begin_type(const TypeInfo& info) {
@@ -75,6 +76,10 @@ class DebugWriter {
             break;
         }
 
+        if (is_container(info.kind)) {
+            ++m_indent_level;
+        }
+
         m_stack.push_back({info.kind, 0, false});
     }
 
@@ -82,10 +87,18 @@ class DebugWriter {
         const auto frame = m_stack.back();
         m_stack.pop_back();
 
+        if (is_container(frame.kind)) {
+            --m_indent_level;
+            if (m_pretty && frame.position != 0) {
+                m_stream.put(',');
+                newline();
+            }
+        }
+
         switch (frame.kind) {
         case dcps::xtypes::TK_STRUCTURE:
         case dcps::xtypes::TK_UNION:
-            m_stream << (frame.position == 0 ? "}" : " }");
+            m_stream << (m_pretty || frame.position == 0 ? "}" : " }");
             break;
         case dcps::xtypes::TK_MAP:
             m_stream.put('}');
@@ -109,7 +122,12 @@ class DebugWriter {
 
     bool begin_member(const MemberInfo& member) {
         auto& frame = m_stack.back();
-        m_stream << (frame.position++ == 0 ? " " : ", ") << member.name << ": ";
+        next_element(frame.position++);
+        if (!m_pretty && frame.position == 1) {
+            m_stream.put(' ');
+        }
+
+        m_stream << member.name << ": ";
         frame.optional = false;
         return true;
     }
@@ -118,11 +136,22 @@ class DebugWriter {
         begin_member(member);
         m_stack.back().optional = present;
         m_stream << (present ? "Some(" : "None");
+        if (present && m_pretty) {
+            ++m_indent_level;
+            newline();
+        }
+
         return present;
     }
 
     void end_member() {
         if (m_stack.back().optional) {
+            if (m_pretty) {
+                --m_indent_level;
+                m_stream.put(',');
+                newline();
+            }
+
             m_stream.put(')');
             m_stack.back().optional = false;
         }
@@ -166,6 +195,31 @@ class DebugWriter {
         bool optional;
     };
 
+    static bool is_container(uint16_t kind) {
+        return kind == dcps::xtypes::TK_STRUCTURE || kind == dcps::xtypes::TK_UNION ||
+               kind == dcps::xtypes::TK_MAP || kind == dcps::xtypes::TK_SEQUENCE ||
+               kind == dcps::xtypes::TK_ARRAY;
+    }
+
+    void newline() {
+        m_stream.put('\n');
+        for (size_t i = 0; i < m_indent_level; ++i) {
+            m_stream << "    ";
+        }
+    }
+
+    void next_element(size_t position) {
+        if (position != 0) {
+            m_stream.put(',');
+        }
+
+        if (m_pretty) {
+            newline();
+        } else if (position != 0) {
+            m_stream.put(' ');
+        }
+    }
+
     static std::string_view type_name(const char* name) {
         const std::string_view scoped = name ? name : "";
         const auto separator = scoped.rfind("::");
@@ -182,18 +236,15 @@ class DebugWriter {
         case dcps::xtypes::TK_MAP:
             if (frame.position % 2 != 0) {
                 m_stream << ": ";
-            } else if (frame.position != 0) {
-                m_stream << ", ";
+            } else {
+                next_element(frame.position);
             }
 
             ++frame.position;
             break;
         case dcps::xtypes::TK_SEQUENCE:
         case dcps::xtypes::TK_ARRAY:
-            if (frame.position++ != 0) {
-                m_stream << ", ";
-            }
-
+            next_element(frame.position++);
             break;
         default:
             break;
@@ -305,12 +356,14 @@ class DebugWriter {
     }
 
     std::ostream& m_stream;
+    bool m_pretty;
+    size_t m_indent_level{0};
     std::vector<Frame> m_stack;
 };
 
 template <typename T>
-std::ostream& marshal_debug(std::ostream& stream, const T& value) {
-    DebugWriter writer(stream);
+std::ostream& marshal_debug(std::ostream& stream, const T& value, bool pretty = false) {
+    DebugWriter writer(stream, pretty);
     TGenericMarshal<DebugWriter>(writer).io(value);
     return stream;
 }

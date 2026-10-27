@@ -31,17 +31,17 @@
 #include <sstream>
 #include <string>
 
-#include "ic_cts/json_serializer.h"
+#include "ic_cts/debug_serializer.h"
 
 namespace ic_cts {
 
-/// Base class for `std::formatter` specializations that render a value as JSON.
+/// Base class for `std::formatter` specializations that render a value as debug output.
 ///
-/// A leading `#` in the format specification selects indented JSON. The
+/// A leading `#` in the format specification selects indented debug output. The
 /// remainder is parsed as a standard string format specification, which
 /// supports fill, alignment, width and precision.
 template <typename T>
-class JsonFormatter {
+class DebugFormatter {
   public:
     template <typename ParseContext>
     constexpr typename ParseContext::iterator parse(ParseContext& a_context) {
@@ -58,16 +58,8 @@ class JsonFormatter {
     template <typename FormatContext>
     typename FormatContext::iterator format(const T& a_value, FormatContext& a_context) const {
         std::ostringstream out;
-        marshal_json(out, a_value, m_pretty);
-
-        // Indented output is terminated by a newline, which does not belong in
-        // the middle of a formatted string.
-        std::string text = out.str();
-        if (!text.empty() && text.back() == '\n') {
-            text.pop_back();
-        }
-
-        return m_text.format(text, a_context);
+        marshal_debug(out, a_value, m_pretty);
+        return m_text.format(out.str(), a_context);
     }
 
   private:

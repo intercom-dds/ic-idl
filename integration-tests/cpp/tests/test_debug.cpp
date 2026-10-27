@@ -53,9 +53,9 @@ static std::string json(T& value, ic_cts::SerializerFlags flags = {}) {
 }
 
 template <typename T>
-static std::string debug(const T& value) {
+static std::string debug(const T& value, bool pretty = false) {
     std::ostringstream stream;
-    ic_cts::marshal_debug(stream, value);
+    ic_cts::marshal_debug(stream, value, pretty);
     return stream.str();
 }
 

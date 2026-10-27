@@ -40,65 +40,65 @@
 
 TEST_CASE("format_struct" * doctest::test_suite("format")) {
     struct_types::Point p(10, 20);
-    CHECK(std::format("{}", p) == "{\"x\":10,\"y\":20}");
+    CHECK(std::format("{}", p) == "Point { x: 10, y: 20 }");
 }
 
 TEST_CASE("format_nested_struct" * doctest::test_suite("format")) {
     struct_types::Rectangle rect(struct_types::Point(0, 1), struct_types::Point(2, 3));
     CHECK(
         std::format("{}", rect) ==
-        "{\"top_left\":{\"x\":0,\"y\":1},\"bottom_right\":{\"x\":2,\"y\":3}}"
+        "Rectangle { top_left: Point { x: 0, y: 1 }, bottom_right: Point { x: 2, y: 3 } }"
     );
 }
 
 TEST_CASE("format_inherited_struct" * doctest::test_suite("format")) {
     struct_types::Point3D p(1, 2, 3);
-    CHECK(std::format("{}", p) == "{\"x\":1,\"y\":2,\"z\":3}");
+    CHECK(std::format("{}", p) == "Point3D { x: 1, y: 2, z: 3 }");
 }
 
 TEST_CASE("format_empty_struct" * doctest::test_suite("format")) {
     struct_types::Empty empty;
-    CHECK(std::format("{}", empty) == "{}");
+    CHECK(std::format("{}", empty) == "Empty {}");
 }
 
 TEST_CASE("format_sequence_member" * doctest::test_suite("format")) {
     struct_types::WithSequence value;
     value.numbers = {1, 2, 3};
     value.names = {"a", "b"};
-    CHECK(std::format("{}", value) == "{\"numbers\":[1,2,3],\"names\":[\"a\",\"b\"]}");
+    CHECK(std::format("{}", value) == R"(WithSequence { numbers: [1, 2, 3], names: ["a", "b"] })");
 }
 
 TEST_CASE("format_enum" * doctest::test_suite("format")) {
-    CHECK(std::format("{}", enum_types::Color::BLUE) == "\"BLUE\"");
-    CHECK(std::format("{}", enum_types::Status::WARNING) == "\"WARNING\"");
+    CHECK(std::format("{}", enum_types::Color::BLUE) == "Color::BLUE");
+    CHECK(std::format("{}", enum_types::Status::WARNING) == "Status::WARNING");
 }
 
 TEST_CASE("format_bitmask" * doctest::test_suite("format")) {
     bitmask_types::Permissions perms;
     perms |= bitmask_types::Permissions::READ;
     perms |= bitmask_types::Permissions::WRITE;
-    CHECK(std::format("{}", perms) == "\"READ|WRITE\"");
+    CHECK(std::format("{}", perms) == "Permissions(READ | WRITE)");
 }
 
 TEST_CASE("format_union" * doctest::test_suite("format")) {
     union_types::IntOrString value;
     value.str_val("hello");
-    CHECK(std::format("{}", value) == "{\"str_val\":\"hello\"}");
+    CHECK(std::format("{}", value) == R"(IntOrString { _d: 2, str_val: "hello" })");
 }
 
 TEST_CASE("format_valuetype" * doctest::test_suite("format")) {
     valuetype_types::SimpleValue value(42, "answer");
-    CHECK(std::format("{}", value) == "{\"id\":42,\"name\":\"answer\"}");
+    CHECK(std::format("{}", value) == R"(SimpleValue { id: 42, name: "answer" })");
 }
 
 TEST_CASE("format_exception" * doctest::test_suite("format")) {
     exception_types::SimpleError error(7, "broken");
-    CHECK(std::format("{}", error) == "{\"error_code\":7,\"message\":\"broken\"}");
+    CHECK(std::format("{}", error) == R"(SimpleError { error_code: 7, message: "broken" })");
 }
 
 TEST_CASE("format_empty_exception" * doctest::test_suite("format")) {
     exception_types::EmptyError error;
-    CHECK(std::format("{}", error) == "{}");
+    CHECK(std::format("{}", error) == "EmptyError {}");
 }
 
 TEST_CASE("format_narrow_character_bytes" * doctest::test_suite("format")) {
@@ -112,14 +112,41 @@ TEST_CASE("format_narrow_character_bytes" * doctest::test_suite("format")) {
 
 TEST_CASE("format_pretty" * doctest::test_suite("format")) {
     struct_types::Point p(10, 20);
-    CHECK(std::format("{:#}", p) == "{\n  \"x\": 10,\n  \"y\": 20\n}");
-    CHECK(std::format("{:#}|", p).back() == '|');
+    CHECK(std::format("{:#}", p) == "Point {\n    x: 10,\n    y: 20,\n}");
+    CHECK(std::format("{:#}|", p) == "Point {\n    x: 10,\n    y: 20,\n}|");
+}
+
+TEST_CASE("format_pretty_sequence_member" * doctest::test_suite("format")) {
+    struct_types::WithSequence value;
+    value.numbers = {1, 2};
+    value.names = {"a"};
+    CHECK(
+        std::format("{:#}", value) ==
+        "WithSequence {\n"
+        "    numbers: [\n"
+        "        1,\n"
+        "        2,\n"
+        "    ],\n"
+        "    names: [\n"
+        "        \"a\",\n"
+        "    ],\n"
+        "}"
+    );
+}
+
+TEST_CASE("format_pretty_union" * doctest::test_suite("format")) {
+    union_types::IntOrString value;
+    value.str_val("hello");
+    CHECK(std::format("{:#}", value) == "IntOrString {\n    _d: 2,\n    str_val: \"hello\",\n}");
 }
 
 TEST_CASE("format_string_specification" * doctest::test_suite("format")) {
     struct_types::Empty empty;
-    CHECK(std::format("[{:>6}]", empty) == "[    {}]");
-    CHECK(std::format("[{:*<6}]", empty) == "[{}****]");
+    CHECK(std::format("[{:>12}]", empty) == "[    Empty {}]");
+    CHECK(std::format("[{:*<12}]", empty) == "[Empty {}****]");
+    CHECK(std::format("[{:.5}]", empty) == "[Empty]");
+    CHECK(std::format("[{:#>12}]", empty) == "[    Empty {}]");
+    CHECK(std::format("[{:#.5}]", empty) == "[Empty]");
 }
 
 TEST_CASE("format_escapes_strings" * doctest::test_suite("format")) {

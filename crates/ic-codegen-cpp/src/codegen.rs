@@ -696,7 +696,7 @@ impl<'a> CppGen<'a> {
 
         let qualified_name = self.scoped_name(def.id, None);
         w!(w, "template <>\n");
-        w!(w, "struct std::formatter<", qualified_name, "> : ::ic_cts::JsonFormatter<", qualified_name, "> {};\n\n");
+        w!(w, "struct std::formatter<", qualified_name, "> : ::ic_cts::DebugFormatter<", qualified_name, "> {};\n\n");
     }
 
     pub fn emit_stream_operator(&self, w: &mut Twine, def: &Def) {

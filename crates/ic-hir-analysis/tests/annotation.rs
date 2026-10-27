@@ -28,10 +28,11 @@
 #[path = "../../ic-hir/tests/common/mod.rs"]
 mod common;
 
-use ic_hir::hir::{Def, DefKind};
+use ic_hir::hir::{Def, DefKind, Numeric};
 use ic_hir_analysis::annotation::{
     Extensibility, bit_bound, default_value, doc, extensibility, is_external, is_key,
     is_must_understand, is_nested, is_newtype, is_non_serialized, is_optional, is_value_type,
+    max_annotation, max_value, min_annotation, min_value, range_annotation, range_values,
 };
 
 fn def<'a>(hir: &'a ic_hir::ResolvedGraph, name: &str) -> &'a Def {
@@ -83,6 +84,122 @@ fn resolves_definition_properties() {
         extensibility(&hir.context, def(&hir, "DefaultType")),
         Extensibility::Appendable
     );
+}
+
+#[test]
+fn resolves_bounds_annotations() {
+    let hir = common::parse_and_resolve_successfully(
+        r"
+        struct Properties {
+            @MIN(-12) @MAX(12) short limits;
+            @RANGE(max = 24, min = 12) short bounded;
+            long unbounded;
+        };
+        ",
+    );
+
+    let DefKind::Struct(properties) = &def(&hir, "Properties").kind else {
+        panic!("Expected struct")
+    };
+    let limits = &properties.members[0];
+    let bounded = &properties.members[1];
+    let unbounded = &properties.members[2];
+
+    assert_eq!(min_value(&hir.context, limits), Some(&Numeric::Int32(-12)));
+    assert_eq!(max_value(&hir.context, limits), Some(&Numeric::Int32(12)));
+    assert_eq!(
+        min_annotation(&hir.context, limits).unwrap().args[0].value,
+        Numeric::Int32(-12)
+    );
+    assert_eq!(
+        max_annotation(&hir.context, limits).unwrap().args[0].value,
+        Numeric::Int32(12)
+    );
+    assert_eq!(
+        range_values(&hir.context, bounded),
+        Some((&Numeric::Int32(12), &Numeric::Int32(24)))
+    );
+    assert_eq!(
+        range_annotation(&hir.context, bounded).unwrap().args[0].value,
+        Numeric::Int32(12)
+    );
+    assert_eq!(min_value(&hir.context, unbounded), None);
+    assert_eq!(max_value(&hir.context, unbounded), None);
+    assert_eq!(range_values(&hir.context, unbounded), None);
+    assert!(min_annotation(&hir.context, unbounded).is_none());
+    assert!(max_annotation(&hir.context, unbounded).is_none());
+    assert!(range_annotation(&hir.context, unbounded).is_none());
+}
+
+#[test]
+fn bounds_helpers_preserve_constant_references() {
+    let hir = common::parse_and_resolve_successfully(
+        r"
+        const short LOW = 1;
+        const short HIGH = 12;
+        struct Properties {
+            @min(LOW) @max(HIGH) @range(min = LOW, max = HIGH) short value;
+        };
+        ",
+    );
+
+    let DefKind::Struct(properties) = &def(&hir, "Properties").kind else {
+        panic!("Expected struct")
+    };
+    let member = &properties.members[0];
+    let low = min_value(&hir.context, member).unwrap();
+    let high = max_value(&hir.context, member).unwrap();
+
+    assert!(matches!(low, Numeric::Const(_)));
+    assert!(matches!(high, Numeric::Const(_)));
+    assert_eq!(range_values(&hir.context, member), Some((low, high)));
+    assert_eq!(hir.context.unsigned_value(low), 1);
+    assert_eq!(hir.context.unsigned_value(high), 12);
+}
+
+#[test]
+fn bounds_helpers_ignore_custom_and_inherited_annotations() {
+    let hir = common::parse_and_resolve_successfully(
+        r"
+        module Custom {
+            @annotation min { any value; };
+            @annotation max { any value; };
+            @annotation range { any min; any max; };
+        };
+
+        @min(1) @max(12) @range(min = 1, max = 12)
+        typedef short Bounded;
+
+        struct Properties {
+            Bounded inherited;
+            @Custom::min(1) @Custom::max(12)
+            @Custom::range(min = 1, max = 12) short custom;
+        };
+        ",
+    );
+
+    let alias = def(&hir, "Bounded");
+    assert_eq!(min_value(&hir.context, alias), Some(&Numeric::Int32(1)));
+    assert_eq!(max_value(&hir.context, alias), Some(&Numeric::Int32(12)));
+    assert_eq!(
+        range_values(&hir.context, alias),
+        Some((&Numeric::Int32(1), &Numeric::Int32(12)))
+    );
+
+    let DefKind::Struct(properties) = &def(&hir, "Properties").kind else {
+        panic!("Expected struct")
+    };
+    let inherited = &properties.members[0];
+    let custom = &properties.members[1];
+    assert_eq!(min_value(&hir.context, inherited), None);
+    assert_eq!(max_value(&hir.context, inherited), None);
+    assert_eq!(range_values(&hir.context, inherited), None);
+    assert_eq!(min_value(&hir.context, custom), None);
+    assert_eq!(max_value(&hir.context, custom), None);
+    assert_eq!(range_values(&hir.context, custom), None);
+    assert!(min_annotation(&hir.context, custom).is_none());
+    assert!(max_annotation(&hir.context, custom).is_none());
+    assert!(range_annotation(&hir.context, custom).is_none());
 }
 
 #[test]

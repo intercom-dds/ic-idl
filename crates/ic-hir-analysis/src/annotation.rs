@@ -159,6 +159,41 @@ pub fn default_value<'a>(ctx: &Context, target: &'a impl DefaultTarget) -> Optio
         .map(|argument| &argument.value)
 }
 
+pub fn min_annotation<'a>(ctx: &Context, target: &'a impl DefaultTarget) -> Option<&'a Ann> {
+    builtin_annotation(ctx, target.annotations(), "min")
+}
+
+pub fn min_value<'a>(ctx: &Context, target: &'a impl DefaultTarget) -> Option<&'a Numeric> {
+    min_annotation(ctx, target)
+        .and_then(|annotation| annotation.args.first())
+        .map(|argument| &argument.value)
+}
+
+pub fn max_annotation<'a>(ctx: &Context, target: &'a impl DefaultTarget) -> Option<&'a Ann> {
+    builtin_annotation(ctx, target.annotations(), "max")
+}
+
+pub fn max_value<'a>(ctx: &Context, target: &'a impl DefaultTarget) -> Option<&'a Numeric> {
+    max_annotation(ctx, target)
+        .and_then(|annotation| annotation.args.first())
+        .map(|argument| &argument.value)
+}
+
+pub fn range_annotation<'a>(ctx: &Context, target: &'a impl DefaultTarget) -> Option<&'a Ann> {
+    builtin_annotation(ctx, target.annotations(), "range")
+}
+
+pub fn range_values<'a>(
+    ctx: &Context,
+    target: &'a impl DefaultTarget,
+) -> Option<(&'a Numeric, &'a Numeric)> {
+    let annotation = range_annotation(ctx, target)?;
+    Some((
+        &annotation.args.first()?.value,
+        &annotation.args.get(1)?.value,
+    ))
+}
+
 #[must_use]
 pub fn bit_bound_annotation<'a>(ctx: &Context, def: &'a Def) -> Option<&'a Ann> {
     builtin_annotation(ctx, &def.annotations, "bit_bound")

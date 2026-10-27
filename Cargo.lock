@@ -547,6 +547,7 @@ dependencies = [
  "ic-alloc",
  "ic-cli",
  "ic-diagnostic",
+ "ic-expr",
  "ic-hir",
  "ic-hir-lower",
  "ic-parse",

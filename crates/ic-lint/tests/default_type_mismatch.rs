@@ -108,6 +108,31 @@ struct Good {
 }
 
 #[test]
+fn valid_float_to_integer_default() {
+    let source = r"
+struct Good {
+    @default(23.75) short positive;
+    @default(-23.75) short negative;
+    @default(23.75) unsigned short unsigned_value;
+};
+";
+
+    assert_eq!(test_lint_hir(source), "");
+}
+
+#[test]
+fn float_to_integer_default_out_of_range() {
+    let source = r"
+struct Bad {
+    @default(32768.0) short overflow;
+    @default(-1.0) unsigned short negative;
+};
+";
+
+    assert_snapshot!(test_lint_hir(source));
+}
+
+#[test]
 fn valid_bool_default() {
     let source = r"
 struct Good {

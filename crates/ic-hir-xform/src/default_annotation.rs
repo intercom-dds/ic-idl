@@ -36,17 +36,17 @@ use std::collections::HashMap;
 
 use ic_hir::fold::Fold;
 use ic_hir::hir::{
-    Ann, AnnotationTy, Def, DefFlags, DefId, DefKind, Member, Numeric, PrimitiveTy, Ty, TyKind,
-    UnionTy, Variant,
+    Ann, AnnotationTy, Def, DefFlags, DefId, DefKind, Member, Numeric, Ty, TyKind, UnionTy, Variant,
 };
 use ic_hir::{Context, ResolvedGraph};
+use ic_hir_analysis::numeric::{coerce, integer_value};
 use tracing::{debug, debug_span};
 
 struct DefaultAnnotation {
-    enum_fields: HashMap<DefId, Vec<(i64, DefId)>>,
+    enum_fields: HashMap<DefId, Vec<(i128, DefId)>>,
     typedef_targets: HashMap<DefId, TyKind>,
     const_values: HashMap<DefId, Numeric>,
-    default_annotation: Option<DefId>,
+    value_annotations: Vec<DefId>,
 }
 
 impl DefaultAnnotation {
@@ -54,7 +54,7 @@ impl DefaultAnnotation {
         let mut enum_fields = HashMap::new();
         let mut typedef_targets = HashMap::new();
         let mut const_values = HashMap::new();
-        let mut default_annotation = None;
+        let mut value_annotations = Vec::new();
 
         for (def_id, def) in &context.definitions {
             match &def.kind {
@@ -69,9 +69,13 @@ impl DefaultAnnotation {
                     const_values.insert(def_id, const_ty.value.clone());
                 }
                 DefKind::Annotation(_)
-                    if def.flags.contains(DefFlags::IS_BUILTIN) && def.ident.name == "default" =>
+                    if def.flags.contains(DefFlags::IS_BUILTIN)
+                        && matches!(
+                            def.ident.name.as_str(),
+                            "default" | "min" | "max" | "range"
+                        ) =>
                 {
-                    default_annotation = Some(def_id);
+                    value_annotations.push(def_id);
                 }
                 _ => {}
             }
@@ -81,18 +85,18 @@ impl DefaultAnnotation {
             enum_fields,
             typedef_targets,
             const_values,
-            default_annotation,
+            value_annotations,
         }
     }
 
-    fn collect_enum_fields(context: &Context, enum_ty: &ic_hir::hir::EnumTy) -> Vec<(i64, DefId)> {
+    fn collect_enum_fields(context: &Context, enum_ty: &ic_hir::hir::EnumTy) -> Vec<(i128, DefId)> {
         enum_ty
             .fields
             .iter()
             .filter_map(|&field_id| {
                 let field_def = context.type_of(field_id);
                 if let DefKind::Const(const_ty) = &field_def.kind {
-                    Self::numeric_to_i64(&const_ty.value).map(|v| (v, field_id))
+                    integer_value(&const_ty.value).map(|v| (v, field_id))
                 } else {
                     None
                 }
@@ -109,16 +113,10 @@ impl DefaultAnnotation {
         ty
     }
 
-    #[allow(clippy::cast_possible_truncation)]
     fn coerce_numeric(&self, value: &Numeric, target_ty: &Ty) -> Option<Numeric> {
-        let resolved_kind = self.resolve_ty_kind(&target_ty.kind);
-        match (resolved_kind, value) {
-            (TyKind::Primitive(PrimitiveTy::Float32), Numeric::Double(v)) => {
-                Some(Numeric::Float(*v as f32))
-            }
-
-            (TyKind::Adt(def_id), _) => self.coerce_int_to_enum(value, *def_id),
-
+        match self.resolve_ty_kind(&target_ty.kind) {
+            TyKind::Primitive(primitive) => coerce(value, *primitive),
+            TyKind::Adt(def_id) => self.coerce_int_to_enum(value, *def_id),
             _ => None,
         }
     }
@@ -138,7 +136,7 @@ impl DefaultAnnotation {
             return None;
         }
 
-        let int_val = Self::numeric_to_i64(value)?;
+        let int_val = integer_value(value)?;
         for &(field_val, field_id) in fields {
             if field_val == int_val {
                 return Some(Numeric::Const(field_id));
@@ -147,7 +145,7 @@ impl DefaultAnnotation {
         None
     }
 
-    fn is_valid_enum_const(&self, value: &Numeric, fields: &[(i64, DefId)]) -> bool {
+    fn is_valid_enum_const(&self, value: &Numeric, fields: &[(i128, DefId)]) -> bool {
         if let Numeric::Const(const_id) = value {
             if fields.iter().any(|(_, fid)| fid == const_id) {
                 return true;
@@ -159,28 +157,21 @@ impl DefaultAnnotation {
         false
     }
 
-    fn numeric_to_i64(value: &Numeric) -> Option<i64> {
-        match value {
-            Numeric::Int8(v) => Some(i64::from(*v)),
-            Numeric::UInt8(v) => Some(i64::from(*v)),
-            Numeric::Int16(v) => Some(i64::from(*v)),
-            Numeric::UInt16(v) => Some(i64::from(*v)),
-            Numeric::Int32(v) => Some(i64::from(*v)),
-            Numeric::UInt32(v) => Some(i64::from(*v)),
-            Numeric::Int64(v) => Some(*v),
-            Numeric::UInt64(v) => i64::try_from(*v).ok(),
-            _ => None,
-        }
-    }
-
     fn process_annotations(&self, annotations: &mut [Ann], ty: &Ty) {
-        if let Some(default_ann) = annotations.iter_mut().find(|annotation| {
-            self.default_annotation.is_some() && annotation.def_id == self.default_annotation
-        }) && let Some(arg) = default_ann.args.first_mut()
-            && let Some(coerced) = self.coerce_numeric(&arg.value, ty)
-        {
-            arg.value = coerced;
-            arg.ty = Some(ty.clone());
+        for annotation in annotations {
+            if !annotation
+                .def_id
+                .is_some_and(|def_id| self.value_annotations.contains(&def_id))
+            {
+                continue;
+            }
+
+            for arg in &mut annotation.args {
+                if let Some(coerced) = self.coerce_numeric(&arg.value, ty) {
+                    arg.value = coerced;
+                    arg.ty = Some(ty.clone());
+                }
+            }
         }
     }
 }

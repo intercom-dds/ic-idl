@@ -35,6 +35,7 @@ use ic_hir::hir::{
 };
 use ic_hir::visit::Visitor;
 use ic_hir_analysis::annotation::{DefaultTarget, default_annotation, is_newtype};
+use ic_hir_analysis::numeric::coerce;
 
 use crate::{Category, Lint, LintCtx};
 
@@ -377,6 +378,22 @@ impl DefaultTypeMismatch<'_> {
     }
 
     fn is_primitive_compatible(value: &Numeric, prim: PrimitiveTy) -> bool {
+        if matches!(value, Numeric::Float(_) | Numeric::Double(_))
+            && matches!(
+                prim,
+                PrimitiveTy::Int8
+                    | PrimitiveTy::UInt8
+                    | PrimitiveTy::Int16
+                    | PrimitiveTy::UInt16
+                    | PrimitiveTy::Int32
+                    | PrimitiveTy::UInt32
+                    | PrimitiveTy::Int64
+                    | PrimitiveTy::UInt64
+            )
+        {
+            return coerce(value, prim).is_some();
+        }
+
         matches!(
             (prim, value),
             (PrimitiveTy::Bool, Numeric::Bool(_))

@@ -102,6 +102,7 @@ add_executable(cpp_integration_tests
     tests/test_circular_types.cpp
     tests/test_comparison.cpp
     tests/test_constants.cpp
+    tests/test_debug.cpp
     tests/test_deep_generics.cpp
     tests/test_defaults.cpp
     tests/test_enums.cpp

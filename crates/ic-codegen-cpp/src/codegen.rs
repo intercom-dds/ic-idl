@@ -695,9 +695,33 @@ impl<'a> CppGen<'a> {
         }
 
         let qualified_name = self.scoped_name(def.id, None);
-
         w!(w, "template <>\n");
         w!(w, "struct std::formatter<", qualified_name, "> : ::ic_cts::JsonFormatter<", qualified_name, "> {};\n\n");
+    }
+
+    pub fn emit_stream_operator(&self, w: &mut Twine, def: &Def) {
+        if self.options.no_stream_op {
+            return;
+        }
+
+        let nested_in_class = self.get_scope(def.id).is_some_and(|scope| {
+            matches!(
+                self.hir.context.type_of(scope).kind,
+                DefKind::Interface(_) | DefKind::Valuetype(_)
+            )
+        });
+
+        // Templated to defer serializer instantiation
+        w!(w, "template <typename _Traits>\n");
+        if nested_in_class {
+            w!(w, "friend ");
+        }
+        w!(w, "inline ::std::basic_ostream<char, _Traits>& operator<<(\n");
+        w!(w, "::std::basic_ostream<char, _Traits>& a_stream,\n");
+        w!(w, "const ", def, "& a_value\n");
+        w!(w, ") {\n");
+        w!(w, "return ::ic_cts::marshal_debug(a_stream, a_value);\n");
+        w!(w, "}\n\n");
     }
 
     pub fn emit_hash_implementation(&self, w: &mut Twine, def: &Def) {
@@ -1033,6 +1057,10 @@ impl<'a> CppGen<'a> {
             w!(header, "#include <map>\n");
             w!(header, "#include <memory>\n");
             w!(header, "#include <optional>\n");
+            if !self.options.no_stream_op {
+                w!(header, "#include <ostream>\n");
+            }
+
             w!(header, "#include <string>\n");
             w!(header, "#include <string_view>\n");
             w!(header, "#include <vector>\n\n");
@@ -1040,6 +1068,10 @@ impl<'a> CppGen<'a> {
             if self.options.use_fmt {
                 w!(header, "#include <ic_cts/format.h>\n");
             }
+            if !self.options.no_stream_op {
+                w!(header, "#include <ic_cts/debug_serializer.h>\n");
+            }
+
             w!(header, "#include <ic_cts/member_info.h>\n");
             w!(header, "#include <ic_cts/memory.h>\n");
 

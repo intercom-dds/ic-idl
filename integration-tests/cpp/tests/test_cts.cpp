@@ -28,10 +28,16 @@
 #include <doctest/doctest.h>
 
 #include <any>
+#include <sstream>
+#include <string>
 
 #include "ic_cts/any.h"
+#include "ic_cts/json_parser.h"
 
 using ic_cts::Any;
+using ic_cts::JSON_STRING;
+using ic_cts::JsonNode;
+using ic_cts::JsonStream;
 using std::any_cast;
 
 TEST_CASE("any_copy_from_non_const_lvalue") {
@@ -43,4 +49,19 @@ TEST_CASE("any_copy_from_non_const_lvalue") {
     assigned = source;
     CHECK(any_cast<int>(assigned) == 42);
     CHECK(any_cast<int>(source) == 42);
+}
+
+TEST_CASE("json_stream_string_survives_closing_quote") {
+    for (size_t length = 0; length < 200; ++length) {
+        std::string text(length, 'x');
+        std::istringstream in('"' + text + '"');
+        JsonStream stream(in);
+
+        JsonNode node = JsonNode::from_data(stream);
+        REQUIRE(node.get_type() == JSON_STRING);
+
+        std::string value;
+        CHECK(node.get_string(value));
+        CHECK(value == text);
+    }
 }

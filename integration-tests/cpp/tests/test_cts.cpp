@@ -34,12 +34,15 @@
 #include <locale>
 #include <memory>
 #include <sstream>
+#include <stdexcept>
 #include <string>
 
 #include "ic_cts/any.h"
+#include "ic_cts/buffer.h"
 #include "ic_cts/json_parser.h"
 
 using ic_cts::Any;
+using ic_cts::Buffer;
 using ic_cts::JSON_FLOAT;
 using ic_cts::JSON_STRING;
 using ic_cts::JsonNode;
@@ -80,4 +83,35 @@ TEST_CASE("json_number_uses_supplied_length") {
     double value = 0.0;
     CHECK(node.get_number(value));
     CHECK(value == 1.5);
+}
+
+TEST_CASE("buffer_read_checks_length_before_copying") {
+    std::unique_ptr<uint8_t[]> bytes(new uint8_t[1]{7});
+    Buffer buffer(static_cast<const uint8_t*>(bytes.get()), 1);
+
+    uint8_t destination[2] = {0, 0};
+    CHECK_THROWS_AS(buffer.read(destination, 2), std::runtime_error);
+    CHECK(destination[0] == 0);
+    CHECK(destination[1] == 0);
+    CHECK(buffer.unread_bytes() == 1);
+
+    buffer.read(destination, 1);
+    CHECK(destination[0] == 7);
+    CHECK(buffer.unread_bytes() == 0);
+}
+
+TEST_CASE("buffer_span_covers_unread_bytes") {
+    std::unique_ptr<uint8_t[]> bytes(new uint8_t[4]{1, 2, 3, 4});
+    Buffer buffer(static_cast<const uint8_t*>(bytes.get()), 4);
+    buffer.advance_read(2);
+
+    auto unread = buffer.span();
+    REQUIRE(unread.size() == buffer.unread_bytes());
+    CHECK(unread.size() == 2);
+
+    uint8_t sum = 0;
+    for (uint8_t byte : unread) {
+        sum += byte;
+    }
+    CHECK(sum == 7);
 }

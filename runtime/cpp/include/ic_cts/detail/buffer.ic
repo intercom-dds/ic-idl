@@ -238,7 +238,7 @@ inline bool Buffer::owned() const {
 }
 
 inline span<const uint8_t> Buffer::span() const {
-    return ic_cts::span<const uint8_t>(m_read_pointer, readable_length());
+    return ic_cts::span<const uint8_t>(m_read_pointer, unread_bytes());
 }
 
 inline span<const uint8_t> Buffer::subspan(size_t pos, size_t length) const {
@@ -272,8 +272,9 @@ inline void Buffer::write(const uint8_t* a_data, size_t a_length) {
 }
 
 inline void Buffer::read(uint8_t* a_destination, size_t a_length) const {
-    memcpy(a_destination, m_read_pointer, a_length);
+    const uint8_t* source = m_read_pointer;
     advance_read(a_length);
+    memcpy(a_destination, source, a_length);
 }
 
 inline void Buffer::duplicate(const Buffer& a_data) {

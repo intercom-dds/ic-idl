@@ -28,8 +28,10 @@
 #include <doctest/doctest.h>
 
 #include <any>
+#include <clocale>
 #include <cstdint>
 #include <limits>
+#include <locale>
 #include <memory>
 #include <sstream>
 #include <string>

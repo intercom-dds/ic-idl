@@ -624,7 +624,7 @@ class TGenericMarshalBase {
 
         bool skip_member(const MemberInfo& a_member) {
             if (m_marshal.writer().flags() & SERIALIZER_KEY_ONLY) {
-                return (
+                return !(
                     a_member.flags & dcps::xtypes::IS_KEY ||
                     (m_marshal.writer().type_level() > 1 &&
                      a_member.flags & dcps::xtypes::IS_IMPLICIT_KEY)
@@ -818,7 +818,7 @@ class TGenericUnmarshalBase {
 
         bool skip_member(const MemberInfo& a_member) {
             if (m_unmarshal.reader().flags() & SERIALIZER_KEY_ONLY) {
-                return (
+                return !(
                     a_member.flags & dcps::xtypes::IS_KEY ||
                     (m_unmarshal.reader().type_level() > 1 &&
                      a_member.flags & dcps::xtypes::IS_IMPLICIT_KEY)

@@ -452,9 +452,9 @@ inline JsonNode json_consume_string(T& data) {
             return json_error(start_pos, "Illegal value in string");
         }
     }
-    auto res = JsonNode(JSON_STRING, data.from_state(start_pos));
+    typename T::state_type end_pos = data.current();
     data.getc();
-    return res;
+    return {JSON_STRING, end_pos.from_state(start_pos)};
 }
 
 inline bool

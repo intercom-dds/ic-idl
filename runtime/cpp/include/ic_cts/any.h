@@ -28,6 +28,7 @@
 #pragma once
 
 #include <any>
+#include <type_traits>
 #include <typeinfo>
 #include <utility>
 
@@ -37,7 +38,7 @@ class Any {
   public:
     Any() = default;
 
-    template <typename T>
+    template <typename T, typename = std::enable_if_t<!std::is_same_v<std::decay_t<T>, Any>>>
     Any(T&& value) : m_value(std::forward<T>(value)) {}
 
     Any(const Any&) = default;
@@ -45,7 +46,7 @@ class Any {
     Any& operator=(const Any&) = default;
     Any& operator=(Any&&) noexcept = default;
 
-    template <typename T>
+    template <typename T, typename = std::enable_if_t<!std::is_same_v<std::decay_t<T>, Any>>>
     Any& operator=(T&& value) {
         m_value = std::forward<T>(value);
         return *this;

@@ -31,7 +31,10 @@
 #include <cmath>
 #include <cstdarg>
 #include <cstdio>
+#include <iomanip>
+#include <locale>
 #include <memory>
+#include <sstream>
 #include <stdexcept>
 
 #include "ic_cts/dds_xtypes_constants.h"
@@ -700,21 +703,24 @@ inline void JsonWriter::write_null() {
     m_needComma = true;
 }
 
-#define NUM_WRITER(type, format)                                                    \
-    inline void JsonWriter::write(type value) {                                     \
-        maybe_comma();                                                              \
-        if (std::isnan(value) || std::isinf(value)) {                               \
-            write_null();                                                           \
-        } else {                                                                    \
-            auto formatted = detail::stdprintf(format, static_cast<double>(value)); \
-            for (auto c : formatted) put(c);                                        \
-            m_needComma = true;                                                     \
-        }                                                                           \
+#define NUM_WRITER(type, precision)                                      \
+    inline void JsonWriter::write(type value) {                          \
+        maybe_comma();                                                   \
+        if (std::isnan(value) || std::isinf(value)) {                    \
+            write_null();                                                \
+        } else {                                                         \
+            std::ostringstream formatted;                                \
+            formatted.imbue(std::locale::classic());                     \
+            formatted << std::scientific << std::setprecision(precision) \
+                      << static_cast<double>(value);                     \
+            for (auto c : formatted.str()) put(c);                       \
+            m_needComma = true;                                          \
+        }                                                                \
     }
 
-NUM_WRITER(float, "%.7e");
+NUM_WRITER(float, 7);
 
-NUM_WRITER(double, "%.16e");
+NUM_WRITER(double, 16);
 
 inline void JsonWriter::write_string(const std::string& value) {
     maybe_comma();

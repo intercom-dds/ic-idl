@@ -349,7 +349,7 @@ struct Serializer<Archive, std::wstring> {
         serializer.io(value);
         if (type_info && type_info->max_length > 0 && value.size() > type_info->max_length) {
             if (type_info->flags & dcps::xtypes::IS_TRIM_TRY_CONSTRUCT) {
-                value.reserve(type_info->max_length);
+                value.resize(type_info->max_length);
             } else if (type_info->flags & dcps::xtypes::IS_USE_DEFAULT_TRY_CONSTRUCT) {
                 if (type_info->default_value) {
                     value = static_cast<std::wstring::value_type*>(type_info->default_value);

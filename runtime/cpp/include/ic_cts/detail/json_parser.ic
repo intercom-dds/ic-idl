@@ -610,9 +610,7 @@ inline bool JsonNode::get_number(double& value) const {
         return false;
     }
     return detail::string_to_double_in_string_sequence(
-        std::string_view(m_data.str(), m_data.length()),
-        value,
-        nullptr
+        std::string_view(m_data.str(), m_data.length()), value, nullptr
     );
 }
 
@@ -722,7 +720,8 @@ inline void JsonWriter::write_string(const std::string& value) {
     maybe_comma();
     put('"');
     const char* str = value.c_str();
-    while (*str) {
+    const char* end = str + value.size();
+    while (str < end) {
         char32_t code = 0;
         str += read_char_code<UTF8>(code, str);
         char buf[4];
@@ -743,7 +742,8 @@ inline void JsonWriter::write_string(const std::u16string& value) {
     maybe_comma();
     put('"');
     const char16_t* str = value.c_str();
-    while (*str) {
+    const char16_t* end = str + value.size();
+    while (str < end) {
         char32_t code = 0;
         str += read_char_code(code, str);
         char buf[4];
@@ -764,7 +764,8 @@ inline void JsonWriter::write_string(const std::wstring& value) {
     maybe_comma();
     put('"');
     const wchar_t* str = value.c_str();
-    while (*str) {
+    const wchar_t* end = str + value.size();
+    while (str < end) {
         char32_t code = 0;
         str += read_char_code(code, str);
         char buf[4];

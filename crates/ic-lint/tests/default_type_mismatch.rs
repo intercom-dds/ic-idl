@@ -133,6 +133,39 @@ struct Bad {
 }
 
 #[test]
+fn floating_bitmask_defaults() {
+    let source = r"
+bitmask Flags { A };
+typedef Flags FlagsAlias;
+struct Bad {
+    @default(1.75) Flags direct;
+    @default(1.75) FlagsAlias aliased;
+    @default(1.0) Flags integral;
+};
+";
+
+    let output = test_lint_hir(source);
+    assert_snapshot!(output);
+}
+
+#[test]
+fn valid_integer_bitmask_defaults() {
+    let source = r"
+bitmask Flags { A };
+typedef Flags FlagsAlias;
+struct Good {
+    @default(1) Flags direct;
+    @default(1) FlagsAlias aliased;
+    @default(A) Flags flag;
+};
+";
+
+    let report = common::lint_hir(source);
+    assert_eq!(report.warnings.len(), 0);
+    assert_eq!(report.errors.len(), 0);
+}
+
+#[test]
 fn valid_bool_default() {
     let source = r"
 struct Good {

@@ -141,7 +141,8 @@ impl DefaultTypeMismatch<'_> {
                     }
                     DefKind::Enum(enum_ty) => self.is_valid_enum_value(value, enum_ty),
                     DefKind::Bitmask(bitmask_ty) => {
-                        Self::is_primitive_compatible(value, bitmask_ty.ty)
+                        !matches!(value, Numeric::Float(_) | Numeric::Double(_))
+                            && Self::is_primitive_compatible(value, bitmask_ty.ty)
                     }
                     _ => false,
                 }

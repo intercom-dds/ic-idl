@@ -250,8 +250,8 @@ module ext {
 @ext::annotation_target(STRUCT_MEMBER | UNION_MEMBER | UNION_DISC | TYPE_ALIAS)
 @annotation try_construct {
     enum TryConstructFailAction {
-        USE_DEFAULT,
         DISCARD,
+        USE_DEFAULT,
         TRIM
     };
     TryConstructFailAction value default USE_DEFAULT;

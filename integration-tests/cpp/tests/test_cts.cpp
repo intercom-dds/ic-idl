@@ -28,6 +28,8 @@
 #include <doctest/doctest.h>
 
 #include <any>
+#include <cstdint>
+#include <limits>
 #include <memory>
 #include <sstream>
 #include <string>

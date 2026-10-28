@@ -353,12 +353,8 @@ inline void CdrWriter::write_length(uint32_t a_length) {
 
 inline void CdrWriter::write(const std::string& a_value) {
     auto size = static_cast<uint32_t>(a_value.size());
-    if (size > 0) {
-        write_length(size + 1);
-        write_values(a_value.c_str(), size + 1);
-    } else {
-        write_length(0);
-    }
+    write_length(size + 1);
+    write_values(a_value.c_str(), size + 1);
 }
 
 inline void CdrWriter::write(const std::u16string& a_value) {

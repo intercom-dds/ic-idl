@@ -29,8 +29,6 @@
 
 #include <cassert>
 #include <cmath>
-#include <cstdarg>
-#include <cstdio>
 #include <iomanip>
 #include <locale>
 #include <memory>
@@ -482,22 +480,6 @@ string_to_double_in_string_sequence(std::string_view text, double& value, int* e
         result = false;
     }
     return result;
-}
-
-inline std::string stdprintf(const char* format, ...) {
-    va_list ap;
-    va_start(ap, format);
-    auto len = std::vsnprintf(nullptr, 0, format, ap);
-    va_end(ap);
-    if (len < 0) {
-        throw std::runtime_error("Invalid format string passed to vsnprintf");
-    }
-    const auto size = static_cast<size_t>(len) + 1;
-    std::vector<char> vec(size);
-    va_start(ap, format);
-    std::vsnprintf(vec.data(), size, format, ap);
-    va_end(ap);
-    return vec.data();
 }
 }  // namespace detail
 

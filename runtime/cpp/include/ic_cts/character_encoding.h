@@ -230,6 +230,39 @@ inline int read_char_code<UTF32>(char32_t& code, const character_type_of<UTF32>:
     return 1;
 }
 
+template <CharacterEncoding ENCODING>
+int char_code_length(typename character_type_of<ENCODING>::type unit);
+
+template <>
+inline int char_code_length<EIGHT_BIT>(character_type_of<EIGHT_BIT>::type) {
+    return 1;
+}
+
+template <>
+inline int char_code_length<UTF8>(character_type_of<UTF8>::type unit) {
+    auto c = static_cast<unsigned char>(unit);
+    if ((c & 0xE0) == 0xC0) {
+        return 2;
+    }
+    if ((c & 0xF0) == 0xE0) {
+        return 3;
+    }
+    if ((c & 0xF8) == 0xF0) {
+        return 4;
+    }
+    return 1;
+}
+
+template <>
+inline int char_code_length<UTF16>(character_type_of<UTF16>::type unit) {
+    return (static_cast<uint16_t>(unit) & ~0x7FFU) == 0xD800U ? 2 : 1;
+}
+
+template <>
+inline int char_code_length<UTF32>(character_type_of<UTF32>::type) {
+    return 1;
+}
+
 template <typename T>
 int read_char_code(char32_t& code, T* buf);
 

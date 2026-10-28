@@ -849,8 +849,13 @@ inline void JsonWriter::write(const JsonNode& node) {
     }
     case JSON_INTEGER: {
         int64_t value;
+        uint64_t unsigned_value;
         if (node.get_integer(value)) {
             write(value);
+        } else if (node.get_integer(unsigned_value)) {
+            write(unsigned_value);
+        } else {
+            throw std::runtime_error("JSON integer out of range");
         }
         break;
     }

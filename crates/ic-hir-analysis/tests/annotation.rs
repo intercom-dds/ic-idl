@@ -30,9 +30,10 @@ mod common;
 
 use ic_hir::hir::{Def, DefKind, Numeric};
 use ic_hir_analysis::annotation::{
-    Extensibility, bit_bound, default_value, doc, extensibility, is_external, is_key,
+    Extensibility, TryConstruct, bit_bound, default_value, doc, extensibility, is_external, is_key,
     is_must_understand, is_nested, is_newtype, is_non_serialized, is_optional, is_value_type,
     max_annotation, max_value, min_annotation, min_value, range_annotation, range_values,
+    try_construct, try_construct_annotation,
 };
 
 fn def<'a>(hir: &'a ic_hir::ResolvedGraph, name: &str) -> &'a Def {
@@ -129,6 +130,33 @@ fn resolves_bounds_annotations() {
     assert!(min_annotation(&hir.context, unbounded).is_none());
     assert!(max_annotation(&hir.context, unbounded).is_none());
     assert!(range_annotation(&hir.context, unbounded).is_none());
+}
+
+#[test]
+fn resolves_try_construct() {
+    let hir = common::parse_and_resolve_successfully(
+        r"
+        struct Actions {
+            @try_construct(DISCARD) long discard;
+            @try_construct(USE_DEFAULT) long use_default;
+            @try_construct(TRIM) long trim;
+            @try_construct long implicit;
+            long absent;
+        };
+        ",
+    );
+
+    let DefKind::Struct(actions) = &def(&hir, "Actions").kind else {
+        panic!("Expected struct")
+    };
+    let action = |index: usize| try_construct(&hir.context, &actions.members[index]);
+
+    assert_eq!(action(0), TryConstruct::Discard);
+    assert_eq!(action(1), TryConstruct::UseDefault);
+    assert_eq!(action(2), TryConstruct::Trim);
+    assert_eq!(action(3), TryConstruct::UseDefault);
+    assert_eq!(action(4), TryConstruct::Discard);
+    assert!(try_construct_annotation(&hir.context, &actions.members[4]).is_none());
 }
 
 #[test]

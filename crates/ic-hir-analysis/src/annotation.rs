@@ -194,6 +194,37 @@ pub fn range_values<'a>(
     ))
 }
 
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum TryConstruct {
+    #[default]
+    Discard,
+    UseDefault,
+    Trim,
+}
+
+pub fn try_construct_annotation<'a>(
+    ctx: &Context,
+    target: &'a impl DefaultTarget,
+) -> Option<&'a Ann> {
+    builtin_annotation(ctx, target.annotations(), "try_construct")
+}
+
+pub fn try_construct(ctx: &Context, target: &impl DefaultTarget) -> TryConstruct {
+    let Some(annotation) = try_construct_annotation(ctx, target) else {
+        return TryConstruct::Discard;
+    };
+
+    let Some(argument) = annotation.args.first() else {
+        return TryConstruct::UseDefault;
+    };
+
+    match ctx.unsigned_value(&argument.value) {
+        0 => TryConstruct::Discard,
+        2 => TryConstruct::Trim,
+        _ => TryConstruct::UseDefault,
+    }
+}
+
 #[must_use]
 pub fn bit_bound_annotation<'a>(ctx: &Context, def: &'a Def) -> Option<&'a Ann> {
     builtin_annotation(ctx, &def.annotations, "bit_bound")

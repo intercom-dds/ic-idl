@@ -222,10 +222,8 @@ class JsonNode {
         if (m_type != JSON_INTEGER) {
             return false;
         }
-        int sign = 1;
-        if (m_data.str()[0] == '-') {
-            sign = -1;
-
+        bool negative = m_data.str()[0] == '-';
+        if (negative) {
             if ((std::numeric_limits<T>::min)() == 0) {
                 return false;
             }
@@ -233,19 +231,26 @@ class JsonNode {
             value = static_cast<T>(m_data.str()[0] - '0');
         }
 
-        T max = (std::numeric_limits<T>::max)() / 10;
-        T lim = static_cast<T>(((std::numeric_limits<T>::max)() % 10) + (sign == -1));
+        T limit = negative ? (std::numeric_limits<T>::min)() : (std::numeric_limits<T>::max)();
+        T limit_tens = static_cast<T>(limit / 10);
+        T limit_digit = negative ? static_cast<T>(-(limit % 10)) : static_cast<T>(limit % 10);
 
         for (size_t i = 1; i < m_data.length(); ++i) {
             T digit = static_cast<T>(m_data.str()[i] - '0');
 
-            if (value * static_cast<T>(sign) > max ||
-                (value * static_cast<T>(sign) == max && digit > lim)) {
-                return false;
+            if (negative) {
+                if (value < limit_tens || (value == limit_tens && digit > limit_digit)) {
+                    return false;
+                }
+                value = static_cast<T>(value * 10);
+                value = static_cast<T>(value - digit);
+            } else {
+                if (value > limit_tens || (value == limit_tens && digit > limit_digit)) {
+                    return false;
+                }
+                value = static_cast<T>(value * 10);
+                value = static_cast<T>(value + digit);
             }
-
-            value = static_cast<T>(value * 10);
-            value = static_cast<T>(value + digit * static_cast<T>(sign));
         }
         return true;
     }

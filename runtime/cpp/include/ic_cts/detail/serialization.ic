@@ -212,6 +212,15 @@ inline bool string_to_enum(T& value, const char* string, const TypeInfo* type) {
         }                                                                                        \
     };  // end of CTS_DEFINE_PRIMITIVE_TYPE
 
+template <class Archive>
+inline void
+check_bound_before_write(size_t length, const TypeInfo* type_info, const char* message) {
+    if (Archive::IS_WRITER && type_info && type_info->max_length > 0 &&
+        length > type_info->max_length) {
+        throw std::runtime_error(message);
+    }
+}
+
 template <class Archive, typename T>
 struct Serializer<Archive, T*> {
     void operator()(Archive& a, T* value, uint32_t count, const TypeInfo* type_info) {
@@ -225,9 +234,11 @@ struct Serializer<Archive, T*> {
 template <class Archive>
 struct Serializer<Archive, std::string> {
     void operator()(Archive& a, std::string& value, const TypeInfo* type_info) {
+        check_bound_before_write<Archive>(value.size(), type_info, "String length out of bounds");
         typename Archive::template StringValue<DEFAULT_ENCODING> serializer(a, type_info);
         serializer.io(value);
-        if (type_info && type_info->max_length > 0 && value.size() > type_info->max_length) {
+        if (Archive::IS_READER && type_info && type_info->max_length > 0 &&
+            value.size() > type_info->max_length) {
             if (type_info->flags & dcps::xtypes::IS_TRIM_TRY_CONSTRUCT) {
                 value.resize(type_info->max_length);
             } else if (type_info->flags & dcps::xtypes::IS_USE_DEFAULT_TRY_CONSTRUCT) {
@@ -254,9 +265,11 @@ struct Serializer<Archive, ic_cts::bounded_basic_string<CharT, N>> {
 template <class Archive>
 struct Serializer<Archive, std::u16string> {
     void operator()(Archive& a, std::u16string& value, const TypeInfo* type_info) {
+        check_bound_before_write<Archive>(value.size(), type_info, "String length out of bounds");
         typename Archive::template StringValue<UTF16> serializer(a, type_info);
         serializer.io(value);
-        if (type_info && type_info->max_length > 0 && value.size() > type_info->max_length) {
+        if (Archive::IS_READER && type_info && type_info->max_length > 0 &&
+            value.size() > type_info->max_length) {
             if (type_info->flags & dcps::xtypes::IS_TRIM_TRY_CONSTRUCT) {
                 value.resize(type_info->max_length);
             } else if (type_info->flags & dcps::xtypes::IS_USE_DEFAULT_TRY_CONSTRUCT) {
@@ -275,9 +288,11 @@ struct Serializer<Archive, std::u16string> {
 template <class Archive>
 struct Serializer<Archive, std::u32string> {
     void operator()(Archive& a, std::u32string& value, const TypeInfo* type_info) {
+        check_bound_before_write<Archive>(value.size(), type_info, "String length out of bounds");
         typename Archive::template StringValue<UTF32> serializer(a, type_info);
         serializer.io(value);
-        if (type_info && type_info->max_length > 0 && value.size() > type_info->max_length) {
+        if (Archive::IS_READER && type_info && type_info->max_length > 0 &&
+            value.size() > type_info->max_length) {
             if (type_info->flags & dcps::xtypes::IS_TRIM_TRY_CONSTRUCT) {
                 value.resize(type_info->max_length);
             } else if (type_info->flags & dcps::xtypes::IS_USE_DEFAULT_TRY_CONSTRUCT) {
@@ -312,6 +327,9 @@ struct Serializer<Archive, ic_cts::span<T>> {
 template <class Archive>
 struct Serializer<Archive, std::vector<bool>> {
     void operator()(Archive& a, std::vector<bool>& value, const TypeInfo* type_info) {
+        check_bound_before_write<Archive>(
+            value.size(), type_info, "Sequence length out of bounds in vector serializer"
+        );
         typename Archive::template VectorValue<bool> serializer(a, type_info);
         std::valarray<bool> copy;
         if constexpr (Archive::IS_WRITER) {
@@ -329,7 +347,8 @@ struct Serializer<Archive, std::vector<bool>> {
             }
         }
 
-        if (type_info && type_info->max_length > 0 && value.size() > type_info->max_length) {
+        if (Archive::IS_READER && type_info && type_info->max_length > 0 &&
+            value.size() > type_info->max_length) {
             if (type_info->flags & dcps::xtypes::IS_TRIM_TRY_CONSTRUCT) {
                 value.resize(type_info->max_length);
             } else if (type_info->flags & dcps::xtypes::IS_USE_DEFAULT_TRY_CONSTRUCT) {
@@ -344,10 +363,12 @@ struct Serializer<Archive, std::vector<bool>> {
 template <class Archive>
 struct Serializer<Archive, std::wstring> {
     void operator()(Archive& a, std::wstring& value, const TypeInfo* type_info) {
+        check_bound_before_write<Archive>(value.size(), type_info, "String length out of bounds");
         typename Archive::template StringValue<encoding_type_of<std::wstring::value_type>::kind>
             serializer(a, type_info);
         serializer.io(value);
-        if (type_info && type_info->max_length > 0 && value.size() > type_info->max_length) {
+        if (Archive::IS_READER && type_info && type_info->max_length > 0 &&
+            value.size() > type_info->max_length) {
             if (type_info->flags & dcps::xtypes::IS_TRIM_TRY_CONSTRUCT) {
                 value.resize(type_info->max_length);
             } else if (type_info->flags & dcps::xtypes::IS_USE_DEFAULT_TRY_CONSTRUCT) {
@@ -366,9 +387,13 @@ struct Serializer<Archive, std::wstring> {
 template <class Archive, typename T, typename Alloc>
 struct Serializer<Archive, std::vector<T, Alloc>> {
     void operator()(Archive& a, std::vector<T, Alloc>& value, const TypeInfo* type_info) {
+        check_bound_before_write<Archive>(
+            value.size(), type_info, "Sequence length out of bounds in vector serializer"
+        );
         typename Archive::template VectorValue<T> serializer(a, type_info);
         serializer.io(value);
-        if (type_info && type_info->max_length > 0 && value.size() > type_info->max_length) {
+        if (Archive::IS_READER && type_info && type_info->max_length > 0 &&
+            value.size() > type_info->max_length) {
             if (type_info->flags & dcps::xtypes::IS_TRIM_TRY_CONSTRUCT) {
                 value.resize(type_info->max_length);
             } else if (type_info->flags & dcps::xtypes::IS_USE_DEFAULT_TRY_CONSTRUCT) {
@@ -395,9 +420,11 @@ struct Serializer<Archive, std::map<K, V, Comparator, Allocator>> {
         std::map<K, V, Comparator, Allocator>& value,
         const TypeInfo* type_info
     ) {
+        check_bound_before_write<Archive>(value.size(), type_info, "Map length out of bounds");
         typename Archive::template MapValue<K, V> serializer(a, type_info);
         serializer.io(value);
-        if (type_info && type_info->max_length > 0 && value.size() > type_info->max_length) {
+        if (Archive::IS_READER && type_info && type_info->max_length > 0 &&
+            value.size() > type_info->max_length) {
             if (type_info->flags & dcps::xtypes::IS_USE_DEFAULT_TRY_CONSTRUCT) {
                 value.clear();
             } else {
@@ -422,6 +449,9 @@ struct Serializer<Archive, std::pair<std::vector<K, Alloc>*, std::vector<V, Allo
         std::pair<std::vector<K, Alloc>*, std::vector<V, Alloc>*>& value,
         const TypeInfo* type_info
     ) {
+        check_bound_before_write<Archive>(
+            value.first->size(), type_info, "Map length out of bounds"
+        );
         typename Archive::template MapValue<K, V> serializer(a, type_info);
         serializer.io(*value.first, *value.second);
         if (type_info && type_info->max_length > 0 && value.first->size() > type_info->max_length) {

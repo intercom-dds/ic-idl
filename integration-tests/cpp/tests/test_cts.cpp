@@ -28,6 +28,7 @@
 #include <doctest/doctest.h>
 
 #include <any>
+#include <memory>
 #include <sstream>
 #include <string>
 
@@ -35,6 +36,7 @@
 #include "ic_cts/json_parser.h"
 
 using ic_cts::Any;
+using ic_cts::JSON_FLOAT;
 using ic_cts::JSON_STRING;
 using ic_cts::JsonNode;
 using ic_cts::JsonStream;
@@ -64,4 +66,14 @@ TEST_CASE("json_stream_string_survives_closing_quote") {
         CHECK(node.get_string(value));
         CHECK(value == text);
     }
+}
+
+TEST_CASE("json_number_uses_supplied_length") {
+    std::unique_ptr<char[]> text(new char[3]{'1', '.', '5'});
+    JsonNode node = JsonNode::from_data(std::string_view(text.get(), 3));
+    REQUIRE(node.get_type() == JSON_FLOAT);
+
+    double value = 0.0;
+    CHECK(node.get_number(value));
+    CHECK(value == 1.5);
 }

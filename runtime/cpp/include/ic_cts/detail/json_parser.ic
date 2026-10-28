@@ -609,7 +609,11 @@ inline bool JsonNode::get_number(double& value) const {
     if (m_type != JSON_INTEGER && m_type != JSON_FLOAT) {
         return false;
     }
-    return detail::string_to_double_in_string_sequence(m_data.str(), value, nullptr);
+    return detail::string_to_double_in_string_sequence(
+        std::string_view(m_data.str(), m_data.length()),
+        value,
+        nullptr
+    );
 }
 
 inline JsonWriter::JsonWriter(

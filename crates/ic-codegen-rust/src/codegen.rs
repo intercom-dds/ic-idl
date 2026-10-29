@@ -26,6 +26,7 @@
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use std::collections::BTreeMap;
+use std::path::PathBuf;
 
 use ic_emit::case::{self, Case};
 use ic_emit::printer::Twine;
@@ -39,7 +40,9 @@ use ic_hir_analysis::enum_value::default_enumerator;
 use ic_hir_analysis::union_case::{default_union_case, unused_discriminator};
 
 use crate::RustOptions;
-use crate::helpers::{is_copy, is_debug, is_eq, is_hash, is_ord, is_trivial, rust_primitive};
+use crate::helpers::{
+    is_copy, is_debug, is_eq, is_hash, is_ord, is_trivial, module_scope, rust_primitive,
+};
 
 const GENERATED_HEADER: &str = "// @generated\n\n";
 static NULL: Numeric = Numeric::Null;
@@ -58,23 +61,28 @@ impl Module {
     }
 
     fn find(&mut self, hir: &ResolvedGraph, def: &Def) -> &mut Twine {
-        let mut scope = Vec::new();
-        let mut current_id = def.parent;
-
-        while let Some(id) = current_id {
-            let parent_def = hir.context.definitions.get(id);
-            if matches!(parent_def.kind, DefKind::Module(_)) {
-                scope.push(parent_def.ident.name.clone());
-            }
-            current_id = parent_def.parent;
-        }
-
         let mut curr = self;
-        for name in scope.iter().rev() {
-            curr = curr.entries.entry(name.clone()).or_insert_with(Module::new);
+        for name in module_scope(hir, def.id) {
+            curr = curr
+                .entries
+                .entry(name.to_string())
+                .or_insert_with(Module::new);
         }
         &mut curr.printer
     }
+}
+
+fn module_file(path: &str) -> String {
+    if path.is_empty() {
+        "lib.rs".to_string()
+    } else {
+        format!("{path}.rs")
+    }
+}
+
+#[must_use]
+pub fn file_path(hir: &ResolvedGraph, def_id: DefId) -> PathBuf {
+    PathBuf::from(module_file(&module_scope(hir, def_id).join("/")))
 }
 
 pub(crate) struct RustGen<'a> {
@@ -144,11 +152,7 @@ impl<'a> RustGen<'a> {
 
         content.push_str(&module.printer.finish());
 
-        let file_path = if path.is_empty() {
-            "lib.rs".to_string()
-        } else {
-            format!("{path}.rs")
-        };
+        let file_path = module_file(path);
 
         files.push(File {
             path: file_path.into(),
@@ -617,7 +621,7 @@ impl<'a> RustGen<'a> {
         w!(w, "}\n\n");
 
         w!(w, "impl ::std::str::FromStr for ", def, " {\n");
-        w!(w, "type Err = ::intercom_cts::error::UnknownVariant;\n\n");
+        w!(w, "type Err = ", self.options.cts_prefix, "::error::UnknownVariant;\n\n");
         w!(w, "fn from_str(s: &str) -> ::std::result::Result<Self, Self::Err> {\n");
         w!(w, "match s {\n");
         for &field_id in &enum_ty.fields {
@@ -625,7 +629,7 @@ impl<'a> RustGen<'a> {
             let original_name = self.original_name(field_id);
             w!(w, "\"", original_name, "\" => Ok(Self::", field_def, "),\n");
         }
-        w!(w, "_ => Err(::intercom_cts::error::UnknownVariant),\n");
+        w!(w, "_ => Err(", self.options.cts_prefix, "::error::UnknownVariant),\n");
         w!(w, "}\n");
         w!(w, "}\n");
         w!(w, "}\n\n");
@@ -646,7 +650,7 @@ impl<'a> RustGen<'a> {
     fn emit_bitmask(&self, def: &Def, bitmask_ty: &ic_hir::hir::BitmaskTy, w: &mut Twine) {
         let element_type = rust_primitive(bitmask_ty.ty);
 
-        w!(w, "::intercom_cts::bitmask! {\n");
+        w!(w, self.options.cts_prefix, "::bitmask! {\n");
         self.emit_doc_comments(w, &def.annotations);
         self.emit_derives(def, w);
         w!(w, "pub ", def, ": ", element_type, " {\n");
@@ -809,7 +813,7 @@ impl<'a> RustGen<'a> {
                 self.emit_type_info(def, w);
                 self.emit_member_info(def.id, w);
                 self.emit_marshal_impl(def, &members, w);
-                Self::emit_unmarshal_impl(def, &members, w);
+                self.emit_unmarshal_impl(def, &members, w);
                 Self::emit_type_info_close(w);
             }
             DefKind::Except(except_ty) => {
@@ -819,7 +823,7 @@ impl<'a> RustGen<'a> {
                 self.emit_type_info(def, w);
                 self.emit_member_info(def.id, w);
                 self.emit_marshal_impl(def, &except_ty.members, w);
-                Self::emit_unmarshal_impl(def, &except_ty.members, w);
+                self.emit_unmarshal_impl(def, &except_ty.members, w);
                 Self::emit_type_info_close(w);
             }
             DefKind::Valuetype(value_ty) => {
@@ -830,7 +834,7 @@ impl<'a> RustGen<'a> {
                 self.emit_type_info(def, w);
                 self.emit_member_info(def.id, w);
                 self.emit_marshal_impl(def, &members, w);
-                Self::emit_unmarshal_impl(def, &members, w);
+                self.emit_unmarshal_impl(def, &members, w);
                 Self::emit_type_info_close(w);
             }
             DefKind::Union(union_ty) => {
@@ -859,8 +863,8 @@ impl<'a> RustGen<'a> {
                 Self::emit_default_impl(def, w);
                 self.emit_bitmask_type_info(def, bitmask_ty, w);
                 self.emit_bitmask_member_info(def, bitmask_ty, w);
-                Self::emit_bitmask_marshal_impl(def, w);
-                Self::emit_bitmask_unmarshal_impl(def, w);
+                self.emit_bitmask_marshal_impl(def, w);
+                self.emit_bitmask_unmarshal_impl(def, w);
                 Self::emit_type_info_close(w);
             }
             DefKind::Alias(alias_ty) => {
@@ -868,8 +872,8 @@ impl<'a> RustGen<'a> {
                 if is_newtype(&self.hir.context, def) {
                     Self::emit_default_impl(def, w);
                     self.emit_newtype_type_descriptor(def, alias_ty, w);
-                    Self::emit_newtype_marshal_impl(def, w);
-                    Self::emit_newtype_unmarshal_impl(def, w);
+                    self.emit_newtype_marshal_impl(def, w);
+                    self.emit_newtype_unmarshal_impl(def, w);
                 }
             }
             DefKind::Const(const_ty) => {

@@ -30,6 +30,8 @@ mod helpers;
 mod literals;
 mod marshal;
 
+pub use codegen::file_path;
+pub use helpers::scoped_name;
 use ic_cli::Command;
 use ic_emit::File;
 use ic_emit::case::Case;
@@ -75,7 +77,7 @@ fn escape_rust_keyword(ctx: rename::RenameContext) -> Option<String> {
     }
 }
 
-#[derive(Copy, Clone, Command, Debug, Default)]
+#[derive(Copy, Clone, Command, Debug)]
 pub struct RustOptions {
     /// Do not rename generated types
     #[option(long)]
@@ -84,6 +86,18 @@ pub struct RustOptions {
     /// Annotate all types with `#[must_use]`
     #[option(long)]
     pub must_use: bool,
+
+    pub cts_prefix: &'static str,
+}
+
+impl Default for RustOptions {
+    fn default() -> Self {
+        Self {
+            no_rename: false,
+            must_use: false,
+            cts_prefix: "::intercom_cts",
+        }
+    }
 }
 
 #[must_use]
@@ -98,7 +112,8 @@ pub fn codegen_rust_inline(hir: &ic_hir::ResolvedGraph, options: RustOptions) ->
     codegen::RustGen::new(&hir, &original_hir, options).generate_inline()
 }
 
-fn prepare_hir(
+#[must_use]
+pub fn prepare_hir(
     hir: &ic_hir::ResolvedGraph,
     options: RustOptions,
 ) -> (ic_hir::ResolvedGraph, ic_hir::ResolvedGraph) {

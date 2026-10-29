@@ -172,6 +172,15 @@ impl CppGen<'_> {
     where
         F: FnMut(&mut Twine, &Variant) -> bool,
     {
+        if union_ty.variants.iter().all(|v| v.is_default) {
+            w!(w, "{\n");
+            for variant in &union_ty.variants {
+                body(w, variant);
+            }
+            w!(w, "}\n");
+            return;
+        }
+
         w!(w, "switch (", disc_var, ") {\n");
         w.dedent();
 
@@ -266,12 +275,19 @@ impl CppGen<'_> {
     }
 
     fn get_variant_default_expr(&self, variant: &Variant, def_id: DefId) -> String {
-        if let Some(default) = default_value(&self.hir.context, variant) {
+        let value = if let Some(default) = default_value(&self.hir.context, variant) {
             let mut w = ic_emit::printer::Twine::new();
             self.emit_numeric_value_with_ty(&mut w, default, &variant.ty, def_id, false);
             w.finish()
+        } else if let TyKind::Primitive(prim) = variant.ty.kind {
+            Self::primitive_default(prim).to_string()
         } else {
-            self.get_default_value_expr(&variant.ty, def_id)
+            return self.get_default_value_expr(&variant.ty, def_id);
+        };
+
+        match self.narrow_int_type(&variant.ty) {
+            Some(int_ty) => format!("{int_ty}{{{value}}}"),
+            None => value,
         }
     }
 
@@ -533,6 +549,7 @@ impl CppGen<'_> {
 
     fn emit_union_comparison_impl(&self, w: &mut Twine, def: &Def, union_ty: &UnionTy) {
         let qualified_name = self.scoped_name(def.id, None);
+        let has_default = union_ty.variants.iter().any(|v| v.is_default);
 
         // operator<
         w!(w, "inline bool ", qualified_name, "::operator<(const ", qualified_name, "& a_other) const {\n");
@@ -548,7 +565,9 @@ impl CppGen<'_> {
             false
         });
 
-        w!(w, "return false;\n");
+        if !has_default {
+            w!(w, "return false;\n");
+        }
         w!(w, "}\n\n");
 
         // operator==
@@ -564,7 +583,9 @@ impl CppGen<'_> {
             false
         });
 
-        w!(w, "return true;\n");
+        if !has_default {
+            w!(w, "return true;\n");
+        }
         w!(w, "}\n\n");
     }
 

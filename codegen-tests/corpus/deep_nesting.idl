@@ -89,7 +89,7 @@ module deep_nesting {
                 struct Level3Struct {
                     Level3Type2 type3;
                     level4::Level4Type2 type4;
-                    long size3[LEVEL3_DEEP];
+                    long size3[LEVEL3_BASE];
                 };
             };
 

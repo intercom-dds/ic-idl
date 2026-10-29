@@ -40,6 +40,7 @@ TEST_CASE("primitive constants" * doctest::test_suite("constants")) {
 }
 
 TEST_CASE("large integer constants" * doctest::test_suite("constants")) {
+    CHECK(large_integer_types_IDL_LONG_MIN == INT32_MIN);
     CHECK(large_integer_types_LONGLONG_MIN == INT64_MIN);
     CHECK(large_integer_types_ULONGLONG_MAX == UINT64_MAX);
 }

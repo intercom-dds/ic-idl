@@ -36,6 +36,7 @@ set(CMAKE_INCLUDE_CURRENT_DIR ON)
 if(MSVC)
     add_compile_options(
         /MP
+        /utf-8
         /W4
         /w14265
         /w14263
@@ -76,6 +77,8 @@ FetchContent_Declare(
     GIT_TAG v2.4.12
 )
 FetchContent_MakeAvailable(doctest)
+
+add_compile_definitions(DOCTEST_CONFIG_USE_STD_HEADERS)
 
 if(NOT DEFINED IC_IDL_EXECUTABLE)
     set(IC_IDL_EXECUTABLE "${CMAKE_CURRENT_SOURCE_DIR}/../../target/debug/ic-idl")

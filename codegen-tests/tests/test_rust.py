@@ -87,7 +87,7 @@ def test_rust(
     (src_dir / "lib.rs").write_text(LIB_RS_TEMPLATE)
 
     cargo_toml = rust_output_dir / "Cargo.toml"
-    cargo_toml.write_text(CARGO_TOML_TEMPLATE.format(cts_path=cts_path))
+    cargo_toml.write_text(CARGO_TOML_TEMPLATE.format(cts_path=cts_path.as_posix()))
 
     result = subprocess.run(
         [cargo, "check", "--quiet", "--target-dir=target"],

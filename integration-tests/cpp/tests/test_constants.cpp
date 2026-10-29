@@ -160,7 +160,7 @@ TEST_CASE("ushort_limits" * doctest::test_suite("constants")) {
 
 TEST_CASE("long_limits" * doctest::test_suite("constants")) {
     CHECK(large_integer_types::IDL_LONG_MAX == 2147483647);
-    CHECK(large_integer_types::IDL_LONG_MIN == -2147483648);
+    CHECK(large_integer_types::IDL_LONG_MIN == INT32_MIN);
 }
 
 TEST_CASE("ulong_limits" * doctest::test_suite("constants")) {

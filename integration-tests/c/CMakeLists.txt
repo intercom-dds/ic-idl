@@ -58,6 +58,8 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(doctest)
 
+add_compile_definitions(DOCTEST_CONFIG_USE_STD_HEADERS)
+
 if(NOT DEFINED IC_IDL_EXECUTABLE)
     set(IC_IDL_EXECUTABLE "${CMAKE_CURRENT_SOURCE_DIR}/../../target/debug/ic-idl")
 endif()

@@ -27,6 +27,7 @@
 
 use std::fmt::Write;
 
+use ic_hir::ResolvedGraph;
 use ic_hir::hir::{
     AliasTy, Def, DefFlags, DefId, DefKind, Member, Numeric, PrimitiveTy, Ty, TyKind,
 };
@@ -47,44 +48,7 @@ impl RustGen<'_> {
     }
 
     pub fn scoped_name(&self, target_def_id: DefId, relative_to_def_id: DefId) -> String {
-        let def = self.hir.context.definitions.get(target_def_id);
-        let mut target_modules = vec![];
-        let mut type_suffix = vec![];
-        let mut current_id = def.parent;
-
-        while let Some(id) = current_id {
-            let parent_def = self.hir.context.definitions.get(id);
-            match &parent_def.kind {
-                DefKind::Module(_) => target_modules.push(parent_def.ident.name.as_str()),
-                DefKind::Enum(_) | DefKind::Bitmask(_) => {
-                    type_suffix.push(parent_def.ident.name.as_str());
-                }
-                _ => {}
-            }
-            current_id = parent_def.parent;
-        }
-
-        target_modules.reverse();
-        type_suffix.reverse();
-
-        let ctx_modules = self.module_scope(relative_to_def_id);
-        relative_path(&target_modules, &ctx_modules, &type_suffix, &def.ident.name)
-    }
-
-    fn module_scope(&self, def_id: DefId) -> Vec<&str> {
-        let mut scope = vec![];
-        let mut current_id = self.hir.context.definitions.get(def_id).parent;
-
-        while let Some(id) = current_id {
-            let parent_def = self.hir.context.definitions.get(id);
-            if matches!(parent_def.kind, DefKind::Module(_)) {
-                scope.push(parent_def.ident.name.as_str());
-            }
-            current_id = parent_def.parent;
-        }
-
-        scope.reverse();
-        scope
+        scoped_name(self.hir, target_def_id, relative_to_def_id)
     }
 
     pub(crate) fn struct_members(
@@ -210,6 +174,48 @@ impl RustGen<'_> {
     }
 }
 
+#[must_use]
+pub fn scoped_name(hir: &ResolvedGraph, target_def_id: DefId, relative_to_def_id: DefId) -> String {
+    let def = hir.context.definitions.get(target_def_id);
+    let mut target_modules = vec![];
+    let mut type_suffix = vec![];
+    let mut current_id = def.parent;
+
+    while let Some(id) = current_id {
+        let parent_def = hir.context.definitions.get(id);
+        match &parent_def.kind {
+            DefKind::Module(_) => target_modules.push(parent_def.ident.name.as_str()),
+            DefKind::Enum(_) | DefKind::Bitmask(_) => {
+                type_suffix.push(parent_def.ident.name.as_str());
+            }
+            _ => {}
+        }
+        current_id = parent_def.parent;
+    }
+
+    target_modules.reverse();
+    type_suffix.reverse();
+
+    let ctx_modules = module_scope(hir, relative_to_def_id);
+    relative_path(&target_modules, &ctx_modules, &type_suffix, &def.ident.name)
+}
+
+pub(crate) fn module_scope(hir: &ResolvedGraph, def_id: DefId) -> Vec<&str> {
+    let mut scope = vec![];
+    let mut current_id = hir.context.definitions.get(def_id).parent;
+
+    while let Some(id) = current_id {
+        let parent_def = hir.context.definitions.get(id);
+        if matches!(parent_def.kind, DefKind::Module(_)) {
+            scope.push(parent_def.ident.name.as_str());
+        }
+        current_id = parent_def.parent;
+    }
+
+    scope.reverse();
+    scope
+}
+
 pub fn is_trivial(def: &Def) -> bool {
     def.flags.contains(DefFlags::IS_TRIVIAL)
 }
@@ -295,7 +301,7 @@ fn has_key_member(ctx: &ic_hir::Context, def: &Def) -> bool {
     }
 }
 
-pub fn type_flags(ctx: &ic_hir::Context, def: &Def) -> String {
+pub fn type_flags(ctx: &ic_hir::Context, def: &Def, cts_prefix: &str) -> String {
     let mut flags = Vec::new();
 
     match extensibility(ctx, def) {
@@ -316,9 +322,9 @@ pub fn type_flags(ctx: &ic_hir::Context, def: &Def) -> String {
         flags.push("IS_KEYED");
     }
 
-    let mut result = format!("::intercom_cts::TypeFlag::{}", flags[0]);
+    let mut result = format!("{cts_prefix}::TypeFlag::{}", flags[0]);
     for flag in &flags[1..] {
-        _ = write!(result, ".union(::intercom_cts::TypeFlag::{flag})");
+        _ = write!(result, ".union({cts_prefix}::TypeFlag::{flag})");
     }
     result
 }

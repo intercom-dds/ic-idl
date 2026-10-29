@@ -84,7 +84,6 @@ TEST_CASE("invalid_input_exception" * doctest::test_suite("interfaces")) {
 TEST_CASE("exception_can_be_raised" * doctest::test_suite("interfaces")) {
     try {
         throw interface_types::OperationFailed(500, "Server error");
-        FAIL("Expected OperationFailed to be thrown");
     } catch (const interface_types::OperationFailed& e) {
         CHECK(e.error_code == 500);
         CHECK(e.reason == "Server error");

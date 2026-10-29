@@ -186,6 +186,18 @@ impl<'a> CppGen<'a> {
         }
     }
 
+    pub(crate) fn narrow_int_type(&self, ty: &Ty) -> Option<&'static str> {
+        match self.hir.context.resolve_ty(ty).kind {
+            TyKind::Primitive(
+                prim @ (PrimitiveTy::Int8
+                | PrimitiveTy::UInt8
+                | PrimitiveTy::Int16
+                | PrimitiveTy::UInt16),
+            ) => Some(cpp_primitive(prim)),
+            _ => None,
+        }
+    }
+
     #[must_use]
     pub fn has_default_value(&self, ty: &Ty) -> bool {
         let resolved_ty = match &ty.kind {
@@ -333,27 +345,46 @@ impl<'a> CppGen<'a> {
         def_id: DefId,
     ) {
         let external = is_external(&self.hir.context, member);
+        let optional = is_optional(&self.hir.context, member);
 
         let inner_ty = self.cpp_type(member.ty(), def_id);
 
         if let Some(default) = default_value(&self.hir.context, member) {
             let is_array = matches!(default, Numeric::Array { .. });
+            let narrow_int = self
+                .narrow_int_type(member.ty())
+                .filter(|_| optional && !external);
+
             if !is_array || external {
                 w!(w, "{");
             }
+            if let Some(int_ty) = narrow_int {
+                w!(w, int_ty, "{");
+            }
             self.emit_numeric_value_with_ty(w, default, member.ty(), def_id, external);
+            if narrow_int.is_some() {
+                w!(w, "}");
+            }
             if !is_array || external {
                 w!(w, "}");
             }
-        } else if self.has_default_value(member.ty()) && !is_optional(&self.hir.context, member) {
+        } else if self.has_default_value(member.ty()) && !optional {
+            let narrow_int = self.narrow_int_type(member.ty()).filter(|_| external);
+
             if external {
                 w!(w, "{::std::make_unique<", inner_ty ,">(");
             } else {
                 w!(w, "{");
             }
+            if let Some(int_ty) = narrow_int {
+                w!(w, int_ty, "{");
+            }
 
             self.emit_default_initializer(w, member.ty(), Some(def_id));
 
+            if narrow_int.is_some() {
+                w!(w, "}");
+            }
             if external {
                 w!(w, ")}");
             } else {
@@ -445,11 +476,17 @@ impl<'a> CppGen<'a> {
         external: bool,
     ) {
         let relative_def_opt = relative_def.into();
+        let narrow_int = expected_ty
+            .and_then(|ty| self.narrow_int_type(ty))
+            .filter(|_| external);
 
         if let Some(ty) = expected_ty
             && external
         {
             w!(w, "::std::make_unique<", self.cpp_type(ty, relative_def_opt), ">(");
+        }
+        if let Some(int_ty) = narrow_int {
+            w!(w, int_ty, "{");
         }
 
         match value {
@@ -465,7 +502,13 @@ impl<'a> CppGen<'a> {
             Numeric::UInt8(v) => w!(w, v, "U"),
             Numeric::Int16(v) => w!(w, v),
             Numeric::UInt16(v) => w!(w, v, "U"),
-            Numeric::Int32(v) => w!(w, v),
+            Numeric::Int32(v) => {
+                if *v == i32::MIN {
+                    w!(w, "INT32_MIN");
+                } else {
+                    w!(w, v);
+                }
+            }
             Numeric::UInt32(v) => w!(w, v, "U"),
             Numeric::Int64(v) => {
                 if *v == i64::MIN {
@@ -477,10 +520,10 @@ impl<'a> CppGen<'a> {
             Numeric::UInt64(v) => w!(w, v, "ULL"),
             Numeric::Float(v) => w!(w, format!("{:.7}", v), "f"),
             Numeric::Double(v) => w!(w, format!("{:.16}", v)),
-            Numeric::String(s) => emit_escaped_string(w, s),
+            Numeric::String(s) => emit_escaped_string(w, s, false),
             Numeric::WString(s) => {
                 w!(w, "u");
-                emit_escaped_string(w, s);
+                emit_escaped_string(w, s, true);
             }
             Numeric::Const(const_def_id) => {
                 let name = self.scoped_name(*const_def_id, relative_def_opt);
@@ -570,6 +613,9 @@ impl<'a> CppGen<'a> {
             }
         }
 
+        if narrow_int.is_some() {
+            w!(w, "}");
+        }
         if expected_ty.is_some() && external {
             w!(w, ")");
         }
@@ -1199,10 +1245,16 @@ fn escape_char(w: &mut Twine, c: char) {
     w!(w, "'");
 }
 
-pub(crate) fn emit_escaped_string(w: &mut Twine, s: &str) {
+pub(crate) fn emit_escaped_string(w: &mut Twine, s: &str, wide: bool) {
     w!(w, '"');
     for c in s.chars() {
-        _ = write_escaped_char(w, c);
+        if wide || c.is_ascii() {
+            _ = write_escaped_char(w, c);
+        } else {
+            for byte in c.encode_utf8(&mut [0; 4]).bytes() {
+                w!(w, format!("\\{byte:03o}"));
+            }
+        }
     }
     w!(w, '"');
 }

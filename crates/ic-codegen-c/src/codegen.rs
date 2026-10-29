@@ -26,6 +26,7 @@
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use std::collections::{BTreeSet, HashMap};
+use std::fmt::Write;
 use std::path::PathBuf;
 
 use ic_emit::File;
@@ -218,6 +219,7 @@ impl<'a> CGen<'a> {
             Numeric::UInt8(value) => format!("UINT8_C({value})"),
             Numeric::Int16(value) => format!("INT16_C({value})"),
             Numeric::UInt16(value) => format!("UINT16_C({value})"),
+            Numeric::Int32(i32::MIN) => "INT32_MIN".to_string(),
             Numeric::Int32(value) => format!("INT32_C({value})"),
             Numeric::UInt32(value) => format!("UINT32_C({value})"),
             Numeric::Int64(i64::MIN) => "INT64_MIN".to_string(),
@@ -229,8 +231,8 @@ impl<'a> CGen<'a> {
             Numeric::WChar(value) => format!("u'{}'", escape_char(*value)),
             Numeric::Float(value) => format!("{value:.7e}F"),
             Numeric::Double(value) => format!("{value:.16e}"),
-            Numeric::String(value) => format!("\"{}\"", escape_string(value)),
-            Numeric::WString(value) => format!("u\"{}\"", escape_string(value)),
+            Numeric::String(value) => format!("\"{}\"", escape_string(value, false)),
+            Numeric::WString(value) => format!("u\"{}\"", escape_string(value, true)),
             Numeric::Array { values, .. } => {
                 let values = values
                     .iter()
@@ -530,10 +532,16 @@ fn escape_char(value: char) -> String {
     }
 }
 
-fn escape_string(value: &str) -> String {
+fn escape_string(value: &str, wide: bool) -> String {
     let mut escaped = String::new();
     for value in value.chars() {
-        escaped.push_str(&escape_char(value));
+        if wide || value.is_ascii() {
+            escaped.push_str(&escape_char(value));
+        } else {
+            for byte in value.encode_utf8(&mut [0; 4]).bytes() {
+                _ = write!(escaped, "\\{byte:03o}");
+            }
+        }
     }
     escaped
 }

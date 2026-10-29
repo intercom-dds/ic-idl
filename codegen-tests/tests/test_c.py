@@ -89,9 +89,9 @@ def get_warning_flags(kind: str) -> list[str]:
         ]
 
 
-def get_syntax_check_flags(kind: str) -> list[str]:
+def get_check_flags(kind: str, out_dir: Path) -> list[str]:
     if kind == "msvc":
-        return ["/Zs"]
+        return ["/c", f"/Fo{out_dir}\\"]
     else:
         return ["-fsyntax-only"]
 
@@ -136,7 +136,7 @@ def test_c(
     check_file.write_text("".join(f'#include "{header.name}"\n' for header in headers))
 
     warning_flags = get_warning_flags(c_compiler.kind)
-    syntax_flags = get_syntax_check_flags(c_compiler.kind)
+    check_flags = get_check_flags(c_compiler.kind, c_output_dir)
 
     if c_compiler.kind == "msvc":
         include_flags = [f"/I{c_include_path}", f"/I{c_output_dir}"]
@@ -146,7 +146,7 @@ def test_c(
     cmd = [
         c_compiler.path,
         *warning_flags,
-        *syntax_flags,
+        *check_flags,
         *include_flags,
         str(check_file),
     ]

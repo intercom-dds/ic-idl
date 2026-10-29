@@ -101,10 +101,10 @@ def get_warning_flags(kind: str, standard: str = "c++17") -> list[str]:
         ]
 
 
-def get_syntax_check_flags(kind: str) -> list[str]:
-    """Get flags for syntax-only checking (no linking)."""
+def get_check_flags(kind: str, out_dir: Path) -> list[str]:
+    """Get flags for checking a translation unit without linking."""
     if kind == "msvc":
-        return ["/Zs"]
+        return ["/c", f"/Fo{out_dir}\\"]
     else:
         return ["-fsyntax-only"]
 
@@ -140,7 +140,7 @@ def cxx_has_std_format(
     cmd = [
         cxx_compiler.path,
         *get_warning_flags(cxx_compiler.kind, "c++20"),
-        *get_syntax_check_flags(cxx_compiler.kind),
+        *get_check_flags(cxx_compiler.kind, probe.parent),
         str(probe),
     ]
 
@@ -228,7 +228,7 @@ def test_cpp(
         return
 
     warning_flags = get_warning_flags(cxx_compiler.kind, standard)
-    syntax_flags = get_syntax_check_flags(cxx_compiler.kind)
+    check_flags = get_check_flags(cxx_compiler.kind, cpp_output_dir)
 
     if cxx_compiler.kind == "msvc":
         include_flags = [f"/I{cpp_include_path}", f"/I{cpp_output_dir}"]
@@ -239,7 +239,7 @@ def test_cpp(
         cmd = [
             cxx_compiler.path,
             *warning_flags,
-            *syntax_flags,
+            *check_flags,
             *include_flags,
             str(source),
         ]

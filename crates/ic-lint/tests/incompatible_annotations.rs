@@ -139,7 +139,11 @@ fn disabled_annotations_are_compatible() {
         typedef long Alias;
     ";
 
-    assert!(lint_hir(input).errors.is_empty(), "{}", test_lint_hir(input));
+    assert!(
+        lint_hir(input).errors.is_empty(),
+        "{}",
+        test_lint_hir(input)
+    );
 }
 
 #[test]
@@ -185,7 +189,11 @@ fn user_defined_annotations_are_not_builtin_conflicts() {
         };
     ";
 
-    assert!(lint_hir(input).errors.is_empty(), "{}", test_lint_hir(input));
+    assert!(
+        lint_hir(input).errors.is_empty(),
+        "{}",
+        test_lint_hir(input)
+    );
 }
 
 #[test]
@@ -199,7 +207,11 @@ fn compatible_annotations_remain_valid() {
         };
     ";
 
-    assert!(lint_hir(input).errors.is_empty(), "{}", test_lint_hir(input));
+    assert!(
+        lint_hir(input).errors.is_empty(),
+        "{}",
+        test_lint_hir(input)
+    );
 }
 
 #[test]

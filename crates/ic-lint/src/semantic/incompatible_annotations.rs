@@ -68,8 +68,7 @@ impl IncompatibleAnnotations<'_> {
                         .message(format!("incompatible annotations on {item_type}")),
                 )
                 .label(
-                    Label::new(first.ident.span)
-                        .message(format!("@{first_name} annotation here")),
+                    Label::new(first.ident.span).message(format!("@{first_name} annotation here")),
                 )
                 .label(
                     Label::new(second.ident.span)

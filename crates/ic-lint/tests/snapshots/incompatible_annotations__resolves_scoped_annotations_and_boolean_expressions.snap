@@ -1,0 +1,19 @@
+---
+source: crates/ic-lint/tests/incompatible_annotations.rs
+expression: test_lint_hir(source)
+---
+⨯ incompatible-annotations: member `value` cannot be both @optional and @external
+  @ test.idl:7:14
+
+ 3 │ module Types {
+ 4 │     struct Data {
+ 5 │         @::optional(value = ENABLED)
+   │          ˆˆˆˆˆˆˆˆˆˆ @optional annotation here
+ 6 │         @::external(value = ENABLED)
+   │          ˆˆˆˆˆˆˆˆˆˆ @external annotation here
+ 7 │         long value;
+   │              ˆˆˆˆˆ incompatible annotations on member
+ 8 │     };
+ 9 │ };
+
+  ? remove either @optional or @external

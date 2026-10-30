@@ -1,0 +1,103 @@
+---
+source: crates/ic-lint/tests/incompatible_annotations.rs
+expression: test_lint_hir(source)
+---
+⨯ incompatible-annotations: typedef `ExternalAlias` cannot be both @optional and @external
+  @ test.idl:3:14
+
+ 2 │ @optional @external
+   │  ˆˆˆˆˆˆˆˆ  ˆˆˆˆˆˆˆˆ @external annotation here
+   │  └─ @optional annotation here
+ 3 │ typedef long ExternalAlias;
+   │              ˆˆˆˆˆˆˆˆˆˆˆˆˆ incompatible annotations on typedef
+ 4 │ 
+ 5 │ @shared @optional
+
+  ? remove either @optional or @external
+
+⨯ incompatible-annotations: typedef `SharedAlias` cannot be both @optional and @shared
+  @ test.idl:6:14
+
+ 3 │ typedef long ExternalAlias;
+ 4 │ 
+ 5 │ @shared @optional
+   │  ˆˆˆˆˆˆ  ˆˆˆˆˆˆˆˆ @optional annotation here
+   │  └─ @shared annotation here
+ 6 │ typedef long SharedAlias;
+   │              ˆˆˆˆˆˆˆˆˆˆˆ incompatible annotations on typedef
+ 7 │ 
+ 8 │ @optional @default(0)
+
+  ? remove either @optional or @shared
+
+⨯ incompatible-annotations: typedef `DefaultAlias` cannot be both @optional and @default
+  @ test.idl:9:14
+
+  6 │ typedef long SharedAlias;
+  7 │ 
+  8 │ @optional @default(0)
+    │  ˆˆˆˆˆˆˆˆ  ˆˆˆˆˆˆˆ @default annotation here
+    │  └─ @optional annotation here
+  9 │ typedef long DefaultAlias;
+    │              ˆˆˆˆˆˆˆˆˆˆˆˆ incompatible annotations on typedef
+ 10 │ 
+ 11 │ exception Failure {
+
+  ? remove either @optional or @default
+
+⨯ incompatible-annotations: member `code` cannot be both @optional and @shared
+  @ test.idl:12:28
+
+ 11 │ exception Failure {
+ 12 │     @optional @shared long code;
+    │      ˆˆˆˆˆˆˆˆ  ˆˆˆˆˆˆ      ˆˆˆˆ incompatible annotations on member
+    │      │         └─ @shared annotation here
+    │      └─ @optional annotation here
+ 13 │ };
+
+  ? remove either @optional or @shared
+
+⨯ incompatible-annotations: member `data` cannot be both @optional and @external
+  @ test.idl:16:37
+
+ 15 │ valuetype Value {
+ 16 │     @optional @external public long data;
+    │      ˆˆˆˆˆˆˆˆ  ˆˆˆˆˆˆˆˆ             ˆˆˆˆ incompatible annotations on member
+    │      │         └─ @external annotation here
+    │      └─ @optional annotation here
+ 17 │ };
+
+  ? remove either @optional or @external
+
+⨯ incompatible-annotations: annotation member `value` cannot be both @optional and @external
+  @ test.idl:20:30
+
+ 19 │ @annotation Settings {
+ 20 │     @optional @external long value;
+    │      ˆˆˆˆˆˆˆˆ  ˆˆˆˆˆˆˆˆ      ˆˆˆˆˆ incompatible annotations on annotation member
+    │      │         └─ @external annotation here
+    │      └─ @optional annotation here
+ 21 │ };
+
+  ? remove either @optional or @external
+
+! deprecated-ann: use of deprecated annotation `@shared`
+  @ test.idl:5:2
+
+ 3 │ typedef long ExternalAlias;
+ 4 │ 
+ 5 │ @shared @optional
+   │  ˆˆˆˆˆˆ deprecated annotation used here
+ 6 │ typedef long SharedAlias;
+
+  ? use `@external` instead
+
+! deprecated-ann: use of deprecated annotation `@shared`
+  @ test.idl:12:16
+
+ 11 │ exception Failure {
+ 12 │     @optional @shared long code;
+    │                ˆˆˆˆˆˆ deprecated annotation used here
+ 13 │ };
+
+  ? use `@external` instead

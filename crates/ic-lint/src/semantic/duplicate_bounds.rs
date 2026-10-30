@@ -27,8 +27,9 @@
 
 use ic_diagnostic::{Label, error_span};
 use ic_hir::ResolvedGraph;
-use ic_hir::hir::{Ann, DefFlags, DefKind, Member, TyKind, Variant};
+use ic_hir::hir::{Ann, DefKind, Member, TyKind, Variant};
 use ic_hir::visit::Visitor;
+use ic_hir_analysis::annotation::builtin_annotation;
 
 use crate::{Category, Lint, LintCtx};
 
@@ -69,24 +70,11 @@ impl<'a> BoundAnnotations<'a> {
     }
 
     fn collect(ctx: &ic_hir::Context, annotations: &'a [Ann]) -> Self {
-        let mut result = Self::default();
-        for annotation in annotations {
-            let Some(def_id) = annotation.def_id else {
-                continue;
-            };
-            let def = ctx.base_def_of(def_id);
-            if !def.flags.contains(DefFlags::IS_BUILTIN) {
-                continue;
-            }
-
-            match def.ident.name.as_str() {
-                "min" => result.min = Some(annotation),
-                "max" => result.max = Some(annotation),
-                "range" => result.range = Some(annotation),
-                _ => {}
-            }
+        Self {
+            min: builtin_annotation(ctx, annotations, "min"),
+            max: builtin_annotation(ctx, annotations, "max"),
+            range: builtin_annotation(ctx, annotations, "range"),
         }
-        result
     }
 }
 

@@ -1,0 +1,67 @@
+---
+source: crates/ic-lint/tests/incompatible_annotations.rs
+expression: test_lint_hir(source)
+---
+⨯ incompatible-annotations: union discriminator `Data` cannot be both @non_serialized and @key
+  @ test.idl:2:7
+
+ 2 │ union Data switch (@key @non_serialized long) {
+   │       ˆˆˆˆ          ˆˆˆ  ˆˆˆˆˆˆˆˆˆˆˆˆˆˆ @non_serialized annotation here
+   │       │             └─ @key annotation here
+   │       └─ incompatible annotations on union discriminator
+ 3 │     case 0: @external @optional long a;
+ 4 │     case 1: @optional @shared long b;
+
+  ? remove either @non_serialized or @key
+
+⨯ incompatible-annotations: union variant `a` cannot be both @optional and @external
+  @ test.idl:3:38
+
+ 2 │ union Data switch (@key @non_serialized long) {
+ 3 │     case 0: @external @optional long a;
+   │              ˆˆˆˆˆˆˆˆ  ˆˆˆˆˆˆˆˆ      ˆ incompatible annotations on union variant
+   │              │         └─ @optional annotation here
+   │              └─ @external annotation here
+ 4 │     case 1: @optional @shared long b;
+ 5 │     default: @default(0) @optional long c;
+
+  ? remove either @optional or @external
+
+⨯ incompatible-annotations: union variant `b` cannot be both @optional and @shared
+  @ test.idl:4:36
+
+ 2 │ union Data switch (@key @non_serialized long) {
+ 3 │     case 0: @external @optional long a;
+ 4 │     case 1: @optional @shared long b;
+   │              ˆˆˆˆˆˆˆˆ  ˆˆˆˆˆˆ      ˆ incompatible annotations on union variant
+   │              │         └─ @shared annotation here
+   │              └─ @optional annotation here
+ 5 │     default: @default(0) @optional long c;
+ 6 │ };
+
+  ? remove either @optional or @shared
+
+⨯ incompatible-annotations: union variant `c` cannot be both @optional and @default
+  @ test.idl:5:41
+
+ 3 │     case 0: @external @optional long a;
+ 4 │     case 1: @optional @shared long b;
+ 5 │     default: @default(0) @optional long c;
+   │               ˆˆˆˆˆˆˆ     ˆˆˆˆˆˆˆˆ      ˆ incompatible annotations on union variant
+   │               │           └─ @optional annotation here
+   │               └─ @default annotation here
+ 6 │ };
+
+  ? remove either @optional or @default
+
+! deprecated-ann: use of deprecated annotation `@shared`
+  @ test.idl:4:24
+
+ 2 │ union Data switch (@key @non_serialized long) {
+ 3 │     case 0: @external @optional long a;
+ 4 │     case 1: @optional @shared long b;
+   │                        ˆˆˆˆˆˆ deprecated annotation used here
+ 5 │     default: @default(0) @optional long c;
+ 6 │ };
+
+  ? use `@external` instead

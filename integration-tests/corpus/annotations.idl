@@ -85,7 +85,7 @@ module annotation_types {
     struct OptionalTypes {
         @optional(TRUE) boolean maybe_bool;
         @optional char maybe_char;
-        @optional @default(1.5) double maybe_double;
+        @optional double maybe_double;
         @optional fixed<10, 2> maybe_fixed;
         @optional OptionalKind maybe_kind;
         @optional OptionalFlags maybe_flags;

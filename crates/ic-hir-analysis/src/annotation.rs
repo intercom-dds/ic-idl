@@ -319,7 +319,8 @@ fn bool_annotation(ctx: &Context, annotations: &[Ann], name: &str) -> Option<boo
     Some(annotation_enabled(ctx, annotation))
 }
 
-fn enabled_bool_annotation<'a>(
+#[must_use]
+pub fn enabled_bool_annotation<'a>(
     ctx: &Context,
     annotations: &'a [Ann],
     name: &str,

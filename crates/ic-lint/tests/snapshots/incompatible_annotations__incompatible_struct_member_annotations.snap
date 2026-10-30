@@ -1,0 +1,69 @@
+---
+source: crates/ic-lint/tests/incompatible_annotations.rs
+expression: test_lint_hir(source)
+---
+⨯ incompatible-annotations: member `a` cannot be both @optional and @external
+  @ test.idl:3:30
+
+ 2 │ struct Data {
+ 3 │     @optional @external long a;
+   │      ˆˆˆˆˆˆˆˆ  ˆˆˆˆˆˆˆˆ      ˆ incompatible annotations on member
+   │      │         └─ @external annotation here
+   │      └─ @optional annotation here
+ 4 │     @shared @optional long b;
+ 5 │     @optional @default(0) long c;
+
+  ? remove either @optional or @external
+
+⨯ incompatible-annotations: member `b` cannot be both @optional and @shared
+  @ test.idl:4:28
+
+ 2 │ struct Data {
+ 3 │     @optional @external long a;
+ 4 │     @shared @optional long b;
+   │      ˆˆˆˆˆˆ  ˆˆˆˆˆˆˆˆ      ˆ incompatible annotations on member
+   │      │       └─ @optional annotation here
+   │      └─ @shared annotation here
+ 5 │     @optional @default(0) long c;
+ 6 │     @non_serialized @key long d;
+
+  ? remove either @optional or @shared
+
+⨯ incompatible-annotations: member `c` cannot be both @optional and @default
+  @ test.idl:5:32
+
+ 3 │     @optional @external long a;
+ 4 │     @shared @optional long b;
+ 5 │     @optional @default(0) long c;
+   │      ˆˆˆˆˆˆˆˆ  ˆˆˆˆˆˆˆ         ˆ incompatible annotations on member
+   │      │         └─ @default annotation here
+   │      └─ @optional annotation here
+ 6 │     @non_serialized @key long d;
+ 7 │ };
+
+  ? remove either @optional or @default
+
+⨯ incompatible-annotations: member `d` cannot be both @non_serialized and @key
+  @ test.idl:6:31
+
+ 4 │     @shared @optional long b;
+ 5 │     @optional @default(0) long c;
+ 6 │     @non_serialized @key long d;
+   │      ˆˆˆˆˆˆˆˆˆˆˆˆˆˆ  ˆˆˆ      ˆ incompatible annotations on member
+   │      │               └─ @key annotation here
+   │      └─ @non_serialized annotation here
+ 7 │ };
+
+  ? remove either @non_serialized or @key
+
+! deprecated-ann: use of deprecated annotation `@shared`
+  @ test.idl:4:6
+
+ 2 │ struct Data {
+ 3 │     @optional @external long a;
+ 4 │     @shared @optional long b;
+   │      ˆˆˆˆˆˆ deprecated annotation used here
+ 5 │     @optional @default(0) long c;
+ 6 │     @non_serialized @key long d;
+
+  ? use `@external` instead

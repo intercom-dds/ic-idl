@@ -1,0 +1,32 @@
+---
+source: crates/ic-lint/tests/incompatible_annotations.rs
+expression: test_lint_hir(source)
+---
+⨯ incompatible-annotations: type `Data` cannot be both @nested and @topic
+  @ test.idl:4:12
+
+ 2 │ module Types {
+ 3 │     @nested @topic
+   │      ˆˆˆˆˆˆ  ˆˆˆˆˆ @topic annotation here
+   │      └─ @nested annotation here
+ 4 │     struct Data {
+   │            ˆˆˆˆ incompatible annotations on type
+ 5 │         long value;
+ 6 │     };
+
+  ? remove either @nested or @topic
+
+⨯ incompatible-annotations: type `Choice` cannot be both @nested and @topic
+  @ test.idl:9:11
+
+  6 │ };
+  7 │ 
+  8 │ @topic @nested
+    │  ˆˆˆˆˆ  ˆˆˆˆˆˆ @nested annotation here
+    │  └─ @topic annotation here
+  9 │ union Choice switch (long) {
+    │       ˆˆˆˆˆˆ incompatible annotations on type
+ 10 │     default: long value;
+ 11 │ };
+
+  ? remove either @nested or @topic

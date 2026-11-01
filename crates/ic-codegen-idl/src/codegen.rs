@@ -319,10 +319,8 @@ impl<'a> IdlGen<'a> {
 
     fn emit_module(&self, w: &mut Twine, def: &Def, module: &ModuleTy) {
         w!(w, "module ", def.ident.name, " {\n");
-        for &nested_id in &module.definitions {
-            self.emit_definition(w, nested_id);
-        }
-        w!(w, "}; // module ", def.ident.name, "\n\n");
+        self.emit_definitions(w, &module.definitions);
+        w!(w, "}; // module ", def.ident.name, "\n");
     }
 
     fn emit_annotations(&self, w: &mut Twine, annotations: &[Ann], relative_to_def_id: DefId) {
@@ -583,7 +581,7 @@ impl<'a> IdlGen<'a> {
             let array_bounds = format_member_name(&member.ty);
             w!(w, ty_str, " ", member.ident.name, array_bounds, ";");
         }
-        w!(w, "\n};\n\n");
+        w!(w, "\n};\n");
     }
 
     fn emit_alias(&self, w: &mut Twine, def: &Def, alias: &AliasTy) {
@@ -646,7 +644,7 @@ impl<'a> IdlGen<'a> {
             }
             w!(w, ";");
         }
-        w!(w, "\n};\n\n");
+        w!(w, "\n};\n");
     }
 
     fn emit_decl(w: &mut Twine, def: &Def, decl: Decl) {
@@ -656,6 +654,23 @@ impl<'a> IdlGen<'a> {
             Decl::Interface => w!(w, "interface ", def.ident.name, ";\n"),
             Decl::Valuetype => w!(w, "valuetype ", def.ident.name, ";\n"),
             Decl::Native => w!(w, "native ", def.ident.name, ";\n"),
+        }
+    }
+
+    fn emit_definitions(&self, w: &mut Twine, definitions: &[DefId]) {
+        for (index, &def_id) in definitions.iter().enumerate() {
+            if index > 0 {
+                let previous = self.hir.context.type_of(definitions[index - 1]);
+                let current = self.hir.context.type_of(def_id);
+                if !matches!(
+                    (&previous.kind, &current.kind),
+                    (DefKind::Const(_), DefKind::Const(_))
+                ) {
+                    w!(w, "\n");
+                }
+            }
+
+            self.emit_definition(w, def_id);
         }
     }
 
@@ -741,9 +756,7 @@ impl<'a> IdlGen<'a> {
 
             w!(w, "\n");
 
-            for def_id in def_ids {
-                self.emit_definition(&mut w, def_id);
-            }
+            self.emit_definitions(&mut w, &def_ids);
 
             if self.options.idl_legacy {
                 w!(w, "\n#endif\n");

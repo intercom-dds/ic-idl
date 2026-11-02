@@ -246,3 +246,33 @@ fn test_undefined_forward_declarations_with_native() {
         "Should NOT have error about NativeType"
     );
 }
+
+#[test]
+fn test_forward_declared_struct_as_member_type_errors() {
+    let input = r"
+        struct Foo;
+
+        struct Bar {
+            Foo field;
+        };
+
+        struct Foo {
+            int32 value;
+        };
+    ";
+
+    let (result, _, _) = common::parse_and_resolve(input);
+
+    assert!(
+        !result.errors.is_empty(),
+        "Expected error for forward-declared struct member type"
+    );
+
+    let error_messages: Vec<_> = result.errors.iter().map(|e| format!("{e}")).collect();
+    assert!(
+        error_messages
+            .iter()
+            .any(|msg| msg.contains("forward-declared struct `Foo`")),
+        "Expected forward-declared struct member diagnostic, got: {error_messages:?}"
+    );
+}

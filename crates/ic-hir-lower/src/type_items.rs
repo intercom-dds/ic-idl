@@ -462,6 +462,9 @@ impl<'ctx> TypeItemProcessor<'ctx> {
             for decl in &field.declarators {
                 let (ident, member_ty) =
                     resolve_declarator(decl, ty.clone(), self.ctx, self.current_scope);
+                if !self.validate_member_type(&member_ty, "member type") {
+                    continue;
+                }
 
                 let annotations = convert_annotations_for(
                     self.ctx,
@@ -479,6 +482,32 @@ impl<'ctx> TypeItemProcessor<'ctx> {
         }
 
         members
+    }
+
+    fn validate_member_type(&mut self, ty: &Ty, use_site: &str) -> bool {
+        let Some(def_id) = ty.as_adt() else {
+            return true;
+        };
+
+        let def = self.ctx.context.definitions.get(def_id);
+        if matches!(def.kind, DefKind::Decl(Decl::Struct)) {
+            self.ctx.diagnostics.errors.push(
+                ic_diagnostic::error_span(
+                    format!(
+                        "cannot use forward-declared struct `{}` as {use_site}",
+                        def.ident.name
+                    ),
+                    ic_diagnostic::Label::new(ty.span).message("incomplete struct type"),
+                )
+                .label(
+                    ic_diagnostic::Label::new(def.ident.span)
+                        .message("struct is only forward declared here"),
+                ),
+            );
+            return false;
+        }
+
+        true
     }
 
     /// Process union variants.

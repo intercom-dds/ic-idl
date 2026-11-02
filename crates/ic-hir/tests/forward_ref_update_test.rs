@@ -40,7 +40,7 @@ fn test_forward_declaration_reference_update() {
 
         // Use A in B (should initially point to forward declaration)
         struct B {
-            A field;
+            sequence<A> field;
         };
 
         // Define A
@@ -50,7 +50,7 @@ fn test_forward_declaration_reference_update() {
 
         // Use A in C (should point to definition directly)
         struct C {
-            A field;
+            sequence<A> field;
         };
     ";
 
@@ -92,17 +92,21 @@ fn test_forward_declaration_reference_update() {
     if let DefKind::Struct(struct_ty) = &b_def.kind {
         assert_eq!(struct_ty.members.len(), 1);
         let field_ty = &struct_ty.members[0].ty;
-        if let TyKind::Adt(type_id) = &field_ty.kind {
-            assert_eq!(
-                *type_id, definition_a,
-                "B's field should point to A's definition, not forward declaration"
-            );
-            assert_ne!(
-                *type_id, forward_decl_a,
-                "B's field should not point to A's forward declaration"
-            );
+        if let TyKind::Sequence { ty, .. } = &field_ty.kind {
+            if let TyKind::Adt(type_id) = &ty.kind {
+                assert_eq!(
+                    *type_id, definition_a,
+                    "B's field should point to A's definition, not forward declaration"
+                );
+                assert_ne!(
+                    *type_id, forward_decl_a,
+                    "B's field should not point to A's forward declaration"
+                );
+            } else {
+                panic!("Expected ADT sequence element type for B's field");
+            }
         } else {
-            panic!("Expected ADT type for B's field");
+            panic!("Expected sequence type for B's field");
         }
     } else {
         panic!("Expected struct B");
@@ -113,13 +117,17 @@ fn test_forward_declaration_reference_update() {
     if let DefKind::Struct(struct_ty) = &c_def.kind {
         assert_eq!(struct_ty.members.len(), 1);
         let field_ty = &struct_ty.members[0].ty;
-        if let TyKind::Adt(type_id) = &field_ty.kind {
-            assert_eq!(
-                *type_id, definition_a,
-                "C's field should point to A's definition"
-            );
+        if let TyKind::Sequence { ty, .. } = &field_ty.kind {
+            if let TyKind::Adt(type_id) = &ty.kind {
+                assert_eq!(
+                    *type_id, definition_a,
+                    "C's field should point to A's definition"
+                );
+            } else {
+                panic!("Expected ADT sequence element type for C's field");
+            }
         } else {
-            panic!("Expected ADT type for C's field");
+            panic!("Expected sequence type for C's field");
         }
     } else {
         panic!("Expected struct C");
@@ -136,7 +144,7 @@ fn test_multiple_forward_declarations() {
 
         // Use X
         struct Y {
-            X field;
+            sequence<X> field;
         };
 
         // Another forward declaration
@@ -149,7 +157,7 @@ fn test_multiple_forward_declarations() {
 
         // Use X again
         struct Z {
-            X field;
+            sequence<X> field;
         };
     ";
 
@@ -202,13 +210,17 @@ fn test_multiple_forward_declarations() {
         let def = result.context.definitions.get(struct_id);
         if let DefKind::Struct(struct_ty) = &def.kind {
             let field_ty = &struct_ty.members[0].ty;
-            if let TyKind::Adt(type_id) = &field_ty.kind {
-                assert_eq!(
-                    *type_id, definition_x,
-                    "{name}'s field should point to X's definition"
-                );
+            if let TyKind::Sequence { ty, .. } = &field_ty.kind {
+                if let TyKind::Adt(type_id) = &ty.kind {
+                    assert_eq!(
+                        *type_id, definition_x,
+                        "{name}'s field should point to X's definition"
+                    );
+                } else {
+                    panic!("Expected ADT sequence element type for {name}'s field");
+                }
             } else {
-                panic!("Expected ADT type for {name}'s field");
+                panic!("Expected sequence type for {name}'s field");
             }
         } else {
             panic!("Expected struct {name}");

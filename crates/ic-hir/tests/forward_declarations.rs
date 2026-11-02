@@ -152,7 +152,7 @@ fn test_mismatched_forward_declaration_types() {
 
 #[test]
 fn test_forward_declaration_with_usage() {
-    // Test that forward declarations can be used before being fully defined
+    // Test that forward-declared structs cannot be used as direct member types
     let input = r"
         struct B;
         
@@ -165,7 +165,8 @@ fn test_forward_declaration_with_usage() {
         };
     ";
 
-    let _hir = common::parse_and_resolve_successfully(input);
+    let diagnostics = common::parse_and_expect_errors(input);
+    assert!(diagnostics.contains("cannot use forward-declared struct `B` as member type"));
 }
 
 #[test]

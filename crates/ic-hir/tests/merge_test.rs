@@ -1073,6 +1073,80 @@ fn test_merge_preserves_decls_across_files() {
 }
 
 #[test]
+fn test_merge_annotation_redefinition_in_same_file() {
+    let input = r"
+        @annotation foo { long v default 1; };
+        @annotation foo { long v default 1; };
+
+        @foo
+        struct TestStruct {};
+    ";
+
+    let (graph, _, _) = common::parse_and_resolve(input);
+    assert!(graph.errors.is_empty());
+
+    let merged = merge_hir_trees(&[graph]);
+    assert!(merged.errors.is_empty());
+
+    let (foo_id, foo_def) = find_def(&merged.context, "foo");
+    assert!(matches!(foo_def.kind, DefKind::Annotation(_)));
+    assert_eq!(
+        merged
+            .context
+            .definitions
+            .iter()
+            .filter(|(_, def)| def.ident.name == "foo")
+            .count(),
+        1,
+    );
+
+    let (_, struct_def) = find_def(&merged.context, "TestStruct");
+    assert_eq!(struct_def.annotations[0].def_id, Some(foo_id));
+    assert_eq!(struct_def.annotations[0].args[0].value, Numeric::Int32(1));
+}
+
+#[test]
+fn test_merge_annotation_redefinitions_in_module() {
+    let input = r"
+        module M {
+            @annotation foo {};
+            @annotation foo {};
+            @annotation foo {};
+
+            @foo
+            struct TestStruct {};
+        };
+    ";
+
+    let (graph, _, _) = common::parse_and_resolve(input);
+    assert!(graph.errors.is_empty());
+
+    let merged = merge_hir_trees(&[graph]);
+    assert!(merged.errors.is_empty());
+
+    let (module_id, _) = find_def(&merged.context, "M");
+    let (foo_id, foo_def) = find_def(&merged.context, "foo");
+    assert_eq!(foo_def.parent, Some(module_id));
+
+    let module_scope = merged.context.scopes.find_scope_for_def(module_id).unwrap();
+    let foo_scope = merged.context.scopes.find_scope_for_def(foo_id).unwrap();
+    assert_eq!(
+        merged.context.scopes.get_scope(foo_scope).parent,
+        Some(module_scope),
+    );
+    assert_eq!(
+        merged
+            .context
+            .scopes
+            .resolve_annotation(module_scope, "foo"),
+        Some(foo_id),
+    );
+
+    let (_, struct_def) = find_def(&merged.context, "TestStruct");
+    assert_eq!(struct_def.annotations[0].def_id, Some(foo_id));
+}
+
+#[test]
 fn test_merge_lenient_annotation_dedup_across_files() {
     let input1 = "@annotation vendor {\n    long value default 0;\n};\n";
     let input2 = "\n@annotation vendor {\n    long value default 0;\n};\n";

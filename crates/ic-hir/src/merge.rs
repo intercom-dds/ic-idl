@@ -335,7 +335,12 @@ impl HirMerger {
                 .iter()
                 .find(|(_, id)| **id == old_scope_id)
                 .map(|(name, _)| name.to_string())
-                .expect("scope is registered in its parent's children");
+                .or_else(|| {
+                    old_scope
+                        .def_id
+                        .map(|id| Self::table_name(old_context.definitions.get(id)))
+                })
+                .expect("scope is named or has an owning definition");
 
             let merged_scope = match self
                 .new_context

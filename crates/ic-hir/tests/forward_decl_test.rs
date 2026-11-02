@@ -162,6 +162,41 @@ fn test_interface_forward_declaration() {
 }
 
 #[test]
+fn test_local_interface_forward_declaration_requires_local_definition() {
+    let input = r"
+        local interface IFoo;
+        interface IFoo {
+            void doSomething();
+        };
+    ";
+
+    let (result, _, _) = common::parse_and_resolve(input);
+
+    assert!(
+        !result.errors.is_empty(),
+        "Expected an error for mismatched interface locality"
+    );
+}
+
+#[test]
+fn test_local_interface_forward_declaration_accepts_local_definition() {
+    let input = r"
+        local interface IFoo;
+        local interface IFoo {
+            void doSomething();
+        };
+    ";
+
+    let (result, _, _) = common::parse_and_resolve(input);
+
+    assert!(
+        result.errors.is_empty(),
+        "Unexpected errors: {:?}",
+        result.errors
+    );
+}
+
+#[test]
 fn test_valuetype_forward_declaration() {
     let input = r"
         valuetype MyValueType;

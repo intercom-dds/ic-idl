@@ -50,6 +50,7 @@ pub enum DefKindTag {
     Struct,
     Union,
     Interface,
+    LocalInterface,
     Valuetype,
     Native,
     Enum,
@@ -65,7 +66,7 @@ pub enum DefKindTag {
 pub struct DefinitionRegistry {
     /// Map (scope, case-folded name) -> forward declaration info.
     /// Multiple forward decls of different types are tracked here
-    forward_decls: HashMap<(ScopeId, NameKey), Vec<(Decl, DefId)>>,
+    forward_decls: HashMap<(ScopeId, NameKey), Vec<(Decl, DefId, bool)>>,
 
     /// Map (scope, case-folded name) -> definition `DefId`.
     /// Only one definition per name is allowed in a scope
@@ -95,6 +96,7 @@ impl DefinitionRegistry {
         name: &Ident,
         kind: Decl,
         def_id: DefId,
+        is_local: bool,
         diagnostics: &mut Diagnostics,
         context: &ic_hir::Context,
     ) -> Option<DefId> {
@@ -102,19 +104,19 @@ impl DefinitionRegistry {
         let forward_decls = self.forward_decls.entry(key.clone()).or_default();
 
         // Check if we already have a forward declaration of this type
-        for (existing_kind, _existing_id) in forward_decls.iter() {
-            if *existing_kind == kind {
-                forward_decls.push((kind, def_id));
+        for (existing_kind, _existing_id, existing_is_local) in forward_decls.iter() {
+            if *existing_kind == kind && *existing_is_local == is_local {
+                forward_decls.push((kind, def_id, is_local));
                 return Some(def_id);
             }
         }
 
         // Check if there's a forward declaration with a different type
         if !forward_decls.is_empty() {
-            let (existing_kind, existing_id) = &forward_decls[0];
+            let (existing_kind, existing_id, existing_is_local) = &forward_decls[0];
             let existing_def = context.definitions.get(*existing_id);
-            let existing_type_str = decl_type_str(*existing_kind);
-            let new_type_str = decl_type_str(kind);
+            let existing_type_str = decl_type_str(*existing_kind, *existing_is_local);
+            let new_type_str = decl_type_str(kind, is_local);
 
             diagnostics.errors.push(
                 error_span(
@@ -131,11 +133,11 @@ impl DefinitionRegistry {
                         .message(format!("forward declared as {new_type_str} here")),
                 ),
             );
-            forward_decls.push((kind, def_id));
+            forward_decls.push((kind, def_id, is_local));
             return None;
         }
 
-        forward_decls.push((kind, def_id));
+        forward_decls.push((kind, def_id, is_local));
         Some(def_id)
     }
 
@@ -173,11 +175,15 @@ impl DefinitionRegistry {
 
         // Check if there's a forward declaration with a mismatched type
         if let Some(forward_decls) = self.forward_decls.get(&key) {
-            for (decl_kind, forward_id) in forward_decls {
-                let expected_def_kind = def_kind_tag_from_decl(*decl_kind);
+            for (decl_kind, forward_id, is_local) in forward_decls {
+                let expected_def_kind = if *is_local && *decl_kind == Decl::Interface {
+                    DefKindTag::LocalInterface
+                } else {
+                    def_kind_tag_from_decl(*decl_kind)
+                };
                 if expected_def_kind != kind {
                     let forward_def = context.definitions.get(*forward_id);
-                    let decl_type_str = decl_type_str(*decl_kind);
+                    let decl_type_str = decl_type_str(*decl_kind, *is_local);
                     let def_type_str = def_kind_tag_str(kind);
 
                     diagnostics.errors.push(
@@ -210,7 +216,7 @@ impl DefinitionRegistry {
         for ((scope, name), forward_decls) in &self.forward_decls {
             if let Some(&def_id) = self.definitions.get(&(*scope, name.clone())) {
                 // Map all forward declarations to the definition
-                for (_, decl_id) in forward_decls {
+                for (_, decl_id, _) in forward_decls {
                     mapping.insert(*decl_id, def_id);
                 }
             }
@@ -224,6 +230,7 @@ fn def_kind_from_def(def: &ic_hir::hir::Def) -> DefKindTag {
     match &def.kind {
         DefKind::Struct(_) | DefKind::Except(_) => DefKindTag::Struct,
         DefKind::Union(_) => DefKindTag::Union,
+        DefKind::Interface(interface) if interface.is_local => DefKindTag::LocalInterface,
         DefKind::Interface(_) => DefKindTag::Interface,
         DefKind::Valuetype(_) => DefKindTag::Valuetype,
         DefKind::Decl(decl) => def_kind_tag_from_decl(*decl),
@@ -247,10 +254,11 @@ fn def_kind_tag_from_decl(decl: Decl) -> DefKindTag {
     }
 }
 
-fn decl_type_str(decl: Decl) -> &'static str {
+fn decl_type_str(decl: Decl, is_local: bool) -> &'static str {
     match decl {
         Decl::Struct => "struct",
         Decl::Union => "union",
+        Decl::Interface if is_local => "local interface",
         Decl::Interface => "interface",
         Decl::Valuetype => "valuetype",
         Decl::Native => "native",
@@ -262,6 +270,7 @@ fn def_kind_tag_str(kind: DefKindTag) -> &'static str {
         DefKindTag::Struct => "struct",
         DefKindTag::Union => "union",
         DefKindTag::Interface => "interface",
+        DefKindTag::LocalInterface => "local interface",
         DefKindTag::Valuetype => "valuetype",
         DefKindTag::Native => "native",
         DefKindTag::Enum => "enum",

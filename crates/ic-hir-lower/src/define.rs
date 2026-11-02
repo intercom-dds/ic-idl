@@ -129,6 +129,7 @@ pub fn declare_forward(
     scope: ScopeId,
     ident: &Ident,
     decl_kind: Decl,
+    is_local: bool,
 ) -> DefId {
     let def_id = ctx.context.definitions.alloc_with_id(|id| Def {
         id,
@@ -145,6 +146,7 @@ pub fn declare_forward(
         ident,
         decl_kind,
         def_id,
+        is_local,
         &mut ctx.diagnostics,
         &ctx.context,
     ) && existing_id != def_id

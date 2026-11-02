@@ -141,6 +141,7 @@ impl<'ctx> TypeItemProcessor<'ctx> {
 
     /// Process an interface definition.
     pub fn process_interface(&mut self, i: &InterfaceDef) -> DefId {
+        let is_local = matches!(i.kind, ic_syntax::InterfaceKind::Local(_));
         let mut parents = Vec::new();
         let mut definitions = Vec::new();
 
@@ -183,13 +184,17 @@ impl<'ctx> TypeItemProcessor<'ctx> {
             &i.name,
             i.meta.span,
             &i.meta.annotations,
-            DefKindTag::Interface,
+            if is_local {
+                DefKindTag::LocalInterface
+            } else {
+                DefKindTag::Interface
+            },
             |_| {
                 DefKind::Interface(InterfaceTy {
                     parents,
                     prototypes: Vec::new(),
                     attributes: Vec::new(),
-                    is_local: matches!(i.kind, ic_syntax::InterfaceKind::Local(_)),
+                    is_local,
                     definitions: Vec::new(),
                 })
             },
@@ -442,11 +447,20 @@ impl<'ctx> TypeItemProcessor<'ctx> {
             ic_syntax::DeclKind::Native => Decl::Native,
         };
 
-        self.create_forward_declaration(&decl.name, hir_decl_kind)
+        self.create_forward_declaration(
+            &decl.name,
+            hir_decl_kind,
+            matches!(decl.kind, ic_syntax::DeclKind::Interface) && decl.local.is_some(),
+        )
     }
 
-    fn create_forward_declaration(&mut self, ident: &ic_syntax::Ident, kind: Decl) -> DefId {
-        define::declare_forward(self.ctx, self.current_scope, ident, kind)
+    fn create_forward_declaration(
+        &mut self,
+        ident: &ic_syntax::Ident,
+        kind: Decl,
+        is_local: bool,
+    ) -> DefId {
+        define::declare_forward(self.ctx, self.current_scope, ident, kind, is_local)
     }
 
     /// Process members.

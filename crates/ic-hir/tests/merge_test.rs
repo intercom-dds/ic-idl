@@ -1157,3 +1157,22 @@ fn test_merge_remaps_annotations_on_nested_hir_nodes() {
     assert_marker_annotation(&state.prototypes[0].annotations, marker_id, item_id);
     assert_marker_annotation(&state.attributes[0].annotations, marker_id, item_id);
 }
+
+#[test]
+fn test_builtin_ext_annotation_redeclared_with_changed_type_rejected() {
+    let builtins = include_str!("../../ic-idl/idl/annotations.idl");
+    let user = r"
+        module ext {
+            @annotation min_length {
+                long value;
+            };
+        };
+    ";
+    let (_graph, _source_map, diagnostics) =
+        common::parse_with_custom_builtins(builtins, user, false);
+    assert!(
+        diagnostics.contains("inconsistent redefinition of annotation")
+            && diagnostics.contains("min_length"),
+        "Expected an inconsistent redefinition diagnostic for @ext::min_length, got: {diagnostics}"
+    );
+}

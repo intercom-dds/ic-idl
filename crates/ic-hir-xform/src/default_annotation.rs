@@ -72,7 +72,12 @@ impl DefaultAnnotation {
                     if def.flags.contains(DefFlags::IS_BUILTIN)
                         && matches!(
                             def.ident.name.as_str(),
-                            "default" | "min" | "max" | "range"
+                            "default"
+                                | "min"
+                                | "max"
+                                | "range"
+                                | "exclusive_minimum"
+                                | "exclusive_maximum"
                         ) =>
                 {
                     value_annotations.push(def_id);

@@ -394,12 +394,12 @@ fn test_mutually_recursive_with_float_not_ordered() {
 
         struct A {
             float value;
-            @external B other;
+            @external sequence<B> other;
         };
 
         struct B {
             long value;
-            @external A other;
+            @external sequence<A> other;
         };
     ";
 

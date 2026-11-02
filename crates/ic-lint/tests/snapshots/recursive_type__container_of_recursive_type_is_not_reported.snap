@@ -2,15 +2,12 @@
 source: crates/ic-lint/tests/recursive_type.rs
 expression: output
 ---
-⨯ recursive-type: type `A` has infinite size
-  @ test.idl:3:22
+⨯: cannot use forward-declared struct `B` as member type
+  @ test.idl:3:20
 
  2 │ struct B;
+   │        ˆ struct is only forward declared here
  3 │ struct A { B b; };
-   │              ˆ `A` contains `B` here
+   │            ˆ incomplete struct type
  4 │ struct B { A a; };
-   │              ˆ `B` contains `A` here
  5 │ struct Holder { A a; };
-
-  ? break the cycle with an indirection
-  * cycle: A -> B -> A

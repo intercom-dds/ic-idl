@@ -33,7 +33,7 @@ module forward_declarations {
 
     struct UsesForward {
         sequence<ForwardDeclared> fwd;
-        @external ForwardDeclared fwd2;
+        @external sequence<ForwardDeclared> fwd2;
     };
 
     struct ForwardDeclared {

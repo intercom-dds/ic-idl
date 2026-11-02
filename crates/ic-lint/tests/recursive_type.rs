@@ -229,9 +229,9 @@ fn mutual_recursion_three_types() {
 fn mutual_recursion_broken_by_sequence() {
     let report = common::lint_hir(
         r"
-        struct B;
-        struct A { B b; };
+        struct A;
         struct B { sequence<A> items; };
+        struct A { B b; };
         ",
     );
 

@@ -259,6 +259,31 @@ fn graph_input(mut hir: ResolvedGraph) -> ResolvedGraph {
     hir
 }
 
+fn replace_sequence_member_with_direct(
+    hir: &mut ResolvedGraph,
+    definition: &str,
+    member_name: &str,
+) {
+    let def_id = entries(hir)
+        .into_iter()
+        .find(|entry| entry.qualified() == definition)
+        .unwrap_or_else(|| panic!("missing definition {definition}"))
+        .def_id;
+    let DefKind::Struct(struct_ty) = &mut hir.context.definitions.get_mut(def_id).kind else {
+        panic!("expected struct {definition}");
+    };
+    let member = struct_ty
+        .members
+        .iter_mut()
+        .find(|member| member.ident.name == member_name)
+        .unwrap_or_else(|| panic!("missing member {definition}.{member_name}"));
+    let direct_ty = match &member.ty.kind {
+        TyKind::Sequence { ty, .. } => ty.as_ref().clone(),
+        _ => panic!("expected sequence member {definition}.{member_name}"),
+    };
+    member.ty = direct_ty;
+}
+
 fn assert_declare_before_use(hir: &ResolvedGraph) {
     let all = entries(hir);
 
@@ -462,12 +487,13 @@ fn all_direct_struct_cycle_marks_one_member_external() {
     let idl = r"
         module M {
             struct B;
-            struct A { B b; };
+            struct A { sequence<B> b; };
             struct B { A a; };
         };
     ";
 
-    let input = graph_input(common::parse_with_builtins(idl));
+    let mut input = graph_input(common::parse_with_builtins(idl));
+    replace_sequence_member_with_direct(&mut input, "M::A", "b");
     assert!(external_sites(&input).is_empty());
 
     let ordered = order::apply(input);
@@ -555,7 +581,7 @@ fn an_exception_member_is_never_marked_external() {
     let idl = r"
         module M {
             struct S;
-            exception E { S s; };
+            exception E { sequence<S> s; };
             struct S { E e; };
         };
     ";
@@ -687,13 +713,15 @@ fn every_direct_cycle_in_one_component_is_broken() {
         module M {
             struct B;
             struct C;
-            struct A { B b; C c; };
+            struct A { sequence<B> b; sequence<C> c; };
             struct B { A a; };
             struct C { A a; };
         };
     ";
 
-    let input = graph_input(common::parse_with_builtins(idl));
+    let mut input = graph_input(common::parse_with_builtins(idl));
+    replace_sequence_member_with_direct(&mut input, "M::A", "b");
+    replace_sequence_member_with_direct(&mut input, "M::A", "c");
     assert!(external_sites(&input).is_empty());
 
     let ordered = order::apply(input);
@@ -715,13 +743,14 @@ fn a_direct_cycle_beside_an_indirect_one_is_still_broken() {
         module M {
             struct B;
             struct C;
-            struct A { sequence<B> bs; C c; };
+            struct A { sequence<B> bs; sequence<C> c; };
             struct B { A a; };
             struct C { A a; };
         };
     ";
 
-    let input = graph_input(common::parse_with_builtins(idl));
+    let mut input = graph_input(common::parse_with_builtins(idl));
+    replace_sequence_member_with_direct(&mut input, "M::A", "c");
     assert!(external_sites(&input).is_empty());
 
     let ordered = order::apply(input);

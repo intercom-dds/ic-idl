@@ -1096,6 +1096,34 @@ fn test_merge_lenient_annotation_dedup_across_files() {
 }
 
 #[test]
+fn test_merge_annotation_redefinition_in_single_graph() {
+    let (graph, _, _) = common::parse_and_resolve(
+        r"
+        @annotation vendor {
+            long value default 0;
+        };
+
+        @annotation vendor {
+            long value default 0;
+        };
+        ",
+    );
+    assert!(graph.errors.is_empty());
+
+    let merged = merge_hir_trees(&[graph]);
+    assert!(merged.errors.is_empty());
+
+    let vendors = merged
+        .context
+        .definitions
+        .iter()
+        .filter(|(_, def)| def.ident.name == "vendor" && matches!(def.kind, DefKind::Annotation(_)))
+        .count();
+
+    assert_eq!(vendors, 1, "identical annotation redefinitions dedupe");
+}
+
+#[test]
 fn test_merge_remaps_annotations_on_nested_hir_nodes() {
     let (graph1, _, _) = common::parse_and_resolve(
         r"

@@ -496,11 +496,22 @@ impl<'ctx> ValueItemProcessor<'ctx> {
     }
 
     pub fn process_annotation(&mut self, a: &AnnotationDef) -> DefId {
-        let scope = self.ctx.context.scopes.create_child_scope(
-            self.current_scope,
-            format!("@{}", a.name.name),
-            None,
-        );
+        let scope_name = format!("@{}", a.name.name);
+        let scope = self
+            .ctx
+            .context
+            .scopes
+            .get_scope(self.current_scope)
+            .children
+            .get(&scope_name)
+            .copied()
+            .unwrap_or_else(|| {
+                self.ctx.context.scopes.create_child_scope(
+                    self.current_scope,
+                    scope_name.clone(),
+                    None,
+                )
+            });
 
         let annotations = convert_annotations(self.ctx, &a.meta.annotations, self.current_scope);
         let def_id = self.ctx.context.definitions.alloc_with_id(|id| Def {

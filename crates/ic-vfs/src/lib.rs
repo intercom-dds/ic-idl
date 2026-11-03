@@ -51,9 +51,9 @@
 
 use std::collections::BTreeMap;
 use std::collections::btree_map::Entry;
-use std::io;
 use std::path::{Path, PathBuf};
 use std::rc::Rc;
+use std::{fmt, io};
 
 use ic_alloc::arena::{Arena, Id};
 use tracing::{debug, trace};
@@ -66,6 +66,63 @@ pub const UTF8_BOM: char = '\u{feff}';
 
 /// An ID of a file in the [`SourceMap`].
 pub type FileId = Id<FileInfo>;
+
+#[derive(Copy, Clone, Debug)]
+pub struct InvalidUtf8 {
+    pub span: Span,
+    pub encoding: Encoding,
+}
+
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub enum Encoding {
+    Utf8,
+    Utf16,
+    Utf32,
+    Nul,
+}
+
+impl fmt::Display for InvalidUtf8 {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self.encoding {
+            Encoding::Utf8 => f.write_str("file contains invalid UTF-8"),
+            Encoding::Utf16 => f.write_str("file is UTF-16 encoded; only UTF-8 is supported"),
+            Encoding::Utf32 => f.write_str("file is UTF-32 encoded; only UTF-8 is supported"),
+            Encoding::Nul => f.write_str("file contains NUL bytes; it may be UTF-16 encoded"),
+        }
+    }
+}
+
+impl std::error::Error for InvalidUtf8 {}
+
+#[derive(Debug)]
+pub enum LoadError {
+    Io(io::Error),
+    InvalidUtf8(InvalidUtf8),
+}
+
+impl From<io::Error> for LoadError {
+    fn from(error: io::Error) -> Self {
+        Self::Io(error)
+    }
+}
+
+impl fmt::Display for LoadError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Io(error) => error.fmt(f),
+            Self::InvalidUtf8(error) => error.fmt(f),
+        }
+    }
+}
+
+impl std::error::Error for LoadError {
+    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+        match self {
+            Self::Io(error) => Some(error),
+            Self::InvalidUtf8(error) => Some(error),
+        }
+    }
+}
 
 /// The type of file inclusion, affecting how paths are resolved.
 #[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
@@ -118,6 +175,8 @@ pub struct FileInfo {
     pub source: Rc<str>,
 
     pub kind: Include,
+
+    invalid_utf8: Option<InvalidUtf8>,
 }
 
 /// A registry of all source files loaded by the compiler.
@@ -144,24 +203,72 @@ impl SourceMap {
         &mut self,
         path: P,
         kind: Include,
-    ) -> io::Result<(FileId, Rc<str>)> {
+    ) -> Result<(FileId, Rc<str>), LoadError> {
         let abs = std::path::absolute(&path)?;
-        let src = match self.files.entry(abs) {
+        let id = match self.files.entry(abs) {
             Entry::Occupied(id) => {
-                let id = *id.get();
                 trace!(path = %path.as_ref().display(), "file already loaded (cache hit)");
-                (id, self.source(id))
+                *id.get()
             }
             Entry::Vacant(v) => {
                 debug!(path = %v.key().display(), "opening file");
-                let source = Rc::from(std::fs::read_to_string(v.key())?);
+                let bytes = std::fs::read(v.key())?;
+                if u32::try_from(bytes.len()).is_err() {
+                    let error = io::Error::new(io::ErrorKind::InvalidData, "file exceeds 4 GiB");
+                    return Err(error.into());
+                }
+
+                let (source, invalid_utf8) = match String::from_utf8(bytes) {
+                    Ok(source) => (source, None),
+                    Err(error) => {
+                        let replacement = char::REPLACEMENT_CHARACTER.len_utf8();
+                        let (encoding, start, end) = match error.as_bytes() {
+                            [0xFF, 0xFE, 0, 0, ..] | [0, 0, 0xFE, 0xFF, ..] => {
+                                (Encoding::Utf32, 0, 2 * replacement + 2)
+                            }
+                            [0xFF, 0xFE, ..] | [0xFE, 0xFF, ..] => {
+                                (Encoding::Utf16, 0, 2 * replacement)
+                            }
+                            _ => {
+                                let start = error.utf8_error().valid_up_to();
+                                (Encoding::Utf8, start, start + replacement)
+                            }
+                        };
+
+                        let source = String::from_utf8_lossy(error.as_bytes()).into_owned();
+                        (source, Some((start, end, encoding)))
+                    }
+                };
+
+                let nul = source
+                    .find('\0')
+                    .map(|start| (start, start + 1, Encoding::Nul));
+                let invalid_utf8 = [invalid_utf8, nul]
+                    .into_iter()
+                    .flatten()
+                    .min_by_key(|&(start, _, _)| start);
+
                 let included_as = path.as_ref().to_path_buf();
                 let path = v.key().clone();
-                let id = self.insert(path, included_as, source, kind);
-                (id, self.source(id))
+                let id = self.insert(path, included_as, Rc::from(source), kind);
+
+                if let Some((start, end, encoding)) = invalid_utf8 {
+                    let span = Span {
+                        start: Location::new(u32::try_from(start).unwrap_or(u32::MAX), id),
+                        end: Location::new(u32::try_from(end).unwrap_or(u32::MAX), id),
+                    };
+                    self.sources[id].invalid_utf8 = Some(InvalidUtf8 { span, encoding });
+                }
+
+                id
             }
         };
-        Ok(src)
+
+        let info = self.file_info(id);
+        match info.invalid_utf8 {
+            Some(error) => Err(LoadError::InvalidUtf8(error)),
+            None => Ok((id, info.source.clone())),
+        }
     }
 
     /// Creates a virtual file that contains the given sources.
@@ -252,6 +359,7 @@ impl SourceMap {
             included_as,
             source,
             kind,
+            invalid_utf8: None,
         };
 
         let id = self.sources.alloc(info);

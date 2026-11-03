@@ -1,0 +1,5 @@
+---
+source: crates/ic-idl/tests/invalid_utf8.rs
+expression: output
+---
+{"labels":[{"end":{"column":15,"line":29},"file":"<test>/invalid.idl","message":"invalid UTF-8 sequence","start":{"column":12,"line":29}}],"level":"error","message":"file contains invalid UTF-8"}

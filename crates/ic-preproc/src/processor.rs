@@ -36,7 +36,7 @@ use std::rc::Rc;
 use ic_expr::{Binary, Op, Ternary, Unary};
 use ic_lexer::cursor::Cursor;
 use ic_lexer::token::{Base, Kind, Token};
-use ic_vfs::{FileId, Include, Location, SourceMap};
+use ic_vfs::{FileId, Include, LoadError, Location, SourceMap};
 use rustc_hash::FxHashMap;
 use tracing::{debug, trace};
 
@@ -1597,7 +1597,17 @@ where
                             self.stack.push(cursor);
                         }
                     }
-                    Err(_) => self.state().errors.push(Error::Syntax {
+                    Err(LoadError::InvalidUtf8(error)) => {
+                        let errors = &mut self.state().errors;
+                        let reported = errors.iter().any(
+                            |reported| matches!(reported, Error::Encoding(reported) if reported.span == error.span),
+                        );
+
+                        if !reported {
+                            errors.push(Error::Encoding(error));
+                        }
+                    }
+                    Err(LoadError::Io(_)) => self.state().errors.push(Error::Syntax {
                         message: "failed to open file",
                         span: path,
                     }),

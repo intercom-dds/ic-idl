@@ -32,7 +32,7 @@ use std::string::FromUtf8Error;
 
 pub use ic_lexer::token::{Kind, Token};
 pub use ic_vfs::Span;
-use ic_vfs::{FileId, Include, SourceMap};
+use ic_vfs::{FileId, Include, LoadError, SourceMap};
 pub use processor::TokenIter;
 pub use state::{Error, ExpansionInfo, State};
 
@@ -185,7 +185,7 @@ pub fn with_state<'a>(
 /// # Errors
 ///
 /// Returns an error if there was an error opening the specified `path`.
-pub fn to_string<P>(path: P, args: ProcArgs) -> std::io::Result<(String, Vec<Error>)>
+pub fn to_string<P>(path: P, args: ProcArgs) -> Result<(String, Vec<Error>), LoadError>
 where
     P: AsRef<Path>,
 {

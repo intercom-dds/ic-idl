@@ -364,6 +364,7 @@ impl<'a> ProtoGen<'a> {
         w.finish()
     }
 
+    #[allow(clippy::cast_possible_truncation)]
     fn emit_enum(&self, def: &Def, enum_ty: &EnumTy) -> String {
         let mut w = Twine::new();
         w!(w, "enum ", def, " ", "{\n");
@@ -392,7 +393,7 @@ impl<'a> ProtoGen<'a> {
 
             let field_def = self.hir.context.definitions.get(*field_id);
             if let DefKind::Const(const_ty) = &field_def.kind {
-                let value = self.hir.context.integer_value(&const_ty.value);
+                let value = self.hir.context.integer_value(&const_ty.value) as i32;
                 let field_name = &field_def.ident.name;
                 w!(w, field_name, " = ", value, ";\n");
             }

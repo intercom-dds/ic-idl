@@ -99,10 +99,11 @@ impl<'ctx> ValueItemProcessor<'ctx> {
             Some(enum_id),
         );
 
-        let fields = self.process_enumerators(e, enum_id, enum_scope, enum_ty);
+        let (fields, ty) = self.process_enumerators(e, enum_id, enum_scope, enum_ty);
 
         if let DefKind::Enum(ref mut enum_ty) = self.ctx.context.definitions.get_mut(enum_id).kind {
             enum_ty.fields = fields;
+            enum_ty.ty = ty;
         }
 
         enum_id
@@ -142,9 +143,10 @@ impl<'ctx> ValueItemProcessor<'ctx> {
         e: &EnumDef,
         enum_id: DefId,
         enum_scope: ScopeId,
-        ty: PrimitiveTy,
-    ) -> Vec<DefId> {
-        let mut fields = Vec::new();
+        signed_ty: PrimitiveTy,
+    ) -> (Vec<DefId>, PrimitiveTy) {
+        let mut fields = vec![];
+        let mut values = vec![];
         let mut last_value = -1i64;
 
         for enumerator in &e.enumerators {
@@ -156,28 +158,43 @@ impl<'ctx> ValueItemProcessor<'ctx> {
             );
 
             let (is_explicit, value) =
-                self.calculate_enumerator_value(enumerator, ty, value_annotation, &mut last_value);
+                self.calculate_enumerator_value(enumerator, value_annotation, &mut last_value);
             last_value = value;
+            values.push(value);
 
             fields.push(self.create_enumerator(
                 enumerator,
                 enum_id,
-                value,
+                Numeric::Int64(value),
                 annotations,
                 enum_scope,
-                ty,
                 is_explicit,
             ));
         }
 
+        let ty = enum_primitive_ty(signed_ty, &values);
+
+        for ((enumerator, &field), &value) in e.enumerators.iter().zip(&fields).zip(&values) {
+            let span = enumerator
+                .value
+                .as_ref()
+                .map_or(enumerator.name.span, |expr| expr.span);
+            let numeric = self.enum_value(value, ty, span);
+
+            if let DefKind::Const(ref mut const_ty) =
+                self.ctx.context.definitions.get_mut(field).kind
+            {
+                const_ty.value = numeric;
+            }
+        }
+
         fields.sort_by_key(|&field| enum_key(&self.ctx.context, field));
-        fields
+        (fields, ty)
     }
 
     fn calculate_enumerator_value(
         &mut self,
         enumerator: &ic_syntax::Enumerator,
-        ty: PrimitiveTy,
         value_annotation: Option<AnnArg>,
         last_value: &mut i64,
     ) -> (bool, i64) {
@@ -187,7 +204,7 @@ impl<'ctx> ValueItemProcessor<'ctx> {
                 expr,
                 &Ty {
                     span: expr.span,
-                    kind: TyKind::Primitive(ty),
+                    kind: TyKind::Primitive(PrimitiveTy::Int64),
                 },
             ) {
                 (true, self.ctx.context.integer_value(&num))
@@ -199,6 +216,20 @@ impl<'ctx> ValueItemProcessor<'ctx> {
         } else {
             *last_value += 1;
             (false, *last_value)
+        }
+    }
+
+    fn enum_value(&mut self, value: i64, ty: PrimitiveTy, span: ic_syntax::Span) -> Numeric {
+        let ty_name = ty.name();
+
+        match ty {
+            PrimitiveTy::Int64 => Numeric::Int64(value),
+            PrimitiveTy::Int8 => Numeric::Int8(self.enum_value_cast(value, span, ty_name)),
+            PrimitiveTy::Int16 => Numeric::Int16(self.enum_value_cast(value, span, ty_name)),
+            PrimitiveTy::UInt8 => Numeric::UInt8(self.enum_value_cast(value, span, ty_name)),
+            PrimitiveTy::UInt16 => Numeric::UInt16(self.enum_value_cast(value, span, ty_name)),
+            PrimitiveTy::UInt32 => Numeric::UInt32(self.enum_value_cast(value, span, ty_name)),
+            _ => Numeric::Int32(self.enum_value_cast(value, span, ty_name)),
         }
     }
 
@@ -223,29 +254,15 @@ impl<'ctx> ValueItemProcessor<'ctx> {
         &mut self,
         enumerator: &ic_syntax::Enumerator,
         enum_id: DefId,
-        value: i64,
+        value: Numeric,
         annotations: Vec<Ann>,
         enum_scope: ScopeId,
-        ty: PrimitiveTy,
         is_explicit: bool,
     ) -> DefId {
         let flags = if is_explicit {
             DefFlags::IS_ENUMERATED
         } else {
             DefFlags::nil()
-        };
-
-        let value = match ty {
-            PrimitiveTy::Int64 => Numeric::Int64(value),
-            PrimitiveTy::Int8 => {
-                Numeric::Int8(self.enum_value_cast::<i8>(value, enumerator.name.span, ty.name()))
-            }
-            PrimitiveTy::Int16 => {
-                Numeric::Int16(self.enum_value_cast::<i16>(value, enumerator.name.span, ty.name()))
-            }
-            _ => {
-                Numeric::Int32(self.enum_value_cast::<i32>(value, enumerator.name.span, ty.name()))
-            }
         };
 
         crate::define::define_scoped_const(
@@ -803,6 +820,21 @@ fn numerics_equal(a: &Numeric, b: &Numeric, ctx: &Context) -> bool {
             },
         ) => ty1 == ty2 && f1 == f2 && numerics_equal(d1, d2, ctx) && numerics_equal(v1, v2, ctx),
         _ => false,
+    }
+}
+
+fn enum_primitive_ty(signed_ty: PrimitiveTy, values: &[i64]) -> PrimitiveTy {
+    let (unsigned_ty, signed_max) = match signed_ty {
+        PrimitiveTy::Int8 => (PrimitiveTy::UInt8, i64::from(i8::MAX)),
+        PrimitiveTy::Int16 => (PrimitiveTy::UInt16, i64::from(i16::MAX)),
+        PrimitiveTy::Int32 => (PrimitiveTy::UInt32, i64::from(i32::MAX)),
+        _ => return signed_ty,
+    };
+
+    if values.iter().all(|&v| v >= 0) && values.iter().any(|&v| v > signed_max) {
+        unsigned_ty
+    } else {
+        signed_ty
     }
 }
 

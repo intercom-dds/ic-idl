@@ -2,7 +2,7 @@
 source: crates/ic-hir/tests/enum_test.rs
 expression: errors
 ---
-⨯: string value cannot be assigned to type int32
+⨯: string value cannot be assigned to type int64
   @ test.idl:4:17
 
  2 │ enum TestEnum {

@@ -1074,6 +1074,7 @@ impl<'a> JavaGen<'a> {
         w!(w, "}\n");
     }
 
+    #[allow(clippy::cast_possible_truncation)]
     fn emit_enum(&self, w: &mut Twine, def: &Def, enum_ty: &EnumTy, nested: bool) {
         let static_mod = if nested { "static " } else { "" };
         w!(w, "public ", static_mod, "enum ", def, " {\n");
@@ -1096,7 +1097,7 @@ impl<'a> JavaGen<'a> {
             let field_name = &field_def.ident.name;
 
             if let DefKind::Const(const_ty) = &field_def.kind {
-                let val = self.hir.context.integer_value(&const_ty.value);
+                let val = self.hir.context.integer_value(&const_ty.value) as i32;
                 w.dedent();
                 w!(w, "case ", val, ":\n");
                 w.indent();
@@ -1431,11 +1432,12 @@ impl<'a> JavaGen<'a> {
         w!(w, "}\n");
     }
 
+    #[allow(clippy::cast_possible_truncation)]
     fn emit_enumerators(&self, w: &mut Twine, fields: &[DefId]) {
         for (i, flag_id) in fields.iter().enumerate() {
             let flag_def = self.hir.context.type_of(*flag_id);
             if let DefKind::Const(const_ty) = &flag_def.kind {
-                let ordinal = self.hir.context.integer_value(&const_ty.value);
+                let ordinal = self.hir.context.integer_value(&const_ty.value) as i32;
                 w!(w, flag_def, "(", ordinal, ")");
                 if i < fields.len() - 1 {
                     w!(w, ",\n");

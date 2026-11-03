@@ -25,7 +25,7 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use ic_hir::hir::{DefFlags, DefKind};
+use ic_hir::hir::{DefFlags, DefKind, Numeric, PrimitiveTy};
 
 mod common;
 
@@ -249,7 +249,7 @@ fn test_enum_counter_overflow() {
     let input = r"
         @bit_bound(8)
         enum Test {
-            A = 127,
+            A = 255,
             B
         };
     ";
@@ -262,13 +262,110 @@ fn test_enum_value_out_of_bounds() {
     let input = r"
         @bit_bound(8)
         enum Test {
-            A,
-            B,
-            C = 128
+            A = -128,
+            B = 128
         };
     ";
 
     insta::assert_snapshot!(common::parse_and_expect_errors(input));
+}
+
+fn enum_ty_and_values(input: &str) -> (PrimitiveTy, Vec<Numeric>) {
+    let result = common::parse_and_resolve_successfully(input);
+
+    let (_, def) = result
+        .context
+        .definitions
+        .iter()
+        .find(|(_, def)| def.ident.name == "Test")
+        .expect("Test definition not found");
+
+    let DefKind::Enum(e) = &def.kind else {
+        panic!("Expected enum definition")
+    };
+
+    let values = e
+        .fields
+        .iter()
+        .map(|&field| {
+            expect_matches!(&result.context.definitions.get(field).kind, DefKind::Const)
+                .value
+                .clone()
+        })
+        .collect();
+
+    (e.ty, values)
+}
+
+#[test]
+fn test_enum_unsigned_bit_bound() {
+    let input = r"
+        @bit_bound(8)
+        enum Test {
+            A,
+            B = 200,
+            C = 255
+        };
+    ";
+
+    let (ty, values) = enum_ty_and_values(input);
+
+    assert_eq!(ty, PrimitiveTy::UInt8);
+    assert_eq!(
+        values,
+        vec![Numeric::UInt8(0), Numeric::UInt8(200), Numeric::UInt8(255)]
+    );
+}
+
+#[test]
+fn test_enum_unsigned_counter() {
+    let input = r"
+        @bit_bound(16)
+        enum Test {
+            A = 32767,
+            B
+        };
+    ";
+
+    let (ty, values) = enum_ty_and_values(input);
+
+    assert_eq!(ty, PrimitiveTy::UInt16);
+    assert_eq!(values, vec![Numeric::UInt16(32767), Numeric::UInt16(32768)]);
+}
+
+#[test]
+fn test_enum_unsigned_default() {
+    let input = r"
+        enum Test {
+            A,
+            @value(4294967295)
+            B
+        };
+    ";
+
+    let (ty, values) = enum_ty_and_values(input);
+
+    assert_eq!(ty, PrimitiveTy::UInt32);
+    assert_eq!(
+        values,
+        vec![Numeric::UInt32(0), Numeric::UInt32(4_294_967_295)]
+    );
+}
+
+#[test]
+fn test_enum_signed_bit_bound() {
+    let input = r"
+        @bit_bound(8)
+        enum Test {
+            A = -128,
+            B = 127
+        };
+    ";
+
+    let (ty, values) = enum_ty_and_values(input);
+
+    assert_eq!(ty, PrimitiveTy::Int8);
+    assert_eq!(values, vec![Numeric::Int8(-128), Numeric::Int8(127)]);
 }
 
 #[macro_export]

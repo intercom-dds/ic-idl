@@ -2,11 +2,11 @@
 source: crates/ic-hir/tests/const_eval_regression_test.rs
 expression: diagnostics
 ---
-⨯: integer value out of range for 'int32'
+⨯: enum value 4294967296 is outside the range of the underlying type uint32
   @ test.idl:4:17
 
  2 │ enum MyEnum {
- 3 │     A = 1073741824,
+ 3 │     A = 2147483648,
  4 │     B = A << 1
-   │         ˆˆˆˆˆˆ out of range
+   │         ˆˆˆˆˆˆ value out of range
  5 │ };

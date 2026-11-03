@@ -29,6 +29,7 @@ use std::collections::HashSet;
 use std::io::{self, Result};
 use std::path::{Path, PathBuf};
 
+use ic_vfs::InvalidUtf8;
 use tracing::debug;
 
 /// A writer that ignores broken pipe errors.
@@ -53,6 +54,7 @@ impl<W: std::io::Write> std::io::Write for IgnoreBrokenPipe<W> {
 /// Compilation errors from different stages of the pipeline.
 #[derive(Debug)]
 pub enum Error {
+    Encoding(InvalidUtf8),
     /// Parse error from `ic_parse`
     Parse(Box<ic_parse::Error>),
 
@@ -64,6 +66,12 @@ pub enum Error {
 
     /// I/O error
     Io(std::io::Error),
+}
+
+impl From<InvalidUtf8> for Error {
+    fn from(value: InvalidUtf8) -> Self {
+        Self::Encoding(value)
+    }
 }
 
 impl From<std::io::Error> for Error {
@@ -86,13 +94,17 @@ impl From<ic_parse::Error> for Error {
 
 impl From<ic_preproc::Error> for Error {
     fn from(value: ic_preproc::Error) -> Self {
-        Self::Preproc(Box::new(value))
+        match value {
+            ic_preproc::Error::Encoding(error) => Self::Encoding(error),
+            error => Self::Preproc(Box::new(error)),
+        }
     }
 }
 
 impl std::fmt::Display for Error {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
+            Error::Encoding(e) => e.fmt(f),
             Error::Parse(e) => e.fmt(f),
             Error::Preproc(e) => write!(f, "preprocessor error: {e:?}"),
             Error::Lower(e) => e.fmt(f),

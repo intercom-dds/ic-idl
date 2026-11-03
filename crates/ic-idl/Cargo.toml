@@ -77,3 +77,4 @@ tracing.workspace = true
 tracing-subscriber = { version = "0.3.23", default-features = false, features = ["fmt", "ansi"] }
 
 [dev-dependencies]
+insta = "1.48.0"

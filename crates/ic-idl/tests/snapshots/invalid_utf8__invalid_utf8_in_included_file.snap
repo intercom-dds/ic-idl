@@ -1,0 +1,11 @@
+---
+source: crates/ic-idl/tests/invalid_utf8.rs
+expression: output
+---
+⨯: file contains invalid UTF-8
+  @ <test>/included.idl:28:12
+
+ 26 │ // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ 27 │ 
+ 28 │ // invalid � hyphen
+    │            ˆ invalid UTF-8 sequence

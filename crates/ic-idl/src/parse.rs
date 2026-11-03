@@ -30,7 +30,7 @@ use std::path::Path;
 
 use ic_preproc::{ExpansionInfo, ProcArgs};
 use ic_syntax::{Annotation, Item, Span};
-use ic_vfs::{FileId, Include, SourceMap};
+use ic_vfs::{FileId, Include, LoadError, SourceMap};
 use tracing::{debug, debug_span};
 
 use crate::util::Error;
@@ -53,8 +53,18 @@ pub struct ParseResult {
 ///
 /// Returns an I/O error if the file cannot be opened.
 pub fn from_path(path: &Path, args: ProcArgs, vfs: &mut SourceMap) -> std::io::Result<ParseResult> {
-    let (file_id, _) = vfs.open(path, Include::Static)?;
-    Ok(from_file(file_id, args, vfs))
+    match vfs.open(path, Include::Static) {
+        Ok((file_id, _)) => Ok(from_file(file_id, args, vfs)),
+        Err(LoadError::Io(error)) => Err(error),
+        Err(LoadError::InvalidUtf8(invalid_utf8)) => Ok(ParseResult {
+            file_id: invalid_utf8.span.start.file_id,
+            tree: vec![],
+            errors: vec![invalid_utf8.into()],
+            orphaned_annotations: vec![],
+            preproc_warnings: vec![],
+            expansion_info: HashMap::new(),
+        }),
+    }
 }
 
 /// Parse a file that's already in the source map with preprocessing.
@@ -89,7 +99,7 @@ pub fn from_file(file_id: FileId, args: ProcArgs, vfs: &mut SourceMap) -> ParseR
 ///
 /// Returns an I/O error if the file cannot be opened.
 #[allow(dead_code, clippy::print_stderr)]
-pub fn preprocess_only(path: &Path, args: ProcArgs) -> std::io::Result<String> {
+pub fn preprocess_only(path: &Path, args: ProcArgs) -> Result<String, LoadError> {
     let (output, errors) = ic_preproc::to_string(path, args)?;
     if !errors.is_empty() {
         for error in errors {

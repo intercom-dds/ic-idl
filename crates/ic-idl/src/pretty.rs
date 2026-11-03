@@ -34,7 +34,7 @@ use ic_cli::color::Colorize as _;
 use ic_diagnostic::{Diag, DiagnosticEmitter, Label, error_span, warn_span};
 use ic_lexer::token::Kind;
 use ic_parse::Reason;
-use ic_vfs::{SourceMap, Span};
+use ic_vfs::{InvalidUtf8, SourceMap, Span};
 
 use crate::util::Error;
 
@@ -140,6 +140,10 @@ pub fn fmt_errors(
         }
 
         _ = match err {
+            Error::Encoding(error) => {
+                let diag = encoding_to_diag(error);
+                emit_diag(&mut emitter, &mut buf, vfs, &diag, format)
+            }
             Error::Parse(e) => {
                 let diag = parse_error_to_diag(e, false, exp);
                 emit_diag(&mut emitter, &mut buf, vfs, &diag, format)
@@ -176,6 +180,18 @@ fn emit_diag(
     }
 }
 
+fn encoding_to_diag(error: &InvalidUtf8) -> Diag {
+    error_span(
+        error.to_string(),
+        Label::new(error.span).message(match error.encoding {
+            ic_vfs::Encoding::Utf8 => "invalid UTF-8 sequence",
+            ic_vfs::Encoding::Utf16 => "UTF-16 byte-order mark",
+            ic_vfs::Encoding::Utf32 => "UTF-32 byte-order mark",
+            ic_vfs::Encoding::Nul => "NUL byte",
+        }),
+    )
+}
+
 fn preproc_to_diag(
     e: &ic_preproc::Error,
     vfs: &SourceMap,
@@ -185,6 +201,7 @@ fn preproc_to_diag(
     let diag_fn = if warn { warn_span } else { error_span };
     let span = e.span();
     let (msg, label): (String, &str) = match e {
+        ic_preproc::Error::Encoding(error) => return encoding_to_diag(error),
         ic_preproc::Error::Note { tokens, .. } => {
             let dir = if warn { "#warning" } else { "#error" };
             let msg = if tokens.is_empty() {

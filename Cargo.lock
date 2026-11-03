@@ -624,6 +624,7 @@ dependencies = [
  "ic-preproc",
  "ic-syntax",
  "ic-vfs",
+ "insta",
  "intercom-cts",
  "tracing",
  "tracing-subscriber",

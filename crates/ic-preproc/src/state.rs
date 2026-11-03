@@ -29,7 +29,7 @@ use std::collections::{HashMap, VecDeque};
 use std::rc::Rc;
 
 use ic_lexer::token::Token;
-use ic_vfs::FileId;
+use ic_vfs::{FileId, InvalidUtf8};
 use rustc_hash::{FxHashMap, FxHashSet};
 
 use crate::Span;
@@ -183,6 +183,7 @@ impl std::fmt::Display for Directive {
 /// Error types for preprocessing
 #[derive(Clone, Debug)]
 pub enum Error {
+    Encoding(InvalidUtf8),
     Note {
         span: Span,
         tokens: Vec<Token>,
@@ -206,6 +207,7 @@ impl Error {
     #[must_use]
     pub fn span(&self) -> Span {
         match self {
+            Self::Encoding(error) => error.span,
             Self::Note { span, .. }
             | Self::Extraneous { span, .. }
             | Self::Syntax { span, .. }

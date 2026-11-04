@@ -39,3 +39,4 @@ pub mod lowercase_bool;
 pub mod omitted_in;
 pub mod scoped_lit;
 pub mod shift_bound;
+pub mod unsigned_enum;

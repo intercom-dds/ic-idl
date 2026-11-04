@@ -1,0 +1,15 @@
+---
+source: crates/ic-lint/tests/unsigned_enum.rs
+expression: output
+---
+! unsigned-enum: enum `Test` has values outside the signed range
+  @ test.idl:5:13
+
+ 3 │ enum Test {
+ 4 │     A,
+ 5 │     B = 200,
+   │     ˆ exceeds the `int8` range
+ 6 │     C = 255
+ 7 │ };
+
+  * enums are supposed to be signed

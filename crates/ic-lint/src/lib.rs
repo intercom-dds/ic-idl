@@ -544,6 +544,7 @@ define_lints! {
         annotation::unknown::UnknownAnnotation,
         extensions::char_discriminator::CharDiscriminator,
         extensions::complex_key::ComplexMapKey,
+        extensions::unsigned_enum::UnsignedEnum,
         pedantic::invalid_array_size::InvalidArraySize,
         pedantic::large_union_variant::LargeUnionVariant,
         pedantic::prefer_enum_name::PreferEnumName,

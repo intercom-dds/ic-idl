@@ -29,7 +29,7 @@ use std::collections::{HashSet, VecDeque};
 
 use ic_alloc::arena::Arena;
 
-use crate::hir::{self, Def, DefId, DefKind, Numeric, Ty, TyKind};
+use crate::hir::{self, Ann, Def, DefFlags, DefId, DefKind, Numeric, Ty, TyKind};
 use crate::scope::ScopeTree;
 
 #[must_use]
@@ -413,16 +413,21 @@ impl DepCollector<'_> {
         let mut deps = HashSet::new();
         let def = self.ctx.type_of(def_id);
 
+        self.collect_annotations(&def.annotations, &include, &mut deps);
+
         match &def.kind {
             DefKind::Struct(s) => {
                 self.extend_if(&s.parent, &include, &mut deps);
                 for m in &s.members {
+                    self.collect_annotations(&m.annotations, &include, &mut deps);
                     self.collect_ty_refs(&m.ty, &include, &mut deps);
                 }
             }
             DefKind::Union(u) => {
+                self.collect_annotations(&u.disc.annotations, &include, &mut deps);
                 self.collect_ty_refs(&u.disc.ty, &include, &mut deps);
                 for v in &u.variants {
+                    self.collect_annotations(&v.annotations, &include, &mut deps);
                     self.collect_ty_refs(&v.ty, &include, &mut deps);
                     for label in &v.labels {
                         self.collect_numeric_refs(&label.value, &include, &mut deps);
@@ -432,11 +437,13 @@ impl DepCollector<'_> {
             DefKind::Interface(i) => {
                 self.extend_if(&i.parents, &include, &mut deps);
                 for attr in &i.attributes {
+                    self.collect_annotations(&attr.annotations, &include, &mut deps);
                     self.collect_ty_refs(&attr.ty, &include, &mut deps);
                     self.extend_if(&attr.getraises, &include, &mut deps);
                     self.extend_if(&attr.setraises, &include, &mut deps);
                 }
                 for proto in &i.prototypes {
+                    self.collect_annotations(&proto.annotations, &include, &mut deps);
                     self.collect_ty_refs(&proto.ty, &include, &mut deps);
                     self.extend_if(&proto.raises, &include, &mut deps);
                     for param in &proto.params {
@@ -448,14 +455,17 @@ impl DepCollector<'_> {
                 self.extend_if(&v.parent, &include, &mut deps);
                 self.extend_if(&v.supports, &include, &mut deps);
                 for m in &v.members {
+                    self.collect_annotations(&m.annotations, &include, &mut deps);
                     self.collect_ty_refs(&m.ty, &include, &mut deps);
                 }
                 for attr in &v.attributes {
+                    self.collect_annotations(&attr.annotations, &include, &mut deps);
                     self.collect_ty_refs(&attr.ty, &include, &mut deps);
                     self.extend_if(&attr.getraises, &include, &mut deps);
                     self.extend_if(&attr.setraises, &include, &mut deps);
                 }
                 for proto in &v.prototypes {
+                    self.collect_annotations(&proto.annotations, &include, &mut deps);
                     self.collect_ty_refs(&proto.ty, &include, &mut deps);
                     self.extend_if(&proto.raises, &include, &mut deps);
                     for param in &proto.params {
@@ -465,6 +475,7 @@ impl DepCollector<'_> {
             }
             DefKind::Except(e) => {
                 for m in &e.members {
+                    self.collect_annotations(&m.annotations, &include, &mut deps);
                     self.collect_ty_refs(&m.ty, &include, &mut deps);
                 }
             }
@@ -507,6 +518,19 @@ impl DepCollector<'_> {
         for def_id in refs {
             if include(self.ctx.type_of(def_id.def_id)) {
                 deps.insert(def_id.def_id);
+            }
+        }
+    }
+
+    fn collect_annotations<F>(&self, annotations: &[Ann], include: &F, deps: &mut HashSet<DefId>)
+    where
+        F: Fn(&Def) -> bool,
+    {
+        let include = |def: &Def| !def.flags.contains(DefFlags::IS_BUILTIN) && include(def);
+
+        for ann in annotations {
+            for arg in &ann.args {
+                self.collect_numeric_refs(&arg.value, &include, deps);
             }
         }
     }

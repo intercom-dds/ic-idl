@@ -27,6 +27,7 @@
 
 use std::marker::PhantomData;
 
+use super::ser::needs_dheader_as_field;
 use crate::buf::Cursor;
 use crate::buf::endian::{Endian, Little};
 use crate::cdr::Error;
@@ -508,7 +509,7 @@ impl<'de, E: Endian> Xcdr2StructDeserializer<'_, 'de, E> {
     where
         T: Unmarshal,
     {
-        let needs_dheader = super::ser::needs_dheader_as_field(info.type_info);
+        let needs_dheader = needs_dheader_as_field(info.type_info);
         let dheader_end = if needs_dheader {
             self.reader.buf.align_to::<u32>();
             let dheader = self.reader.decode_u32()?;
@@ -698,7 +699,24 @@ impl<'de, E: Endian> UnionDeserializer<'de> for Xcdr2UnionDeserializer<'_, 'de, 
             Err(Error::Eof)
         } else {
             // FINAL/APPENDABLE: variant data follows discriminant
+            let dheader_end = if needs_dheader_as_field(info.type_info) {
+                self.reader.buf.align_to::<u32>();
+                let dheader = self.reader.decode_u32()?;
+                Some(self.reader.buf.pos() + dheader as usize)
+            } else {
+                None
+            };
+
+            self.reader.push_type_info(info.type_info);
             value.unmarshal_mut(&mut *self.reader)?;
+            self.reader.pop_type_info();
+
+            if let Some(end_pos) = dheader_end
+                && self.reader.buf.pos() < end_pos
+            {
+                self.reader.buf.set_pos(end_pos)?;
+            }
+
             Ok(())
         }
     }
@@ -749,9 +767,7 @@ impl<E: Endian> Xcdr2CollectionDeserializer<'_, '_, E> {
 
             // Check if element needs DHEADER
             // In XCDR2, arrays/sequences/maps with non-primitive elements get DHEADER
-            let needs_dheader = self
-                .element_info
-                .is_some_and(super::ser::needs_dheader_as_field);
+            let needs_dheader = self.element_info.is_some_and(needs_dheader_as_field);
             if needs_dheader {
                 self.reader.buf.align_to::<u32>();
                 let _dheader = self.reader.decode_u32()?;

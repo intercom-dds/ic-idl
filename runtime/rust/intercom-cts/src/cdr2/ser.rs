@@ -68,9 +68,16 @@ fn has_xcdr2_dheader(info: &TypeInfo) -> bool {
 pub(crate) fn needs_dheader_as_field(info: &TypeInfo) -> bool {
     match info.kind {
         // Collections need DHEADER if they have non-primitive elements
-        TypeKind::Array | TypeKind::Sequence | TypeKind::Map => info
+        TypeKind::Array | TypeKind::Sequence => info
             .element_info
             .is_some_and(|elem_info| !elem_info.is_primitive()),
+        TypeKind::Map => {
+            info.key_info
+                .is_some_and(|key_info| !key_info.is_primitive())
+                || info
+                    .element_info
+                    .is_some_and(|elem_info| !elem_info.is_primitive())
+        }
 
         // Other types default to false
         _ => false,
@@ -772,6 +779,13 @@ impl<'a, E: Endian> UnionSerializer<'a> for Cdr2CompositeWriter<'a, '_, E> {
         if self.is_mutable {
             // For MUTABLE unions, encode variant as MMEMBER with EMHEADER1
             self.encode_mutable_member(info, value)?;
+        } else if needs_dheader_as_field(info.type_info) {
+            self.writer.with_dheader(|writer| {
+                writer.push_type_info(info.type_info);
+                value.marshal(&mut *writer)?;
+                writer.pop_type_info();
+                Ok(())
+            })?;
         } else {
             // For FINAL/APPENDABLE unions, just marshal variant
             self.writer.push_type_info(info.type_info);

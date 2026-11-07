@@ -144,10 +144,11 @@ pub struct Cdr2Writer<'a, E: Endian> {
 
 impl<'a, E: Endian> Cdr2Writer<'a, E> {
     pub fn new(buf: &'a mut Buffer<E>) -> Self {
+        let align_base = buf.pos();
         Self {
             buf,
             skip_collection_length: false,
-            align_base: 0,
+            align_base,
             type_stack: Vec::new(),
         }
     }

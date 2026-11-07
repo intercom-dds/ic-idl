@@ -238,4 +238,18 @@ mod tests {
         let bytes = encapsulate(Scheme::Xml, vec![]);
         assert!(matches!(decode::<u32>(&bytes), Err(Error::UnsupportedEnc)));
     }
+
+    #[test]
+    fn aligns_after_enc_header() {
+        let mut buffer = Buffer::<Little>::new();
+        write_encapsulation(&mut buffer, Scheme::CdrLe);
+        to_buffer(&mut buffer, &vec![1.5_f64]).unwrap();
+
+        let bytes = buffer.to_vec();
+        let plain = encapsulate(Scheme::CdrLe, to_le_bytes(&vec![1.5_f64]).unwrap());
+        assert_eq!(bytes, plain);
+
+        let decoded: Vec<f64> = decode(&bytes).unwrap();
+        assert_eq!(decoded, [1.5]);
+    }
 }

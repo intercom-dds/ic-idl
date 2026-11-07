@@ -51,10 +51,11 @@ pub struct CdrWriter<'a, E: Endian> {
 
 impl<'a, E: Endian> CdrWriter<'a, E> {
     pub const fn new(buf: &'a mut Buffer<E>) -> Self {
+        let align_base = buf.pos();
         Self {
             buf,
             enc: Encoding::Delimited,
-            align_base: 0,
+            align_base,
         }
     }
 

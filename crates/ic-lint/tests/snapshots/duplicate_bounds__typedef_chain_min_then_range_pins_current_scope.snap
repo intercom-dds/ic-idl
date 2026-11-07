@@ -1,0 +1,15 @@
+---
+source: crates/ic-lint/tests/duplicate_bounds.rs
+expression: test_lint_hir(source)
+---
+⨯ duplicate-bounds: @range conflicts with @min or @max on typedef `TD1`
+  @ test.idl:3:2
+
+ 2 │ @min(1) typedef int32 TD1;
+   │  ˆˆˆ conflicting annotation on `TD1`
+ 3 │ @range(min = 1, max = 10) typedef TD1 TD2;
+   │  ˆˆˆˆˆ @range on typedef
+ 4 │ 
+ 5 │ struct Foo {
+
+  ? use either @range or @min/@max, not both

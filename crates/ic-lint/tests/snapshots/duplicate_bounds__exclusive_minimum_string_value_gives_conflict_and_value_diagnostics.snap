@@ -1,0 +1,26 @@
+---
+source: crates/ic-lint/tests/duplicate_bounds.rs
+expression: output
+---
+⨯ range-bound: @ext::exclusive_minimum value must be an integer
+  @ test.idl:4:29
+
+ 2 │ struct Foo {
+ 3 │     @min(1)
+ 4 │     @ext::exclusive_minimum("abc")
+   │                             ˆˆˆˆˆ must be an integer
+ 5 │     int32 value;
+ 6 │ };
+
+⨯ duplicate-bounds: @min conflicts with @ext::exclusive_minimum on the lower bound
+  @ test.idl:3:6
+
+ 2 │ struct Foo {
+ 3 │     @min(1)
+   │      ˆˆˆ @min on member
+ 4 │     @ext::exclusive_minimum("abc")
+   │      ˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆ @ext::exclusive_minimum also on member
+ 5 │     int32 value;
+ 6 │ };
+
+  ? a member carries one lower-bound annotation

@@ -87,19 +87,18 @@ pub(crate) fn needs_dheader_as_field(info: &TypeInfo) -> bool {
 /// - LC 7: NEXTINT × 8 = byte length (for sequences of 8-byte primitives)
 fn lcode_for_mutable(info: &TypeInfo) -> u8 {
     use TypeKind::{
-        Bitmask, Bool, Char8, Char16, Enum, F32, F64, I8, I16, I32, I64, Sequence, String8, U8,
-        U16, U32, U64,
+        Bool, Char8, Char16, F32, F64, I8, I16, I32, I64, Sequence, String8, U8, U16, U32, U64,
     };
     match info.kind {
         // LC 0-3: direct length encoding (1, 2, 4, 8 bytes)
         // 1 byte
-        Bool | I8 | U8 => 0,
+        Bool | I8 | U8 | Char8 => 0,
 
         // 2 bytes
         I16 | U16 | Char16 => 1,
 
-        // 4 bytes - includes bitmasks and enums which are typically i32/u32
-        I32 | U32 | F32 | Char8 | Bitmask | Enum => 2,
+        // 4 bytes
+        I32 | U32 | F32 => 2,
 
         // 8 bytes
         I64 | U64 | F64 => 3,

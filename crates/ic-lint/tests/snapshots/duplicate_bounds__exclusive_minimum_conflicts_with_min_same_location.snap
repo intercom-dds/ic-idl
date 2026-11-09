@@ -1,0 +1,16 @@
+---
+source: crates/ic-lint/tests/duplicate_bounds.rs
+expression: test_lint_hir(source)
+---
+⨯ duplicate-bounds: @min conflicts with @ext::exclusive_minimum on the lower bound
+  @ test.idl:3:6
+
+ 2 │ struct Foo {
+ 3 │     @min(1)
+   │      ˆˆˆ @min on member
+ 4 │     @ext::exclusive_minimum(2)
+   │      ˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆ @ext::exclusive_minimum also on member
+ 5 │     int32 value;
+ 6 │ };
+
+  ? a member carries one lower-bound annotation

@@ -1,0 +1,16 @@
+---
+source: crates/ic-lint/tests/duplicate_bounds.rs
+expression: test_lint_hir(source)
+---
+⨯ duplicate-bounds: @max conflicts with @ext::exclusive_maximum on the upper bound
+  @ test.idl:3:6
+
+ 2 │ struct Foo {
+ 3 │     @max(100)
+   │      ˆˆˆ @max on member
+ 4 │     @ext::exclusive_maximum(99)
+   │      ˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆ @ext::exclusive_maximum also on member
+ 5 │     int32 value;
+ 6 │ };
+
+  ? a member carries one upper-bound annotation

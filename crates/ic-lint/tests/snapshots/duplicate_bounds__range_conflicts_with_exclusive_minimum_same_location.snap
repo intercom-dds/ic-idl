@@ -1,0 +1,16 @@
+---
+source: crates/ic-lint/tests/duplicate_bounds.rs
+expression: test_lint_hir(source)
+---
+⨯ duplicate-bounds: @range cannot be used together with @ext::exclusive_minimum
+  @ test.idl:3:6
+
+ 2 │ struct Foo {
+ 3 │     @range(min = 1, max = 100)
+   │      ˆˆˆˆˆ @range annotation here
+ 4 │     @ext::exclusive_minimum(2)
+   │      ˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆ @ext::exclusive_minimum annotation here
+ 5 │     int32 value;
+ 6 │ };
+
+  ? use either @range or @min/@max, not both

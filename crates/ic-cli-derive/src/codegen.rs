@@ -40,22 +40,12 @@ pub fn generate_struct_impl(
     attrs: &[Attribute],
 ) -> proc_macro2::TokenStream {
     // Parse all fields
-    let mut options = Vec::new();
-    let mut sections = Vec::new();
-    let mut positionals = Vec::new();
+    let mut fields = Vec::new();
     let mut errors = Vec::new();
 
     for field in &data.fields {
         match parse_field(field) {
-            Ok(Some(opt)) => {
-                if opt.positional {
-                    positionals.push(opt);
-                } else if opt.section.is_some() {
-                    sections.push(opt);
-                } else {
-                    options.push(opt);
-                }
-            }
+            Ok(Some(opt)) => fields.push(opt),
             Ok(None) => {}
             Err(e) => errors.push(e),
         }
@@ -67,8 +57,22 @@ pub fn generate_struct_impl(
         return quote! { #(#compile_errors)* };
     }
 
+    let mut options = Vec::new();
+    let mut sections = Vec::new();
+    let mut positionals = Vec::new();
+
+    for opt in &fields {
+        if opt.positional {
+            positionals.push(opt);
+        } else if opt.section.is_some() || opt.flatten {
+            sections.push(opt);
+        } else {
+            options.push(opt);
+        }
+    }
+
     // Generate command building code
-    let command_impl = generate_struct_command(attrs, &options, &sections, !positionals.is_empty());
+    let command_impl = generate_struct_command(attrs, &fields, !positionals.is_empty());
 
     // Generate parsing code
     let parse_impl = generate_struct_parse(&options, &sections, &positionals);
@@ -133,32 +137,57 @@ pub fn generate_enum_impl(
 /// Generate the command building code for a struct.
 fn generate_struct_command(
     attrs: &[Attribute],
-    options: &[CliOption],
-    sections: &[CliOption],
+    fields: &[CliOption],
     has_positionals: bool,
 ) -> proc_macro2::TokenStream {
     let doc = extract_doc_comment(attrs);
     let name = extract_string_attr("command", attrs)
         .map_or_else(|| quote! { env!("CARGO_PKG_NAME") }, |n| quote! { #n });
 
-    let option_builders = options.iter().map(generate_option_builder);
+    let mut builders = Vec::new();
+    let mut option_builders = Vec::new();
 
-    let section_builders = sections.iter().map(|opt| {
-        let (section_name, section_type) = opt.section.as_ref().unwrap();
-        quote! {
-            .section(#section_name, #section_type::command())
+    for opt in fields.iter().filter(|opt| !opt.positional) {
+        let builder = if opt.flatten {
+            let field_type = &opt.field_type;
+            quote! {
+                .merge(<#field_type as ::ic_cli::Command>::command())
+            }
+        } else if let Some((section_name, section_type)) = &opt.section {
+            quote! {
+                .section(#section_name, #section_type::command())
+            }
+        } else {
+            option_builders.push(generate_option_builder(opt));
+            continue;
+        };
+
+        if !option_builders.is_empty() {
+            builders.push(generate_opts_builder(&option_builders));
+            option_builders.clear();
         }
-    });
+
+        builders.push(builder);
+    }
+
+    if !option_builders.is_empty() {
+        builders.push(generate_opts_builder(&option_builders));
+    }
 
     quote! {
         ::ic_cli::CommandLine::new(#name)
             .desc(#doc)
             .version(env!("CARGO_PKG_VERSION").to_string())
             .positionals(#has_positionals)
-            .opts([
-                #(#option_builders),*
-            ])
-            #(#section_builders)*
+            #(#builders)*
+    }
+}
+
+fn generate_opts_builder(option_builders: &[proc_macro2::TokenStream]) -> proc_macro2::TokenStream {
+    quote! {
+        .opts([
+            #(#option_builders),*
+        ])
     }
 }
 
@@ -207,15 +236,19 @@ fn generate_enum_command(data: &DataEnum, attrs: &[Attribute]) -> proc_macro2::T
 
 /// Generate the parsing code for a struct.
 fn generate_struct_parse(
-    options: &[CliOption],
-    sections: &[CliOption],
-    positionals: &[CliOption],
+    options: &[&CliOption],
+    sections: &[&CliOption],
+    positionals: &[&CliOption],
 ) -> proc_macro2::TokenStream {
     let field_parsers = options
         .iter()
-        .map(generate_field_parser)
-        .chain(sections.iter().map(generate_section_parser))
-        .chain(positionals.iter().map(generate_positional_parser));
+        .map(|opt| generate_field_parser(opt))
+        .chain(sections.iter().map(|opt| generate_section_parser(opt)))
+        .chain(
+            positionals
+                .iter()
+                .map(|opt| generate_positional_parser(opt)),
+        );
 
     quote! {
         let default = Self::default();
@@ -228,15 +261,19 @@ fn generate_struct_parse(
 
 /// Generate the parsing code for an existing struct.
 fn generate_struct_parse_mut(
-    options: &[CliOption],
-    sections: &[CliOption],
-    positionals: &[CliOption],
+    options: &[&CliOption],
+    sections: &[&CliOption],
+    positionals: &[&CliOption],
 ) -> proc_macro2::TokenStream {
     let field_parsers_mut = options
         .iter()
-        .map(generate_field_parser_mut)
-        .chain(sections.iter().map(generate_section_parser_mut))
-        .chain(positionals.iter().map(generate_positional_parser_mut));
+        .map(|opt| generate_field_parser_mut(opt))
+        .chain(sections.iter().map(|opt| generate_section_parser_mut(opt)))
+        .chain(
+            positionals
+                .iter()
+                .map(|opt| generate_positional_parser_mut(opt)),
+        );
 
     quote! {
         #(#field_parsers_mut)*

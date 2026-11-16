@@ -53,6 +53,8 @@ pub struct CSharpGen<'a> {
 }
 
 impl<'a> CSharpGen<'a> {
+    pub const DISCRIMINATOR: &'static str = "Discriminator";
+
     #[must_use]
     pub fn new(hir: &'a ResolvedGraph, source_map: &'a SourceMap, options: CSharpOptions) -> Self {
         Self {
@@ -973,7 +975,7 @@ impl<'a> CSharpGen<'a> {
         union_ty: &UnionTy,
         disc_ty: &str,
     ) {
-        w!(w, "public ", disc_ty, " Discriminator\n");
+        w!(w, "public ", disc_ty, " ", Self::DISCRIMINATOR, "\n");
         w!(w, "{\n");
         w!(w, "get => _discriminator;\n");
         w!(w, "set\n");

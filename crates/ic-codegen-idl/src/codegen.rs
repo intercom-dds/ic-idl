@@ -53,6 +53,7 @@ pub struct IdlGen<'a> {
 }
 
 impl<'a> IdlGen<'a> {
+    #[must_use]
     pub fn new(hir: &'a ResolvedGraph, source_map: &'a SourceMap, options: IdlOptions) -> Self {
         Self {
             hir,
@@ -679,12 +680,14 @@ impl<'a> IdlGen<'a> {
         }
     }
 
+    #[must_use]
     pub fn generate_type(&self, def_id: DefId) -> String {
         let mut w = Twine::new();
         self.emit_definition(&mut w, def_id);
         w.finish()
     }
 
+    #[must_use]
     pub fn generate(&self) -> Vec<File> {
         let mut files_map: HashMap<_, Vec<_>> = HashMap::new();
         for &def_id in &self.hir.order {

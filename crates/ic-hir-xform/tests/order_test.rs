@@ -1405,3 +1405,53 @@ fn sharing_the_current_file_outranks_sharing_a_longer_module_path() {
     );
     assert_declare_before_use(&ordered);
 }
+
+fn assert_no_duplicate_decls(hir: &ResolvedGraph) {
+    let names = decl_names(hir);
+    let unique: HashSet<&String> = names.iter().collect();
+    assert_eq!(
+        unique.len(),
+        names.len(),
+        "a forward declaration was emitted more than once; emission order was {:?}",
+        emission(hir)
+    );
+}
+
+#[test]
+fn an_existing_forward_declaration_is_not_duplicated() {
+    let idl = r"
+        module M {
+            struct Bar;
+            struct Foo { sequence<Bar> bars; };
+            struct Bar { sequence<Foo> foos; };
+        };
+    ";
+
+    let input = common::parse_with_builtins(idl);
+    assert_eq!(emission(&input), vec!["decl M::Bar", "M::Foo", "M::Bar"]);
+
+    let ordered = order::apply(input);
+
+    assert_no_duplicate_decls(&ordered);
+    assert_declare_before_use(&ordered);
+}
+
+#[test]
+fn an_existing_cross_module_forward_declaration_is_not_duplicated() {
+    let idl = r"
+        module Bee { struct Bar; };
+        module Aye { struct Foo { sequence<Bee::Bar> bars; }; };
+        module Bee { struct Bar { sequence<Aye::Foo> foos; }; };
+    ";
+
+    let input = common::parse_with_builtins(idl);
+    assert_eq!(
+        emission(&input),
+        vec!["decl Bee::Bar", "Aye::Foo", "Bee::Bar"]
+    );
+
+    let ordered = order::apply(input);
+
+    assert_no_duplicate_decls(&ordered);
+    assert_declare_before_use(&ordered);
+}

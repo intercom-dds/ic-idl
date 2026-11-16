@@ -43,6 +43,7 @@ fn flatten(hir: &ResolvedGraph, order: &[DefId], path: &[DefId], out: &mut Vec<I
     for &def_id in order {
         let def = hir.context.definitions.get(def_id);
         match &def.kind {
+            DefKind::Decl(Decl::Struct | Decl::Union | Decl::Interface | Decl::Valuetype) => {}
             DefKind::Module(module) => {
                 let mut nested = path.to_vec();
                 nested.push(def_id);

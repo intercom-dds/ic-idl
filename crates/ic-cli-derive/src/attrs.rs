@@ -42,6 +42,7 @@ pub struct OptionAttrs {
     pub required: bool,
     /// Section for grouping
     pub section: Option<String>,
+    pub flatten: bool,
 }
 
 #[derive(Debug)]
@@ -112,6 +113,9 @@ pub fn parse_option_attrs(attrs: &[Attribute]) -> Result<Option<OptionAttrs>> {
                 Some("required") => {
                     result.required = true;
                 }
+                Some("flatten") => {
+                    result.flatten = true;
+                }
                 Some(unknown) => {
                     return Err(meta.error(format!("unknown option attribute: '{unknown}'")));
                 }
@@ -131,6 +135,24 @@ pub fn parse_option_attrs(attrs: &[Attribute]) -> Result<Option<OptionAttrs>> {
                 "positional arguments cannot have short or long options",
             ));
         }
+        if result.flatten {
+            let conflicts = [
+                ("short", result.short.is_some()),
+                ("long", result.long.is_some()),
+                ("arg", result.arg_name.is_some()),
+                ("section", result.section.is_some()),
+                ("positional", result.positional),
+                ("required", result.required),
+            ];
+
+            if let Some((name, _)) = conflicts.iter().find(|(_, set)| *set) {
+                return Err(syn::Error::new_spanned(
+                    attrs.first().unwrap(),
+                    format!("'flatten' cannot be combined with '{name}'"),
+                ));
+            }
+        }
+
         Ok(Some(result))
     } else {
         Ok(None)

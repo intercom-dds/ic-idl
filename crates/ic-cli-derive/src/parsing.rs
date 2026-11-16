@@ -53,6 +53,7 @@ pub struct CliOption {
     pub section: Option<(String, Path)>,
     /// The kind of option (flag vs value)
     pub kind: OptionKind,
+    pub flatten: bool,
 }
 
 #[derive(Clone, Copy, PartialEq, Debug)]
@@ -120,6 +121,7 @@ pub fn parse_field(field: &Field) -> Result<Option<CliOption>> {
         doc: extract_doc_comment(&field.attrs),
         section,
         kind,
+        flatten: attrs.flatten,
     }))
 }
 

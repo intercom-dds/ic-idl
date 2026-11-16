@@ -93,8 +93,19 @@ find_package(
 idl_generate(
     LANGUAGE CPP
     INPUT_IDL ../corpus
-    FLAGS -Wno-any-type
+    FLAGS -Wno-any-type --dll-export IC_TEST_EXPORT
 )
+
+# Hidden visibility makes the tests fail to link on every platform if a symbol
+# defined in a generated .cpp file is missing the --dll-export macro.
+add_library(cpp_integration_corpus SHARED ${IDL_GENERATE_OUTPUTS})
+
+set_target_properties(cpp_integration_corpus PROPERTIES
+    CXX_VISIBILITY_PRESET hidden
+    VISIBILITY_INLINES_HIDDEN ON
+)
+
+target_link_libraries(cpp_integration_corpus PUBLIC ic_idl::ic_cts)
 
 add_executable(cpp_integration_tests
     tests/main.cpp
@@ -120,11 +131,10 @@ add_executable(cpp_integration_tests
     tests/test_typedefs.cpp
     tests/test_unions.cpp
     tests/test_valuetypes.cpp
-    ${IDL_GENERATE_OUTPUTS}
 )
 
 target_link_libraries(cpp_integration_tests PRIVATE
-    ic_idl::ic_cts
+    cpp_integration_corpus
     doctest::doctest
 )
 

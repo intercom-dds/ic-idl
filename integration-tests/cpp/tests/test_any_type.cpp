@@ -68,8 +68,8 @@ TEST_CASE("map_with_any_type_info" * doctest::test_suite("any_type")) {
     CHECK(map->kind == ic_cts::dcps::xtypes::TK_MAP);
     REQUIRE(map->key_type != nullptr);
     CHECK(map->key_type->kind == ic_cts::dcps::xtypes::TK_STRING8);
-    CHECK(map->key_type->element_type == &ic_cts::CHAR_TYPE_INFO);
-    CHECK(map->element_type == &ic_cts::NULL_TYPE_INFO);
+    CHECK(map->key_type->element_type->kind == ic_cts::dcps::xtypes::TK_CHAR8);
+    CHECK(map->element_type->kind == ic_cts::dcps::xtypes::TK_NONE);
 }
 
 TEST_CASE("map_with_any_sequence_type_info" * doctest::test_suite("any_type")) {
@@ -78,12 +78,12 @@ TEST_CASE("map_with_any_sequence_type_info" * doctest::test_suite("any_type")) {
     const auto* map = info.members[0].type;
     REQUIRE(map != nullptr);
     CHECK(map->kind == ic_cts::dcps::xtypes::TK_MAP);
-    CHECK(map->key_type == &ic_cts::LONG_TYPE_INFO);
+    CHECK(map->key_type->kind == ic_cts::dcps::xtypes::TK_INT32);
     const auto* sequence = map->element_type;
     REQUIRE(sequence != nullptr);
     CHECK(sequence->kind == ic_cts::dcps::xtypes::TK_SEQUENCE);
     CHECK(sequence->max_length == 0);
-    CHECK(sequence->element_type == &ic_cts::NULL_TYPE_INFO);
+    CHECK(sequence->element_type->kind == ic_cts::dcps::xtypes::TK_NONE);
 }
 
 TEST_CASE("map_with_any_array_type_info" * doctest::test_suite("any_type")) {
@@ -92,12 +92,12 @@ TEST_CASE("map_with_any_array_type_info" * doctest::test_suite("any_type")) {
     const auto* map = info.members[0].type;
     REQUIRE(map != nullptr);
     CHECK(map->kind == ic_cts::dcps::xtypes::TK_MAP);
-    CHECK(map->key_type == &ic_cts::LONG_TYPE_INFO);
+    CHECK(map->key_type->kind == ic_cts::dcps::xtypes::TK_INT32);
     const auto* array = map->element_type;
     REQUIRE(array != nullptr);
     CHECK(array->kind == ic_cts::dcps::xtypes::TK_ARRAY);
     CHECK(array->max_length == 2);
-    CHECK(array->element_type == &ic_cts::NULL_TYPE_INFO);
+    CHECK(array->element_type->kind == ic_cts::dcps::xtypes::TK_NONE);
 }
 
 TEST_CASE("map_with_empty_any_sequence_xcdr2_write" * doctest::test_suite("any_type")) {

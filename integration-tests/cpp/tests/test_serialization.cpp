@@ -535,13 +535,13 @@ TEST_CASE("map_member_type_info" * doctest::test_suite("serialization")) {
     }
 
     const auto* primitive = info.members[0].type;
-    CHECK(primitive->key_type == &ic_cts::LONG_TYPE_INFO);
-    CHECK(primitive->element_type == &ic_cts::LONG_TYPE_INFO);
+    CHECK(primitive->key_type->kind == ic_cts::dcps::xtypes::TK_INT32);
+    CHECK(primitive->element_type->kind == ic_cts::dcps::xtypes::TK_INT32);
 
     const auto* unbounded = info.members[1].type;
     CHECK(unbounded->key_type->kind == ic_cts::dcps::xtypes::TK_STRING8);
     CHECK(unbounded->key_type->max_length == 0);
-    CHECK(unbounded->key_type->element_type == &ic_cts::CHAR_TYPE_INFO);
+    CHECK(unbounded->key_type->element_type->kind == ic_cts::dcps::xtypes::TK_CHAR8);
 
     const auto* bounded = info.members[2].type;
     CHECK(bounded->key_type->kind == ic_cts::dcps::xtypes::TK_STRING8);
@@ -559,7 +559,7 @@ TEST_CASE("map_member_type_info" * doctest::test_suite("serialization")) {
     CHECK(nested->kind == ic_cts::dcps::xtypes::TK_SEQUENCE);
     REQUIRE(nested->element_type != nullptr);
     CHECK(nested->element_type->kind == ic_cts::dcps::xtypes::TK_MAP);
-    CHECK(nested->element_type->key_type == &ic_cts::LONG_TYPE_INFO);
+    CHECK(nested->element_type->key_type->kind == ic_cts::dcps::xtypes::TK_INT32);
     CHECK(
         nested->element_type->element_type ==
         &ic_cts::TypeTraits<serialization_types::MapValue>::type_info
@@ -576,7 +576,7 @@ TEST_CASE("map_member_type_info" * doctest::test_suite("serialization")) {
         REQUIRE(map != nullptr);
         CHECK(map->kind == ic_cts::dcps::xtypes::TK_MAP);
         CHECK(map->max_length == 5);
-        CHECK(map->key_type == &ic_cts::SHORT_TYPE_INFO);
+        CHECK(map->key_type->kind == ic_cts::dcps::xtypes::TK_INT16);
         REQUIRE(map->element_type != nullptr);
         CHECK(map->element_type->kind == ic_cts::dcps::xtypes::TK_STRING8);
     }
@@ -588,7 +588,7 @@ TEST_CASE("map_union_type_info" * doctest::test_suite("serialization")) {
     const auto* map = info.members[1].type;
     REQUIRE(map != nullptr);
     CHECK(map->kind == ic_cts::dcps::xtypes::TK_MAP);
-    CHECK(map->key_type == &ic_cts::LONG_TYPE_INFO);
+    CHECK(map->key_type->kind == ic_cts::dcps::xtypes::TK_INT32);
     CHECK(map->element_type == &ic_cts::TypeTraits<serialization_types::MapValue>::type_info);
 }
 

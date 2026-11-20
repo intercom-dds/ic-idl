@@ -25,11 +25,15 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+use std::borrow::Cow;
 use std::collections::HashSet;
-use std::io::{self, Result};
+use std::io::{self, Result, Write};
+#[cfg(windows)]
+use std::path::{Component, Prefix};
 use std::path::{Path, PathBuf};
 
-use ic_vfs::InvalidUtf8;
+use ic_emit::File;
+use ic_vfs::{InvalidUtf8, SourceMap};
 use tracing::debug;
 
 /// A writer that ignores broken pipe errors.
@@ -155,6 +159,38 @@ where
     Ok(files)
 }
 
+/// Emit `dep:` records for absolute source paths followed by `gen:` records
+/// for generated paths. Ordinary Windows paths use forward slashes. Verbatim
+/// and device paths retain their native spelling.
+///
+/// # Errors
+///
+/// Returns an error if a record cannot be written.
+pub fn emit_build_list(mut out: impl Write, sources: &SourceMap, generated: &[File]) -> Result<()> {
+    for path in sources.files().keys().filter(|path| path.is_absolute()) {
+        writeln!(out, "dep:{}", list_path(path))?;
+    }
+
+    for file in generated {
+        writeln!(out, "gen:{}", list_path(&file.path))?;
+    }
+
+    Ok(())
+}
+
+fn list_path(path: &Path) -> Cow<'_, str> {
+    #[cfg(windows)]
+    if !matches!(
+        path.components().next(),
+        Some(Component::Prefix(prefix))
+            if prefix.kind().is_verbatim() || matches!(prefix.kind(), Prefix::DeviceNS(_))
+    ) {
+        return Cow::Owned(path.to_string_lossy().replace('\\', "/"));
+    }
+
+    path.to_string_lossy()
+}
+
 /// Write contents to a file only if it has changed.
 ///
 /// # Errors
@@ -209,4 +245,96 @@ where
         std::fs::remove_dir_all(&dir)?;
     }
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use std::path::Path;
+
+    use ic_emit::File;
+    use ic_vfs::SourceMap;
+
+    use super::{emit_build_list, list_path};
+
+    #[test]
+    fn build_list_records() {
+        let mut sources = SourceMap::default();
+        let dependency = if cfg!(windows) {
+            "C:/idl/Geo.idl"
+        } else {
+            "/idl/Geo.idl"
+        };
+        let _ = sources.embed_with_name(dependency, "");
+        let _ = sources.embed("");
+
+        let files = [
+            File {
+                path: "out/Geo.h".into(),
+                source: String::new(),
+            },
+            File {
+                path: "out/Geo.cpp".into(),
+                source: String::new(),
+            },
+        ];
+        let mut out = Vec::new();
+        emit_build_list(&mut out, &sources, &files).unwrap();
+        assert_eq!(
+            String::from_utf8(out).unwrap(),
+            format!("dep:{dependency}\ngen:out/Geo.h\ngen:out/Geo.cpp\n")
+        );
+    }
+
+    #[cfg(windows)]
+    #[test]
+    fn windows_build_list_separators() {
+        let mut sources = SourceMap::default();
+        let _ = sources.embed_with_name(r"C:\idl\Geo.idl", "");
+
+        let files = [File {
+            path: r"out/generated\Geo.h".into(),
+            source: String::new(),
+        }];
+        let mut out = Vec::new();
+        emit_build_list(&mut out, &sources, &files).unwrap();
+        assert_eq!(
+            String::from_utf8(out).unwrap(),
+            "dep:C:/idl/Geo.idl\ngen:out/generated/Geo.h\n"
+        );
+    }
+
+    #[cfg(windows)]
+    #[test]
+    fn verbatim_list_path() {
+        let path = r"\\?\C:\idl.\Geo.idl";
+        assert_eq!(list_path(Path::new(path)), path);
+    }
+
+    #[cfg(windows)]
+    #[test]
+    fn unc_list_path() {
+        let path = Path::new(r"\\server\share\Geo.idl");
+        assert_eq!(list_path(path), "//server/share/Geo.idl");
+    }
+
+    #[cfg(windows)]
+    #[test]
+    fn verbatim_unc_list_path() {
+        let path = r"\\?\UNC\server\share\Geo.idl";
+        assert_eq!(list_path(Path::new(path)), path);
+    }
+
+    #[cfg(windows)]
+    #[test]
+    fn device_list_path() {
+        let path = r"\\.\C:\idl\Geo.idl";
+        assert_eq!(list_path(Path::new(path)), path);
+    }
+
+    #[cfg(not(windows))]
+    #[test]
+    fn literal_backslash_in_list_path() {
+        let path = r"out/Geo\header.h";
+        assert_eq!(list_path(Path::new(path)), path);
+    }
 }

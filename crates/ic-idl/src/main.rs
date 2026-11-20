@@ -27,7 +27,7 @@
 
 #![allow(clippy::print_stdout, clippy::print_stderr)]
 
-use std::{backtrace, panic};
+use std::{backtrace, io, panic};
 
 use ic_cli::color::Colorize as _;
 use ic_cli::{Command, ParseError};
@@ -211,17 +211,14 @@ fn try_compile(options: CompilerOptions) {
 
     // Handle output
     if compiler.options().list {
-        for path in compiler
-            .source_map()
-            .files()
-            .keys()
-            .filter(|path| path.is_absolute())
+        if let Err(e) =
+            util::emit_build_list(io::stdout().lock(), compiler.source_map(), &generated)
         {
-            println!("dep:{}", path.display());
-        }
-
-        for f in &generated {
-            println!("{f}");
+            report_error(
+                compiler.options().error_format,
+                &format!("failed to emit build list: {e}"),
+            );
+            std::process::exit(1);
         }
     } else if let Err(e) = write_files(&generated) {
         report_error(

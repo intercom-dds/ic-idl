@@ -1,0 +1,28 @@
+---
+source: crates/ic-lint/tests/rpc_accessor.rs
+assertion_line: 85
+expression: test_lint_hir(source)
+---
+⨯ rpc-accessor: operation `get_attribute_value` collides with an accessor implied by attribute `value`
+  @ test.idl:5:10
+
+ 2 │ @DDSService
+ 3 │ interface S {
+ 4 │     attribute long value;
+   │                    ˆˆˆˆˆ attribute declared here
+ 5 │     long get_attribute_value();
+   │          ˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆ operation declared here
+ 6 │     void SET_ATTRIBUTE_VALUE(in long value);
+ 7 │ };
+
+⨯ rpc-accessor: operation `SET_ATTRIBUTE_VALUE` collides with an accessor implied by attribute `value`
+  @ test.idl:6:10
+
+ 2 │ @DDSService
+ 3 │ interface S {
+ 4 │     attribute long value;
+   │                    ˆˆˆˆˆ attribute declared here
+ 5 │     long get_attribute_value();
+ 6 │     void SET_ATTRIBUTE_VALUE(in long value);
+   │          ˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆ operation declared here
+ 7 │ };

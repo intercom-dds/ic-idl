@@ -1,0 +1,11 @@
+---
+source: crates/ic-lint/tests/rpc_inheritance.rs
+assertion_line: 100
+expression: test_lint_hir(source)
+---
+⨯ rpc-inheritance: `@DDSService` interface `Derived` inherits from non-service interface `Base`
+  @ test.idl:7:21
+
+ 6 │ @DDSService
+ 7 │ interface Derived : Alias {};
+   │                     ˆˆˆˆˆ inherited here

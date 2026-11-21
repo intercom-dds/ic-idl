@@ -1,0 +1,15 @@
+---
+source: crates/ic-lint/tests/rpc_accessor.rs
+assertion_line: 85
+expression: test_lint_hir(source)
+---
+⨯ rpc-accessor: operation `set_attribute_second` collides with an accessor implied by attribute `second`
+  @ test.idl:5:10
+
+ 2 │ @DDSService
+ 3 │ interface S {
+ 4 │     attribute long first, second;
+   │                           ˆˆˆˆˆˆ attribute declared here
+ 5 │     void set_attribute_second(in long second);
+   │          ˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆ operation declared here
+ 6 │ };

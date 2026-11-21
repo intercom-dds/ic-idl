@@ -281,6 +281,13 @@ pub fn is_value_type(ctx: &Context, def: &Def) -> bool {
     bool_annotation(ctx, &def.annotations, "value_type").unwrap_or(false)
 }
 
+#[must_use]
+pub fn is_rpc_service(ctx: &Context, def: &Def) -> bool {
+    matches!(def.kind, DefKind::Interface(_))
+        && builtin_annotation(ctx, &def.annotations, "DDSService").is_some()
+}
+
+#[must_use]
 pub fn is_must_understand(ctx: &Context, target: &impl MemberLike) -> bool {
     bool_annotation(ctx, target.annotations(), "must_understand").unwrap_or(false)
 }

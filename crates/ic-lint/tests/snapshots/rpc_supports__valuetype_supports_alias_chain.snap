@@ -1,0 +1,14 @@
+---
+source: crates/ic-lint/tests/rpc_supports.rs
+assertion_line: 77
+expression: test_lint_hir(source)
+---
+⨯ rpc-supports: valuetype `V` supports `@DDSService` interface `S`
+  @ test.idl:8:22
+
+  6 │ typedef First Second;
+  7 │ 
+  8 │ valuetype V supports Second {
+    │                      ˆˆˆˆˆˆ supported here
+  9 │     public long x;
+ 10 │ };

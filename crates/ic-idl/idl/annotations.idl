@@ -355,4 +355,44 @@ module ext {
     @annotation protobuf_type {
         string name;
     };
+
+    @ext::annotation_target(ALL_MEMBERS | TYPE_ALIAS)
+    @annotation min_length {
+        unsigned long value;
+    };
+
+    @ext::annotation_target(ALL_MEMBERS | TYPE_ALIAS)
+    @annotation max_length {
+        unsigned long value;
+    };
+
+    @ext::annotation_target(ALL_MEMBERS | TYPE_ALIAS)
+    @annotation pattern_ecma262 {
+        string value;
+    };
+
+    @ext::annotation_target(ALL_MEMBERS | TYPE_ALIAS)
+    @annotation pattern_python {
+        string value;
+    };
+
+    @ext::annotation_target(ALL_MEMBERS | TYPE_ALIAS)
+    @annotation pattern_xsd {
+        string value;
+    };
+
+    @ext::annotation_target(ALL_MEMBERS | TYPE_ALIAS)
+    @annotation min_items {
+        unsigned long value;
+    };
+
+    @ext::annotation_target(ALL_MEMBERS | TYPE_ALIAS)
+    @annotation exclusive_minimum {
+        any value;
+    };
+
+    @ext::annotation_target(ALL_MEMBERS | TYPE_ALIAS)
+    @annotation exclusive_maximum {
+        any value;
+    };
 }; // module ext

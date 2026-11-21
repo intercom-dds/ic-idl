@@ -1,0 +1,13 @@
+---
+source: crates/ic-lint/tests/range_bound.rs
+expression: test_lint_hir(source)
+---
+⨯ range-bound: @ext::exclusive_minimum value must be an integer
+  @ test.idl:4:33
+
+ 2 │ module MyModule {
+ 3 │     struct MalformedExclusiveMin {
+ 4 │         @ext::exclusive_minimum("not a number") long value;
+   │                                 ˆˆˆˆˆˆˆˆˆˆˆˆˆˆ must be an integer
+ 5 │     };
+ 6 │ };

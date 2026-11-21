@@ -1,0 +1,16 @@
+---
+source: crates/ic-lint/tests/duplicate_bounds.rs
+expression: test_lint_hir(source)
+---
+⨯ duplicate-bounds: @ext::exclusive_minimum conflicts with @min on the lower bound of typedef `MyInt`
+  @ test.idl:5:6
+
+ 2 │ @min(1) typedef int32 MyInt;
+   │  ˆˆˆ @min on `MyInt`
+ 3 │ 
+ 4 │ struct Foo {
+ 5 │     @ext::exclusive_minimum(2) MyInt value;
+   │      ˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆ @ext::exclusive_minimum on member
+ 6 │ };
+
+  ? remove @ext::exclusive_minimum or @min; the lower bound is occupied

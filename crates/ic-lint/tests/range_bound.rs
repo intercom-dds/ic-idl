@@ -168,6 +168,33 @@ module MyModule {
 }
 
 #[test]
+fn malformed_exclusive_minimum() {
+    let source = r#"
+module MyModule {
+    struct MalformedExclusiveMin {
+        @ext::exclusive_minimum("not a number") long value;
+    };
+};
+"#;
+
+    assert_snapshot!(test_lint_hir(source));
+
+    let valid = r"
+module MyModule {
+    struct GoodExclusiveMin {
+        @ext::exclusive_minimum(5) long value;
+    };
+};
+";
+
+    let output = test_lint_hir(valid);
+    assert!(
+        output.is_empty(),
+        "Expected no diagnostics for valid exclusive_minimum, but got: {output}"
+    );
+}
+
+#[test]
 fn range_with_only_min() {
     let source = r"
 module MyModule {

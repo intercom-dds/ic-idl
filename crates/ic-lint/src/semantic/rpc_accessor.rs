@@ -25,9 +25,11 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+use std::collections::HashSet;
+
 use ic_diagnostic::Label;
 use ic_hir::ResolvedGraph;
-use ic_hir::hir::{Def, InterfaceTy};
+use ic_hir::hir::{Attribute, Def, DefKind, InterfaceTy, ProtoTy};
 use ic_hir::visit::Visitor;
 use ic_hir_analysis::annotation::is_rpc_service;
 
@@ -57,6 +59,70 @@ impl<'a> Lint<'a> for RpcAccessor<'a> {
     }
 }
 
+impl RpcAccessor<'_> {
+    fn check_hierarchy(&self, def: &Def, data: &InterfaceTy) {
+        let ctx = &self.hir.context;
+
+        let bases: Vec<HashSet<_>> = data
+            .parents
+            .iter()
+            .map(|parent| {
+                ctx.hierarchy_of(parent.def_id)
+                    .map(|base| base.id)
+                    .collect()
+            })
+            .collect();
+
+        let mut attributes = vec![];
+        let mut prototypes = vec![];
+        for base in ctx.hierarchy_of(def.id) {
+            if let DefKind::Interface(iface) = &base.kind {
+                attributes.extend(iface.attributes.iter().map(|attr| (base.id, attr)));
+                prototypes.extend(iface.prototypes.iter().map(|proto| (base.id, proto)));
+            }
+        }
+
+        for &(attr_owner, attr) in &attributes {
+            for &(proto_owner, proto) in &prototypes {
+                if !implies(attr, &proto.ident.name) {
+                    continue;
+                }
+
+                let from_one_base = bases
+                    .iter()
+                    .any(|base| base.contains(&attr_owner) && base.contains(&proto_owner));
+                if from_one_base {
+                    continue;
+                }
+
+                let inherited = attr_owner != def.id && proto_owner != def.id;
+                self.report_collision(def, attr, proto, inherited);
+            }
+        }
+    }
+
+    fn report_collision(&self, def: &Def, attr: &Attribute, proto: &ProtoTy, inherited: bool) {
+        let mut diag = self
+            .ctx
+            .diag_span(
+                Self::name(),
+                Self::category(),
+                format!(
+                    "operation `{}` collides with an accessor implied by attribute `{}`",
+                    proto.ident.name, attr.ident.name
+                ),
+                Label::new(proto.ident.span).message("operation declared here"),
+            )
+            .label(Label::new(attr.ident.span).message("attribute declared here"));
+
+        if inherited {
+            diag = diag.label(Label::new(def.ident.span).message("both inherited here"));
+        }
+
+        Self::report(self.ctx, diag);
+    }
+}
+
 impl<'a> Visitor<'a> for RpcAccessor<'a> {
     fn context(&self) -> &'a ic_hir::Context {
         &self.hir.context
@@ -64,38 +130,17 @@ impl<'a> Visitor<'a> for RpcAccessor<'a> {
 
     fn visit_interface(&mut self, def: &'a Def, data: &'a InterfaceTy) {
         if is_rpc_service(&self.hir.context, def) {
-            for attr in &data.attributes {
-                let mut accessors = vec![format!("get_attribute_{}", attr.ident.name)];
-                if !attr.is_readonly {
-                    accessors.push(format!("set_attribute_{}", attr.ident.name));
-                }
-
-                for proto in &data.prototypes {
-                    if !accessors
-                        .iter()
-                        .any(|accessor| accessor.eq_ignore_ascii_case(&proto.ident.name))
-                    {
-                        continue;
-                    }
-
-                    let diag = self
-                        .ctx
-                        .diag_span(
-                            Self::name(),
-                            Self::category(),
-                            format!(
-                                "operation `{}` collides with an accessor implied by attribute \
-                                 `{}`",
-                                proto.ident.name, attr.ident.name
-                            ),
-                            Label::new(proto.ident.span).message("operation declared here"),
-                        )
-                        .label(Label::new(attr.ident.span).message("attribute declared here"));
-                    Self::report(self.ctx, diag);
-                }
-            }
+            self.check_hierarchy(def, data);
         }
 
         ic_hir::visit::walk_interface(self, def, data);
     }
+}
+
+fn implies(attr: &Attribute, operation: &str) -> bool {
+    let getter = format!("get_attribute_{}", attr.ident.name);
+    let setter = format!("set_attribute_{}", attr.ident.name);
+
+    operation.eq_ignore_ascii_case(&getter)
+        || (!attr.is_readonly && operation.eq_ignore_ascii_case(&setter))
 }

@@ -1,0 +1,18 @@
+---
+source: crates/ic-lint/tests/rpc_accessor.rs
+assertion_line: 134
+expression: test_lint_hir(source)
+---
+⨯ rpc-accessor: operation `get_attribute_value` collides with an accessor implied by attribute `value`
+  @ test.idl:9:10
+
+  7 │ @DDSService
+  8 │ interface Derived : Base {
+  9 │     long get_attribute_value();
+    │          ˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆ operation declared here
+ 10 │ };
+  2 │ @DDSService
+  3 │ interface Base {
+  4 │     attribute long value;
+    │                    ˆˆˆˆˆ attribute declared here
+  5 │ };

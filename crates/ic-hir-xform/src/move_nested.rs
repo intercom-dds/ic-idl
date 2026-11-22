@@ -133,7 +133,7 @@ fn move_nested_from_list(
     result
 }
 
-fn create_module_for_parent(
+pub fn create_module_for_parent(
     hir: &mut ResolvedGraph,
     parent_id: hir::DefId,
     extracted_types: &[hir::DefId],

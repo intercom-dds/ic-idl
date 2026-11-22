@@ -48,7 +48,7 @@ pub(crate) fn siblings_mut(
     }
 }
 
-pub(crate) fn detach(hir: &mut ResolvedGraph, id: DefId) -> Option<usize> {
+pub fn detach(hir: &mut ResolvedGraph, id: DefId) -> Option<usize> {
     let parent = hir.context.definitions.get(id).parent;
     let siblings = siblings_mut(hir, parent)?;
     let position = siblings.iter().position(|&child| child == id)?;
@@ -57,12 +57,7 @@ pub(crate) fn detach(hir: &mut ResolvedGraph, id: DefId) -> Option<usize> {
     Some(position)
 }
 
-pub(crate) fn attach(
-    hir: &mut ResolvedGraph,
-    parent: Option<DefId>,
-    id: DefId,
-    position: Option<usize>,
-) {
+pub fn attach(hir: &mut ResolvedGraph, parent: Option<DefId>, id: DefId, position: Option<usize>) {
     hir.context.definitions.get_mut(id).parent = parent;
 
     let Some(siblings) = siblings_mut(hir, parent) else {

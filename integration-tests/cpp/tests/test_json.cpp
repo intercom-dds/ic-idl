@@ -34,10 +34,24 @@
 #include <stdexcept>
 #include <string>
 #include <string_view>
+#include <type_traits>
+#include <utility>
 #include <vector>
 
 using ic_cts::Json;
 using ic_cts::JsonValue;
+
+template <typename T, typename = void>
+struct HasDiscriminator : std::false_type {};
+
+template <typename T>
+struct HasDiscriminator<T, std::void_t<decltype(std::declval<T&>()._d())>> : std::true_type {};
+
+template <typename T, typename = void>
+struct HasJsonType : std::false_type {};
+
+template <typename T>
+struct HasJsonType<T, std::void_t<decltype(std::declval<T&>().json_type())>> : std::true_type {};
 
 TEST_CASE("str_root_null" * doctest::test_suite("json")) {
     CHECK(Json().str() == "null");
@@ -204,9 +218,11 @@ TEST_CASE("clear_scalar" * doctest::test_suite("json")) {
 }
 
 TEST_CASE("value_default_null" * doctest::test_suite("json")) {
-    JsonValue value;
+    std::ostringstream out;
 
-    CHECK(value._d() == ic_cts::JSON_VALUE_NULL);
+    out << JsonValue();
+
+    CHECK(out.str() == "null");
 }
 
 TEST_CASE("value_inactive_member" * doctest::test_suite("json")) {
@@ -224,40 +240,30 @@ TEST_CASE("value_inactive_member" * doctest::test_suite("json")) {
     CHECK_THROWS_AS(value.object_value(), std::logic_error);
 }
 
-TEST_CASE("value_discriminator_switch" * doctest::test_suite("json")) {
-    JsonValue value;
+TEST_CASE("json_value_accessor" * doctest::test_suite("json")) {
+    Json json = Json::object("name", "x");
 
-    value._d(ic_cts::JSON_VALUE_ARRAY);
-    CHECK(value.array_value().empty());
+    CHECK(json["name"].json_value().string_value() == "x");
+}
 
-    value.array_value().resize(2);
-    value._d(ic_cts::JSON_VALUE_ARRAY);
-    CHECK(value.array_value().size() == 2U);
-
-    value._d(ic_cts::JSON_VALUE_STRING);
-    CHECK(value.string_value().empty());
-
-    value._d(ic_cts::JSON_VALUE_NULL);
-    CHECK(value._d() == ic_cts::JSON_VALUE_NULL);
+TEST_CASE("discriminator_hidden" * doctest::test_suite("json")) {
+    CHECK_FALSE(HasDiscriminator<JsonValue>::value);
+    CHECK_FALSE(HasJsonType<Json>::value);
 }
 
 TEST_CASE("value_setters" * doctest::test_suite("json")) {
     JsonValue value;
 
     value.float_value(2.5);
-    CHECK(value._d() == ic_cts::JSON_VALUE_FLOAT);
     CHECK(value.float_value() == 2.5);
 
     value.integer_value(3);
-    CHECK(value._d() == ic_cts::JSON_VALUE_INTEGER);
     CHECK(value.integer_value() == 3);
 
     value.string_value("s");
-    CHECK(value._d() == ic_cts::JSON_VALUE_STRING);
     CHECK(value.string_value() == "s");
 
     value.bool_value(true);
-    CHECK(value._d() == ic_cts::JSON_VALUE_BOOL);
     CHECK(value.bool_value());
 }
 
@@ -318,6 +324,13 @@ TEST_CASE("at_out_of_bounds" * doctest::test_suite("json")) {
     CHECK_THROWS_AS(json.at(3), std::runtime_error);
 }
 
+TEST_CASE("begin_on_scalar" * doctest::test_suite("json")) {
+    Json json(5);
+
+    CHECK_THROWS_WITH_AS(json.begin(), "Invalid value type for json iterator", std::runtime_error);
+    CHECK_THROWS_WITH_AS(json.end(), "Invalid value type for json iterator", std::runtime_error);
+}
+
 TEST_CASE("iterate_object" * doctest::test_suite("json")) {
     Json json = Json::parse(R"({"a":1,"b":2})");
     std::string keys;
@@ -334,6 +347,34 @@ TEST_CASE("iterate_object" * doctest::test_suite("json")) {
 
 TEST_CASE("iterate_array" * doctest::test_suite("json")) {
     Json json = Json::array(1, 2, 3);
+    std::string refs;
+    int64_t sum = 0;
+
+    for (auto&& child : json) {
+        refs += child.ref();
+        sum += child.get<int64_t>();
+    }
+
+    CHECK(refs == "#/0#/1#/2");
+    CHECK(sum == 6);
+}
+
+TEST_CASE("iterate_const_object" * doctest::test_suite("json")) {
+    const Json json = Json::parse(R"({"a":1,"b":2})");
+    std::string keys;
+    int64_t sum = 0;
+
+    for (auto it = json.begin(); it != json.end(); ++it) {
+        keys += it.key();
+        sum += (*it).get<int64_t>();
+    }
+
+    CHECK(keys == "ab");
+    CHECK(sum == 3);
+}
+
+TEST_CASE("iterate_const_array" * doctest::test_suite("json")) {
+    const Json json = Json::array(1, 2, 3);
     std::string refs;
     int64_t sum = 0;
 
@@ -365,9 +406,14 @@ TEST_CASE("factories" * doctest::test_suite("json")) {
     CHECK(Json::boolean(true).get<bool>());
 }
 
-TEST_CASE("json_type" * doctest::test_suite("json")) {
-    CHECK(Json(1).json_type() == ic_cts::JSON_VALUE_INTEGER);
-    CHECK(Json(ic_cts::JSON_VALUE_ARRAY).json_type() == ic_cts::JSON_VALUE_ARRAY);
+TEST_CASE("kind_predicates" * doctest::test_suite("json")) {
+    CHECK(Json().is_null());
+    CHECK(Json(1.5).is_float());
+    CHECK(Json(1).is_integer());
+    CHECK(Json("s").is_string());
+    CHECK(Json::array().is_array());
+    CHECK(Json::object().is_object());
+    CHECK(Json(true).is_bool());
 }
 
 TEST_CASE("push_back" * doctest::test_suite("json")) {

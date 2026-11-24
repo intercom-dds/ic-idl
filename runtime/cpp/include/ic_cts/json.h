@@ -50,15 +50,15 @@
 
 namespace ic_cts {
 
-enum JsonValueType {
-    JSON_VALUE_NULL,
-    JSON_VALUE_FLOAT,
-    JSON_VALUE_INTEGER,
-    JSON_VALUE_STRING,
-    JSON_VALUE_ARRAY,
-    JSON_VALUE_OBJECT,
-    JSON_VALUE_BOOL
-};
+class JsonValue;
+
+namespace detail {
+
+inline void write_json_value(JsonWriter& a_writer, const JsonValue& a_value);
+
+inline void read_json_value(const JsonNode& a_node, JsonValue& a_value);
+
+}  // namespace detail
 
 class JsonValue {
   public:
@@ -84,40 +84,6 @@ class JsonValue {
 
     bool operator>=(const JsonValue& a_other) const {
         return !(*this < a_other);
-    }
-
-    JsonValueType _d() const {
-        return static_cast<JsonValueType>(m_data.index());
-    }
-
-    void _d(JsonValueType discriminator) {
-        if (discriminator == _d()) {
-            return;
-        }
-
-        switch (discriminator) {
-        case JSON_VALUE_FLOAT:
-            m_data.emplace<double>();
-            break;
-        case JSON_VALUE_INTEGER:
-            m_data.emplace<int64_t>();
-            break;
-        case JSON_VALUE_STRING:
-            m_data.emplace<std::string>();
-            break;
-        case JSON_VALUE_ARRAY:
-            m_data.emplace<std::vector<JsonValue>>();
-            break;
-        case JSON_VALUE_OBJECT:
-            m_data.emplace<std::map<std::string, JsonValue>>();
-            break;
-        case JSON_VALUE_BOOL:
-            m_data.emplace<bool>();
-            break;
-        default:
-            m_data.emplace<std::monostate>();
-            break;
-        }
     }
 
     double& float_value() {
@@ -185,6 +151,55 @@ class JsonValue {
     }
 
   private:
+    friend class JsonRef;
+    friend class Json;
+    friend void detail::write_json_value(JsonWriter& a_writer, const JsonValue& a_value);
+    friend void detail::read_json_value(const JsonNode& a_node, JsonValue& a_value);
+
+    enum JsonValueType {
+        JSON_VALUE_NULL,
+        JSON_VALUE_FLOAT,
+        JSON_VALUE_INTEGER,
+        JSON_VALUE_STRING,
+        JSON_VALUE_ARRAY,
+        JSON_VALUE_OBJECT,
+        JSON_VALUE_BOOL
+    };
+
+    JsonValueType _d() const {
+        return static_cast<JsonValueType>(m_data.index());
+    }
+
+    void _d(JsonValueType discriminator) {
+        if (discriminator == _d()) {
+            return;
+        }
+
+        switch (discriminator) {
+        case JSON_VALUE_FLOAT:
+            m_data.emplace<double>();
+            break;
+        case JSON_VALUE_INTEGER:
+            m_data.emplace<int64_t>();
+            break;
+        case JSON_VALUE_STRING:
+            m_data.emplace<std::string>();
+            break;
+        case JSON_VALUE_ARRAY:
+            m_data.emplace<std::vector<JsonValue>>();
+            break;
+        case JSON_VALUE_OBJECT:
+            m_data.emplace<std::map<std::string, JsonValue>>();
+            break;
+        case JSON_VALUE_BOOL:
+            m_data.emplace<bool>();
+            break;
+        default:
+            m_data.emplace<std::monostate>();
+            break;
+        }
+    }
+
     template <typename T>
     T& member(const char* a_name) {
         T* value = std::get_if<T>(&m_data);
@@ -218,23 +233,23 @@ namespace detail {
 
 inline void write_json_value(JsonWriter& a_writer, const JsonValue& a_value) {
     switch (a_value._d()) {
-    case JSON_VALUE_FLOAT:
+    case JsonValue::JSON_VALUE_FLOAT:
         a_writer.write(a_value.float_value());
         break;
-    case JSON_VALUE_INTEGER:
+    case JsonValue::JSON_VALUE_INTEGER:
         a_writer.write(a_value.integer_value());
         break;
-    case JSON_VALUE_STRING:
+    case JsonValue::JSON_VALUE_STRING:
         a_writer.write_string(a_value.string_value());
         break;
-    case JSON_VALUE_ARRAY:
+    case JsonValue::JSON_VALUE_ARRAY:
         a_writer.start_array();
         for (const auto& element : a_value.array_value()) {
             write_json_value(a_writer, element);
         }
         a_writer.end_array();
         break;
-    case JSON_VALUE_OBJECT:
+    case JsonValue::JSON_VALUE_OBJECT:
         a_writer.start_object();
         for (const auto& member : a_value.object_value()) {
             a_writer.write_key(member.first);
@@ -242,7 +257,7 @@ inline void write_json_value(JsonWriter& a_writer, const JsonValue& a_value) {
         }
         a_writer.end_object();
         break;
-    case JSON_VALUE_BOOL:
+    case JsonValue::JSON_VALUE_BOOL:
         a_writer.write(a_value.bool_value());
         break;
     default:
@@ -283,7 +298,7 @@ inline void read_json_value(const JsonNode& a_node, JsonValue& a_value) {
             read_json_value(nodes[i], elements[i]);
         }
 
-        a_value._d(JSON_VALUE_ARRAY);
+        a_value._d(JsonValue::JSON_VALUE_ARRAY);
         a_value.array_value() = std::move(elements);
     } break;
     case JSON_OBJECT: {
@@ -295,7 +310,7 @@ inline void read_json_value(const JsonNode& a_node, JsonValue& a_value) {
             read_json_value(node.second, members[node.first]);
         }
 
-        a_value._d(JSON_VALUE_OBJECT);
+        a_value._d(JsonValue::JSON_VALUE_OBJECT);
         a_value.object_value() = std::move(members);
     } break;
     case JSON_BOOL: {
@@ -304,7 +319,7 @@ inline void read_json_value(const JsonNode& a_node, JsonValue& a_value) {
         a_value.bool_value(value);
     } break;
     case JSON_NULL:
-        a_value._d(JSON_VALUE_NULL);
+        a_value._d(JsonValue::JSON_VALUE_NULL);
         break;
     case JSON_PARSE_ERROR:
         throw std::runtime_error("Invalid JSON data supplied to JsonReader");
@@ -369,14 +384,14 @@ class JsonRef {
         explicit IteratorImpl(const object_iterator& a_map, const JsonRef* parent) {
             m_it.m = a_map;
             m_parent = parent;
-            m_kind = JSON_VALUE_OBJECT;
+            m_kind = JsonValue::JSON_VALUE_OBJECT;
         }
 
         explicit IteratorImpl(const array_iterator& a_vector, const JsonRef* parent, size_t idx) {
             m_it.v = a_vector;
             m_parent = parent;
             m_it.array_index = idx;
-            m_kind = JSON_VALUE_ARRAY;
+            m_kind = JsonValue::JSON_VALUE_ARRAY;
         }
 
         bool operator==(const IteratorImpl& a_other) const {
@@ -384,12 +399,12 @@ class JsonRef {
                 return false;
             }
             switch (m_kind) {
-            case JSON_VALUE_OBJECT:
+            case JsonValue::JSON_VALUE_OBJECT:
                 return m_it.m == a_other.m_it.m;
-            case JSON_VALUE_ARRAY:
+            case JsonValue::JSON_VALUE_ARRAY:
                 return m_it.v == a_other.m_it.v;
             default:
-                throw std::runtime_error("Invalud value type for json iterator");
+                throw std::runtime_error("Invalid value type for json iterator");
             }
         }
 
@@ -399,23 +414,23 @@ class JsonRef {
 
         value_type operator*() {
             switch (m_kind) {
-            case JSON_VALUE_OBJECT:
-                return value_type(&m_it.m->second, key(), m_parent);
-            case JSON_VALUE_ARRAY:
-                return value_type(&(*m_it.v), key(), m_parent);
+            case JsonValue::JSON_VALUE_OBJECT:
+                return value_type(const_cast<JsonValue*>(&m_it.m->second), key(), m_parent);
+            case JsonValue::JSON_VALUE_ARRAY:
+                return value_type(const_cast<JsonValue*>(&(*m_it.v)), key(), m_parent);
             default:
-                throw std::runtime_error("Invalud value type for json iterator");
+                throw std::runtime_error("Invalid value type for json iterator");
             }
         }
 
         std::string key() {
             switch (m_kind) {
-            case JSON_VALUE_OBJECT:
+            case JsonValue::JSON_VALUE_OBJECT:
                 return m_it.m->first;
-            case JSON_VALUE_ARRAY:
+            case JsonValue::JSON_VALUE_ARRAY:
                 return std::to_string(m_it.array_index);
             default:
-                throw std::runtime_error("Invalud value type for json iterator");
+                throw std::runtime_error("Invalid value type for json iterator");
             }
         }
 
@@ -431,15 +446,15 @@ class JsonRef {
 
         IteratorImpl& operator++() {
             switch (m_kind) {
-            case JSON_VALUE_OBJECT:
+            case JsonValue::JSON_VALUE_OBJECT:
                 ++m_it.m;
                 break;
-            case JSON_VALUE_ARRAY:
+            case JsonValue::JSON_VALUE_ARRAY:
                 ++m_it.array_index;
                 ++m_it.v;
                 break;
             default:
-                throw std::runtime_error("Invalud value type for json iterator");
+                throw std::runtime_error("Invalid value type for json iterator");
             }
             return *this;
         }
@@ -451,7 +466,7 @@ class JsonRef {
             object_iterator m;
         } m_it;
         const JsonRef* m_parent;
-        JsonValueType m_kind;
+        JsonValue::JsonValueType m_kind;
     };
 
     using iterator = IteratorImpl<JsonValue>;
@@ -477,7 +492,7 @@ class JsonRef {
 
     JsonRef operator[](std::string_view a_key) {
         if (is_null()) {
-            m_value->_d(JSON_VALUE_OBJECT);
+            m_value->_d(JsonValue::JSON_VALUE_OBJECT);
         }
         size_t sep_pos = a_key.find('/');
         if (sep_pos != std::string::npos) {
@@ -557,12 +572,12 @@ class JsonRef {
 
     void update_references(std::string_view old_prefix, std::string_view new_prefix) {
         switch (m_value->_d()) {
-        case JSON_VALUE_ARRAY:
+        case JsonValue::JSON_VALUE_ARRAY:
             for (auto&& child : *this) {
                 child.update_references(old_prefix, new_prefix);
             }
             break;
-        case JSON_VALUE_OBJECT: {
+        case JsonValue::JSON_VALUE_OBJECT: {
             auto ref_it = find("$ref");
             if (ref_it != end() && (*ref_it).is_string()) {
                 std::string& str = (*ref_it).json_value().string_value();
@@ -576,63 +591,63 @@ class JsonRef {
             }
         } break;
         default:
-            break;  // Do nothing
+            break;
         }
     }
 
     iterator begin() {
         switch (m_value->_d()) {
-        case JSON_VALUE_ARRAY:
+        case JsonValue::JSON_VALUE_ARRAY:
             return iterator(m_value->array_value().begin(), this, 0);
-        case JSON_VALUE_OBJECT:
+        case JsonValue::JSON_VALUE_OBJECT:
             return iterator(m_value->object_value().begin(), this);
         default:
-            throw std::runtime_error("Invalud value type for json iterator");
+            throw std::runtime_error("Invalid value type for json iterator");
         }
     }
 
     iterator end() {
         switch (m_value->_d()) {
-        case JSON_VALUE_ARRAY:
+        case JsonValue::JSON_VALUE_ARRAY:
             return iterator(m_value->array_value().end(), this, m_value->array_value().size());
-        case JSON_VALUE_OBJECT:
+        case JsonValue::JSON_VALUE_OBJECT:
             return iterator(m_value->object_value().end(), this);
         default:
-            throw std::runtime_error("Invalud value type for json iterator");
+            throw std::runtime_error("Invalid value type for json iterator");
         }
     }
 
     const_iterator begin() const {
         switch (m_value->_d()) {
-        case JSON_VALUE_ARRAY:
+        case JsonValue::JSON_VALUE_ARRAY:
             return const_iterator(m_value->array_value().begin(), this, 0);
-        case JSON_VALUE_OBJECT:
+        case JsonValue::JSON_VALUE_OBJECT:
             return const_iterator(m_value->object_value().begin(), this);
         default:
-            throw std::runtime_error("Invalud value type for json iterator");
+            throw std::runtime_error("Invalid value type for json iterator");
         }
     }
 
     const_iterator end() const {
         switch (m_value->_d()) {
-        case JSON_VALUE_ARRAY:
+        case JsonValue::JSON_VALUE_ARRAY:
             return const_iterator(
                 m_value->array_value().end(), this, m_value->array_value().size()
             );
-        case JSON_VALUE_OBJECT:
+        case JsonValue::JSON_VALUE_OBJECT:
             return const_iterator(m_value->object_value().end(), this);
         default:
-            throw std::runtime_error("Invalud value type for json iterator");
+            throw std::runtime_error("Invalid value type for json iterator");
         }
     }
 
     size_t size() const {
         switch (m_value->_d()) {
-        case JSON_VALUE_ARRAY:
+        case JsonValue::JSON_VALUE_ARRAY:
             return m_value->array_value().size();
-        case JSON_VALUE_OBJECT:
+        case JsonValue::JSON_VALUE_OBJECT:
             return m_value->object_value().size();
-        case JSON_VALUE_STRING:
+        case JsonValue::JSON_VALUE_STRING:
             return m_value->string_value().size();
         default:
             return 0;
@@ -641,13 +656,13 @@ class JsonRef {
 
     bool empty() const {
         switch (m_value->_d()) {
-        case JSON_VALUE_ARRAY:
+        case JsonValue::JSON_VALUE_ARRAY:
             return m_value->array_value().empty();
-        case JSON_VALUE_OBJECT:
+        case JsonValue::JSON_VALUE_OBJECT:
             return m_value->object_value().empty();
-        case JSON_VALUE_STRING:
+        case JsonValue::JSON_VALUE_STRING:
             return m_value->string_value().empty();
-        case JSON_VALUE_NULL:
+        case JsonValue::JSON_VALUE_NULL:
             return true;
         default:
             return false;
@@ -656,50 +671,50 @@ class JsonRef {
 
     void clear() {
         switch (m_value->_d()) {
-        case JSON_VALUE_ARRAY:
+        case JsonValue::JSON_VALUE_ARRAY:
             m_value->array_value().clear();
             break;
-        case JSON_VALUE_OBJECT:
+        case JsonValue::JSON_VALUE_OBJECT:
             m_value->object_value().clear();
             break;
-        case JSON_VALUE_STRING:
+        case JsonValue::JSON_VALUE_STRING:
             m_value->string_value().clear();
             break;
         default:
-            m_value->_d(JSON_VALUE_NULL);
+            m_value->_d(JsonValue::JSON_VALUE_NULL);
         }
     }
 
     void reset() {
-        m_value->_d(JSON_VALUE_NULL);
+        m_value->_d(JsonValue::JSON_VALUE_NULL);
     }
 
     bool is_null() const {
-        return m_value->_d() == JSON_VALUE_NULL;
+        return m_value->_d() == JsonValue::JSON_VALUE_NULL;
     }
     bool is_float() const {
-        return m_value->_d() == JSON_VALUE_FLOAT;
+        return m_value->_d() == JsonValue::JSON_VALUE_FLOAT;
     }
     bool is_integer() const {
-        return m_value->_d() == JSON_VALUE_INTEGER;
+        return m_value->_d() == JsonValue::JSON_VALUE_INTEGER;
     }
     bool is_string() const {
-        return m_value->_d() == JSON_VALUE_STRING;
+        return m_value->_d() == JsonValue::JSON_VALUE_STRING;
     }
     bool is_array() const {
-        return m_value->_d() == JSON_VALUE_ARRAY;
+        return m_value->_d() == JsonValue::JSON_VALUE_ARRAY;
     }
     bool is_object() const {
-        return m_value->_d() == JSON_VALUE_OBJECT;
+        return m_value->_d() == JsonValue::JSON_VALUE_OBJECT;
     }
     bool is_bool() const {
-        return m_value->_d() == JSON_VALUE_BOOL;
+        return m_value->_d() == JsonValue::JSON_VALUE_BOOL;
     }
 
     template <typename T>
     void push_back(const T& a_value) {
-        if (m_value->_d() == JSON_VALUE_NULL) {
-            m_value->_d(JSON_VALUE_ARRAY);
+        if (m_value->_d() == JsonValue::JSON_VALUE_NULL) {
+            m_value->_d(JsonValue::JSON_VALUE_ARRAY);
         }
         m_value->array_value().resize(m_value->array_value().size() + 1);
         auto json_value = JsonRef(&m_value->array_value().back());
@@ -708,8 +723,8 @@ class JsonRef {
 
     template <typename T, typename... Ts>
     void emplace(std::string_view a_key, const T& a_value, Ts... args) {
-        if (m_value->_d() == JSON_VALUE_NULL) {
-            m_value->_d(JSON_VALUE_OBJECT);
+        if (m_value->_d() == JsonValue::JSON_VALUE_NULL) {
+            m_value->_d(JsonValue::JSON_VALUE_OBJECT);
         }
         auto& obj = m_value->object_value();
         JsonRef base(&obj[std::string(a_key)]);
@@ -723,9 +738,6 @@ class JsonRef {
         emplace_back(args...);
     }
 
-    void operator=(JsonValueType a_type) {
-        m_value->_d(a_type);
-    }
     void operator=(bool a_value) {
         m_value->bool_value(a_value);
     }
@@ -783,7 +795,7 @@ class JsonRef {
         m_value->string_value(u8_str);
     }
     void operator=(std::nullptr_t) {
-        m_value->_d(JSON_VALUE_NULL);
+        m_value->_d(JsonValue::JSON_VALUE_NULL);
     }
     template <typename T>
     void operator=(std::vector<T> a_list) {
@@ -811,9 +823,6 @@ class JsonRef {
     }
     const JsonValue& json_value() const {
         return *m_value;
-    }
-    JsonValueType json_type() const {
-        return m_value->_d();
     }
 
     template <typename T>
@@ -872,9 +881,6 @@ class Json : public JsonRef {
     Json(Json&& a_other) noexcept : JsonRef(&m_value), m_value(std::move(a_other.m_value)) {}
     ~Json() = default;
     explicit Json(JsonValue a_value) : JsonRef(&m_value), m_value(std::move(a_value)) {}
-    explicit Json(JsonValueType a_type) : JsonRef(&m_value) {
-        m_value._d(a_type);
-    }
     template <typename T>
     explicit Json(const T& a_value) : JsonRef(&m_value) {
         operator=(a_value);
@@ -914,13 +920,13 @@ class Json : public JsonRef {
     }
 
     static Json array() {
-        return Json(JSON_VALUE_ARRAY);
+        return Json(JsonValue::JSON_VALUE_ARRAY);
     }
     static Json object() {
-        return Json(JSON_VALUE_OBJECT);
+        return Json(JsonValue::JSON_VALUE_OBJECT);
     }
     static Json null() {
-        return Json(JSON_VALUE_NULL);
+        return Json(JsonValue::JSON_VALUE_NULL);
     }
     static Json number(double value = 0.0) {
         return Json(value);
@@ -950,6 +956,10 @@ class Json : public JsonRef {
     }
 
   private:
+    explicit Json(JsonValue::JsonValueType a_type) : JsonRef(&m_value) {
+        m_value._d(a_type);
+    }
+
     JsonValue m_value;
 };
 

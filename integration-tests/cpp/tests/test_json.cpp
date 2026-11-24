@@ -500,3 +500,96 @@ TEST_CASE("update_references" * doctest::test_suite("json")) {
     CHECK(json["list"][0]["$ref"].get<std::string>() == "#/new/z");
     CHECK(json["list"][1]["$ref"].get<std::string>() == "#/other");
 }
+
+TEST_CASE("find_nested_path" * doctest::test_suite("json")) {
+    Json json = Json::parse(R"({"a":{"b":7}})");
+
+    auto it = json.find("a/b");
+
+    CHECK((*it).ref() == "#/a/b");
+    CHECK((*it).get<int64_t>() == 7);
+}
+
+TEST_CASE("find_nested_missing" * doctest::test_suite("json")) {
+    Json json = Json::object("a", Json::object("b", 7));
+
+    CHECK((json.find("a/missing") == json.end()));
+    CHECK((json.find("a/b") != json.end()));
+    CHECK((json["a"].find("#/missing") == json["a"].end()));
+    CHECK((json["a"].find("#/a") != json["a"].end()));
+}
+
+TEST_CASE("push_back_own_element" * doctest::test_suite("json")) {
+    Json json = Json::array("first");
+
+    json.push_back(json[0]);
+
+    CHECK(json.str() == R"(["first","first"])");
+}
+
+TEST_CASE("assign_empty_vector" * doctest::test_suite("json")) {
+    Json json;
+
+    json = std::vector<int32_t>{};
+
+    CHECK(json.str() == "[]");
+}
+
+TEST_CASE("assign_empty_map" * doctest::test_suite("json")) {
+    Json json;
+
+    json = std::map<std::string, int32_t>{};
+
+    CHECK(json.str() == "{}");
+}
+
+TEST_CASE("assign_map_slash_key" * doctest::test_suite("json")) {
+    Json json;
+
+    json = std::map<std::string, int32_t>{{"a/b", 1}};
+
+    CHECK(json.str() == R"({"a/b":1})");
+}
+
+TEST_CASE("absolute_path_from_null" * doctest::test_suite("json")) {
+    Json json = Json::object("a", nullptr, "b", 1);
+
+    CHECK(json["a"]["#/b"].get<int64_t>() == 1);
+    CHECK(json.str() == R"({"a":null,"b":1})");
+}
+
+TEST_CASE("assign_descendant" * doctest::test_suite("json")) {
+    Json json = Json::object("payload", Json::object("x", "value"));
+
+    json = json["payload"];
+
+    CHECK(json.str() == R"({"x":"value"})");
+}
+
+TEST_CASE("assign_ancestor" * doctest::test_suite("json")) {
+    Json json = Json::object("copy", nullptr, "x", "value");
+
+    json["copy"] = json;
+
+    CHECK(json.str() == R"({"copy":{"copy":null,"x":"value"},"x":"value"})");
+}
+
+TEST_CASE("update_references_boundary" * doctest::test_suite("json")) {
+    Json json = Json::parse(R"({"r":{"$ref":"#/ab"},"s":{"$ref":"#/a/x"},"t":{"$ref":"#/a"}})");
+
+    json.update_references("#/a", "#/new");
+
+    CHECK(json["r"]["$ref"].get<std::string>() == "#/ab");
+    CHECK(json["s"]["$ref"].get<std::string>() == "#/new/x");
+    CHECK(json["t"]["$ref"].get<std::string>() == "#/new");
+}
+
+TEST_CASE("root_reference" * doctest::test_suite("json")) {
+    Json json = Json::object("value", 1, "link", nullptr);
+
+    json["link"].ref(json);
+
+    CHECK(json["#"]["value"].get<int64_t>() == 1);
+    CHECK(json["link"]["#"]["value"].get<int64_t>() == 1);
+    CHECK(json.str() == R"({"link":{"$ref":"#"},"value":1})");
+}

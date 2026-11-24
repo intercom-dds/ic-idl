@@ -383,19 +383,19 @@ class JsonRef {
 
         explicit IteratorImpl(const object_iterator& a_map, const JsonRef* parent) {
             m_it.m = a_map;
-            m_parent = parent;
+            m_parent = std::make_shared<const JsonRef>(*parent);
             m_kind = JsonValue::JSON_VALUE_OBJECT;
         }
 
         explicit IteratorImpl(const array_iterator& a_vector, const JsonRef* parent, size_t idx) {
             m_it.v = a_vector;
-            m_parent = parent;
+            m_parent = std::make_shared<const JsonRef>(*parent);
             m_it.array_index = idx;
             m_kind = JsonValue::JSON_VALUE_ARRAY;
         }
 
         bool operator==(const IteratorImpl& a_other) const {
-            if (m_kind != a_other.m_kind) {
+            if (m_kind != a_other.m_kind || m_parent->m_value != a_other.m_parent->m_value) {
                 return false;
             }
             switch (m_kind) {
@@ -415,9 +415,9 @@ class JsonRef {
         value_type operator*() {
             switch (m_kind) {
             case JsonValue::JSON_VALUE_OBJECT:
-                return value_type(const_cast<JsonValue*>(&m_it.m->second), key(), m_parent);
+                return value_type(const_cast<JsonValue*>(&m_it.m->second), key(), m_parent.get());
             case JsonValue::JSON_VALUE_ARRAY:
-                return value_type(const_cast<JsonValue*>(&(*m_it.v)), key(), m_parent);
+                return value_type(const_cast<JsonValue*>(&(*m_it.v)), key(), m_parent.get());
             default:
                 throw std::runtime_error("Invalid value type for json iterator");
             }
@@ -465,7 +465,7 @@ class JsonRef {
             array_iterator v;
             object_iterator m;
         } m_it;
-        const JsonRef* m_parent;
+        std::shared_ptr<const JsonRef> m_parent;
         JsonValue::JsonValueType m_kind;
     };
 
@@ -485,23 +485,32 @@ class JsonRef {
     }
     JsonRef& operator=(const JsonRef& a_other) {
         if (this != &a_other) {
-            *m_value = *a_other.m_value;
+            JsonValue value = *a_other.m_value;
+            *m_value = std::move(value);
         }
         return *this;
     }
 
     JsonRef operator[](std::string_view a_key) {
+        if (a_key == "#") {
+            if (m_parent) {
+                return m_parent->operator[](a_key);
+            }
+            return *this;
+        }
+
+        size_t sep_pos = a_key.find('/');
+        if (sep_pos != std::string::npos && a_key.substr(0, sep_pos) == "#") {
+            if (m_parent) {
+                return m_parent->operator[](a_key);
+            }
+            return operator[](a_key.substr(sep_pos + 1));
+        }
+
         if (is_null()) {
             m_value->_d(JsonValue::JSON_VALUE_OBJECT);
         }
-        size_t sep_pos = a_key.find('/');
         if (sep_pos != std::string::npos) {
-            if (a_key.substr(0, sep_pos) == "#") {
-                if (m_parent) {
-                    return m_parent->operator[](a_key);
-                }
-                return operator[](a_key.substr(sep_pos + 1));
-            }
             auto it = find(a_key.substr(0, sep_pos));
             if (it != end()) {
                 return (*it).operator[](a_key.substr(sep_pos + 1));
@@ -542,13 +551,22 @@ class JsonRef {
         if (sep_pos != std::string::npos) {
             if (a_key.substr(0, sep_pos) == "#") {
                 if (m_parent) {
-                    return m_parent->find(a_key);
+                    auto result = m_parent->find(a_key);
+                    if ((is_object() || is_array()) && result == m_parent->end()) {
+                        return end();
+                    }
+                    return result;
                 }
                 return find(a_key.substr(sep_pos + 1));
             }
             auto it = find(a_key.substr(0, sep_pos));
             if (it != end()) {
-                return (*it).find(a_key.substr(sep_pos + 1));
+                JsonRef child = *it;
+                auto result = child.find(a_key.substr(sep_pos + 1));
+                if (result == child.end()) {
+                    return end();
+                }
+                return result;
             }
             throw std::runtime_error(std::string("Unknown json path ") + std::string(a_key));
         }
@@ -583,7 +601,12 @@ class JsonRef {
                 std::string& str = (*ref_it).json_value().string_value();
                 if (str.size() >= old_prefix.size() &&
                     str.substr(0, old_prefix.size()) == old_prefix) {
-                    str = std::string(new_prefix) + str.substr(old_prefix.size());
+                    bool at_boundary = old_prefix.empty() || old_prefix.back() == '/' ||
+                                       str.size() == old_prefix.size() ||
+                                       str[old_prefix.size()] == '/';
+                    if (at_boundary) {
+                        str = std::string(new_prefix) + str.substr(old_prefix.size());
+                    }
                 }
             }
             for (auto&& child : *this) {
@@ -713,12 +736,14 @@ class JsonRef {
 
     template <typename T>
     void push_back(const T& a_value) {
+        JsonValue element;
+        auto json_value = JsonRef(&element);
+        json_value = a_value;
+
         if (m_value->_d() == JsonValue::JSON_VALUE_NULL) {
             m_value->_d(JsonValue::JSON_VALUE_ARRAY);
         }
-        m_value->array_value().resize(m_value->array_value().size() + 1);
-        auto json_value = JsonRef(&m_value->array_value().back());
-        json_value = a_value;
+        m_value->array_value().push_back(std::move(element));
     }
 
     template <typename T, typename... Ts>
@@ -800,6 +825,7 @@ class JsonRef {
     template <typename T>
     void operator=(std::vector<T> a_list) {
         reset();
+        m_value->_d(JsonValue::JSON_VALUE_ARRAY);
         for (auto& obj : a_list) {
             push_back(obj);
         }
@@ -807,8 +833,11 @@ class JsonRef {
     template <typename T>
     void operator=(const std::map<std::string, T>& a_map) {
         reset();
+        m_value->_d(JsonValue::JSON_VALUE_OBJECT);
+        auto& members = m_value->object_value();
         for (auto& obj : a_map) {
-            operator[](obj.first) = obj.second;
+            JsonRef member(&members[obj.first]);
+            member = obj.second;
         }
     }
 

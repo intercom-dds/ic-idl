@@ -123,6 +123,7 @@ add_executable(cpp_integration_tests
     tests/test_enums.cpp
     tests/test_exceptions.cpp
     tests/test_interfaces.cpp
+    tests/test_json.cpp
     tests/test_multi_module.cpp
     tests/test_nested_modules.cpp
     tests/test_serialization.cpp

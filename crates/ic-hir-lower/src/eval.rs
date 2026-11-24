@@ -602,6 +602,7 @@ fn cast_value_to_type(
             },
 
             PrimitiveTy::WChar => match v {
+                Value::WChar(c) if u32::from(c) > 0xFFFF => Err(Error::InvalidChar),
                 Value::WChar(_) => Ok(v),
                 Value::Char(_) => Err(Error::TypeMismatch),
                 _ => {

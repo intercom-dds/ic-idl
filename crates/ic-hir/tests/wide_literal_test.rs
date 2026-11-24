@@ -82,6 +82,18 @@ fn narrow_char_literal_rejected_for_wchar() {
 }
 
 #[test]
+fn wide_char_literal_outside_bmp_rejected() {
+    let diags = common::parse_and_expect_errors("const wchar c = L'\u{1F600}';");
+    insta::assert_snapshot!(diags);
+}
+
+#[test]
+fn wide_char_literal_bmp_accepted() {
+    let value = first_const_value("const wchar c = L'\u{FFFD}';");
+    assert!(matches!(value, Numeric::WChar('\u{FFFD}')), "got {value:?}");
+}
+
+#[test]
 fn narrow_string_literal_rejected_for_wstring() {
     let diags = common::parse_and_expect_errors(r#"const wstring s = "narrow";"#);
     insta::assert_snapshot!(diags);

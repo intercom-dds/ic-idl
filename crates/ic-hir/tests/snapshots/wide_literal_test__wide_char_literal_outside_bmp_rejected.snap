@@ -1,0 +1,9 @@
+---
+source: crates/ic-hir/tests/wide_literal_test.rs
+expression: diags
+---
+⨯: invalid Unicode scalar for character type
+  @ test.idl:1:17
+
+ 1 │ const wchar c = L'😀';
+   │                 ˆˆˆˆ invalid character

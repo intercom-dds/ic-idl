@@ -759,8 +759,18 @@ class JsonRef {
 
     template <typename T, typename... Ts>
     void emplace_back(const T& a_value, Ts... args) {
-        push_back(a_value);
-        emplace_back(args...);
+        JsonValue elements;
+        JsonRef staged(&elements);
+        staged.push_back(a_value);
+        (staged.push_back(args), ...);
+
+        if (m_value->_d() == JsonValue::JSON_VALUE_NULL) {
+            m_value->_d(JsonValue::JSON_VALUE_ARRAY);
+        }
+        auto& array = m_value->array_value();
+        for (auto& element : elements.array_value()) {
+            array.push_back(std::move(element));
+        }
     }
 
     void operator=(bool a_value) {
@@ -861,7 +871,6 @@ class JsonRef {
 
   private:
     void emplace() {}
-    void emplace_back() {}
 
     JsonValue* m_value;
     std::string m_name;

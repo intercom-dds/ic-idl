@@ -35,7 +35,7 @@ use ic_hir_analysis::numeric::coerce;
 
 use crate::{Category, Lint, LintCtx};
 
-/// Checks that `@min`, `@max`, and `@range` annotations are valid
+/// Checks that `@min`, `@max`, `@range`, `@ext::exclusive_minimum` and `@ext::exclusive_maximum` annotations are valid
 pub struct RangeBound<'a> {
     ctx: &'a LintCtx<'a>,
     hir: &'a ic_hir::ResolvedGraph,
@@ -76,7 +76,8 @@ impl<'a> Lint<'a> for RangeBound<'a> {
     }
 
     fn description() -> &'static str {
-        "Validates @range, @min, and @max annotation values"
+        "Validates @range, @min, @max, @ext::exclusive_minimum, and @ext::exclusive_maximum \
+         annotation values"
     }
 
     fn check_hir(ctx: &'a LintCtx<'_>, hir: &ResolvedGraph) {
@@ -318,32 +319,39 @@ impl RangeBound<'_> {
         let mut max_span = None;
         let mut min_annotation = None;
         let mut max_annotation = None;
+        let mut min_label = "min";
+        let mut max_label = "max";
 
         for annotation in annotations {
-            match self.annotation_name(annotation) {
-                Some("min") => {
-                    if let Ok(value) = self.annotation_value(annotation, "value", 0, "min", ty) {
-                        min_value = value;
-                        min_span = Some(annotation.ident.span);
-                        min_annotation = Some(annotation);
-                    }
+            let slot_label = match self.annotation_name(annotation) {
+                Some("min") => Some(("min", "min")),
+                Some("exclusive_minimum") => Some(("ext::exclusive_minimum", "min")),
+                Some("max") => Some(("max", "max")),
+                Some("exclusive_maximum") => Some(("ext::exclusive_maximum", "max")),
+                _ => None,
+            };
+            if let Some((label, edge)) = slot_label
+                && let Ok(value) = self.annotation_value(annotation, "value", 0, label, ty)
+            {
+                if edge == "min" {
+                    min_label = label;
+                    min_value = value;
+                    min_span = Some(annotation.ident.span);
+                    min_annotation = Some(annotation);
+                } else {
+                    max_label = label;
+                    max_value = value;
+                    max_span = Some(annotation.ident.span);
+                    max_annotation = Some(annotation);
                 }
-                Some("max") => {
-                    if let Ok(value) = self.annotation_value(annotation, "value", 0, "max", ty) {
-                        max_value = value;
-                        max_span = Some(annotation.ident.span);
-                        max_annotation = Some(annotation);
-                    }
-                }
-                _ => {}
             }
         }
 
         if let (Some(BoundValue::Integer(value)), Some(annotation)) = (min_value, min_annotation) {
-            self.check_value_in_bounds(value, ty, annotation, "min");
+            self.check_value_in_bounds(value, ty, annotation, min_label);
         }
         if let (Some(BoundValue::Integer(value)), Some(annotation)) = (max_value, max_annotation) {
-            self.check_value_in_bounds(value, ty, annotation, "max");
+            self.check_value_in_bounds(value, ty, annotation, max_label);
         }
 
         if let (Some(min), Some(max), Some(min_span), Some(max_span)) =
@@ -355,7 +363,9 @@ impl RangeBound<'_> {
                 .diag_span(
                     Self::name(),
                     Self::category(),
-                    format!("@min value ({min}) is greater than @max value ({max})"),
+                    format!(
+                        "@{min_label} value ({min}) is greater than @{max_label} value ({max})"
+                    ),
                     Label::new(min_span).message("min value here"),
                 )
                 .label(Label::new(max_span).message("max value here"))

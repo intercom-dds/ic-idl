@@ -255,6 +255,43 @@ fn integer_defaults_on_every_target() {
 }
 
 #[test]
+fn exclusive_bounds_match_member_types() {
+    let hir = parse_and_transform(
+        r"
+        struct Test {
+            @ext::exclusive_minimum(-12) @ext::exclusive_maximum(12) long long bounded;
+        };
+        ",
+    );
+
+    let DefKind::Struct(test) = &hir
+        .iter()
+        .find(|def| def.ident.name == "Test")
+        .unwrap()
+        .kind
+    else {
+        panic!("Expected struct")
+    };
+    let minimum = builtin_annotation(
+        &hir.context,
+        &test.members[0].annotations,
+        "exclusive_minimum",
+    )
+    .unwrap();
+    let maximum = builtin_annotation(
+        &hir.context,
+        &test.members[0].annotations,
+        "exclusive_maximum",
+    )
+    .unwrap();
+
+    assert_eq!(minimum.args[0].value, Numeric::Int64(-12));
+    assert_eq!(maximum.args[0].value, Numeric::Int64(12));
+    assert_eq!(minimum.args[0].ty, Some(test.members[0].ty.clone()));
+    assert_eq!(maximum.args[0].ty, Some(test.members[0].ty.clone()));
+}
+
+#[test]
 fn bounds_match_member_types() {
     let hir = parse_and_transform(
         r"

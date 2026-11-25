@@ -28,7 +28,7 @@
 use insta::assert_snapshot;
 
 mod common;
-use common::test_lint_hir;
+use common::{lint_hir, test_lint_hir};
 
 #[test]
 fn duplicate_max_on_member_and_typedef() {
@@ -212,4 +212,163 @@ union Foo switch (long) {
 };
 ";
     assert_snapshot!(test_lint_hir(source));
+}
+
+#[test]
+fn exclusive_minimum_conflicts_with_min_same_location() {
+    let source = r"
+struct Foo {
+    @min(1)
+    @ext::exclusive_minimum(2)
+    int32 value;
+};
+";
+    assert_snapshot!(test_lint_hir(source));
+}
+
+#[test]
+fn exclusive_maximum_conflicts_with_max_same_location() {
+    let source = r"
+struct Foo {
+    @max(100)
+    @ext::exclusive_maximum(99)
+    int32 value;
+};
+";
+    assert_snapshot!(test_lint_hir(source));
+}
+
+#[test]
+fn range_conflicts_with_exclusive_minimum_same_location() {
+    let source = r"
+struct Foo {
+    @range(min = 1, max = 100)
+    @ext::exclusive_minimum(2)
+    int32 value;
+};
+";
+    assert_snapshot!(test_lint_hir(source));
+}
+
+#[test]
+fn range_conflicts_with_exclusive_maximum_same_location() {
+    let source = r"
+struct Foo {
+    @range(min = 1, max = 100)
+    @ext::exclusive_maximum(99)
+    int32 value;
+};
+";
+    assert_snapshot!(test_lint_hir(source));
+}
+
+#[test]
+fn cross_edge_member_min_typedef_exclusive_maximum_silent() {
+    let source = r"
+@ext::exclusive_maximum(100) typedef int32 MyInt;
+
+struct Foo {
+    @min(1) MyInt value;
+};
+";
+    let output = test_lint_hir(source);
+    assert!(
+        !output.contains("duplicate-bounds"),
+        "Expected no duplicate-bounds error for cross-edge pair, got: {output}"
+    );
+}
+
+#[test]
+fn cross_edge_exclusive_minimum_and_exclusive_maximum_silent() {
+    let source = r"
+struct Foo {
+    @ext::exclusive_minimum(1)
+    @ext::exclusive_maximum(100)
+    int32 value;
+};
+";
+    let output = test_lint_hir(source);
+    assert!(
+        !output.contains("duplicate-bounds"),
+        "Expected no duplicate-bounds error for half-open exclusive pair, got: {output}"
+    );
+}
+
+#[test]
+fn typedef_chain_min_then_range_pins_current_scope() {
+    let source = r"
+@min(1) typedef int32 TD1;
+@range(min = 1, max = 10) typedef TD1 TD2;
+
+struct Foo {
+    TD2 value;
+};
+";
+    assert_snapshot!(test_lint_hir(source));
+}
+
+#[test]
+fn exclusive_minimum_string_value_gives_conflict_and_value_diagnostics() {
+    let source = r#"
+struct Foo {
+    @min(1)
+    @ext::exclusive_minimum("abc")
+    int32 value;
+};
+"#;
+    assert_snapshot!(test_lint_hir(source));
+}
+
+#[test]
+fn exclusive_minimum_on_member_conflicts_with_min_on_typedef() {
+    let source = r"
+@min(1) typedef int32 MyInt;
+
+struct Foo {
+    @ext::exclusive_minimum(2) MyInt value;
+};
+";
+    assert_snapshot!(test_lint_hir(source));
+}
+
+#[test]
+fn typedef_chain_walk_stops_at_non_alias_def() {
+    let source = r"
+struct Inner {
+    long x;
+};
+
+typedef Inner MyInner;
+
+struct Outer {
+    @min(5) MyInner field;
+};
+";
+    let output = test_lint_hir(source);
+    assert!(
+        !output.contains("duplicate-bounds"),
+        "Expected the typedef chain walk to stop at the struct def, got: {output}"
+    );
+}
+
+#[test]
+fn user_defined_exclusive_minimum_is_not_a_builtin_bound() {
+    let source = r"
+module Custom {
+    @annotation exclusive_minimum {
+        long value;
+    };
+
+    struct Foo {
+        @min(1)
+        @exclusive_minimum(2)
+        int32 value;
+    };
+};
+";
+    assert!(
+        lint_hir(source).errors.is_empty(),
+        "{}",
+        test_lint_hir(source)
+    );
 }

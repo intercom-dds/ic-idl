@@ -527,6 +527,14 @@ TEST_CASE("push_back_own_element" * doctest::test_suite("json")) {
     CHECK(json.str() == R"(["first","first"])");
 }
 
+TEST_CASE("emplace_back_own_elements" * doctest::test_suite("json")) {
+    Json json = Json::array("first", "second");
+
+    json.emplace_back(json[0], json[1]);
+
+    CHECK(json.str() == R"(["first","second","first","second"])");
+}
+
 TEST_CASE("assign_empty_vector" * doctest::test_suite("json")) {
     Json json;
 

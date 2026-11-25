@@ -39,6 +39,7 @@
 #include <vector>
 
 using ic_cts::Json;
+using ic_cts::JsonRef;
 using ic_cts::JsonValue;
 
 template <typename T, typename = void>
@@ -533,6 +534,30 @@ TEST_CASE("emplace_back_own_elements" * doctest::test_suite("json")) {
     json.emplace_back(json[0], json[1]);
 
     CHECK(json.str() == R"(["first","second","first","second"])");
+}
+
+TEST_CASE("emplace_own_descendant" * doctest::test_suite("json")) {
+    Json json = Json::object("a", Json::object("x", "value"));
+
+    json.emplace("a", 0, "b", json["a"]["x"]);
+
+    CHECK(json.str() == R"({"a":0,"b":"value"})");
+}
+
+TEST_CASE("assign_vector_own_elements" * doctest::test_suite("json")) {
+    Json json = Json::array("first", "second");
+
+    json = std::vector<JsonRef>{json[0], json[1]};
+
+    CHECK(json.str() == R"(["first","second"])");
+}
+
+TEST_CASE("assign_map_own_members" * doctest::test_suite("json")) {
+    Json json = Json::object("a", 1, "b", 2);
+
+    json = std::map<std::string, JsonRef>{{"x", json["a"]}, {"y", json["b"]}};
+
+    CHECK(json.str() == R"({"x":1,"y":2})");
 }
 
 TEST_CASE("assign_empty_vector" * doctest::test_suite("json")) {

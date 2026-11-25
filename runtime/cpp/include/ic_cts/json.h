@@ -748,13 +748,17 @@ class JsonRef {
 
     template <typename T, typename... Ts>
     void emplace(std::string_view a_key, const T& a_value, Ts... args) {
+        JsonValue staged;
+        staged._d(JsonValue::JSON_VALUE_OBJECT);
+        stage_members(staged.object_value(), a_key, a_value, args...);
+
         if (m_value->_d() == JsonValue::JSON_VALUE_NULL) {
             m_value->_d(JsonValue::JSON_VALUE_OBJECT);
         }
         auto& obj = m_value->object_value();
-        JsonRef base(&obj[std::string(a_key)]);
-        base = a_value;
-        emplace(args...);
+        for (auto& member : staged.object_value()) {
+            obj[member.first] = std::move(member.second);
+        }
     }
 
     template <typename T, typename... Ts>
@@ -834,21 +838,26 @@ class JsonRef {
     }
     template <typename T>
     void operator=(std::vector<T> a_list) {
-        reset();
-        m_value->_d(JsonValue::JSON_VALUE_ARRAY);
+        JsonValue elements;
+        elements._d(JsonValue::JSON_VALUE_ARRAY);
+        JsonRef staged(&elements);
         for (auto& obj : a_list) {
-            push_back(obj);
+            staged.push_back(obj);
         }
+
+        *m_value = std::move(elements);
     }
     template <typename T>
     void operator=(const std::map<std::string, T>& a_map) {
-        reset();
-        m_value->_d(JsonValue::JSON_VALUE_OBJECT);
-        auto& members = m_value->object_value();
+        JsonValue staged;
+        staged._d(JsonValue::JSON_VALUE_OBJECT);
+        auto& members = staged.object_value();
         for (auto& obj : a_map) {
             JsonRef member(&members[obj.first]);
             member = obj.second;
         }
+
+        *m_value = std::move(staged);
     }
 
     std::string str() const {
@@ -870,7 +879,19 @@ class JsonRef {
     T get() const;
 
   private:
-    void emplace() {}
+    static void stage_members(std::map<std::string, JsonValue>&) {}
+
+    template <typename T, typename... Ts>
+    static void stage_members(
+        std::map<std::string, JsonValue>& a_members,
+        std::string_view a_key,
+        const T& a_value,
+        Ts... args
+    ) {
+        JsonRef member(&a_members[std::string(a_key)]);
+        member = a_value;
+        stage_members(a_members, args...);
+    }
 
     JsonValue* m_value;
     std::string m_name;
